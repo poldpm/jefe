@@ -307,29 +307,7 @@ h2 { font-size: 1.0625rem; }
 .rampa { display: flex; height: 12px; border: .5px solid var(--neatline); }
 .rampa i { flex: 1; }
 
-/* -------------------------------------------------------- disposició ampla */
-
 .dues-columnes { display: grid; gap: var(--e4); }
-
-@media (min-width: 900px) {
-  body { padding-bottom: var(--e6); }
-  .pagina { padding: var(--e5) var(--e5) var(--e7); }
-  .dues-columnes { grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; }
-  .nav {
-    position: sticky; top: 0; bottom: auto;
-    flex-direction: column; width: auto; border-top: 0;
-    border-bottom: 3px double var(--neatline);
-    flex-direction: row; justify-content: center; gap: var(--e5);
-  }
-  .nav a { flex: none; flex-direction: row; gap: var(--e2); min-height: 52px; font-size: .875rem; }
-  h1 { font-size: 1.875rem; }
-  .franja { min-height: 84px; }
-  .cella { height: 30px; }
-}
-
-@media (min-width: 1200px) {
-  .reixa tbody th { max-width: 260px; }
-}
 
 /* ---------------------------------------------------------------- entrades */
 
@@ -452,6 +430,41 @@ h2 { font-size: 1.0625rem; }
 .tira { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: var(--e3); }
 .tira .xifra-gran { font-size: 1.75rem; line-height: 1; font-weight: 700;
                     font-style: italic; color: var(--corba-mestra); }
+
+/* =========================================================================
+   DISPOSICIÓ AMPLA — ha d'anar AL FINAL del full
+   Si aquest bloc va abans de les regles base, la cascada les barreja: el
+   `position` es perd però el `top` sobreviu, i la navegació es converteix en
+   una capa fixa de pantalla sencera que tapa el contingut. Va passar.
+   ========================================================================= */
+
+@media (min-width: 900px) {
+  /* El cos passa a columna per poder posar la navegació a dalt sense
+     moure-la del final del document (que és on ha de ser per al teclat). */
+  body { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: var(--e6); }
+  #sense-xarxa, #pendents { order: -2; }
+  .nav { order: -1; }
+  main#vista { order: 0; flex: 1; }
+
+  .pagina { padding: var(--e5) var(--e5) var(--e7); }
+  .dues-columnes { grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; }
+
+  .nav {
+    position: sticky; top: 0; bottom: auto;
+    flex-direction: row; justify-content: center; gap: var(--e6);
+    border-top: 0; border-bottom: 3px double var(--neatline);
+    padding-bottom: 0;
+  }
+  .nav a { flex: none; flex-direction: row; gap: var(--e2); min-height: 52px; font-size: .8125rem; }
+
+  h1 { font-size: 1.875rem; }
+  .franja { min-height: 84px; }
+  .cella { height: 30px; }
+}
+
+@media (min-width: 1200px) {
+  .reixa tbody th { max-width: 260px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
