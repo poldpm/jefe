@@ -1,0 +1,14 @@
+{
+  "name": "popu",
+  "version": "1.0.0",
+  "description": "Assistent personal sobre Google Sheets i Apps Script",
+  "private": true,
+  "scripts": {
+    "puja": "clasp push",
+    "obre": "clasp open",
+    "registre": "clasp logs"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.2"
+  }
+}

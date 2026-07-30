@@ -1,0 +1,26 @@
+# Popu — res d'això no ha de sortir mai de la màquina
+
+# Credencials, claus i sessions
+.clasprc.json
+.clasp.json
+*.token
+*.key
+*.pem
+.env
+.env.*
+credentials*
+client_secret*
+secrets*
+
+# Dependències
+node_modules/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporals
+*.tmp
+*.bak
+~$*

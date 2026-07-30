@@ -1,0 +1,131 @@
+/**
+ * Popu — NUCLI · Encaminament
+ *
+ * Una sola porta d'entrada des del client:
+ *     google.script.run.api('habits', 'marca', {id: '...', data: '...'})
+ *
+ * El nucli busca el mòdul, comprova que l'acció existeixi i la crida.
+ * Un mòdul nou no ha de tocar res d'aquí: registrar l'acció al seu descriptor
+ * ja el fa accessible.
+ */
+
+/** Punt d'entrada de la web app. */
+function doGet(e) {
+  try {
+    var plantilla = HtmlService.createTemplateFromFile('ui_index');
+    plantilla.estat = estatSistema();
+    return plantilla.evaluate()
+      .setTitle('Popu')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (err) {
+    Log.error('doGet', err);
+    return HtmlService.createHtmlOutput(
+      '<h1>Popu no s\'ha pogut obrir</h1><pre>' + err.message + '</pre>' +
+      '<p>Executa <code>configuraPopu()</code> des de l\'editor d\'Apps Script.</p>'
+    );
+  }
+}
+
+/** Permet incloure fitxers HTML dins d'altres (CSS, JS, vistes de mòduls). */
+function include(fitxer) {
+  return HtmlService.createHtmlOutputFromFile(fitxer).getContent();
+}
+
+/**
+ * Encaminador únic. Retorna SEMPRE {ok: bool, dades|error}.
+ * El client no ha de gestionar excepcions, només mirar `ok`.
+ */
+function api(idModul, accio, params) {
+  var inici = Date.now();
+  try {
+    if (!idModul || !accio) throw new Error('Falta el mòdul o l\'acció.');
+
+    // Accions del nucli, no d'un mòdul
+    if (idModul === 'nucli') return { ok: true, dades: apiNucli_(accio, params || {}) };
+
+    var modul = Moduls.perId(idModul);
+    if (!modul) throw new Error('No existeix el mòdul «' + idModul + '».');
+
+    var fn = modul.accions && modul.accions[accio];
+    if (typeof fn !== 'function') {
+      throw new Error('El mòdul «' + idModul + '» no té l\'acció «' + accio + '».');
+    }
+
+    var resultat = fn(params || {});
+    return { ok: true, dades: resultat === undefined ? null : resultat };
+
+  } catch (err) {
+    Log.error('api.' + idModul + '.' + accio, err, { params: params });
+    return {
+      ok: false,
+      error: err.message || String(err),
+      modul: idModul,
+      accio: accio
+    };
+  } finally {
+    var ms = Date.now() - inici;
+    if (ms > 8000) Log.avis('api.lent', idModul + '.' + accio + ' ha trigat ' + ms + ' ms');
+  }
+}
+
+function apiNucli_(accio, params) {
+  switch (accio) {
+    case 'inici':
+      return {
+        avui: Utils.avui(),
+        moduls: Moduls.perAlClient(),
+        targetes: Moduls.resumInici(),
+        ia: IA.estat()
+      };
+
+    case 'estat':
+      return estatSistema();
+
+    case 'config':
+      return Config.tot();
+
+    case 'registre':
+      return Log.ultimes(params.n || 30, params.nivell);
+
+    case 'ping':
+      return { ara: Utils.ara(), versio: VERSIO_POPU };
+
+    default:
+      throw new Error('Acció de nucli desconeguda: «' + accio + '».');
+  }
+}
+
+/** Diagnòstic complet. El fa servir la pantalla d'estat i el manteniment nocturn. */
+function estatSistema() {
+  var estat = {
+    versio: VERSIO_POPU,
+    ara: Utils.ara(),
+    configurat: !!Config.idFull(),
+    idFull: null,
+    urlFull: null,
+    moduls: [],
+    problemesEsquema: [],
+    ia: null,
+    triggers: [],
+    error: null
+  };
+
+  try {
+    if (!estat.configurat) return estat;
+
+    var ss = Config.full();
+    estat.idFull = ss.getId();
+    estat.urlFull = ss.getUrl();
+    estat.moduls = Moduls.perAlClient();
+    estat.problemesEsquema = Esquema.comprova();
+    estat.ia = IA.estat();
+
+    var t = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < t.length; i++) estat.triggers.push(t[i].getHandlerFunction());
+
+  } catch (err) {
+    estat.error = err.message;
+  }
+  return estat;
+}
