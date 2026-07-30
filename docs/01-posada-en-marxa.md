@@ -20,8 +20,13 @@ Sense això, clasp no pot pujar res.
 Des de `C:\Claude\Popu`:
 
 ```bash
-npx clasp login
+npx.cmd clasp login
 ```
+
+> **Per què `npx.cmd` i no `npx`?** Windows bloqueja per defecte l'execució de
+> scripts de PowerShell, i `npx` a Windows és un script `.ps1`. La versió `.cmd`
+> fa exactament el mateix i no toca cap configuració de seguretat.
+> Escriu sempre `npx.cmd` en aquest document.
 
 S'obre el navegador. Tria el compte **@gmail.com** i accepta.
 
@@ -33,7 +38,7 @@ S'obre el navegador. Tria el compte **@gmail.com** i accepta.
 ## 3. Crea el projecte d'Apps Script
 
 ```bash
-npx clasp create --type standalone --title "Popu" --rootDir apps-script
+npx.cmd clasp create --type standalone --title "Popu" --rootDir apps-script
 ```
 
 Això crea `.clasp.json` a l'arrel (ignorat pel git, conté l'identificador del projecte).
@@ -47,7 +52,7 @@ Això crea `.clasp.json` a l'arrel (ignorat pel git, conté l'identificador del 
 ## 4. Puja el codi
 
 ```bash
-npx clasp push
+npx.cmd clasp push
 ```
 
 Ha de pujar 10 fitxers. Si et pregunta si vol sobreescriure el manifest, digues que sí.
@@ -57,7 +62,7 @@ Ha de pujar 10 fitxers. Si et pregunta si vol sobreescriure el manifest, digues 
 ## 5. Crea l'estructura de dades
 
 ```bash
-npx clasp open
+npx.cmd clasp open
 ```
 
 S'obre l'editor a script.google.com. Allà:
@@ -131,7 +136,7 @@ A partir d'aquí s'obre com una app, sense barra d'adreces.
 Quan hi hagi codi nou:
 
 ```bash
-npx clasp push
+npx.cmd clasp push
 ```
 
 Si el canvi afecta els fulls (mòduls nous, columnes noves), executa també
@@ -154,6 +159,7 @@ edita el desplegament → versió: Nova**, o l'app seguirà servint la versió a
 
 | Símptoma | Causa i solució |
 |---|---|
+| `No se puede cargar el archivo ...npx.ps1 porque la ejecución de scripts está deshabilitada` | Has escrit `npx` en comptes de `npx.cmd`. Windows bloqueja els `.ps1`; el `.cmd` fa el mateix. |
 | `User has not enabled the Apps Script API` | Pas 1 no fet, o fet amb l'altre compte |
 | `clasp push` no puja res | `.clasp.json` no té `"rootDir": "apps-script"` |
 | `Popu no està configurat` a la web app | Falta executar `configuraPopu()` (pas 5) |
