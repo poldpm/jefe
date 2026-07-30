@@ -4,7 +4,8 @@
   "description": "Assistent personal sobre Google Sheets i Apps Script",
   "private": true,
   "scripts": {
-    "puja": "clasp push",
+    "comprova": "node eines/comprova.mjs",
+    "puja": "node eines/comprova.mjs && clasp push",
     "obre": "clasp open",
     "registre": "clasp logs"
   },

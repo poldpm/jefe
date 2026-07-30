@@ -50,7 +50,9 @@
 
 <script>
   (function () {
-    // Cal `<?!=` i no `<?=`: aquest darrer escaparia les cometes i trencaria el JSON.
+    // Cal la forma que NO escapa: l'altra convertiria les cometes en entitats
+    // HTML i trencaria el JSON. Compte: no s'ha d'escriure mai sintaxi de
+    // plantilla dins d'un comentari, perquè Apps Script també la interpreta.
     var estat = <?!= JSON.stringify(estat) ?>;
     App.arrenca(estat);
     App.pintaPendents();
