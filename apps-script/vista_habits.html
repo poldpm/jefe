@@ -1,0 +1,422 @@
+<script>
+/* Popu — MÒDUL · Vista d'hàbits
+   Un toc sobre la barra = marcat. Res més al camí.
+   El detall (ratxes, percentatges, calendari, registre retroactiu) és a un toc més. */
+
+App.registraVista('habits', {
+  render: function (arrel, params) {
+
+    var data = params.data || fmt.avui();
+    var dades = null;
+
+    // ------------------------------------------------------------- pintura
+
+    function pinta(d, dEnCau) {
+      dades = d;
+      var esAvui = d.data === fmt.avui();
+
+      var html =
+        '<header class="capcalera"><div class="capcalera-fila">' +
+          '<div class="selector-data" style="flex:1">' +
+            '<button class="btn btn-secundari btn-icona" data-dia="-1" aria-label="Dia anterior">' + ic('esquerra') + '</button>' +
+            '<button class="data" data-avui="1" style="background:none;border:0;padding:8px 4px;min-height:var(--toc)">' +
+              esc(fmt.relativa(d.data)) +
+              '<span class="menut" style="display:block;font-weight:400">' + esc(fmt.llarga(d.data)) + '</span>' +
+            '</button>' +
+            '<button class="btn btn-secundari btn-icona" data-dia="1" aria-label="Dia següent"' +
+              (esAvui ? ' disabled' : '') + '>' + ic('dreta') + '</button>' +
+          '</div>' +
+        '</div></header>' +
+        '<div class="pagina">';
+
+      if (!d.habits.length) {
+        html += Comp.buit(
+          'Cap hàbit encara',
+          'Crea el primer. Val més un hàbit que facis cada dia que set que miris de reüll.',
+          '<button class="btn btn-primari" data-nou="1">Crea un hàbit</button>'
+        );
+      } else {
+        if (!esAvui) {
+          html += '<div class="avis" style="margin-bottom:var(--e3)">' + ic('llapis') +
+                  '<div><strong>Registre retroactiu</strong>Estàs marcant un dia passat.</div></div>';
+        }
+
+        html += '<div class="marques">';
+        d.habits.forEach(function (h) { html += marca(h); });
+        html += '</div>';
+
+        html += '<button class="btn btn-secundari btn-ple" data-nou="1" style="margin-top:var(--e4)">' +
+                ic('mes') + 'Nou hàbit</button>';
+      }
+
+      if (dEnCau) html += '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>';
+      html += '</div>';
+
+      arrel.innerHTML = html;
+      lliga();
+    }
+
+    function marca(h) {
+      var estat = !h.existiaEncara ? 'notoca'
+                : h.complert ? 'fet'
+                : !h.exigit ? 'notoca'
+                : h.registrat ? 'nofet' : 'pendent';
+
+      var sota = [];
+      if (h.tipus === 'quantitat') {
+        sota.push((h.valor || 0) + ' / ' + h.objectiu + (h.unitat ? ' ' + h.unitat : ''));
+      }
+      if (!h.exigit && h.existiaEncara) sota.push('avui no toca');
+      else if (estat === 'nofet') sota.push('marcat com a no fet');
+      if (h.frequencia === 'x_per_setmana') {
+        sota.push(h.aquestaSetmana + ' de ' + h.objectiuSetmanal + ' aquesta setmana');
+      }
+
+      var progres = '';
+      if (h.tipus === 'quantitat' && h.objectiu > 1) {
+        var pct = Math.min(1, (h.valor || 0) / h.objectiu);
+        progres = '<div class="progres"><i style="transform:scaleX(' + pct.toFixed(3) + ')"></i></div>';
+      }
+
+      var ratxa = h.ratxa > 0
+        ? '<span class="ratxa"><span class="xifra">' + h.ratxa + '</span>' +
+          (h.unitatRatxa === 'setmanes' ? 'set.' : 'd') + '</span>'
+        : '';
+
+      return '<div class="marca-fila">' +
+        '<button class="marca" data-marca="' + esc(h.id) + '" data-estat="' + estat + '"' +
+          ' aria-pressed="' + (h.complert ? 'true' : 'false') + '">' +
+          '<span>' +
+            '<span class="marca-nom">' + esc(h.nom) + '</span>' +
+            (sota.length ? '<span class="marca-sota">' + esc(sota.join(' · ')) + '</span>' : '') +
+            progres +
+          '</span>' +
+          '<span class="marca-dreta">' + ratxa +
+            (h.complert ? ic('fet') : '') +
+          '</span>' +
+        '</button>' +
+        '<button class="marca-detall" data-detall="' + esc(h.id) + '"' +
+          ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('grafic') + '</button>' +
+      '</div>';
+    }
+
+    // ------------------------------------------------------------- accions
+
+    function lliga() {
+      arrel.querySelectorAll('[data-dia]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var nova = fmt.suma(data, Number(b.dataset.dia));
+          if (nova > fmt.avui()) return;
+          App.ves('habits', { data: nova });
+        });
+      });
+      var ba = arrel.querySelector('[data-avui]');
+      if (ba) ba.addEventListener('click', function () { App.ves('habits', { data: fmt.avui() }); });
+
+      arrel.querySelectorAll('[data-marca]').forEach(function (b) {
+        b.addEventListener('click', function () { alterna(b.dataset.marca, b); });
+      });
+      arrel.querySelectorAll('[data-detall]').forEach(function (b) {
+        b.addEventListener('click', function () { obreDetall(b.dataset.detall); });
+      });
+      arrel.querySelectorAll('[data-nou]').forEach(function (b) {
+        b.addEventListener('click', function () { formulari(null); });
+      });
+    }
+
+    /**
+     * Escriptura optimista: es pinta a l'instant i es desa en segon pla.
+     * Sense cobertura, el toc va a la cua i s'envia sol quan torni la xarxa.
+     */
+    function alterna(id, boto) {
+      var h = null;
+      for (var i = 0; i < dades.habits.length; i++) if (dades.habits[i].id === id) h = dades.habits[i];
+      if (!h) return;
+
+      var nouValor = h.complert ? 0 : h.objectiu;
+      h.valor = nouValor;
+      h.registrat = true;
+      h.complert = nouValor >= h.objectiu;
+
+      boto.dataset.estat = h.complert ? 'fet' : 'nofet';
+      boto.setAttribute('aria-pressed', h.complert ? 'true' : 'false');
+      boto.dataset.pendent = '1';
+      if (navigator.vibrate) { try { navigator.vibrate(h.complert ? 12 : 6); } catch (e) {} }
+
+      Cau.set('habits.' + data, dades);
+      Cua.afegeix('habits', 'marca', { id: id, data: data, valor: nouValor }, 'marca:' + id + ':' + data);
+
+      crida('habits', 'marca', { id: id, data: data, valor: nouValor })
+        .then(function (d) {
+          Cau.set('cua', Cua.tot().filter(function (i) {
+            return i.clau !== 'marca:' + id + ':' + data;
+          }));
+          App.pintaPendents();
+          Cau.set('habits.' + data, d);
+          pinta(d, false);
+        })
+        .catch(function (err) {
+          if (err.api) {
+            Cau.set('cua', Cua.tot().filter(function (i) {
+              return i.clau !== 'marca:' + id + ':' + data;
+            }));
+            App.pintaPendents();
+            App.brindis(err.message, 'error');
+            carrega();
+          }
+          // Error de xarxa: es queda a la cua i el botó manté el punteig
+        });
+    }
+
+    // -------------------------------------------------------------- detall
+
+    function obreDetall(id) {
+      var cos = App.modal('Històric', Comp.carregant(2));
+
+      crida('habits', 'historic', { id: id, dies: 35 }).then(function (d) {
+        var e = d.estadistiques;
+        var h = d.habit;
+        var unitat = e.unitatRatxa === 'setmanes' ? 'setmanes' : 'dies';
+
+        var html =
+          '<h3 style="font-size:1.25rem;margin-bottom:var(--e4)">' + esc(h.nom) + '</h3>' +
+
+          '<div class="targeta"><div class="tira">' +
+            xifra(e.pct30 === null ? '—' : e.pct30 + '%', '30 dies') +
+            xifra(e.pct7 === null ? '—' : e.pct7 + '%', '7 dies') +
+            xifra(e.ratxa, 'ratxa (' + unitat + ')') +
+            xifra(e.ratxaMax, 'màxima') +
+          '</div></div>';
+
+        if (h.tipus === 'quantitat') {
+          html += '<div class="targeta" style="margin-top:var(--e2)">' +
+            '<p class="etiqueta">Valor exacte per a ' + esc(fmt.relativa(data)).toLowerCase() + '</p>' +
+            '<div class="passos" style="margin-top:var(--e2);align-items:center">' +
+              '<button class="pas" data-suma="-1" aria-label="Resta">' + ic('menys') + '</button>' +
+              '<input class="entrada" id="valor-exacte" type="number" inputmode="decimal" min="0" ' +
+                'style="text-align:center;max-width:120px" value="' + esc(valorDe(d, data)) + '">' +
+              '<button class="pas" data-suma="1" aria-label="Suma">' + ic('mes') + '</button>' +
+              '<span class="menut">' + esc(h.unitat || '') + '</span>' +
+            '</div>' +
+            '<button class="btn btn-primari btn-ple" data-desa-valor="1" style="margin-top:var(--e3)">Desa el valor</button>' +
+          '</div>';
+        }
+
+        html += '<div class="targeta" style="margin-top:var(--e2)">' +
+          '<p class="etiqueta" style="margin-bottom:var(--e3)">Últims 35 dies · toca un dia per registrar-lo</p>' +
+          '<div class="graella">';
+        d.calendari.forEach(function (c) {
+          var est = !c.existia ? 'futur' : c.complert ? 'fet' : !c.exigit ? 'notoca' : c.registrat ? 'nofet' : 'pendent';
+          html += '<button data-e="' + est + '"' + (c.data === fmt.avui() ? ' data-avui="1"' : '') +
+                  ' data-dia-cal="' + esc(c.data) + '" aria-label="' + esc(fmt.llarga(c.data)) + '">' +
+                  fmt.diaNumero(c.data) + '</button>';
+        });
+        html += '</div></div>';
+
+        html += '<div style="display:flex;gap:var(--e2);margin-top:var(--e4)">' +
+          '<button class="btn btn-secundari" style="flex:1" data-edita="1">' + ic('llapis') + 'Edita</button>' +
+          '<button class="btn btn-secundari" style="flex:1" data-arxiva="1">' + ic('arxiva') + 'Arxiva</button>' +
+        '</div>';
+
+        var cap = cos.querySelector('.modal-cap').outerHTML;
+        cos.innerHTML = cap + html;
+        cos.querySelector('[data-tanca]').addEventListener('click', App.tancaModal);
+
+        cos.querySelectorAll('[data-dia-cal]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var dc = b.dataset.diaCal;
+            if (dc > fmt.avui()) return;
+            crida('habits', 'marca', { id: id, data: dc, valor: null }).then(function () {
+              App.brindis(fmt.relativa(dc) + ' registrat');
+              App.tancaModal();
+              carrega();
+            }).catch(function (err) { App.brindis(err.message, 'error'); });
+          });
+        });
+
+        var camp = cos.querySelector('#valor-exacte');
+        if (camp) {
+          cos.querySelectorAll('[data-suma]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              camp.value = Math.max(0, (Number(camp.value) || 0) + Number(b.dataset.suma));
+            });
+          });
+          cos.querySelector('[data-desa-valor]').addEventListener('click', function (ev) {
+            ev.currentTarget.dataset.carregant = '1';
+            crida('habits', 'marca', { id: id, data: data, valor: Number(camp.value) || 0 })
+              .then(function (dd) { App.tancaModal(); Cau.set('habits.' + data, dd); pinta(dd, false); App.brindis('Desat'); })
+              .catch(function (err) { App.brindis(err.message, 'error'); });
+          });
+        }
+
+        cos.querySelector('[data-edita]').addEventListener('click', function () {
+          App.tancaModal(); setTimeout(function () { formulari(h); }, 200);
+        });
+        cos.querySelector('[data-arxiva]').addEventListener('click', function () {
+          confirmaArxiu(h);
+        });
+
+      }).catch(function (err) {
+        var cap = cos.querySelector('.modal-cap').outerHTML;
+        cos.innerHTML = cap + Comp.error(err, false);
+        cos.querySelector('[data-tanca]').addEventListener('click', App.tancaModal);
+      });
+    }
+
+    function valorDe(d, dia) {
+      for (var i = 0; i < d.calendari.length; i++) if (d.calendari[i].data === dia) return d.calendari[i].valor || 0;
+      return 0;
+    }
+
+    function xifra(v, etiqueta) {
+      return '<div><div class="xifra-gran">' + esc(v) + '</div>' +
+             '<div class="menut">' + esc(etiqueta) + '</div></div>';
+    }
+
+    // ---------------------------------------------------------- formulari
+
+    function formulari(h) {
+      var esNou = !h;
+      var dies = String((h && h.dies_setmana) || '').split(',');
+
+      var html =
+        '<label class="camp"><span>Nom</span>' +
+          '<input class="entrada" id="f-nom" value="' + esc((h && h.nom) || '') + '" ' +
+          'placeholder="Córrer, llegir, trucar a la mare…" autocomplete="off"></label>' +
+
+        '<div class="camp"><span>Com el mesures</span><div class="opcions" id="f-tipus">' +
+          opcio('si_no', 'Fet o no fet', (h ? h.tipus : 'si_no') === 'si_no') +
+          opcio('quantitat', 'Una quantitat', (h && h.tipus) === 'quantitat') +
+        '</div></div>' +
+
+        '<div id="f-quantitat" class="camp"' + ((h && h.tipus === 'quantitat') ? '' : ' hidden') + '>' +
+          '<span>Objectiu diari</span>' +
+          '<div style="display:flex;gap:var(--e2)">' +
+            '<input class="entrada" id="f-objectiu" type="number" min="1" inputmode="numeric" ' +
+              'style="flex:1" value="' + esc((h && h.objectiu) || 1) + '">' +
+            '<input class="entrada" id="f-unitat" style="flex:1" placeholder="km, min, pàg." ' +
+              'value="' + esc((h && h.unitat) || '') + '">' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="camp"><span>Quan toca</span><div class="opcions" id="f-freq">' +
+          opcio('diaria', 'Cada dia', (h ? h.frequencia : 'diaria') === 'diaria') +
+          opcio('dies_setmana', 'Dies concrets', (h && h.frequencia) === 'dies_setmana') +
+          opcio('x_per_setmana', 'Cops per setmana', (h && h.frequencia) === 'x_per_setmana') +
+        '</div></div>' +
+
+        '<div id="f-dies" class="camp"' + ((h && h.frequencia === 'dies_setmana') ? '' : ' hidden') + '>' +
+          '<span>Quins dies</span><div class="opcions" id="f-dies-opcions">' +
+          ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'].map(function (n, i) {
+            return opcio(String(i + 1), n, dies.indexOf(String(i + 1)) !== -1);
+          }).join('') +
+        '</div></div>' +
+
+        '<div id="f-setmanal" class="camp"' + ((h && h.frequencia === 'x_per_setmana') ? '' : ' hidden') + '>' +
+          '<span>Quants cops per setmana</span>' +
+          '<input class="entrada" id="f-objectiu-setmanal" type="number" min="1" max="7" inputmode="numeric" ' +
+            'value="' + esc((h && h.objectiu_setmanal) || 3) + '">' +
+        '</div>' +
+
+        '<button class="btn btn-primari btn-ple" data-desa="1">' + (esNou ? 'Crea l\'hàbit' : 'Desa els canvis') + '</button>';
+
+      var cos = App.modal(esNou ? 'Nou hàbit' : 'Edita l\'hàbit', html);
+
+      grupExclusiu(cos, '#f-tipus', function (v) {
+        cos.querySelector('#f-quantitat').hidden = (v !== 'quantitat');
+      });
+      grupExclusiu(cos, '#f-freq', function (v) {
+        cos.querySelector('#f-dies').hidden = (v !== 'dies_setmana');
+        cos.querySelector('#f-setmanal').hidden = (v !== 'x_per_setmana');
+      });
+      cos.querySelectorAll('#f-dies-opcions .opcio').forEach(function (b) {
+        b.addEventListener('click', function () {
+          b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        });
+      });
+
+      cos.querySelector('[data-desa]').addEventListener('click', function (ev) {
+        var boto = ev.currentTarget;
+        var p = {
+          nom: cos.querySelector('#f-nom').value,
+          tipus: seleccionat(cos, '#f-tipus'),
+          objectiu: cos.querySelector('#f-objectiu').value,
+          unitat: cos.querySelector('#f-unitat').value,
+          frequencia: seleccionat(cos, '#f-freq'),
+          dies_setmana: Array.prototype.slice.call(cos.querySelectorAll('#f-dies-opcions .opcio[aria-pressed="true"]'))
+            .map(function (b) { return b.dataset.valor; }).join(','),
+          objectiu_setmanal: cos.querySelector('#f-objectiu-setmanal').value
+        };
+        if (!esNou) p.id = h.id;
+
+        boto.dataset.carregant = '1';
+        crida('habits', esNou ? 'crea' : 'edita', p)
+          .then(function () {
+            App.tancaModal();
+            App.brindis(esNou ? 'Hàbit creat' : 'Canvis desats');
+            carrega();
+          })
+          .catch(function (err) {
+            boto.dataset.carregant = '0';
+            App.brindis(err.message, 'error');
+          });
+      });
+    }
+
+    function confirmaArxiu(h) {
+      App.tancaModal();
+      setTimeout(function () {
+        var cos = App.modal('Arxivar «' + h.nom + '»?',
+          '<p class="menut" style="margin-bottom:var(--e4)">L\'hàbit desapareix de la llista diària. ' +
+          '<strong>No s\'esborra res:</strong> tot l\'històric es conserva i el pots recuperar.</p>' +
+          '<button class="btn btn-primari btn-ple" data-si="1">Sí, arxiva\'l</button>' +
+          '<button class="btn btn-fantasma btn-ple" data-no="1" style="margin-top:var(--e2)">Cancel·la</button>');
+        cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+        cos.querySelector('[data-si]').addEventListener('click', function (ev) {
+          ev.currentTarget.dataset.carregant = '1';
+          crida('habits', 'arxiva', { id: h.id }).then(function () {
+            App.tancaModal(); App.brindis('Arxivat'); carrega();
+          }).catch(function (err) { App.brindis(err.message, 'error'); });
+        });
+      }, 220);
+    }
+
+    function opcio(valor, text, actiu) {
+      return '<button type="button" class="opcio" data-valor="' + esc(valor) + '" ' +
+             'aria-pressed="' + (actiu ? 'true' : 'false') + '">' + esc(text) + '</button>';
+    }
+
+    function grupExclusiu(cos, sel, alCanviar) {
+      cos.querySelectorAll(sel + ' .opcio').forEach(function (b) {
+        b.addEventListener('click', function () {
+          cos.querySelectorAll(sel + ' .opcio').forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+          b.setAttribute('aria-pressed', 'true');
+          alCanviar(b.dataset.valor);
+        });
+      });
+    }
+
+    function seleccionat(cos, sel) {
+      var b = cos.querySelector(sel + ' .opcio[aria-pressed="true"]');
+      return b ? b.dataset.valor : null;
+    }
+
+    // -------------------------------------------------------------- càrrega
+
+    function carrega() {
+      crida('habits', 'dia', { data: data })
+        .then(function (d) { Cau.set('habits.' + data, d); pinta(d, false); })
+        .catch(function (err) {
+          if (dades) { App.brindis('Sense connexió', 'error'); return; }
+          arrel.innerHTML = Comp.error(err, true);
+          var r = arrel.querySelector('[data-reintenta]');
+          if (r) r.addEventListener('click', carrega);
+        });
+    }
+
+    var cau = Cau.get('habits.' + data, null);
+    if (cau) pinta(cau, true); else arrel.innerHTML = Comp.carregant(4);
+    carrega();
+  }
+});
+</script>

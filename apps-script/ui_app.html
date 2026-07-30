@@ -1,0 +1,309 @@
+<script>
+/* =========================================================================
+   Popu — marc de la interfície
+   - Pinta a l'instant des de la memòria cau; el servidor arriba després.
+   - Escriptura optimista amb cua: sense cobertura, el toc no es perd.
+   - localStorage és NOMÉS memòria cau. La veritat viu al full de càlcul.
+   ========================================================================= */
+
+var Popu = (function () {
+
+  // ------------------------------------------------------------------ base
+
+  function esc(t) {
+    return String(t === null || t === undefined ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function ic(nom, classe) {
+    return '<svg class="ic ' + (classe || '') + '" aria-hidden="true"><use href="#ic-' + nom + '"/></svg>';
+  }
+
+  var DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte'];
+  var DIES_C = ['dg', 'dl', 'dt', 'dc', 'dj', 'dv', 'ds'];
+  var MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny',
+               'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
+
+  var fmt = {
+    aData: function (t) { var p = String(t).split('-'); return new Date(+p[0], +p[1] - 1, +p[2], 12); },
+    avui: function () {
+      var d = new Date();
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    },
+    suma: function (t, n) {
+      var d = fmt.aData(t); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    },
+    llarga: function (t) {
+      var d = fmt.aData(t), m = MESOS[d.getMonth()];
+      var prep = /^[aeiou]/.test(m) ? "d'" : 'de ';
+      return DIES[d.getDay()] + ', ' + d.getDate() + ' ' + prep + m;
+    },
+    relativa: function (t) {
+      var avui = fmt.avui();
+      if (t === avui) return 'Avui';
+      if (t === fmt.suma(avui, -1)) return 'Ahir';
+      if (t === fmt.suma(avui, 1)) return 'Demà';
+      var d = fmt.aData(t);
+      return DIES_C[d.getDay()] + ' ' + d.getDate() + ' ' + MESOS[d.getMonth()].slice(0, 3) + '.';
+    },
+    diaNumero: function (t) { return fmt.aData(t).getDate(); }
+  };
+
+  // ------------------------------------------------------------ memòria cau
+
+  var Cau = {
+    get: function (clau, perDefecte) {
+      try {
+        var v = localStorage.getItem('popu.' + clau);
+        return v === null ? perDefecte : JSON.parse(v);
+      } catch (e) { return perDefecte; }
+    },
+    set: function (clau, valor) {
+      try { localStorage.setItem('popu.' + clau, JSON.stringify(valor)); } catch (e) {}
+    },
+    treu: function (clau) { try { localStorage.removeItem('popu.' + clau); } catch (e) {} }
+  };
+
+  // ------------------------------------------------------- crides al servidor
+
+  function crida(modul, accio, params) {
+    return new Promise(function (resolta, falla) {
+      if (!window.google || !google.script || !google.script.run) {
+        var e = new Error('Aquesta pàgina no està servida per Apps Script.');
+        e.xarxa = true; return falla(e);
+      }
+      google.script.run
+        .withSuccessHandler(function (r) {
+          App.enLinia(true);
+          if (r && r.ok) return resolta(r.dades);
+          var err = new Error((r && r.error) || 'El servidor ha respost sense dades.');
+          err.api = true;
+          falla(err);
+        })
+        .withFailureHandler(function (err) {
+          App.enLinia(false);
+          var e = new Error(err && err.message ? err.message : 'No hi ha connexió amb el servidor.');
+          e.xarxa = true;
+          falla(e);
+        })
+        .api(modul, accio, params || {});
+    });
+  }
+
+  // ------------------------------------------------- cua d'escriptures pendents
+
+  var Cua = {
+    tot: function () { return Cau.get('cua', []); },
+
+    afegeix: function (modul, accio, params, clau) {
+      var cua = Cua.tot();
+      // Una sola entrada per clau: tocar cinc cops el mateix hàbit desa un cop.
+      if (clau) cua = cua.filter(function (i) { return i.clau !== clau; });
+      cua.push({ modul: modul, accio: accio, params: params, clau: clau || null, ts: Date.now() });
+      Cau.set('cua', cua);
+      App.pintaPendents();
+    },
+
+    /** Envia la cua en sèrie. Si una falla per xarxa, s'atura i la conserva. */
+    envia: function () {
+      var cua = Cua.tot();
+      if (!cua.length) return Promise.resolve(0);
+
+      var enviades = 0;
+      return cua.reduce(function (cadena, item) {
+        return cadena.then(function () {
+          return crida(item.modul, item.accio, item.params).then(function () {
+            enviades++;
+            var resta = Cua.tot().filter(function (i) { return i.ts !== item.ts; });
+            Cau.set('cua', resta);
+            App.pintaPendents();
+          });
+        });
+      }, Promise.resolve()).then(function () { return enviades; })
+        .catch(function (err) {
+          if (err.api) {
+            // El servidor l'ha rebutjada: reintentar-la eternament no la salvarà.
+            Cau.set('cua', []);
+            App.pintaPendents();
+            App.brindis('No s\'ha pogut desar: ' + err.message, 'error');
+          }
+          return enviades;
+        });
+    }
+  };
+
+  // -------------------------------------------------------------- components
+
+  var Comp = {
+    carregant: function (files) {
+      var n = files || 4, h = '<div class="marques" aria-busy="true" aria-label="Carregant">';
+      for (var i = 0; i < n; i++) h += '<div class="esquelet marca-fantasma"></div>';
+      return h + '</div>';
+    },
+
+    buit: function (titol, text, botoHtml) {
+      return '<div class="estat">' + ic('habits', 'ic-g') +
+             '<h2>' + esc(titol) + '</h2>' +
+             '<p>' + esc(text) + '</p>' + (botoHtml || '') + '</div>';
+    },
+
+    error: function (err, reintenta) {
+      var esXarxa = err && err.xarxa;
+      return '<div class="estat">' + ic(esXarxa ? 'sense-xarxa' : 'avis', 'ic-g') +
+             '<h2>' + (esXarxa ? 'Sense connexió' : 'Alguna cosa ha fallat') + '</h2>' +
+             '<p>' + esc(err && err.message ? err.message : String(err)) + '</p>' +
+             (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '') +
+             '</div>';
+    },
+
+    avis: function (titol, text) {
+      return '<div class="avis">' + ic('avis') +
+             '<div><strong>' + esc(titol) + '</strong>' + esc(text) + '</div></div>';
+    },
+
+    targeta: function (contingut) { return '<div class="targeta">' + contingut + '</div>'; }
+  };
+
+  // --------------------------------------------------------------- aplicació
+
+  var App = {
+    vistes: {},
+    actual: null,
+    moduls: [],
+    enLiniaEstat: true,
+
+    registraVista: function (id, def) { App.vistes[id] = def; },
+
+    arrenca: function (estatInicial) {
+      App.moduls = (estatInicial && estatInicial.moduls) || Cau.get('moduls', []);
+      App.pintaNav();
+      App.aplicaTema(Cau.get('tema', 'auto'));
+
+      var darrera = Cau.get('vista', 'inici');
+      App.ves(App.vistes[darrera] ? darrera : 'inici');
+
+      Cua.envia();
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) Cua.envia();
+      });
+      window.addEventListener('online', function () { App.enLinia(true); Cua.envia(); });
+      window.addEventListener('offline', function () { App.enLinia(false); });
+
+      // Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
+      crida('nucli', 'inici', {}).then(function (d) {
+        Cau.set('moduls', d.moduls);
+        if (JSON.stringify(d.moduls) !== JSON.stringify(App.moduls)) {
+          App.moduls = d.moduls; App.pintaNav();
+        }
+      }).catch(function () { /* sense connexió: seguim amb la cau */ });
+    },
+
+    ves: function (id, params) {
+      var def = App.vistes[id];
+      if (!def) { id = 'inici'; def = App.vistes.inici; }
+      App.actual = id;
+      Cau.set('vista', id);
+
+      document.querySelectorAll('.nav a').forEach(function (a) {
+        if (a.dataset.vista === id) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
+
+      var arrel = document.getElementById('vista');
+      arrel.innerHTML = '';
+      window.scrollTo(0, 0);
+      try { def.render(arrel, params || {}); }
+      catch (err) { arrel.innerHTML = Comp.error(err, false); }
+    },
+
+    refresca: function () { App.ves(App.actual); },
+
+    pintaNav: function () {
+      var nav = document.getElementById('nav');
+      var items = [{ id: 'inici', nom: 'Inici', icona: 'inici' }].concat(
+        App.moduls.filter(function (m) { return m.teVista; })
+      );
+      nav.innerHTML = items.map(function (m) {
+        return '<a href="#" data-vista="' + esc(m.id) + '">' +
+               ic(m.icona || 'modul') + '<span>' + esc(m.nom) + '</span></a>';
+      }).join('');
+      nav.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function (ev) { ev.preventDefault(); App.ves(a.dataset.vista); });
+      });
+    },
+
+    // ------------------------------------------------------------ indicadors
+
+    enLinia: function (si) {
+      if (App.enLiniaEstat === si) return;
+      App.enLiniaEstat = si;
+      document.getElementById('sense-xarxa').hidden = si;
+    },
+
+    pintaPendents: function () {
+      var n = Cua.tot().length;
+      var el = document.getElementById('pendents');
+      el.hidden = n === 0;
+      el.textContent = n === 1 ? '1 canvi pendent de desar' : n + ' canvis pendents de desar';
+    },
+
+    brindis: function (text, tipus) {
+      var el = document.getElementById('brindis');
+      el.innerHTML = ic(tipus === 'error' ? 'avis' : 'fet') + '<span>' + esc(text) + '</span>';
+      el.dataset.to = tipus || 'ok';
+      el.dataset.visible = '1';
+      clearTimeout(App._brindis);
+      App._brindis = setTimeout(function () { el.dataset.visible = '0'; }, tipus === 'error' ? 5000 : 2600);
+    },
+
+    // ---------------------------------------------------------------- modal
+
+    modal: function (titol, html, alTancar) {
+      var fosc = document.getElementById('fosc');
+      fosc.innerHTML =
+        '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(titol) + '">' +
+          '<div class="modal-cap"><h2>' + esc(titol) + '</h2>' +
+          '<button class="btn btn-fantasma btn-icona" data-tanca="1" aria-label="Tanca">' + ic('tancar') + '</button></div>' +
+          html +
+        '</div>';
+      fosc.dataset.obert = '1';
+      App._alTancar = alTancar || null;
+
+      fosc.querySelector('[data-tanca]').addEventListener('click', App.tancaModal);
+      fosc.addEventListener('click', function (ev) { if (ev.target === fosc) App.tancaModal(); });
+
+      var primer = fosc.querySelector('input, select, textarea, button:not([data-tanca])');
+      if (primer && primer.type !== 'button') setTimeout(function () { primer.focus(); }, 320);
+      return fosc.querySelector('.modal');
+    },
+
+    tancaModal: function () {
+      var fosc = document.getElementById('fosc');
+      fosc.dataset.obert = '0';
+      setTimeout(function () { if (fosc.dataset.obert !== '1') fosc.innerHTML = ''; }, 340);
+      if (App._alTancar) { var f = App._alTancar; App._alTancar = null; f(); }
+    },
+
+    // ----------------------------------------------------------------- tema
+
+    aplicaTema: function (tema) {
+      Cau.set('tema', tema);
+      if (tema === 'auto') document.documentElement.removeAttribute('data-tema');
+      else document.documentElement.setAttribute('data-tema', tema);
+    },
+
+    temaActual: function () { return Cau.get('tema', 'auto'); }
+  };
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
+  });
+
+  return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, esc: esc, ic: ic, fmt: fmt };
+})();
+
+var App = Popu.App, Comp = Popu.Comp, Cau = Popu.Cau, Cua = Popu.Cua;
+var crida = Popu.crida, esc = Popu.esc, ic = Popu.ic, fmt = Popu.fmt;
+</script>

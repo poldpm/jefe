@@ -1,0 +1,83 @@
+<script>
+/* Popu — NUCLI · Pantalla d'inici
+   Respon d'un cop d'ull: què he de fer avui, què em falta, què he capturat.
+   Cada mòdul hi aporta una línia amb `resumInici()`. Un mòdul nou hi surt sol. */
+
+App.registraVista('inici', {
+  render: function (arrel) {
+
+    function pinta(targetes, dEnCau) {
+      var avui = fmt.avui();
+      var html =
+        '<header class="capcalera"><div class="capcalera-fila">' +
+          '<div style="flex:1;min-width:0">' +
+            '<p class="etiqueta">' + esc(fmt.relativa(avui)) + '</p>' +
+            '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
+          '</div>' +
+          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Canvia entre clar i fosc">' +
+            ic('ajust') +
+          '</button>' +
+        '</div></header>' +
+        '<div class="pagina">';
+
+      if (!targetes || !targetes.length) {
+        html += Comp.buit(
+          'Encara no hi ha res',
+          'Comença creant el teu primer hàbit. Amb un de sol ja té sentit obrir això cada dia.',
+          '<button class="btn btn-primari" data-ves="habits">Ves als hàbits</button>'
+        );
+      } else {
+        html += '<div class="marques">';
+        targetes.forEach(function (t) {
+          var estat = t.error ? 'nofet' : (t.urgent ? 'pendent' : 'fet');
+          html +=
+            '<button class="marca" data-ves="' + esc(t.accio || t.modul) + '"' +
+              (t.urgent || t.error ? '' : ' data-estat="fet"') + '>' +
+              '<span>' +
+                '<span class="marca-nom">' + esc(t.etiqueta) + '</span>' +
+                (t.error ? '<span class="marca-sota">No s\'ha pogut llegir</span>' : '') +
+              '</span>' +
+              '<span class="marca-dreta"><span class="xifra" style="font-size:1.5rem">' +
+                esc(t.valor) + '</span>' + ic('dreta') + '</span>' +
+            '</button>';
+        });
+        html += '</div>';
+      }
+
+      if (dEnCau) {
+        html += '<p class="menut" style="margin-top:var(--e4)">Mostrant l\'última còpia desada al telèfon.</p>';
+      }
+
+      html += '</div>';
+      arrel.innerHTML = html;
+
+      arrel.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () { App.ves(b.dataset.ves); });
+      });
+      var bt = arrel.querySelector('[data-tema]');
+      if (bt) bt.addEventListener('click', function () {
+        var ordre = ['auto', 'clar', 'fosc'];
+        var seguent = ordre[(ordre.indexOf(App.temaActual()) + 1) % 3];
+        App.aplicaTema(seguent);
+        App.brindis('Tema: ' + (seguent === 'auto' ? 'automàtic' : seguent));
+      });
+    }
+
+    // 1. Pinta a l'instant amb el que hi ha desat al telèfon.
+    var cau = Cau.get('inici', null);
+    if (cau) pinta(cau.targetes, true); else arrel.innerHTML = Comp.carregant(3);
+
+    // 2. Demana la veritat al servidor i repinta.
+    crida('nucli', 'inici', {}).then(function (d) {
+      Cau.set('inici', d);
+      Cau.set('moduls', d.moduls);
+      pinta(d.targetes, false);
+    }).catch(function (err) {
+      if (cau) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
+      arrel.innerHTML = Comp.error(err, true);
+      var r = arrel.querySelector('[data-reintenta]');
+      if (r) r.addEventListener('click', function () { App.ves('inici'); });
+    });
+  }
+});
+</script>

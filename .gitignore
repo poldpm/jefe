@@ -24,3 +24,6 @@ desktop.ini
 *.tmp
 *.bak
 ~$*
+
+# Previsualització local (no forma part del projecte)
+_previsualitza.html

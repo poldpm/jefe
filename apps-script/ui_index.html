@@ -2,120 +2,59 @@
 <html lang="ca">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0d0f" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Popu</title>
-  <style>
-    :root {
-      --fons: #0e0f11;
-      --superficie: #1a1c1f;
-      --vora: #2e3237;
-      --text: #f4f5f6;
-      --suau: #a3a9b0;
-      --ok: #3ddc84;
-      --avis: #ffb020;
-      --error: #ff5c5c;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      margin: 0;
-      padding: 1.25rem 1rem 3rem;
-      background: var(--fons);
-      color: var(--text);
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.02em; }
-    .versio { color: var(--suau); font-size: .875rem; margin: 0 0 1.5rem; }
-    .targeta {
-      background: var(--superficie);
-      border: 1px solid var(--vora);
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: .75rem;
-    }
-    .titol { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
-             color: var(--suau); margin: 0 0 .5rem; }
-    .valor { font-size: 1.125rem; font-weight: 600; margin: 0; word-break: break-word; }
-    .ok { color: var(--ok); }
-    .avis { color: var(--avis); }
-    .error { color: var(--error); }
-    ul { margin: .5rem 0 0; padding-left: 1.1rem; color: var(--suau); font-size: .9375rem; }
-    a { color: var(--ok); }
-    .nota { color: var(--suau); font-size: .875rem; margin-top: 1.5rem;
-            border-left: 2px solid var(--vora); padding-left: .75rem; }
-  </style>
+  <?!= include('ui_estil'); ?>
 </head>
 <body>
-  <h1>Popu</h1>
-  <p class="versio">Nucli instal·lat · v<?= estat.versio ?> · <?= estat.ara ?></p>
+<!--
+  THESIS: registrar un hàbit és un sol toc sobre una barra ampla, no un formulari.
+    Refusa la graella de targetes idèntiques amb icona i el gran número d'estadística.
+  OWN-WORLD: marques de sender (GR). Barres horitzontals pesants, contrast extrem,
+    vermell de senyalització com a únic accent, icones dibuixades d'un sol traç,
+    tipografia del sistema perquè l'arrencada no pagui cap font web.
+  STORY: obro l'app, veig el dia d'avui com una columna de fites, en toco les que
+    he fet i marxo. La ratxa hi és, però el número que mana és el compliment de 30 dies.
+  FIRST VIEWPORT: capçalera amb la data i les fletxes de dia; sota, la columna de
+    marques a l'amplada completa; navegació a baix, a l'abast del polze.
+  FORM: llista-senyal a l'amplada completa, estructura 1 de 5 (columna de barres,
+    graella de targetes, calendari mensual, carrusel, llista compacta). Sense concept-seed:
+    el brief ja fixa mòbil, un toc, contrast alt i 44px.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish
+    review, the verdict, and DESIGN.md
+-->
 
-  <div class="targeta">
-    <p class="titol">Full de càlcul</p>
-    <? if (estat.configurat) { ?>
-      <p class="valor ok">Connectat</p>
-      <ul><li><a href="<?= estat.urlFull ?>" target="_blank">Obre'l al Drive</a></li></ul>
-    <? } else { ?>
-      <p class="valor error">Sense configurar</p>
-      <ul><li>Executa <code>configuraPopu()</code> des de l'editor.</li></ul>
-    <? } ?>
-  </div>
+<?!= include('ui_icones'); ?>
 
-  <div class="targeta">
-    <p class="titol">Estructura</p>
-    <? if (estat.problemesEsquema.length === 0) { ?>
-      <p class="valor ok">Correcta</p>
-    <? } else { ?>
-      <p class="valor avis"><?= estat.problemesEsquema.length ?> problema(es)</p>
-      <ul>
-      <? for (var i = 0; i < estat.problemesEsquema.length; i++) { ?>
-        <li><?= estat.problemesEsquema[i] ?></li>
-      <? } ?>
-      </ul>
-    <? } ?>
-  </div>
+<div id="sense-xarxa" class="sense-xarxa" hidden>
+  <svg class="ic ic-p" aria-hidden="true"><use href="#ic-sense-xarxa"/></svg>
+  <span>Sense connexió. El que toquis es desarà quan tornis a tenir cobertura.</span>
+</div>
+<div id="pendents" class="sense-xarxa" hidden></div>
 
-  <div class="targeta">
-    <p class="titol">Mòduls</p>
-    <? if (estat.moduls.length === 0) { ?>
-      <p class="valor avis">Cap encara</p>
-      <ul><li>Arriben als blocs 2 a 5: hàbits, captura, tasques, diari.</li></ul>
-    <? } else { ?>
-      <p class="valor ok"><?= estat.moduls.length ?></p>
-      <ul>
-      <? for (var j = 0; j < estat.moduls.length; j++) { ?>
-        <li><?= estat.moduls[j].icona ?> <?= estat.moduls[j].nom ?></li>
-      <? } ?>
-      </ul>
-    <? } ?>
-  </div>
+<main id="vista" role="main"></main>
 
-  <div class="targeta">
-    <p class="titol">Capa d'IA</p>
-    <? if (estat.ia && estat.ia.disponible) { ?>
-      <p class="valor ok">Activa · <?= estat.ia.proveidor ?></p>
-    <? } else { ?>
-      <p class="valor avis">Apagada</p>
-      <ul><li><?= (estat.ia && estat.ia.motiu) || 'Sense configurar' ?></li></ul>
-    <? } ?>
-  </div>
+<nav id="nav" class="nav" aria-label="Seccions"></nav>
 
-  <div class="targeta">
-    <p class="titol">Automatismes</p>
-    <? if (estat.triggers.length === 0) { ?>
-      <p class="valor avis">Cap instal·lat</p>
-      <ul><li>S'instal·len al bloc 6 amb <code>instalaTriggers()</code>.</li></ul>
-    <? } else { ?>
-      <p class="valor ok"><?= estat.triggers.length ?> actius</p>
-      <ul>
-      <? for (var k = 0; k < estat.triggers.length; k++) { ?>
-        <li><?= estat.triggers[k] ?></li>
-      <? } ?>
-      </ul>
-    <? } ?>
-  </div>
+<div id="fosc" class="fosc" data-obert="0"></div>
+<div id="brindis" class="brindis" role="status" aria-live="polite" data-visible="0"></div>
 
-  <p class="nota">
-    Aquesta és la pantalla de diagnòstic del nucli. La interfície real
-    (inici, hàbits, captura, tasques, diari) arriba amb els blocs següents
-    i substituirà aquesta pàgina.
-  </p>
+<?!= include('ui_app'); ?>
+<?!= include('vista_inici'); ?>
+<?!= include('vista_habits'); ?>
+
+<script>
+  (function () {
+    // Cal `<?!=` i no `<?=`: aquest darrer escaparia les cometes i trencaria el JSON.
+    var estat = <?!= JSON.stringify(estat) ?>;
+    App.arrenca(estat);
+    App.pintaPendents();
+  })();
+</script>
 </body>
 </html>

@@ -1,0 +1,415 @@
+<style>
+/* =========================================================================
+   Popu — sistema visual
+   Món: marques de sender. Barres amples, alt contrast, llegibles de lluny.
+   Un hàbit fet és una fita pintada.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- fitxes */
+
+:root {
+  color-scheme: light dark;
+
+  --fons:        #ffffff;
+  --superficie:  #f2f3f5;
+  --superficie2: #e6e8eb;
+  --vora:        #c9ced5;
+  --vora-forta:  #0b0d0f;
+  --text:        #0b0d0f;
+  --suau:        #565d66;
+  --accent:      #c1121f;
+  --accent-fons: #fdeced;
+  --sobre-accent:#ffffff;
+  --avis:        #7a4a00;
+  --avis-fons:   #fff3df;
+  --ombra:       0 1px 2px rgba(11,13,15,.08), 0 4px 12px rgba(11,13,15,.06);
+
+  --r:    6px;
+  --r-gran: 10px;
+  --toc:  48px;               /* mai per sota de 44 */
+  --nav:  62px;
+
+  --e1: 4px;  --e2: 8px;  --e3: 12px; --e4: 16px;
+  --e5: 24px; --e6: 32px; --e7: 48px;
+
+  --sortida: cubic-bezier(.16, 1, .3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="clar"]) {
+    --fons:        #0b0d0f;
+    --superficie:  #16191d;
+    --superficie2: #1f242a;
+    --vora:        #333940;
+    --vora-forta:  #f2f4f6;
+    --text:        #f2f4f6;
+    --suau:        #9aa3ac;
+    --accent:      #d42630;
+    --accent-fons: #2a1113;
+    --sobre-accent:#ffffff;
+    --avis:        #e8b055;
+    --avis-fons:   #2b2113;
+    --ombra:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+  }
+}
+
+:root[data-tema="fosc"] {
+  --fons:        #0b0d0f;
+  --superficie:  #16191d;
+  --superficie2: #1f242a;
+  --vora:        #333940;
+  --vora-forta:  #f2f4f6;
+  --text:        #f2f4f6;
+  --suau:        #9aa3ac;
+  --accent:      #d42630;
+  --accent-fons: #2a1113;
+  --sobre-accent:#ffffff;
+  --avis:        #e8b055;
+  --avis-fons:   #2b2113;
+  --ombra:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+}
+
+/* ------------------------------------------------------------------ base */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* `display:flex` d'una classe guanya la regla `[hidden]{display:none}` del
+   navegador. Sense aquest `!important`, amagar una barra amb `hidden` no fa res. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 0 0 calc(var(--nav) + env(safe-area-inset-bottom, 0px));
+  background: var(--fons);
+  color: var(--text);
+  font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------- tipografia */
+
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+h1 { font-size: 1.625rem; line-height: 1.15; }
+h2 { font-size: 1.125rem; line-height: 1.25; }
+h3 { font-size: .9375rem; }
+
+.etiqueta {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--suau);
+}
+.menut { font-size: .8125rem; color: var(--suau); line-height: 1.4; }
+.xifra { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+/* ----------------------------------------------------------------- pàgina */
+
+.pagina { padding: var(--e4) var(--e4) var(--e6); max-width: 640px; margin: 0 auto; }
+
+.capcalera {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--fons);
+  border-bottom: 1px solid var(--vora);
+  padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
+}
+.capcalera-fila { display: flex; align-items: center; gap: var(--e3); max-width: 640px; margin: 0 auto; }
+.capcalera-fila h1 { flex: 1; min-width: 0; }
+
+/* ------------------------------------------------------------------ icones */
+
+.ic { width: 24px; height: 24px; display: block; flex: none; fill: none;
+      stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.ic-p { width: 18px; height: 18px; }
+.ic-g { width: 30px; height: 30px; }
+
+/* ------------------------------------------------------------------ botons */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--e2);
+  min-height: var(--toc); padding: 0 var(--e4);
+  border: 2px solid transparent; border-radius: var(--r);
+  background: var(--superficie2); color: var(--text);
+  font-size: .9375rem; font-weight: 600;
+  transition: transform .12s var(--sortida), background-color .12s linear;
+}
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-primari   { background: var(--accent); color: var(--sobre-accent); }
+.btn-secundari { background: transparent; border-color: var(--vora); }
+.btn-fantasma  { background: transparent; color: var(--suau); }
+.btn-ple       { width: 100%; }
+.btn-icona     { min-width: var(--toc); padding: 0; }
+
+.btn[data-carregant="1"] { color: transparent; position: relative; pointer-events: none; }
+.btn[data-carregant="1"]::after {
+  content: ""; position: absolute; width: 18px; height: 18px;
+  border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%;
+  color: var(--text); animation: gira .7s linear infinite;
+}
+.btn-primari[data-carregant="1"]::after { color: var(--sobre-accent); }
+@keyframes gira { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------- LA MARCA (hàbit) */
+
+.marques { display: flex; flex-direction: column; gap: var(--e2); }
+
+.marca-fila { display: flex; gap: var(--e1); align-items: stretch; }
+.marca-fila > .marca { flex: 1; min-width: 0; }
+
+.marca-detall {
+  flex: none; width: var(--toc);
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--vora); border-radius: var(--r);
+  background: var(--superficie); color: var(--suau);
+  transition: transform .1s var(--sortida);
+}
+.marca-detall:active { transform: scale(.94); }
+
+.marca {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--e3);
+  width: 100%; min-height: 74px; padding: var(--e3) var(--e4);
+  border: 2px solid var(--vora); border-radius: var(--r);
+  background: var(--superficie); color: var(--text);
+  text-align: left;
+  transition: transform .1s var(--sortida);
+}
+.marca:active { transform: scale(.985); }
+
+/* `display:block` obligatori: són <span> dins d'un <button>, i en línia el
+   subtítol s'enganxaria al nom i el marge vertical no faria res. */
+.marca-nom  { display: block; font-size: 1.0625rem; font-weight: 600; line-height: 1.2; }
+.marca-sota { display: block; margin-top: 3px; font-size: .8125rem; color: var(--suau); }
+.marca-dreta { display: flex; align-items: center; gap: var(--e2); }
+
+/* La pintada: el fons accent entra des de l'esquerra, com pintura sobre roca. */
+.marca::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform .42s var(--sortida);
+}
+.marca > * { position: relative; z-index: 1; }
+
+.marca[data-estat="fet"] { border-color: var(--accent); color: var(--sobre-accent); }
+.marca[data-estat="fet"]::before { transform: scaleX(1); }
+.marca[data-estat="fet"] .marca-sota { color: rgba(255,255,255,.85); }
+
+.marca[data-estat="nofet"] { background: var(--fons); border-style: dashed; }
+.marca[data-estat="nofet"] .marca-nom { color: var(--suau); }
+
+.marca[data-estat="notoca"] { background: transparent; border-color: transparent; min-height: 56px; }
+.marca[data-estat="notoca"] .marca-nom { color: var(--suau); font-weight: 500; }
+
+.marca[data-pendent="1"] { border-style: dotted; }
+
+/* Barra de progrés per als hàbits de quantitat */
+.progres { height: 6px; border-radius: 3px; background: var(--superficie2); overflow: hidden; margin-top: var(--e2); }
+/* Escalat, no amplada: animar `width` recalcula la disposició a cada fotograma. */
+.progres > i { display: block; height: 100%; width: 100%; background: var(--accent);
+               transform: scaleX(0); transform-origin: left center;
+               transition: transform .4s var(--sortida); }
+.marca[data-estat="fet"] .progres { background: rgba(255,255,255,.3); }
+.marca[data-estat="fet"] .progres > i { background: var(--sobre-accent); }
+
+.passos { display: flex; gap: var(--e1); }
+.pas {
+  width: var(--toc); height: var(--toc);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid var(--vora); border-radius: var(--r);
+  background: var(--fons); color: var(--text);
+}
+.marca[data-estat="fet"] .pas { border-color: rgba(255,255,255,.5); background: transparent; color: var(--sobre-accent); }
+
+/* ------------------------------------------------------------------ ratxa */
+
+.ratxa {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  padding: 4px 8px; border-radius: var(--r);
+  background: var(--superficie2); font-size: .8125rem; font-weight: 700;
+}
+.marca[data-estat="fet"] .ratxa { background: rgba(255,255,255,.2); color: var(--sobre-accent); }
+
+/* --------------------------------------------------------------- targetes */
+
+.targeta {
+  background: var(--superficie); border: 1px solid var(--vora);
+  border-radius: var(--r-gran); padding: var(--e4);
+}
+.targeta + .targeta { margin-top: var(--e2); }
+
+.tira { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--e2); }
+.tira .xifra-gran { font-size: 1.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------- graella de 30 dies */
+
+.graella { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.graella button {
+  aspect-ratio: 1; border-radius: 4px; border: 1.5px solid var(--vora);
+  background: var(--superficie); padding: 0;
+  font-size: .6875rem; font-weight: 700; color: var(--suau);
+  font-variant-numeric: tabular-nums;
+  min-height: 40px;
+}
+.graella button[data-e="fet"]    { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); }
+.graella button[data-e="nofet"]  { background: var(--fons); border-style: dashed; }
+.graella button[data-e="notoca"] { background: transparent; border-color: transparent; opacity: .5; }
+.graella button[data-e="futur"]  { opacity: .25; pointer-events: none; }
+.graella button[data-avui="1"]   { outline: 2px solid var(--vora-forta); outline-offset: 1px; }
+
+/* ---------------------------------------------------------------- entrades */
+
+.camp { display: block; margin-bottom: var(--e4); }
+.camp > span { display: block; margin-bottom: var(--e2); font-size: .8125rem; font-weight: 600; color: var(--suau); }
+
+.entrada, select.entrada, textarea.entrada {
+  width: 100%; min-height: var(--toc); padding: var(--e3);
+  border: 2px solid var(--vora); border-radius: var(--r);
+  background: var(--fons); color: var(--text);
+  -webkit-appearance: none; appearance: none;
+}
+.entrada::placeholder { color: var(--suau); opacity: 1; }
+.entrada:focus { border-color: var(--vora-forta); outline: none; }
+select.entrada { background-image: none; }
+
+.opcions { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.opcio {
+  min-height: var(--toc); min-width: var(--toc); padding: 0 var(--e3);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid var(--vora); border-radius: var(--r);
+  background: var(--fons); font-weight: 600;
+}
+.opcio[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); }
+
+/* ------------------------------------------------------------- commutador */
+
+.commutador { display: flex; align-items: center; justify-content: space-between; gap: var(--e3); min-height: var(--toc); }
+.commutador input { position: absolute; opacity: 0; pointer-events: none; }
+.commutador .pista {
+  width: 52px; height: 32px; flex: none; border-radius: 16px;
+  background: var(--superficie2); border: 2px solid var(--vora); position: relative;
+  transition: background-color .18s linear, border-color .18s linear;
+}
+.commutador .pista::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--vora-forta);
+  transition: transform .22s var(--sortida);
+}
+.commutador input:checked + .pista { background: var(--accent); border-color: var(--accent); }
+.commutador input:checked + .pista::after { transform: translateX(20px); background: var(--sobre-accent); }
+.commutador input:focus-visible + .pista { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* -------------------------------------------------------------- navegació */
+
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; background: var(--fons);
+  border-top: 1px solid var(--vora);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nav a {
+  flex: 1; min-height: var(--nav);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  text-decoration: none; color: var(--suau); font-size: .6875rem; font-weight: 600;
+}
+.nav a[aria-current="page"] { color: var(--accent); }
+.nav a[aria-current="page"] .ic { stroke-width: 2.25; }
+
+/* -------------------------------------------------- estats: buit, error, càrrega */
+
+.estat { padding: var(--e7) var(--e4); text-align: center; }
+.estat .ic { margin: 0 auto var(--e3); color: var(--suau); }
+.estat h2 { margin-bottom: var(--e2); }
+.estat p { margin: 0 auto var(--e4); max-width: 34ch; color: var(--suau); }
+
+.avis {
+  display: flex; gap: var(--e3); align-items: flex-start;
+  padding: var(--e3) var(--e4); border-radius: var(--r);
+  background: var(--avis-fons); color: var(--text);
+  font-size: .875rem; line-height: 1.45;
+}
+.avis .ic { color: var(--avis); }
+.avis strong { display: block; }
+
+.esquelet {
+  border-radius: var(--r); background: var(--superficie);
+  animation: pulsa 1.4s ease-in-out infinite;
+}
+.esquelet.marca-fantasma { height: 74px; }
+@keyframes pulsa { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+
+/* -------------------------------------------------------------- avisos flotants */
+
+.brindis {
+  position: fixed; left: var(--e4); right: var(--e4);
+  bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + var(--e3));
+  z-index: 60; max-width: 608px; margin: 0 auto;
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e3) var(--e4); border-radius: var(--r);
+  background: var(--vora-forta); color: var(--fons);
+  box-shadow: var(--ombra); font-size: .875rem; font-weight: 600;
+  transform: translateY(140%); opacity: 0; visibility: hidden;
+  transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s linear .3s;
+}
+.brindis[data-visible="1"] {
+  transform: translateY(0); opacity: 1; visibility: visible;
+  transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s;
+}
+.brindis[data-to="error"] { background: var(--accent); color: var(--sobre-accent); }
+.brindis .ic { color: inherit; }
+
+/* -------------------------------------------------------------------- modal */
+
+.fosc {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(11,13,15,.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s linear;
+}
+.fosc[data-obert="1"] { opacity: 1; pointer-events: auto; }
+
+.modal {
+  width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto;
+  background: var(--fons); border-radius: var(--r-gran) var(--r-gran) 0 0;
+  padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%); transition: transform .32s var(--sortida);
+}
+.fosc[data-obert="1"] .modal { transform: translateY(0); }
+.modal-cap { display: flex; align-items: center; gap: var(--e3); margin-bottom: var(--e4); }
+.modal-cap h2 { flex: 1; }
+
+/* -------------------------------------------------------------- indicadors */
+
+.sense-xarxa {
+  display: flex; align-items: center; justify-content: center; gap: var(--e2);
+  padding: var(--e2); background: var(--avis-fons); color: var(--text);
+  font-size: .8125rem; font-weight: 600;
+}
+.sense-xarxa .ic { color: var(--avis); }
+
+.selector-data { display: flex; align-items: center; gap: var(--e2); }
+.selector-data .data { flex: 1; text-align: center; font-weight: 700; font-size: .9375rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
