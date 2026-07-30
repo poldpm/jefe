@@ -1,6 +1,6 @@
 <script>
 /* Popu — NUCLI · Pantalla d'inici
-   Respon d'un cop d'ull: què he de fer avui, què em falta, què he capturat.
+   És el full índex del mapa: quins fulls hi ha i què hi ha pendent a cadascun.
    Cada mòdul hi aporta una línia amb `resumInici()`. Un mòdul nou hi surt sol. */
 
 App.registraVista('inici', {
@@ -8,46 +8,49 @@ App.registraVista('inici', {
 
     function pinta(targetes, dEnCau) {
       var avui = fmt.avui();
+
       var html =
         '<header class="capcalera"><div class="capcalera-fila">' +
           '<div style="flex:1;min-width:0">' +
-            '<p class="etiqueta">' + esc(fmt.relativa(avui)) + '</p>' +
+            '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
           '</div>' +
-          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Canvia entre clar i fosc">' +
-            ic('ajust') +
-          '</button>' +
+          '<div style="text-align:right">' +
+            '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
+            '<p class="marge" style="margin:4px 0 0">Popu</p>' +
+          '</div>' +
+          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Clar o fosc">' +
+            ic('ajust') + '</button>' +
         '</div></header>' +
         '<div class="pagina">';
 
       if (!targetes || !targetes.length) {
-        html += Comp.buit(
-          'Encara no hi ha res',
-          'Comença creant el teu primer hàbit. Amb un de sol ja té sentit obrir això cada dia.',
-          '<button class="btn btn-primari" data-ves="habits">Ves als hàbits</button>'
-        );
+        html += '<div class="estat">' + ic('mapa', 'ic-g') +
+          '<h2>Full en blanc</h2>' +
+          '<p>Encara no hi ha res registrat. Comença pels hàbits: amb un de sol ' +
+          'ja té sentit obrir això cada dia.</p>' +
+          '<button class="btn btn-primari" data-ves="habits">' + ic('habits') + 'Comença</button></div>';
       } else {
-        html += '<div class="marques">';
+        html += '<p class="marge" style="margin:0 0 var(--e2)">Situació</p><div class="terreny">';
         targetes.forEach(function (t) {
           var estat = t.error ? 'nofet' : (t.urgent ? 'pendent' : 'fet');
           html +=
-            '<button class="marca" data-ves="' + esc(t.accio || t.modul) + '"' +
-              (t.urgent || t.error ? '' : ' data-estat="fet"') + '>' +
+            '<div class="franja-fila"><button class="franja" data-ves="' +
+              esc(t.accio || t.modul) + '" data-estat="' + estat + '">' +
+              Relleu.franja(t.urgent ? 25 : 90, Relleu.llavor(t.modul)) +
+              '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
+                esc(t.modul === 'habits' ? 'habits' : 'modul') + '"/></svg>' +
               '<span>' +
-                '<span class="marca-nom">' + esc(t.etiqueta) + '</span>' +
-                (t.error ? '<span class="marca-sota">No s\'ha pogut llegir</span>' : '') +
+                '<span class="franja-nom">' + esc(t.etiqueta) + '</span>' +
+                (t.error ? '<span class="franja-sota">No s\'ha pogut llegir</span>' : '') +
               '</span>' +
-              '<span class="marca-dreta"><span class="xifra" style="font-size:1.5rem">' +
-                esc(t.valor) + '</span>' + ic('dreta') + '</span>' +
-            '</button>';
+              '<span class="franja-cota"><span class="n">' + esc(t.valor) + '</span></span>' +
+            '</button></div>';
         });
         html += '</div>';
       }
 
-      if (dEnCau) {
-        html += '<p class="menut" style="margin-top:var(--e4)">Mostrant l\'última còpia desada al telèfon.</p>';
-      }
-
+      if (dEnCau) html += '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>';
       html += '</div>';
       arrel.innerHTML = html;
 
@@ -57,21 +60,20 @@ App.registraVista('inici', {
       var bt = arrel.querySelector('[data-tema]');
       if (bt) bt.addEventListener('click', function () {
         var ordre = ['auto', 'clar', 'fosc'];
-        var seguent = ordre[(ordre.indexOf(App.temaActual()) + 1) % 3];
-        App.aplicaTema(seguent);
-        App.brindis('Tema: ' + (seguent === 'auto' ? 'automàtic' : seguent));
+        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 3];
+        App.aplicaTema(seg);
+        App.brindis('Full ' + (seg === 'auto' ? 'automàtic' : seg === 'clar' ? 'de dia' : 'de nit'));
       });
     }
 
-    // 1. Pinta a l'instant amb el que hi ha desat al telèfon.
     var cau = Cau.get('inici', null);
-    if (cau) pinta(cau.targetes, true); else arrel.innerHTML = Comp.carregant(3);
+    if (cau) pinta(cau.targetes, true);
+    else arrel.innerHTML = '<div class="pagina"><div class="terreny">' +
+      '<div class="esquelet franja-fantasma"></div><div class="esquelet franja-fantasma"></div>' +
+      '</div></div>';
 
-    // 2. Demana la veritat al servidor i repinta.
     crida('nucli', 'inici', {}).then(function (d) {
-      Cau.set('inici', d);
-      Cau.set('moduls', d.moduls);
-      pinta(d.targetes, false);
+      Cau.set('inici', d); Cau.set('moduls', d.moduls); pinta(d.targetes, false);
     }).catch(function (err) {
       if (cau) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
       arrel.innerHTML = Comp.error(err, true);

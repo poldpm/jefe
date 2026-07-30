@@ -63,6 +63,7 @@ function MODUL_HABITS() {
 
     accions: {
       dia: function (p) { return Habits.dia(p.data || Utils.avui()); },
+      mes: function (p) { return Habits.mes(p.fins || Utils.avui(), p.dies || 30); },
       marca: function (p) { return Habits.marca(p.id, p.data, p.valor); },
       llista: function () { return Habits.definicions(); },
       historic: function (p) { return Habits.historic(p.id, p.dies || 30); },
@@ -356,6 +357,41 @@ var Habits = (function () {
     });
   }
 
+  /**
+   * El full de mes: tots els hàbits per tots els dies d'un rang.
+   * És el que alimenta el relleu del mapa, i per això cada cel·la porta
+   * un valor numèric (l'altitud) a més de l'estat.
+   */
+  function mes(fins, dies) {
+    if (!Utils.esDataValida(fins)) fins = Utils.avui();
+    dies = Math.max(7, Math.min(90, Number(dies) || 30));
+
+    var avui = Utils.avui();
+    var desde = Utils.sumaDies(fins, -(dies - 1));
+    var calendari = Utils.rangDates(desde, fins);
+    var idx = indexRegistres_();
+
+    var files = definicions().map(function (h) {
+      var regs = idx[h.id] || {};
+      var creacio = dataCreacio_(h);
+      var celles = calendari.map(function (d) {
+        if (d > avui) return { data: d, estat: 'futur', altitud: 0.5 };
+        if (d < creacio) return { data: d, estat: 'futur', altitud: 0.5 };
+        if (!exigit_(h, d)) return { data: d, estat: 'notoca', altitud: 0.5 };
+        if (complert_(h, regs[d])) return { data: d, estat: 'fet', altitud: 1 };
+        return { data: d, estat: regs[d] !== undefined ? 'nofet' : 'pendent', altitud: 0 };
+      });
+      var est = estadistiques_(h, regs, avui);
+      return {
+        id: h.id, nom: h.nom,
+        pct30: est.pct30, ratxa: est.ratxa, unitatRatxa: est.unitatRatxa,
+        celles: celles
+      };
+    });
+
+    return { desde: desde, fins: fins, avui: avui, calendari: calendari, habits: files };
+  }
+
   /** Històric d'un hàbit: els últims N dies més les estadístiques. */
   function historic(idHabit, dies) {
     var h = Dades.perId('Habits', idHabit);
@@ -554,6 +590,7 @@ var Habits = (function () {
   return {
     definicions: definicions,
     dia: dia,
+    mes: mes,
     marca: marca,
     historic: historic,
     resumTots: resumTots,

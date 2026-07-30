@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0b0d0f" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1214" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,18 +13,26 @@
 </head>
 <body>
 <!--
-  THESIS: registrar un hàbit és un sol toc sobre una barra ampla, no un formulari.
-    Refusa la graella de targetes idèntiques amb icona i el gran número d'estadística.
-  OWN-WORLD: marques de sender (GR). Barres horitzontals pesants, contrast extrem,
-    vermell de senyalització com a únic accent, icones dibuixades d'un sol traç,
-    tipografia del sistema perquè l'arrencada no pagui cap font web.
-  STORY: obro l'app, veig el dia d'avui com una columna de fites, en toco les que
-    he fet i marxo. La ratxa hi és, però el número que mana és el compliment de 30 dies.
-  FIRST VIEWPORT: capçalera amb la data i les fletxes de dia; sota, la columna de
-    marques a l'amplada completa; navegació a baix, a l'abast del polze.
-  FORM: llista-senyal a l'amplada completa, estructura 1 de 5 (columna de barres,
-    graella de targetes, calendari mensual, carrusel, llista compacta). Sense concept-seed:
-    el brief ja fixa mòbil, un toc, contrast alt i 44px.
+  THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
+    la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
+  OWN-WORLD: full de mapa topogràfic 1:25.000. Paper neutre fred amb marc doble,
+    quadrícula UTM blava, corbes de nivell en sienna, rampa hipsomètrica de vall
+    a cim com a únic sistema de color, simbologia dibuixada (cim, font, refugi,
+    fita, creu, cova, arbre, pont, gual, mina), cotes en itàlica tabular,
+    retolació de marge en versaletes espaiades. Cantonades rectes: els mapes no
+    en tenen de rodones. Tipografia del sistema per obligació — una font web
+    afegiria latència a l'arrencada, que és el risc número u del projecte.
+  STORY: al matí obro i veig el marge del full: una franja per hàbit amb el seu
+    símbol i les seves corbes. En toco les que he fet i marxo. Al vespre, a
+    l'ordinador, miro el full sencer i hi llegeixo el mes com un relleu.
+  FIRST VIEWPORT: mòbil — capçalera amb data i fletxes de dia, i sota la columna
+    de franges de terreny a amplada completa. Escriptori — dues columnes: el
+    control del dia a l'esquerra, el full de mes amb el relleu a la dreta.
+  FORM: full de mapa amb marge i llegenda, direcció triada per l'usuari per sobre
+    del sorteig (seed cb46e09c, assignat 6 de 7: targeta de control).
+  TÈCNICA: les corbes de nivell són SVG generat amb marching squares sobre el camp
+    de compliment (ui_relleu.html). No és una textura: si canvies una dada, el
+    relleu canvia.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish
     review, the verdict, and DESIGN.md
 -->
@@ -45,6 +53,7 @@
 <div id="brindis" class="brindis" role="status" aria-live="polite" data-visible="0"></div>
 
 <?!= include('ui_app'); ?>
+<?!= include('ui_relleu'); ?>
 <?!= include('vista_inici'); ?>
 <?!= include('vista_habits'); ?>
 

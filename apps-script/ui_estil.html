@@ -1,80 +1,93 @@
 <style>
 /* =========================================================================
    Popu — sistema visual
-   Món: marques de sender. Barres amples, alt contrast, llegibles de lluny.
-   Un hàbit fet és una fita pintada.
-   ========================================================================= */
+   Món: full de mapa topogràfic 1:25.000.
 
-/* ---------------------------------------------------------------- fitxes */
+   Regla que mana sobre tota la resta: EL COLOR ÉS LA DADA.
+   La tinta hipsomètrica d'una fila surt del seu compliment, no de la decoració.
+   Compliment alt = terreny alt = ocre i roca. Compliment baix = vall = verd.
+   ========================================================================= */
 
 :root {
   color-scheme: light dark;
 
-  --fons:        #ffffff;
-  --superficie:  #f2f3f5;
-  --superficie2: #e6e8eb;
-  --vora:        #c9ced5;
-  --vora-forta:  #0b0d0f;
-  --text:        #0b0d0f;
-  --suau:        #565d66;
-  --accent:      #c1121f;
-  --accent-fons: #fdeced;
-  --sobre-accent:#ffffff;
-  --avis:        #7a4a00;
-  --avis-fons:   #fff3df;
-  --ombra:       0 1px 2px rgba(11,13,15,.08), 0 4px 12px rgba(11,13,15,.06);
+  /* --- full de mapa --- */
+  --paper:      #f4f5f2;   /* el paper del full, neutre fred: no és crema */
+  --paper2:     #eaece7;
+  --neatline:   #1b2124;   /* marc del full */
+  --ink:        #14181a;
+  --ink-suau:   #5b6469;
+  --corba:      #a8703f;   /* corba de nivell */
+  --corba-mestra:#8a5124;  /* cada cinquena, més gruixuda */
+  --utm:        #2c6e8f;   /* quadrícula UTM */
+  --utm-suau:   #b9d2df;
+  --gr:         #c8332b;   /* marca de sender GR: blanc sobre vermell */
+  --avis:       #8a5a00;
+  --avis-fons:  #fbf0d8;
 
-  --r:    6px;
-  --r-gran: 10px;
-  --toc:  48px;               /* mai per sota de 44 */
-  --nav:  62px;
+  /* --- rampa hipsomètrica: de la vall al cim --- */
+  --h0: #dfe6da;   /* sense dades */
+  --h1: #7fa15c;   /* vall */
+  --h2: #a8b558;
+  --h3: #d3c063;
+  --h4: #dfa94b;
+  --h5: #c9803d;
+  --h6: #ab5f33;   /* cim */
+  --roca: #ece7e0;
 
-  --e1: 4px;  --e2: 8px;  --e3: 12px; --e4: 16px;
+  --fet:        var(--h4);   /* una casella picada és terreny alt */
+  --fet-vora:   #a8703f;
+  /* La tinta hipsomètrica és clara als DOS temes, així que el text que hi va
+     a sobre ha de ser fosc sempre. Heretar --ink en mode nit dona clar sobre
+     clar: 2,32:1, il·legible. */
+  --sobre-fet:  #14181a;
+  --sobre-fet2: #4a3316;
+
+  --ombra: 0 1px 0 rgba(27,33,36,.10), 0 6px 18px rgba(27,33,36,.07);
+
+  --r: 2px;                  /* els mapes no tenen cantonades rodones */
+  --toc: 48px;
+  --nav: 62px;
+
+  --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px;
   --e5: 24px; --e6: 32px; --e7: 48px;
 
   --sortida: cubic-bezier(.16, 1, .3, 1);
 }
 
 @media (prefers-color-scheme: dark) {
+  :root:not([data-tema="clar"]) { --nit: 1; }
+}
+:root[data-tema="fosc"] { --nit: 1; }
+
+/* Full de nit: el mateix mapa sota frontal. Les tintes pugen de lluminositat
+   perquè conservin el contrast, no s'inverteixen a l'atzar. */
+@media (prefers-color-scheme: dark) {
   :root:not([data-tema="clar"]) {
-    --fons:        #0b0d0f;
-    --superficie:  #16191d;
-    --superficie2: #1f242a;
-    --vora:        #333940;
-    --vora-forta:  #f2f4f6;
-    --text:        #f2f4f6;
-    --suau:        #9aa3ac;
-    --accent:      #d42630;
-    --accent-fons: #2a1113;
-    --sobre-accent:#ffffff;
-    --avis:        #e8b055;
-    --avis-fons:   #2b2113;
-    --ombra:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+    --paper: #0e1214; --paper2: #161c1f; --neatline: #56666d;
+    --ink: #eef2f3; --ink-suau: #93a2a8;
+    --corba: #7d5836; --corba-mestra: #a8703f;
+    --utm: #4e9bc0; --utm-suau: #1e3a47;
+    --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
+    --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
+    --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+    --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
   }
 }
-
 :root[data-tema="fosc"] {
-  --fons:        #0b0d0f;
-  --superficie:  #16191d;
-  --superficie2: #1f242a;
-  --vora:        #333940;
-  --vora-forta:  #f2f4f6;
-  --text:        #f2f4f6;
-  --suau:        #9aa3ac;
-  --accent:      #d42630;
-  --accent-fons: #2a1113;
-  --sobre-accent:#ffffff;
-  --avis:        #e8b055;
-  --avis-fons:   #2b2113;
-  --ombra:       0 1px 2px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+  --paper: #0e1214; --paper2: #161c1f; --neatline: #56666d;
+  --ink: #eef2f3; --ink-suau: #93a2a8;
+  --corba: #7d5836; --corba-mestra: #a8703f;
+  --utm: #4e9bc0; --utm-suau: #1e3a47;
+  --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
+  --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
+  --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+  --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
 }
 
 /* ------------------------------------------------------------------ base */
 
 *, *::before, *::after { box-sizing: border-box; }
-
-/* `display:flex` d'una classe guanya la regla `[hidden]{display:none}` del
-   navegador. Sense aquest `!important`, amagar una barra amb `hidden` no fa res. */
 [hidden] { display: none !important; }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -82,10 +95,11 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   padding: 0 0 calc(var(--nav) + env(safe-area-inset-bottom, 0px));
-  background: var(--fons);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -93,318 +107,351 @@ body {
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--utm); outline-offset: 2px; }
 
-:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
+/* ------------------------------------------------------------- tipografia
+   Els fulls de mapa tenen una veu tipogràfica pròpia: toponímia espaiada,
+   cotes petites i tabulars, retolació del marge en versaletes.
+   Font del sistema per obligació: una font web afegiria latència a
+   l'arrencada, que és el risc número u d'aquest projecte. */
+
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: 1.5rem; line-height: 1.1; }
+h2 { font-size: 1.0625rem; }
+
+.toponim {
+  font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  font-size: .8125rem; color: var(--ink-suau);
 }
-
-/* --------------------------------------------------------------- tipografia */
-
-h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
-h1 { font-size: 1.625rem; line-height: 1.15; }
-h2 { font-size: 1.125rem; line-height: 1.25; }
-h3 { font-size: .9375rem; }
-
-.etiqueta {
-  font-size: .75rem;
-  font-weight: 700;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-  color: var(--suau);
+.marge {                       /* retolació del marge del full */
+  font-size: .6875rem; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--utm);
 }
-.menut { font-size: .8125rem; color: var(--suau); line-height: 1.4; }
-.xifra { font-variant-numeric: tabular-nums; font-weight: 700; }
+.cota {                        /* cota d'una corba de nivell */
+  font-size: .8125rem; font-weight: 700; font-style: italic;
+  color: var(--corba-mestra); font-variant-numeric: tabular-nums;
+}
+.menut { font-size: .8125rem; color: var(--ink-suau); line-height: 1.4; }
+.xifra { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-/* ----------------------------------------------------------------- pàgina */
+/* ----------------------------------------------------------- full i marge */
 
-.pagina { padding: var(--e4) var(--e4) var(--e6); max-width: 640px; margin: 0 auto; }
+.pagina { padding: var(--e4); max-width: 1280px; margin: 0 auto; }
 
+/* El marc doble del full de mapa. No és decoració: separa el mapa del marge. */
 .capcalera {
   position: sticky; top: 0; z-index: 20;
-  background: var(--fons);
-  border-bottom: 1px solid var(--vora);
+  background: var(--paper);
+  border-bottom: 3px double var(--neatline);
   padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
 }
-.capcalera-fila { display: flex; align-items: center; gap: var(--e3); max-width: 640px; margin: 0 auto; }
-.capcalera-fila h1 { flex: 1; min-width: 0; }
+.capcalera-fila { display: flex; align-items: center; gap: var(--e3);
+                  max-width: 1280px; margin: 0 auto; }
+
+/* Escala gràfica: barres alternades negre i blanc, com al peu d'un mapa. */
+.escala { display: flex; height: 6px; border: 1px solid var(--neatline); width: 96px; }
+.escala i { flex: 1; }
+.escala i:nth-child(odd) { background: var(--neatline); }
 
 /* ------------------------------------------------------------------ icones */
 
 .ic { width: 24px; height: 24px; display: block; flex: none; fill: none;
-      stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+      stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .ic-p { width: 18px; height: 18px; }
-.ic-g { width: 30px; height: 30px; }
+.ic-g { width: 32px; height: 32px; }
+.ic-simbol { width: 28px; height: 28px; }        /* simbologia del mapa */
 
 /* ------------------------------------------------------------------ botons */
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--e2);
   min-height: var(--toc); padding: 0 var(--e4);
-  border: 2px solid transparent; border-radius: var(--r);
-  background: var(--superficie2); color: var(--text);
-  font-size: .9375rem; font-weight: 600;
+  border: 1.5px solid var(--neatline); border-radius: var(--r);
+  background: var(--paper2); color: var(--ink);
+  font-size: .9375rem; font-weight: 600; letter-spacing: .01em;
   transition: transform .12s var(--sortida), background-color .12s linear;
 }
-.btn:active:not(:disabled) { transform: scale(.97); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-
-.btn-primari   { background: var(--accent); color: var(--sobre-accent); }
-.btn-secundari { background: transparent; border-color: var(--vora); }
-.btn-fantasma  { background: transparent; color: var(--suau); }
-.btn-ple       { width: 100%; }
-.btn-icona     { min-width: var(--toc); padding: 0; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primari  { background: var(--gr); border-color: var(--gr); color: #fff; }
+.btn-secundari{ background: transparent; }
+.btn-fantasma { background: transparent; border-color: transparent; color: var(--ink-suau); }
+.btn-ple      { width: 100%; }
+.btn-icona    { min-width: var(--toc); padding: 0; }
 
 .btn[data-carregant="1"] { color: transparent; position: relative; pointer-events: none; }
 .btn[data-carregant="1"]::after {
   content: ""; position: absolute; width: 18px; height: 18px;
-  border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%;
-  color: var(--text); animation: gira .7s linear infinite;
+  border: 2px solid var(--ink); border-top-color: transparent; border-radius: 50%;
+  animation: gira .7s linear infinite;
 }
-.btn-primari[data-carregant="1"]::after { color: var(--sobre-accent); }
+.btn-primari[data-carregant="1"]::after { border-color: #fff; border-top-color: transparent; }
 @keyframes gira { to { transform: rotate(360deg); } }
 
-/* ------------------------------------------------------- LA MARCA (hàbit) */
+/* =========================================================================
+   LA FILA DE TERRENY — la unitat de la pantalla d'avui
+   Un hàbit és una franja de terreny. Marcar-lo és guanyar altitud:
+   la franja s'omple amb la seva tinta i les corbes s'hi tanquen.
+   ========================================================================= */
 
-.marques { display: flex; flex-direction: column; gap: var(--e2); }
+.terreny { display: flex; flex-direction: column; gap: 2px;
+           border: 1.5px solid var(--neatline); background: var(--neatline); }
 
-.marca-fila { display: flex; gap: var(--e1); align-items: stretch; }
-.marca-fila > .marca { flex: 1; min-width: 0; }
+.franja-fila { display: flex; gap: 2px; background: var(--neatline); }
 
-.marca-detall {
+.franja {
+  position: relative; overflow: hidden; flex: 1; min-width: 0;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--e3);
+  min-height: 76px; padding: var(--e3) var(--e4);
+  border: 0; background: var(--paper); color: var(--ink); text-align: left;
+  transition: background-color .3s var(--sortida);
+}
+
+/* Les corbes de nivell de la franja: SVG generat, no imatge. */
+.franja .corbes { position: absolute; inset: 0; width: 100%; height: 100%;
+                  pointer-events: none; opacity: .55; }
+.franja > *:not(.corbes) { position: relative; z-index: 1; }
+
+.franja[data-estat="fet"]    { background: var(--fet); color: var(--sobre-fet); }
+.franja[data-estat="fet"] .corbes { opacity: .9; }
+.franja[data-estat="nofet"]  { background: var(--paper2); }
+.franja[data-estat="notoca"] { background: var(--paper2); min-height: 58px; }
+.franja[data-estat="notoca"] .franja-nom { color: var(--ink-suau); font-weight: 500; }
+.franja[data-pendent="1"]::after {
+  content: ""; position: absolute; inset: 0; border: 2px dashed var(--utm);
+  pointer-events: none;
+}
+
+.franja-nom { font-size: 1.0625rem; font-weight: 600; line-height: 1.2; display: block; }
+.franja-sota { display: block; margin-top: 3px; font-size: .8125rem; color: var(--ink-suau); }
+.franja[data-estat="fet"] .franja-sota { color: var(--sobre-fet2); }
+
+/* Cota: la ratxa retolada com l'altitud d'una corba mestra. */
+.franja-cota { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+.franja-cota .n { font-size: 1.5rem; font-weight: 700; font-style: italic; }
+.franja-cota .u { font-size: .625rem; letter-spacing: .1em; text-transform: uppercase;
+                  color: var(--ink-suau); margin-top: 2px; }
+.franja[data-estat="fet"] .franja-cota .u { color: var(--sobre-fet2); }
+
+/* El punxó: el control picat. Únic moment animat de tota l'app. */
+.punxo { width: 30px; height: 30px; }
+.punxo circle, .punxo path { stroke: currentColor; fill: none; stroke-width: 2; }
+.franja[data-estat="fet"] .punxo { animation: pica .38s var(--sortida); }
+@keyframes pica {
+  0%   { transform: scale(.4) rotate(-18deg); opacity: 0; }
+  60%  { transform: scale(1.12) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.franja-detall {
   flex: none; width: var(--toc);
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--vora); border-radius: var(--r);
-  background: var(--superficie); color: var(--suau);
-  transition: transform .1s var(--sortida);
+  border: 0; background: var(--paper2); color: var(--ink-suau);
 }
-.marca-detall:active { transform: scale(.94); }
+.franja-detall:active { background: var(--utm-suau); }
 
-.marca {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--e3);
-  width: 100%; min-height: 74px; padding: var(--e3) var(--e4);
-  border: 2px solid var(--vora); border-radius: var(--r);
-  background: var(--superficie); color: var(--text);
-  text-align: left;
-  transition: transform .1s var(--sortida);
+/* =========================================================================
+   EL FULL DE MES — la vista d'escriptori, i la de mòbil en horitzontal
+   Dies en columnes, hàbits en files, corbes de nivell calculades del
+   compliment travessant la graella. Això és el mapa de debò.
+   ========================================================================= */
+
+.full-mes { position: relative; border: 1.5px solid var(--neatline); background: var(--paper);
+            padding: var(--e4) var(--e4) var(--e3); overflow-x: auto; }
+.full-mes .relleu { position: absolute; inset: 0; pointer-events: none; }
+
+.reixa { position: relative; z-index: 1; border-collapse: collapse; width: 100%; min-width: 620px; }
+.reixa th, .reixa td { padding: 0; border: .5px solid var(--utm-suau); }
+.reixa thead th {
+  font-size: .625rem; font-weight: 700; letter-spacing: .06em; color: var(--utm);
+  padding-bottom: var(--e2); border: 0; text-align: center; width: 3.2%;
 }
-.marca:active { transform: scale(.985); }
-
-/* `display:block` obligatori: són <span> dins d'un <button>, i en línia el
-   subtítol s'enganxaria al nom i el marge vertical no faria res. */
-.marca-nom  { display: block; font-size: 1.0625rem; font-weight: 600; line-height: 1.2; }
-.marca-sota { display: block; margin-top: 3px; font-size: .8125rem; color: var(--suau); }
-.marca-dreta { display: flex; align-items: center; gap: var(--e2); }
-
-/* La pintada: el fons accent entra des de l'esquerra, com pintura sobre roca. */
-.marca::before {
-  content: ""; position: absolute; inset: 0;
-  background: var(--accent);
-  transform: scaleX(0); transform-origin: left center;
-  transition: transform .42s var(--sortida);
+.reixa tbody th {
+  text-align: left; font-size: .8125rem; font-weight: 600; white-space: nowrap;
+  padding: 0 var(--e3) 0 0; border: 0; max-width: 190px; overflow: hidden;
+  text-overflow: ellipsis;
 }
-.marca > * { position: relative; z-index: 1; }
+.cella { height: 26px; }
+.cella button { width: 100%; height: 100%; border: 0; background: transparent; padding: 0; display: block; }
+.cella[data-e="fet"]    { background: var(--fet); }
+.cella[data-e="nofet"]  { background: var(--paper2); }
+.cella[data-e="notoca"] { background: transparent; }
+.cella[data-e="futur"]  { background: repeating-linear-gradient(45deg,
+                            transparent 0 3px, var(--utm-suau) 3px 4px); }
+.cella[data-avui="1"]   { outline: 2px solid var(--gr); outline-offset: -2px; }
 
-.marca[data-estat="fet"] { border-color: var(--accent); color: var(--sobre-accent); }
-.marca[data-estat="fet"]::before { transform: scaleX(1); }
-.marca[data-estat="fet"] .marca-sota { color: rgba(255,255,255,.85); }
-
-.marca[data-estat="nofet"] { background: var(--fons); border-style: dashed; }
-.marca[data-estat="nofet"] .marca-nom { color: var(--suau); }
-
-.marca[data-estat="notoca"] { background: transparent; border-color: transparent; min-height: 56px; }
-.marca[data-estat="notoca"] .marca-nom { color: var(--suau); font-weight: 500; }
-
-.marca[data-pendent="1"] { border-style: dotted; }
-
-/* Barra de progrés per als hàbits de quantitat */
-.progres { height: 6px; border-radius: 3px; background: var(--superficie2); overflow: hidden; margin-top: var(--e2); }
-/* Escalat, no amplada: animar `width` recalcula la disposició a cada fotograma. */
-.progres > i { display: block; height: 100%; width: 100%; background: var(--accent);
-               transform: scaleX(0); transform-origin: left center;
-               transition: transform .4s var(--sortida); }
-.marca[data-estat="fet"] .progres { background: rgba(255,255,255,.3); }
-.marca[data-estat="fet"] .progres > i { background: var(--sobre-accent); }
-
-.passos { display: flex; gap: var(--e1); }
-.pas {
-  width: var(--toc); height: var(--toc);
-  display: inline-flex; align-items: center; justify-content: center;
-  border: 2px solid var(--vora); border-radius: var(--r);
-  background: var(--fons); color: var(--text);
-}
-.marca[data-estat="fet"] .pas { border-color: rgba(255,255,255,.5); background: transparent; color: var(--sobre-accent); }
-
-/* ------------------------------------------------------------------ ratxa */
-
-.ratxa {
-  display: inline-flex; align-items: baseline; gap: 4px;
-  padding: 4px 8px; border-radius: var(--r);
-  background: var(--superficie2); font-size: .8125rem; font-weight: 700;
-}
-.marca[data-estat="fet"] .ratxa { background: rgba(255,255,255,.2); color: var(--sobre-accent); }
-
-/* --------------------------------------------------------------- targetes */
-
-.targeta {
-  background: var(--superficie); border: 1px solid var(--vora);
-  border-radius: var(--r-gran); padding: var(--e4);
-}
-.targeta + .targeta { margin-top: var(--e2); }
-
-.tira { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--e2); }
-.tira .xifra-gran { font-size: 1.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
-
-/* ------------------------------------------------------- graella de 30 dies */
-
-.graella { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-.graella button {
-  aspect-ratio: 1; border-radius: 4px; border: 1.5px solid var(--vora);
-  background: var(--superficie); padding: 0;
-  font-size: .6875rem; font-weight: 700; color: var(--suau);
+/* Calendari compacte del detall d'un hàbit */
+.calendari { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.calendari button {
+  aspect-ratio: 1; min-height: 40px; padding: 0;
+  border: .5px solid var(--utm-suau); background: var(--paper2);
+  font-size: .6875rem; font-weight: 700; color: var(--ink-suau);
   font-variant-numeric: tabular-nums;
-  min-height: 40px;
 }
-.graella button[data-e="fet"]    { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); }
-.graella button[data-e="nofet"]  { background: var(--fons); border-style: dashed; }
-.graella button[data-e="notoca"] { background: transparent; border-color: transparent; opacity: .5; }
-.graella button[data-e="futur"]  { opacity: .25; pointer-events: none; }
-.graella button[data-avui="1"]   { outline: 2px solid var(--vora-forta); outline-offset: 1px; }
+.calendari button[data-e="fet"]    { background: var(--fet); color: var(--sobre-fet); border-color: var(--fet-vora); }
+.calendari button[data-e="notoca"] { background: transparent; border-color: transparent; }
+.calendari button[data-e="futur"]  { background: repeating-linear-gradient(45deg,
+                                       transparent 0 3px, var(--utm-suau) 3px 4px);
+                                     pointer-events: none; }
+.calendari button[data-avui="1"]   { outline: 2px solid var(--gr); outline-offset: -2px; }
+
+/* Llegenda del full: la caixa que explica la simbologia. Obligatòria en un mapa. */
+.llegenda { border: 1.5px solid var(--neatline); padding: var(--e3) var(--e4);
+            background: var(--paper); }
+.llegenda ul { list-style: none; margin: var(--e2) 0 0; padding: 0;
+               display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--e2); }
+.llegenda li { display: flex; align-items: center; gap: var(--e2); font-size: .8125rem; }
+.mostra { width: 22px; height: 14px; border: .5px solid var(--neatline); flex: none; }
+
+/* Rampa hipsomètrica de la llegenda */
+.rampa { display: flex; height: 12px; border: .5px solid var(--neatline); }
+.rampa i { flex: 1; }
+
+/* -------------------------------------------------------- disposició ampla */
+
+.dues-columnes { display: grid; gap: var(--e4); }
+
+@media (min-width: 900px) {
+  body { padding-bottom: var(--e6); }
+  .pagina { padding: var(--e5) var(--e5) var(--e7); }
+  .dues-columnes { grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; }
+  .nav {
+    position: sticky; top: 0; bottom: auto;
+    flex-direction: column; width: auto; border-top: 0;
+    border-bottom: 3px double var(--neatline);
+    flex-direction: row; justify-content: center; gap: var(--e5);
+  }
+  .nav a { flex: none; flex-direction: row; gap: var(--e2); min-height: 52px; font-size: .875rem; }
+  h1 { font-size: 1.875rem; }
+  .franja { min-height: 84px; }
+  .cella { height: 30px; }
+}
+
+@media (min-width: 1200px) {
+  .reixa tbody th { max-width: 260px; }
+}
 
 /* ---------------------------------------------------------------- entrades */
 
 .camp { display: block; margin-bottom: var(--e4); }
-.camp > span { display: block; margin-bottom: var(--e2); font-size: .8125rem; font-weight: 600; color: var(--suau); }
-
+.camp > span { display: block; margin-bottom: var(--e2); }
 .entrada, select.entrada, textarea.entrada {
   width: 100%; min-height: var(--toc); padding: var(--e3);
-  border: 2px solid var(--vora); border-radius: var(--r);
-  background: var(--fons); color: var(--text);
+  border: 1.5px solid var(--neatline); border-radius: var(--r);
+  background: var(--paper); color: var(--ink);
   -webkit-appearance: none; appearance: none;
 }
-.entrada::placeholder { color: var(--suau); opacity: 1; }
-.entrada:focus { border-color: var(--vora-forta); outline: none; }
-select.entrada { background-image: none; }
+.entrada::placeholder { color: var(--ink-suau); opacity: 1; }
+.entrada:focus { border-color: var(--utm); outline: none; }
 
 .opcions { display: flex; flex-wrap: wrap; gap: var(--e2); }
 .opcio {
   min-height: var(--toc); min-width: var(--toc); padding: 0 var(--e3);
   display: inline-flex; align-items: center; justify-content: center;
-  border: 2px solid var(--vora); border-radius: var(--r);
-  background: var(--fons); font-weight: 600;
+  border: 1.5px solid var(--neatline); border-radius: var(--r);
+  background: var(--paper); font-weight: 600;
 }
-.opcio[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--sobre-accent); }
+.opcio[aria-pressed="true"] { background: var(--fet); border-color: var(--fet-vora); color: var(--sobre-fet); }
+
+.passos { display: flex; gap: var(--e1); align-items: center; }
+.pas { width: var(--toc); height: var(--toc); display: inline-flex;
+       align-items: center; justify-content: center;
+       border: 1.5px solid var(--neatline); border-radius: var(--r); background: var(--paper); }
 
 /* ------------------------------------------------------------- commutador */
 
-.commutador { display: flex; align-items: center; justify-content: space-between; gap: var(--e3); min-height: var(--toc); }
+.commutador { display: flex; align-items: center; justify-content: space-between;
+              gap: var(--e3); min-height: var(--toc); }
 .commutador input { position: absolute; opacity: 0; pointer-events: none; }
-.commutador .pista {
-  width: 52px; height: 32px; flex: none; border-radius: 16px;
-  background: var(--superficie2); border: 2px solid var(--vora); position: relative;
-  transition: background-color .18s linear, border-color .18s linear;
-}
-.commutador .pista::after {
-  content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
-  border-radius: 50%; background: var(--vora-forta);
-  transition: transform .22s var(--sortida);
-}
-.commutador input:checked + .pista { background: var(--accent); border-color: var(--accent); }
-.commutador input:checked + .pista::after { transform: translateX(20px); background: var(--sobre-accent); }
-.commutador input:focus-visible + .pista { outline: 3px solid var(--accent); outline-offset: 2px; }
+.commutador .pista { width: 52px; height: 30px; flex: none; background: var(--paper2);
+                     border: 1.5px solid var(--neatline); position: relative;
+                     transition: background-color .18s linear; }
+.commutador .pista::after { content: ""; position: absolute; top: 2px; left: 2px;
+                            width: 22px; height: 22px; background: var(--neatline);
+                            transition: transform .22s var(--sortida); }
+.commutador input:checked + .pista { background: var(--fet); }
+.commutador input:checked + .pista::after { transform: translateX(22px); }
 
 /* -------------------------------------------------------------- navegació */
 
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: flex; background: var(--fons);
-  border-top: 1px solid var(--vora);
+  display: flex; background: var(--paper);
+  border-top: 3px double var(--neatline);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-.nav a {
-  flex: 1; min-height: var(--nav);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  text-decoration: none; color: var(--suau); font-size: .6875rem; font-weight: 600;
-}
-.nav a[aria-current="page"] { color: var(--accent); }
-.nav a[aria-current="page"] .ic { stroke-width: 2.25; }
+.nav a { flex: 1; min-height: var(--nav); display: flex; flex-direction: column;
+         align-items: center; justify-content: center; gap: 3px;
+         text-decoration: none; color: var(--ink-suau);
+         font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.nav a[aria-current="page"] { color: var(--gr); }
+.nav a[aria-current="page"] .ic { stroke-width: 2.1; }
 
-/* -------------------------------------------------- estats: buit, error, càrrega */
+/* ------------------------------------------------------------------ estats */
 
 .estat { padding: var(--e7) var(--e4); text-align: center; }
-.estat .ic { margin: 0 auto var(--e3); color: var(--suau); }
-.estat h2 { margin-bottom: var(--e2); }
-.estat p { margin: 0 auto var(--e4); max-width: 34ch; color: var(--suau); }
+.estat .ic { margin: 0 auto var(--e3); color: var(--ink-suau); }
+.estat p { margin: 0 auto var(--e4); max-width: 38ch; color: var(--ink-suau); }
 
-.avis {
-  display: flex; gap: var(--e3); align-items: flex-start;
-  padding: var(--e3) var(--e4); border-radius: var(--r);
-  background: var(--avis-fons); color: var(--text);
-  font-size: .875rem; line-height: 1.45;
-}
+.avis { display: flex; gap: var(--e3); align-items: flex-start;
+        padding: var(--e3) var(--e4); background: var(--avis-fons);
+        border: 1.5px solid var(--avis); font-size: .875rem; line-height: 1.45; }
 .avis .ic { color: var(--avis); }
 .avis strong { display: block; }
 
-.esquelet {
-  border-radius: var(--r); background: var(--superficie);
-  animation: pulsa 1.4s ease-in-out infinite;
-}
-.esquelet.marca-fantasma { height: 74px; }
-@keyframes pulsa { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-
-/* -------------------------------------------------------------- avisos flotants */
+.esquelet { background: var(--paper2); animation: pulsa 1.4s ease-in-out infinite;
+            border-bottom: 2px solid var(--neatline); }
+.esquelet.franja-fantasma { height: 76px; }
+@keyframes pulsa { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
 .brindis {
   position: fixed; left: var(--e4); right: var(--e4);
   bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + var(--e3));
-  z-index: 60; max-width: 608px; margin: 0 auto;
+  z-index: 60; max-width: 480px; margin: 0 auto;
   display: flex; align-items: center; gap: var(--e3);
-  padding: var(--e3) var(--e4); border-radius: var(--r);
-  background: var(--vora-forta); color: var(--fons);
+  padding: var(--e3) var(--e4); border: 1.5px solid var(--neatline);
+  background: var(--neatline); color: var(--paper);
   box-shadow: var(--ombra); font-size: .875rem; font-weight: 600;
   transform: translateY(140%); opacity: 0; visibility: hidden;
   transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s linear .3s;
 }
-.brindis[data-visible="1"] {
-  transform: translateY(0); opacity: 1; visibility: visible;
-  transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s;
-}
-.brindis[data-to="error"] { background: var(--accent); color: var(--sobre-accent); }
-.brindis .ic { color: inherit; }
+.brindis[data-visible="1"] { transform: translateY(0); opacity: 1; visibility: visible;
+  transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s; }
+.brindis[data-to="error"] { background: var(--gr); border-color: var(--gr); color: #fff; }
+@media (min-width: 900px) { .brindis { bottom: var(--e4); } }
+
+.sense-xarxa { display: flex; align-items: center; justify-content: center; gap: var(--e2);
+               padding: var(--e2); background: var(--avis-fons);
+               border-bottom: 1px solid var(--avis);
+               font-size: .8125rem; font-weight: 600; }
+.sense-xarxa .ic { color: var(--avis); }
 
 /* -------------------------------------------------------------------- modal */
 
-.fosc {
-  position: fixed; inset: 0; z-index: 50;
-  background: rgba(11,13,15,.55);
-  display: flex; align-items: flex-end; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .2s linear;
-}
+.fosc { position: fixed; inset: 0; z-index: 50; background: rgba(14,18,20,.6);
+        display: flex; align-items: flex-end; justify-content: center;
+        opacity: 0; pointer-events: none; transition: opacity .2s linear; }
 .fosc[data-obert="1"] { opacity: 1; pointer-events: auto; }
-
-.modal {
-  width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto;
-  background: var(--fons); border-radius: var(--r-gran) var(--r-gran) 0 0;
-  padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
-  transform: translateY(100%); transition: transform .32s var(--sortida);
-}
+.modal { width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto;
+         background: var(--paper); border: 1.5px solid var(--neatline); border-bottom: 0;
+         padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+         transform: translateY(100%); transition: transform .32s var(--sortida); }
 .fosc[data-obert="1"] .modal { transform: translateY(0); }
-.modal-cap { display: flex; align-items: center; gap: var(--e3); margin-bottom: var(--e4); }
+.modal-cap { display: flex; align-items: center; gap: var(--e3);
+             margin-bottom: var(--e4); padding-bottom: var(--e3);
+             border-bottom: 3px double var(--neatline); }
 .modal-cap h2 { flex: 1; }
-
-/* -------------------------------------------------------------- indicadors */
-
-.sense-xarxa {
-  display: flex; align-items: center; justify-content: center; gap: var(--e2);
-  padding: var(--e2); background: var(--avis-fons); color: var(--text);
-  font-size: .8125rem; font-weight: 600;
+@media (min-width: 900px) {
+  .fosc { align-items: center; }
+  .modal { border-bottom: 1.5px solid var(--neatline); max-height: 84vh; }
 }
-.sense-xarxa .ic { color: var(--avis); }
 
 .selector-data { display: flex; align-items: center; gap: var(--e2); }
-.selector-data .data { flex: 1; text-align: center; font-weight: 700; font-size: .9375rem; }
+.selector-data .data { flex: 1; text-align: center; }
+
+.tira { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: var(--e3); }
+.tira .xifra-gran { font-size: 1.75rem; line-height: 1; font-weight: 700;
+                    font-style: italic; color: var(--corba-mestra); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
