@@ -133,10 +133,10 @@ A partir d'aquí s'obre com una app, sense barra d'adreces.
 
 ## Actualitzacions futures
 
-Quan hi hagi codi nou:
+Quan hi hagi codi nou. Aquesta comanda comprova el codi i només el puja si tot passa:
 
 ```bash
-npx.cmd clasp push
+npm.cmd run puja
 ```
 
 Si el canvi afecta els fulls (mòduls nous, columnes noves), executa també
@@ -159,7 +159,8 @@ edita el desplegament → versió: Nova**, o l'app seguirà servint la versió a
 
 | Símptoma | Causa i solució |
 |---|---|
-| `No se puede cargar el archivo ...npx.ps1 porque la ejecución de scripts está deshabilitada` | Has escrit `npx` en comptes de `npx.cmd`. Windows bloqueja els `.ps1`; el `.cmd` fa el mateix. |
+| `No se puede cargar el archivo ...npx.ps1 / npm.ps1 porque la ejecución de scripts está deshabilitada` | **A PowerShell, escriu sempre `npx.cmd` i `npm.cmd`, mai `npx` ni `npm` a seques.** Windows bloqueja per defecte els scripts `.ps1`; la versió `.cmd` fa exactament el mateix i no toca cap configuració de seguretat. |
+| `Unexpected token '?'` en obrir l'app | Sintaxi de plantilla `<?` en un lloc on Apps Script no la pot processar. `npm.cmd run comprova` t'ho diu amb el fitxer i la línia. |
 | `User has not enabled the Apps Script API` | Pas 1 no fet, o fet amb l'altre compte |
 | `clasp push` no puja res | `.clasp.json` no té `"rootDir": "apps-script"` |
 | `Popu no està configurat` a la web app | Falta executar `configuraPopu()` (pas 5) |
