@@ -17,7 +17,14 @@ import fs from 'fs';
 import path from 'path';
 
 const ORIGEN = 'apps-script';
-const DESTI = 'pages';
+
+/**
+ * Va a l'ARREL del repositori, no a una subcarpeta.
+ * GitHub Pages, quan publica des d'una branca, només deixa triar entre
+ * l'arrel i `/docs`. Qualsevol altra carpeta no surt ni a la llista.
+ * A l'arrel, `index.html` té preferència sobre `README.md`.
+ */
+const DESTI = '.';
 
 function llegeix(nom) {
   const f = path.join(ORIGEN, nom + '.html');

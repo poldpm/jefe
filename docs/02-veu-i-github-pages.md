@@ -76,7 +76,7 @@ Al repositori: **Settings → Pages**
 |---|---|
 | Source | Deploy from a branch |
 | Branch | `main` |
-| Folder | **`/pages`** |
+| Folder | **`/ (root)`** |
 
 Desa i espera un o dos minuts. L'adreça serà:
 
@@ -125,14 +125,14 @@ Quan hi hagi codi nou, una sola comanda fa les tres coses:
 npm.cmd run puja
 ```
 
-Comprova el codi, el puja a Apps Script i regenera `pages/index.html`.
+Comprova el codi, el puja a Apps Script i regenera `index.html`.
 Després, per publicar la interfície:
 
 ```bash
 git add -A; git commit -m "canvis"; git push
 ```
 
-> `pages/index.html` **es genera**, no s'edita. La font són els fitxers de
+> `index.html` (a l'arrel) **es genera**, no s'edita. La font són els fitxers de
 > `apps-script/`. Si l'edites a mà, el següent `npm.cmd run construeix` te'l
 > sobreescriurà.
 
@@ -143,5 +143,5 @@ git add -A; git commit -m "canvis"; git push
 | «Clau d'accés incorrecta» | La clau no coincideix. Torna a executar `generaClauAcces` i enganxa-la de nou |
 | «El servidor ha respost 401/403» | El desplegament no és d'accés «Qualsevol», o no has fet **versió nova** |
 | «Failed to fetch» | L'URL no acaba en `/exec`, o has posat la de `/dev` (aquella exigeix sessió de Google i no serveix des de fora) |
-| La pàgina de GitHub Pages surt en blanc | La carpeta configurada no és `/pages`, o encara no ha acabat de publicar-se |
+| Es veu el README en comptes de l'app | La carpeta ha de ser **`/ (root)`**. GitHub Pages només deixa triar entre l'arrel i `/docs`: cap altra carpeta hi surt |
 | El micròfon segueix sense demanar permís | Comprova que estàs a `poldpm.github.io` i no a `script.google.com` |
