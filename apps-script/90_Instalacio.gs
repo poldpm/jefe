@@ -1,9 +1,9 @@
 /**
- * Popu — NUCLI · Instal·lació i manteniment
+ * JEFE — NUCLI · Instal·lació i manteniment
  *
  * Funcions per executar A MÀ des de l'editor d'Apps Script:
  *
- *   configuraPopu()     → crea el full de càlcul i tota l'estructura. Idempotent.
+ *   configuraJefe()     → crea el full de càlcul i tota l'estructura. Idempotent.
  *   instalaTriggers()   → instal·la els automatismes nocturns. Idempotent.
  *   treuTriggers()      → els desinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
@@ -13,7 +13,7 @@
  * Posada en marxa. Es pot executar tantes vegades com calgui:
  * si el full ja existeix, no en crea un altre; només posa al dia l'estructura.
  */
-function configuraPopu() {
+function configuraJefe() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(PROP_ID_FULL);
   var ss;
@@ -33,7 +33,7 @@ function configuraPopu() {
 
   if (acabatDeCrear) netejaFullPerDefecte_(ss);
 
-  Log.info('instalacio', 'configuraPopu() completada', {
+  Log.info('instalacio', 'configuraJefe() completada', {
     creat: acabatDeCrear,
     fullsCreats: informe.fullsCreats,
     columnesAfegides: informe.columnesAfegides,
@@ -175,4 +175,100 @@ function diagnostic() {
   var e = estatSistema();
   console.log(JSON.stringify(e, null, 2));
   return e;
+}
+
+
+/**
+ * Compatibilitat: el projecte es deia Popu abans de dir-se JEFE.
+ * Si has apuntat el nom antic en algun lloc, encara funciona.
+ */
+function configuraPopu() {
+  return configuraJefe();
+}
+
+/**
+ * Reanomena el full de càlcul existent perquè es digui com toca.
+ * Només canvia el NOM del fitxer: no toca ni una cel·la.
+ */
+function reanomenaFullDeCalcul() {
+  var ss = Config.full();
+  var abans = ss.getName();
+  if (abans === NOM_FULL_CALCUL) return 'Ja es diu «' + NOM_FULL_CALCUL + '». No he tocat res.';
+  ss.rename(NOM_FULL_CALCUL);
+  Log.info('instalacio', 'Full reanomenat', { abans: abans, ara: NOM_FULL_CALCUL });
+  return 'Reanomenat: «' + abans + '» → «' + NOM_FULL_CALCUL + '»';
+}
+
+/**
+ * PROVA DE LA CAPA D'IA — executa-la des de l'editor i mira el registre.
+ *
+ * Fa crides de veritat contra l'API. Comprova, per aquest ordre:
+ *   1. que hi ha clau i està activada
+ *   2. que l'API respon
+ *   3. que les eines dels mòduls hi arriben
+ *   4. que davant d'una pregunta sense dades diu que no en té, en comptes
+ *      d'inventar-se una xifra  ← això és el que de debò importa
+ */
+function provaIA() {
+  var linies = ['=== PROVA DE LA CAPA D\'IA ==='];
+
+  function afegeix(t) { linies.push(t); Logger.log(t); }
+
+  // 1. Configuració
+  if (!IA.disponible()) {
+    afegeix('FALLA: ' + IA.motiu());
+    return linies.join('\n');
+  }
+  afegeix('1. Configuració ......... correcta');
+  afegeix('   model: ' + Config.get('model_bo'));
+
+  // 2. Eines disponibles
+  var eines = Assistent.eines();
+  afegeix('2. Eines registrades .... ' + eines.length);
+  eines.forEach(function (e) {
+    afegeix('   · ' + e.nom + (e.escriu ? '  (escriptura → proposta)' : ''));
+  });
+
+  // 3. Resposta bàsica
+  try {
+    var r1 = IA.genera({
+      sistema: 'Respon només amb la paraula OK, sense res més.',
+      missatges: [{ rol: 'usuari', text: 'prova' }],
+      model: 'barat', maxTokens: 20
+    });
+    afegeix('3. L\'API respon ........ sí  («' + Utils.talla(r1.text, 40) + '»)');
+  } catch (err) {
+    afegeix('3. L\'API respon ........ NO: ' + err.message);
+    return linies.join('\n');
+  }
+
+  // 4. LA PROVA IMPORTANT: pregunta sense dades possibles
+  try {
+    var r2 = Assistent.pregunta([{
+      rol: 'usuari',
+      text: 'Quantes hores vaig dormir el 3 de març de 2019?'
+    }]);
+    var diuQueNo = /no (en )?tinc|no hi ha|no dispos|cap dada|no ho sé|no consta/i.test(r2.text);
+    afegeix('4. No s\'inventa dades ... ' + (diuQueNo ? 'CORRECTE' : 'ATENCIÓ, REVISA-HO'));
+    afegeix('   ha respost: «' + Utils.talla(r2.text, 200) + '»');
+    afegeix('   eines consultades: ' + (r2.einesUsades.length
+      ? r2.einesUsades.map(function (e) { return e.eina + '(' + e.files + ' files)'; }).join(', ')
+      : 'cap'));
+    afegeix('   tokens: ' + r2.tokens.entrada + ' entrada / ' + r2.tokens.sortida + ' sortida');
+  } catch (err) {
+    afegeix('4. Conversa ............. FALLA: ' + err.message);
+  }
+
+  // 5. Que una proposta d'escriptura NO escrigui
+  try {
+    var r3 = Assistent.pregunta([{ rol: 'usuari', text: 'apunta que avui he fet el primer hàbit' }]);
+    afegeix('5. Escriptura bloquejada . ' + (r3.propostes.length ? 'CORRECTE (proposta creada, no executada)'
+                                                                : 'sense proposta (potser no hi ha hàbits creats)'));
+    r3.propostes.forEach(function (p) { afegeix('   proposta: ' + p.etiqueta); });
+  } catch (err) {
+    afegeix('5. Escriptura ........... FALLA: ' + err.message);
+  }
+
+  afegeix('=== FI ===');
+  return linies.join('\n');
 }

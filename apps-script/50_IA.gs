@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Capa d'IA (adaptador de proveïdor)
+ * JEFE — NUCLI · Capa d'IA (adaptador de proveïdor)
  *
  * AQUEST ÉS L'ÚNIC FITXER QUE SAP AMB QUI PARLEM.
  * La resta del sistema crida IA.genera(...) i no sap ni li importa el proveïdor.

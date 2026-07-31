@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Utilitats
+ * JEFE — NUCLI · Utilitats
  *
  * REGLA DE DATES (val per a tot el sistema):
  *   - Les dates de calendari es desen com a TEXT 'AAAA-MM-DD'.

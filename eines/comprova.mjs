@@ -1,5 +1,5 @@
 /**
- * Popu — comprovació abans de pujar
+ * JEFE — comprovació abans de pujar
  *
  *   npm run comprova
  *

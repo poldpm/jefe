@@ -1,4 +1,4 @@
-# Popu — context de producte
+# JEFE — context de producte
 
 > Escrit a partir del briefing de l'usuari, no d'una entrevista simulada.
 > Tot el que hi ha aquí són paraules seves o decisions preses en conversa amb ell.

@@ -1,4 +1,4 @@
-# Popu — Posada en marxa (bloc 1: el nucli)
+# JEFE — Posada en marxa (bloc 1: el nucli)
 
 Fes-ho en aquest ordre, tot amb el compte **poldelpozomurgou@gmail.com**.
 Triga uns 10 minuts. Al final tindràs el full de càlcul creat i el nucli funcionant.
@@ -17,7 +17,7 @@ Sense això, clasp no pot pujar res.
 
 ## 2. Inicia sessió amb clasp
 
-Des de `C:\Claude\Popu`:
+Des de `C:\Claude\JEFE`:
 
 ```bash
 npx.cmd clasp login
@@ -38,7 +38,7 @@ S'obre el navegador. Tria el compte **@gmail.com** i accepta.
 ## 3. Crea el projecte d'Apps Script
 
 ```bash
-npx.cmd clasp create --type standalone --title "Popu" --rootDir apps-script
+npx.cmd clasp create --type standalone --title "JEFE" --rootDir apps-script
 ```
 
 Això crea `.clasp.json` a l'arrel (ignorat pel git, conté l'identificador del projecte).
@@ -70,7 +70,7 @@ S'obre l'editor a script.google.com. Allà:
 1. Al desplegable de funcions de la barra superior, tria **`configuraPopu`**
 2. Prem **Executa**
 3. La primera vegada demana permisos:
-   - *Aquesta aplicació no està verificada* → **Configuració avançada** → **Ves a Popu (no segur)**
+   - *Aquesta aplicació no està verificada* → **Configuració avançada** → **Ves a JEFE (no segur)**
    - És teva i teu és el codi: aquest avís surt perquè Google no l'ha revisada, no perquè hi hagi cap problema
    - Accepta els permisos de fulls de càlcul i de connexió externa
 4. Al **Registre d'execució** (a sota) hi ha de sortir l'URL del full de càlcul acabat de crear
@@ -80,7 +80,7 @@ S'obre l'editor a script.google.com. Allà:
 ## 6. Comprova que hi és
 
 Obre l'URL que ha sortit al registre. Has de veure un full de càlcul anomenat
-**Popu — Assistent** amb tres pestanyes:
+**JEFE — Assistent** amb tres pestanyes:
 
 | Pestanya | Què hi ha |
 |---|---|
@@ -104,7 +104,7 @@ A l'editor d'Apps Script:
 
    | Camp | Valor |
    |---|---|
-   | Descripció | `Popu v1` |
+   | Descripció | `JEFE v1` |
    | Executa com | **Jo** (`poldelpozomurgou@gmail.com`) |
    | Qui hi té accés | **Només jo** |
 
@@ -163,6 +163,6 @@ edita el desplegament → versió: Nova**, o l'app seguirà servint la versió a
 | `Unexpected token '?'` en obrir l'app | Sintaxi de plantilla `<?` en un lloc on Apps Script no la pot processar. `npm.cmd run comprova` t'ho diu amb el fitxer i la línia. |
 | `User has not enabled the Apps Script API` | Pas 1 no fet, o fet amb l'altre compte |
 | `clasp push` no puja res | `.clasp.json` no té `"rootDir": "apps-script"` |
-| `Popu no està configurat` a la web app | Falta executar `configuraPopu()` (pas 5) |
+| `JEFE no està configurat` a la web app | Falta executar `configuraPopu()` (pas 5) |
 | La web app mostra la versió antiga | Cal desplegar **una versió nova**, no només `clasp push` |
 | Un error i no saps què ha passat | Obre el full `_Registre`: hi és, amb data i origen |

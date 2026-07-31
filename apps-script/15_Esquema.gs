@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Esquema i migracions
+ * JEFE — NUCLI · Esquema i migracions
  *
  * L'esquema és la suma de:
  *   - els fulls del nucli (declarats aquí),

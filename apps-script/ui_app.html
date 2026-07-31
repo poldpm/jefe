@@ -1,12 +1,12 @@
 <script>
 /* =========================================================================
-   Popu — marc de la interfície
+   JEFE — marc de la interfície
    - Pinta a l'instant des de la memòria cau; el servidor arriba després.
    - Escriptura optimista amb cua: sense cobertura, el toc no es perd.
    - localStorage és NOMÉS memòria cau. La veritat viu al full de càlcul.
    ========================================================================= */
 
-var Popu = (function () {
+var Jefe = (function () {
 
   // ------------------------------------------------------------------ base
 
@@ -56,14 +56,14 @@ var Popu = (function () {
   var Cau = {
     get: function (clau, perDefecte) {
       try {
-        var v = localStorage.getItem('popu.' + clau);
+        var v = localStorage.getItem('jefe.' + clau);
         return v === null ? perDefecte : JSON.parse(v);
       } catch (e) { return perDefecte; }
     },
     set: function (clau, valor) {
-      try { localStorage.setItem('popu.' + clau, JSON.stringify(valor)); } catch (e) {}
+      try { localStorage.setItem('jefe.' + clau, JSON.stringify(valor)); } catch (e) {}
     },
-    treu: function (clau) { try { localStorage.removeItem('popu.' + clau); } catch (e) {} }
+    treu: function (clau) { try { localStorage.removeItem('jefe.' + clau); } catch (e) {} }
   };
 
   // ------------------------------------------------------- crides al servidor
@@ -305,6 +305,6 @@ var Popu = (function () {
   return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, esc: esc, ic: ic, fmt: fmt };
 })();
 
-var App = Popu.App, Comp = Popu.Comp, Cau = Popu.Cau, Cua = Popu.Cua;
-var crida = Popu.crida, esc = Popu.esc, ic = Popu.ic, fmt = Popu.fmt;
+var App = Jefe.App, Comp = Jefe.Comp, Cau = Jefe.Cau, Cua = Jefe.Cua;
+var crida = Jefe.crida, esc = Jefe.esc, ic = Jefe.ic, fmt = Jefe.fmt;
 </script>

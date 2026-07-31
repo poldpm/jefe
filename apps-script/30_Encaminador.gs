@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Encaminament
+ * JEFE — NUCLI · Encaminament
  *
  * Una sola porta d'entrada des del client:
  *     google.script.run.api('habits', 'marca', {id: '...', data: '...'})
@@ -15,14 +15,14 @@ function doGet(e) {
     var plantilla = HtmlService.createTemplateFromFile('ui_index');
     plantilla.estat = estatSistema();
     return plantilla.evaluate()
-      .setTitle('Popu')
+      .setTitle('JEFE')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
     Log.error('doGet', err);
     return HtmlService.createHtmlOutput(
-      '<h1>Popu no s\'ha pogut obrir</h1><pre>' + err.message + '</pre>' +
-      '<p>Executa <code>configuraPopu()</code> des de l\'editor d\'Apps Script.</p>'
+      '<h1>JEFE no s\'ha pogut obrir</h1><pre>' + err.message + '</pre>' +
+      '<p>Executa <code>configuraJefe()</code> des de l\'editor d\'Apps Script.</p>'
     );
   }
 }
@@ -89,7 +89,7 @@ function apiNucli_(accio, params) {
       return Log.ultimes(params.n || 30, params.nivell);
 
     case 'ping':
-      return { ara: Utils.ara(), versio: VERSIO_POPU };
+      return { ara: Utils.ara(), versio: VERSIO_JEFE };
 
     default:
       throw new Error('Acció de nucli desconeguda: «' + accio + '».');
@@ -99,7 +99,7 @@ function apiNucli_(accio, params) {
 /** Diagnòstic complet. El fa servir la pantalla d'estat i el manteniment nocturn. */
 function estatSistema() {
   var estat = {
-    versio: VERSIO_POPU,
+    versio: VERSIO_JEFE,
     ara: Utils.ara(),
     configurat: !!Config.idFull(),
     idFull: null,

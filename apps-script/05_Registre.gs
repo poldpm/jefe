@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Registre d'esdeveniments
+ * JEFE — NUCLI · Registre d'esdeveniments
  *
  * Tot el que passa deixa constància al full `_Registre`.
  * Regla dura: el registre MAI pot fer caure una operació. Si no pot escriure

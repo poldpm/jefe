@@ -1,6 +1,6 @@
 <style>
 /* =========================================================================
-   Popu — la consola
+   JEFE — la consola
    Món: terminal d'operacions. Fons gairebé negre, text de fòsfor, monoespaiada
    per a tot el que és dada o sistema, i el camp d'entrada com a element central.
    ========================================================================= */
@@ -155,7 +155,7 @@
 </style>
 
 <script>
-/* Popu — MÒDUL · Conversa
+/* JEFE — MÒDUL · Conversa
    La pantalla principal: hi parles i et respon amb les teves dades reals.
    Veu d'entrada i de sortida quan el navegador les té (Chrome a Android sí). */
 
@@ -206,7 +206,7 @@ App.registraVista('conversa', {
       if (!missatges.length) {
         tr.innerHTML =
           '<div class="torn" data-rol="assistent">' +
-            '<span class="qui">Popu</span>' +
+            '<span class="qui">JEFE</span>' +
             '<div class="diu">Soc el teu assistent. Miro les teves dades reals i et responc amb elles.\n' +
             'Si no en tinc, t\'ho dic: no m\'invento res.</div>' +
           '</div>';
@@ -219,7 +219,7 @@ App.registraVista('conversa', {
 
     function torn(m) {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
-        '<span class="qui">' + (m.rol === 'usuari' ? 'Tu' : 'Popu') + '</span>' +
+        '<span class="qui">' + (m.rol === 'usuari' ? 'Tu' : 'JEFE') + '</span>' +
         '<div class="diu">' + esc(m.text) + '</div>';
 
       if (m.eines && m.eines.length) {
@@ -316,7 +316,7 @@ App.registraVista('conversa', {
 
       tr.insertAdjacentHTML('beforeend',
         '<div class="torn" data-rol="assistent" id="pensant">' +
-        '<span class="qui">Popu</span><div class="pensant"><i></i>consultant les teves dades…</div></div>');
+        '<span class="qui">JEFE</span><div class="pensant"><i></i>consultant les teves dades…</div></div>');
       tr.scrollTop = tr.scrollHeight;
 
       crida('conversa', 'envia', { text: text, id_conversa: idConversa })

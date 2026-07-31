@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Configuració
+ * JEFE — NUCLI · Configuració
  *
  * Aquest fitxer no s'ha de tocar mai per afegir un mòdul.
  *
@@ -8,8 +8,8 @@
  * que no es comparteix ni es versiona.
  */
 
-var VERSIO_POPU = '1.0.0';
-var NOM_FULL_CALCUL = 'Popu — Assistent';
+var VERSIO_JEFE = '1.0.0';
+var NOM_FULL_CALCUL = 'JEFE — Assistent';
 
 /** Claus de Script Properties. Mai al codi, mai a cap fitxer versionat. */
 var PROP_ID_FULL = 'ID_FULL';
@@ -62,7 +62,7 @@ var Config = (function () {
     var id = idFull();
     if (!id) {
       throw new Error(
-        'Popu no està configurat. Executa la funció configuraPopu() des de l\'editor d\'Apps Script.'
+        'JEFE no està configurat. Executa la funció configuraJefe() des de l\'editor d\'Apps Script.'
       );
     }
     return SpreadsheetApp.openById(id);

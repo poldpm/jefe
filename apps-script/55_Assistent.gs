@@ -1,7 +1,7 @@
 /**
- * Popu — NUCLI · L'assistent
+ * JEFE — NUCLI · L'assistent
  *
- * Aquí viu la conversa: qui és Popu, què pot mirar i què no pot tocar.
+ * Aquí viu la conversa: qui és JEFE, què pot mirar i què no pot tocar.
  * El transport (parlar amb Gemini) és a 50_IA.gs; això és el cervell del damunt.
  *
  * LES DUES REGLES QUE HO SOSTENEN TOT
@@ -68,7 +68,7 @@ var Assistent = (function () {
     catch (e) { fitxa = ''; }
 
     return [
-      'Ets Popu, l\'assistent personal d\'en Pol. Respons SEMPRE en català.',
+      'Ets JEFE, l\'assistent personal d\'en Pol. Respons SEMPRE en català.',
       '',
       'Qui és en Pol: mestre de primària i agent rural. Fa senderisme i curses de',
       'muntanya. Els contextos de la seva vida són docència, agent rural i personal.',

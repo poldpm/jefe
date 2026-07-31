@@ -1,4 +1,4 @@
-# Popu
+# JEFE
 
 Assistent personal sobre Google Sheets, Apps Script i una capa d'IA.
 Ús privat, un sol usuari, prioritat mòbil.

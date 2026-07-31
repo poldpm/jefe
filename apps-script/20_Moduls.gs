@@ -1,5 +1,5 @@
 /**
- * Popu — NUCLI · Registre de mòduls
+ * JEFE — NUCLI · Registre de mòduls
  *
  * CONTRACTE (vegeu MODULS.md per a l'exemple complet):
  *

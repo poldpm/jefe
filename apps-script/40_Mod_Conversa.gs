@@ -1,5 +1,5 @@
 /**
- * Popu — MÒDUL · Conversa
+ * JEFE — MÒDUL · Conversa
  *
  * La pantalla on parles amb les teves pròpies dades.
  * Ordre 5: va davant de tot, perquè és el que has d'obrir primer.
@@ -10,7 +10,7 @@
 function MODUL_CONVERSA() {
   return {
     id: 'conversa',
-    nom: 'Popu',
+    nom: 'JEFE',
     icona: 'conversa',
     ordre: 5,
     versioEsquema: 1,

@@ -1,5 +1,5 @@
 /**
- * Popu — MÒDUL · Hàbits
+ * JEFE — MÒDUL · Hàbits
  *
  * Cap línia del nucli s'ha tocat per afegir aquest fitxer.
  * Vegeu MODULS.md per al contracte.
