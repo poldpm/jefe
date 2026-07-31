@@ -160,7 +160,8 @@ var Conversa = (function () {
       resposta: r.text,
       propostes: r.propostes,
       eines: r.einesUsades,
-      tokens: r.tokens
+      tokens: r.tokens,
+      temps: r.temps
     };
   }
 

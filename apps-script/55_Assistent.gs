@@ -114,14 +114,23 @@ var Assistent = (function () {
       throw e;
     }
 
+    var t0 = Date.now();
     var llistaEines = eines();
     var conversa = missatges.slice();
     var propostes = [], einesUsades = [];
     var tEntrada = 0, tSortida = 0, model = null;
 
+    /* El context es construeix UN COP, no a cada volta.
+       Dins del bucle tornava a llegir tots els fulls a cada iteració, i això
+       són segons regalats en una conversa que ja va justa de temps. */
+    var instruccions = sistema_();
+    var msContext = Date.now() - t0;
+    var msIA = 0, msEines = 0;
+
     for (var volta = 0; volta < MAX_VOLTES; volta++) {
+      var tIA = Date.now();
       var r = IA.genera({
-        sistema: sistema_(),
+        sistema: instruccions,
         missatges: conversa,
         eines: llistaEines,
         model: 'bo',
@@ -129,13 +138,16 @@ var Assistent = (function () {
         temperatura: 0
       });
 
+      msIA += Date.now() - tIA;
       tEntrada += r.tokensEntrada; tSortida += r.tokensSortida; model = r.model;
 
       if (!r.crides.length) {
         return {
           text: r.text || 'No sé què respondre a això.',
           propostes: propostes, einesUsades: einesUsades,
-          tokens: { entrada: tEntrada, sortida: tSortida }, model: model
+          tokens: { entrada: tEntrada, sortida: tSortida }, model: model,
+          temps: { total: Date.now() - t0, context: msContext, ia: msIA,
+                   eines: msEines, voltes: volta + 1 }
         };
       }
 
@@ -161,12 +173,14 @@ var Assistent = (function () {
           resultat = { pendent_de_confirmacio: true,
                        missatge: 'Proposta creada. Encara NO s\'ha fet res: en Pol l\'ha de confirmar.' };
         } else {
+          var tE = Date.now();
           try {
             resultat = eina.executa(c.args || {});
           } catch (err) {
             Log.error('assistent.eina', 'L\'eina ' + c.nom + ' ha fallat: ' + err.message, c.args);
             resultat = { error: 'L\'eina ha fallat: ' + err.message, files: 0 };
           }
+          msEines += Date.now() - tE;
         }
 
         einesUsades.push({
@@ -183,7 +197,8 @@ var Assistent = (function () {
     return {
       text: 'He consultat les dades però no n\'he tret una resposta clara. Prova de preguntar-ho més concret.',
       propostes: propostes, einesUsades: einesUsades,
-      tokens: { entrada: tEntrada, sortida: tSortida }, model: model
+      tokens: { entrada: tEntrada, sortida: tSortida }, model: model,
+      temps: { total: Date.now() - t0, context: msContext, ia: msIA, eines: msEines, voltes: MAX_VOLTES }
     };
   }
 

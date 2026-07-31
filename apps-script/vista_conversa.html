@@ -305,11 +305,17 @@ App.registraVista('conversa', {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
         '<span class="qui">' + (m.rol === 'usuari' ? 'TU' : 'JEFE') + '</span>' +
         '<div class="diu">' + esc(m.text) + '</div>';
-      if (m.eines && m.eines.length) {
-        h += '<div class="traca">' + m.eines.map(function (e) {
-          return '<span><b>' + esc(e.eina) + '</b> · ' +
-                 (e.files === null || e.files === undefined ? 'ok' : e.files + ' files') + '</span>';
-        }).join('') + '</div>';
+      if ((m.eines && m.eines.length) || m.temps) {
+        h += '<div class="traca">' +
+          (m.eines || []).map(function (e) {
+            return '<span><b>' + esc(e.eina) + '</b> · ' +
+                   (e.files === null || e.files === undefined ? 'ok' : e.files + ' files') + '</span>';
+          }).join('') +
+          (m.temps ? '<span title="on se n\'ha anat el temps"><b>' +
+             (m.temps.total / 1000).toFixed(1) + 's</b> · ia ' + (m.temps.ia / 1000).toFixed(1) +
+             ' · dades ' + ((m.temps.context + m.temps.eines) / 1000).toFixed(1) +
+             ' · ' + m.temps.voltes + (m.temps.voltes === 1 ? ' volta' : ' voltes') + '</span>' : '') +
+        '</div>';
       }
       if (m.propostes && m.propostes.length) {
         h += m.propostes.map(function (p, i) {
@@ -392,7 +398,8 @@ App.registraVista('conversa', {
           } else {
             ultimesEines = r.eines || [];
             if (r.tokens) tokensSessio += (r.tokens.entrada || 0) + (r.tokens.sortida || 0);
-            missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines, propostes: r.propostes });
+            missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
+                             propostes: r.propostes, temps: r.temps });
             if (veuActiva) parla(r.resposta);
           }
           Cau.set('conversa.missatges', missatges.slice(-40));
@@ -448,7 +455,7 @@ App.registraVista('conversa', {
 
     var CLAUS = ['jefe', 'jefa', 'xefe', 'chef', 'hefe', 'gefe', 'jefes', 'efe', 'sefe'];
     var continua = false, aturaVoluntaria = false, parlantAra = false;
-    var buffer = '', tempsBuffer = null;
+    var buffer = '', tempsBuffer = null, consumitFinsA = 0;
 
     /* La paraula clau és OPCIONAL i ve apagada de sèrie. Amb ella activada,
        si el reconeixedor no encerta el nom, sembla que l'app no faci res.
@@ -497,44 +504,42 @@ App.registraVista('conversa', {
         mostraOida('escoltant…', false);
       };
 
+      /* S'envia PER SILENCI, no per resultat definitiu.
+         En mode continu Chrome no marca res com a definitiu fins que la
+         sessió s'acaba, o sigui fins que apagues el micròfon. Esperar-ho
+         volia dir no enviar mai mentre parlaves. Ara compta el temps des
+         de l'última paraula sentida, sigui provisional o no. */
       reconeixedor.onresult = function (ev) {
-        var definitiu = '', provisional = '';
-        for (var i = ev.resultIndex; i < ev.results.length; i++) {
-          (ev.results[i].isFinal ? (definitiu += ev.results[i][0].transcript)
-                                 : (provisional += ev.results[i][0].transcript));
+        var text = '';
+        for (var i = consumitFinsA; i < ev.results.length; i++) {
+          text += ev.results[i][0].transcript;
         }
+        text = text.trim();
+        if (!text) return;
 
-        // SEMPRE es veu el que sent, encara que després no s'enviï.
-        var visible = (buffer + ' ' + definitiu + ' ' + provisional).trim();
-        if (visible) {
-          mostraOida(visible, false);
-          nucli.pols(Math.min(1, 0.35 + visible.length / 40));
-        }
-        if (!definitiu) return;
-
-        buffer = (buffer + ' ' + definitiu).trim();
-        nucli.pols(1);
+        mostraOida(text, false);
+        nucli.pols(Math.min(1, 0.35 + text.length / 40));
 
         clearTimeout(tempsBuffer);
         tempsBuffer = setTimeout(function () {
-          var text = buffer.trim();
-          buffer = '';
+          consumitFinsA = ev.results.length;      // el que ve després és una frase nova
+          var enviar = text;
 
           if (usaParaulaClau) {
-            var ordre = teParaulaClau(text);
+            var ordre = teParaulaClau(enviar);
             if (ordre === null) {
-              mostraOida('sentit «' + Utils_talla(text, 40) + '» · no hi havia la paraula clau', false);
+              mostraOida('sentit «' + Utils_talla(enviar, 40) + '» · sense la paraula clau', false);
               return;
             }
-            text = ordre.trim();
-            if (text.length < 2) { mostraOida('has dit JEFE però res més', false); return; }
+            enviar = ordre.trim();
+            if (enviar.length < 2) { mostraOida('has dit JEFE però res més', false); return; }
           }
 
-          if (text.length < 2) return;
-          amagaOida();
-          camp.value = text;
+          if (enviar.length < 2) return;
+          mostraOida('enviat: ' + Utils_talla(enviar, 50), false);
+          camp.value = enviar;
           envia();
-        }, 700);   // menys espera: 1,2 s es notava molt en una conversa
+        }, 900);   // silenci després de la darrera paraula
       };
 
       reconeixedor.onerror = function (ev) {
@@ -557,6 +562,7 @@ App.registraVista('conversa', {
 
       reconeixedor.onend = function () {
         reconeixedor = null;
+        consumitFinsA = 0;                 // sessió nova: els índexs tornen a zero
         if (continua && !aturaVoluntaria && !parlantAra) {
           setTimeout(arrencaReconeixedor, 250);          // Chrome talla sol: es rearrenca
         } else if (!continua) {
