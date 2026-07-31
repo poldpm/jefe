@@ -33,13 +33,14 @@
 }
 @media (min-width: 900px) { .hud { top: 0; bottom: 0; padding-top: 0; } }
 
-/* Quadrícula d'anàlisi */
-.hud::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background-image: linear-gradient(rgba(43,127,212,.16) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(43,127,212,.16) 1px, transparent 1px);
-  background-size: 38px 38px;
+/* Corbes de nivell de fons.
+   Abans hi havia una quadrícula de línies rectes. Mateix color, mateix gruix
+   i mateix esvaïment: només canvia que ara el terreny és de debò, calculat
+   amb el mateix marching squares que el full de mes. */
+.reticula {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 25%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 25%, transparent 78%);
 }
 
 /* Marc de cantonades */
@@ -201,6 +202,7 @@ App.registraVista('conversa', {
 
     arrel.innerHTML =
       '<div class="hud" id="hud" data-estat="repos">' +
+        '<div class="reticula" id="reticula"></div>' +
         '<i class="cantonada dg"></i><i class="cantonada dd"></i>' +
         '<i class="cantonada bg"></i><i class="cantonada bd"></i>' +
 
@@ -245,6 +247,11 @@ App.registraVista('conversa', {
     var camp = arrel.querySelector('#camp');
 
     nucli = Nucli.crea(arrel.querySelector('#nucli-caixa'));
+
+    /* El terreny del fons es genera un sol cop: el SVG escala sol amb el
+       contenidor, i la llavor és fixa perquè no balli a cada repintada. */
+    arrel.querySelector('#reticula').innerHTML =
+      Relleu.fons(1000, 1000, { color: 'rgba(43,127,212,.16)', gruix: 1, nivells: 14 });
 
     function posaEstat(e, etiqueta) {
       hud.dataset.estat = e;

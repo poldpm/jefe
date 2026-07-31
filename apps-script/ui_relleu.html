@@ -167,6 +167,63 @@ var Relleu = (function () {
            camins.join('') + '</svg>';
   }
 
+  /**
+   * Corbes de nivell de fons per a la sala de comandament.
+   *
+   * No és un patró dibuixat: és un terreny fals generat amb soroll i recorregut
+   * amb el mateix marching squares que el full de mes. Per això les corbes es
+   * tanquen, s'encaixen i tenen cims i valls, en comptes de semblar ratlles.
+   *
+   * La llavor és fixa: el terreny sempre és el mateix. Si canviés a cada
+   * repintada, el fons ballaria cada cop que toques res.
+   */
+  function fons(amplada, alcada, opcions) {
+    opcions = opcions || {};
+    var color = opcions.color || 'rgba(43,127,212,.16)';
+    var gruix = opcions.gruix || 1;
+    var nivells = opcions.nivells || 14;
+    var llavor = opcions.llavor === undefined ? 1974 : opcions.llavor;
+
+    // Soroll determinista: dues octaves per tenir formes grans i detall
+    function soroll(x, y, s) {
+      var n = Math.sin(x * 127.1 + y * 311.7 + s) * 43758.5453;
+      return n - Math.floor(n);
+    }
+
+    var F = 15, C = 15;
+    var matriu = [];
+    for (var r = 0; r < F; r++) {
+      var fila = [];
+      for (var c = 0; c < C; c++) {
+        var a = soroll(r, c, llavor);
+        var b = soroll(Math.floor(r / 3), Math.floor(c / 3), llavor + 7);
+        fila.push(a * 0.38 + b * 0.62);          // el detall no ha de tapar el relleu gran
+      }
+      matriu.push(fila);
+    }
+
+    var cmp = camp(matriu, F, C, 5);
+    var ex = amplada / (cmp.cols - 1), ey = alcada / (cmp.files - 1);
+    var camins = [];
+
+    for (var i = 1; i < nivells; i++) {
+      var n = i / nivells;
+      var linies = encadena(isolinies(cmp.dades, cmp.files, cmp.cols, n));
+      for (var l = 0; l < linies.length; l++) {
+        if (linies[l].length < 4) continue;       // trossets solts: soroll visual
+        var d = 'M' + linies[l].map(function (p) {
+          return (p.x * ex).toFixed(1) + ' ' + (p.y * ey).toFixed(1);
+        }).join('L');
+        camins.push('<path d="' + d + '"/>');
+      }
+    }
+
+    return '<svg viewBox="0 0 ' + amplada + ' ' + alcada + '" preserveAspectRatio="xMidYMid slice" ' +
+           'aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%">' +
+           '<g fill="none" stroke="' + color + '" stroke-width="' + gruix + '" ' +
+           'stroke-linejoin="round" stroke-linecap="round">' + camins.join('') + '</g></svg>';
+  }
+
   /** Símbol de mapa estable per a un hàbit, a partir del seu identificador. */
   var SIMBOLS = ['cim', 'font', 'refugi', 'fita', 'creu', 'cova', 'arbre', 'pont', 'gual', 'mina'];
   function simbol(id) {
@@ -187,6 +244,7 @@ var Relleu = (function () {
     return 'var(' + b[Math.min(6, Math.floor(pct / 15))] + ')';
   }
 
-  return { fullMes: fullMes, franja: franja, simbol: simbol, llavor: llavor, tinta: tinta };
+  return { fullMes: fullMes, franja: franja, fons: fons,
+           simbol: simbol, llavor: llavor, tinta: tinta };
 })();
 </script>
