@@ -375,6 +375,15 @@ App.registraVista('conversa', {
       posaEstat('pensant', 'consultant dades');
       nucli.pols(1);
 
+      // Comptador visible: si triga, que se sàpiga que està treballant i quant.
+      var t0 = Date.now();
+      clearInterval(App._cronometre);
+      App._cronometre = setInterval(function () {
+        var s = Math.round((Date.now() - t0) / 1000);
+        var el = arrel.querySelector('#etiqueta-estat');
+        if (el && ocupat) el.textContent = 'consultant · ' + s + 's';
+      }, 1000);
+
       crida('conversa', 'envia', { text: text, id_conversa: idConversa })
         .then(function (r) {
           idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
@@ -394,6 +403,7 @@ App.registraVista('conversa', {
 
     function acaba() {
       ocupat = false;
+      clearInterval(App._cronometre);
       arrel.querySelector('#b-envia').disabled = false;
       posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
                 estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
@@ -524,7 +534,7 @@ App.registraVista('conversa', {
           amagaOida();
           camp.value = text;
           envia();
-        }, 1200);
+        }, 700);   // menys espera: 1,2 s es notava molt en una conversa
       };
 
       reconeixedor.onerror = function (ev) {
@@ -704,6 +714,22 @@ App.registraVista('conversa', {
       posaEstat(e.disponible ? 'repos' : 'apagat', e.disponible ? 'a punt' : 'sense clau');
       pintaPistes(e.suggeriments);
       if (!e.disponible) { avisApagat(e.motiu); return; }
+
+      /* Si l'escolta estava engegada, es torna a engegar sola en obrir.
+         Sense això havies de prémer el micròfon cada vegada que carregava
+         la pàgina, que és exactament el contrari de tenir-lo sempre escoltant.
+         Alguns navegadors exigeixen un toc previ; si peta, s'avisa i prou. */
+      if (potEscoltar && Cau.get('conversa.escolta', false)) {
+        continua = true; aturaVoluntaria = false;
+        pintaMicro();
+        mostraOida('reprenent l\'escolta…', false);
+        try { arrencaReconeixedor(); }
+        catch (err) {
+          continua = false; pintaMicro();
+          mostraOida('toca el micròfon per reprendre l\'escolta', true);
+        }
+      }
+
       if (!missatges.length) {
         crida('conversa', 'historial', { id_conversa: idConversa }).then(function (h) {
           if (h.missatges && h.missatges.length) {
