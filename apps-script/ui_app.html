@@ -181,8 +181,9 @@ var Popu = (function () {
       App.pintaNav();
       App.aplicaTema(Cau.get('tema', 'auto'));
 
-      var darrera = Cau.get('vista', 'inici');
-      App.ves(App.vistes[darrera] ? darrera : 'inici');
+      // La conversa és la pantalla d'arrencada: és l'assistent, no el formulari.
+      var darrera = Cau.get('vista', 'conversa');
+      App.ves(App.vistes[darrera] ? darrera : (App.vistes.conversa ? 'conversa' : 'inici'));
 
       Cua.envia();
       document.addEventListener('visibilitychange', function () {

@@ -72,7 +72,13 @@ var IA = (function () {
       if (p.eines && p.eines.length) {
         cos.tools = [{
           functionDeclarations: p.eines.map(function (e) {
-            return { name: e.nom, description: e.descripcio, parameters: e.esquema };
+            var d = { name: e.nom, description: e.descripcio };
+            // Un esquema amb `properties` buit fa que l'API retorni 400.
+            // Una eina sense arguments simplement no declara paràmetres.
+            if (e.esquema && e.esquema.properties && Object.keys(e.esquema.properties).length) {
+              d.parameters = e.esquema;
+            }
+            return d;
           })
         }];
       }

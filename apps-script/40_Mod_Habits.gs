@@ -109,6 +109,26 @@ function MODUL_HABITS() {
         }
       },
       executa: function (args) { return Habits.consultaIA(args); }
+    }, {
+      nom: 'registra_habit',
+      descripcio: 'Marca un hàbit com a fet o no fet un dia concret. NO s\'executa directament: ' +
+                  'genera una proposta que en Pol ha de confirmar amb un botó.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          nom_habit: { type: 'string', description: 'Nom de l\'hàbit' },
+          data: { type: 'string', description: 'Data AAAA-MM-DD. Si s\'omet, avui.' },
+          fet: { type: 'boolean', description: 'true per marcar-lo fet, false per marcar-lo no fet' }
+        },
+        required: ['nom_habit']
+      },
+      etiqueta: function (a) {
+        return 'Marcar «' + (a.nom_habit || '?') + '» com a ' +
+               (a.fet === false ? 'NO fet' : 'fet') +
+               (a.data ? ' el ' + a.data : ' avui');
+      },
+      executa: function (a) { return Habits.registraPerNom(a); }
     }],
 
     vista: 'vista_habits'
@@ -524,6 +544,33 @@ var Habits = (function () {
     return Dades.actualitza('Habits', id, { actiu: 'SI', arxivat_el: '' });
   }
 
+  /**
+   * Registra un hàbit buscant-lo pel nom. És el que executa una proposta
+   * confirmada de la conversa; la IA no arriba mai aquí pel seu compte.
+   */
+  function registraPerNom(a) {
+    var busca = String(a.nom_habit || '').toLowerCase().trim();
+    if (!busca) throw new Error('No has dit quin hàbit.');
+
+    var candidats = definicions().filter(function (h) {
+      return String(h.nom).toLowerCase().indexOf(busca) !== -1;
+    });
+    if (!candidats.length) {
+      throw new Error('No hi ha cap hàbit que es digui «' + a.nom_habit + '». Hàbits actius: ' +
+        definicions().map(function (h) { return h.nom; }).join(', '));
+    }
+    if (candidats.length > 1) {
+      throw new Error('«' + a.nom_habit + '» encaixa amb més d\'un hàbit: ' +
+        candidats.map(function (h) { return h.nom; }).join(', ') + '. Sigues més concret.');
+    }
+
+    var h = candidats[0];
+    var data = Utils.esDataValida(a.data) ? a.data : Utils.avui();
+    var valor = (a.fet === false) ? 0 : objectiu_(h);
+    marca(h.id, data, valor);
+    return { fet: true, habit: h.nom, data: data, valor: valor };
+  }
+
   // ---------------------------------------------------------------- eina d'IA
 
   /**
@@ -596,6 +643,7 @@ var Habits = (function () {
     resumTots: resumTots,
     crea: crea,
     edita: edita,
+    registraPerNom: registraPerNom,
     arxiva: arxiva,
     reactiva: reactiva,
     consultaIA: consultaIA

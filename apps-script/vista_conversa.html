@@ -1,0 +1,454 @@
+<style>
+/* =========================================================================
+   Popu — la consola
+   Món: terminal d'operacions. Fons gairebé negre, text de fòsfor, monoespaiada
+   per a tot el que és dada o sistema, i el camp d'entrada com a element central.
+   ========================================================================= */
+
+.consola {
+  --neg:    #07090a;
+  --panell: #0d1214;
+  --linia:  #1c2528;
+  --fosfor: #dbe6e8;
+  --apagat: #7f9199;
+  --senyal: #4fd6e0;   /* el color del sistema */
+  --calent: #e8a33c;   /* avisos */
+  --alerta: #ef5f52;   /* errors */
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+
+  /* Ocupa la pantalla menys la navegació: a baix al mòbil, a dalt a l'ordinador. */
+  position: fixed; left: 0; right: 0; top: 0;
+  bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column;
+  background: var(--neg); color: var(--fosfor);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@media (min-width: 900px) { .consola { top: 55px; bottom: 0; padding-top: 0; } }
+
+/* Retícula de fons: molt subtil, dona profunditat sense soroll */
+.consola::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: linear-gradient(var(--linia) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--linia) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 10%, transparent 75%);
+}
+
+.consola-cap {
+  position: relative; z-index: 1; flex: none;
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  border-bottom: 1px solid var(--linia);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--apagat);
+}
+.consola-cap .estat-punt {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--apagat); flex: none;
+}
+.consola-cap[data-viu="1"] .estat-punt { background: var(--senyal); box-shadow: 0 0 10px var(--senyal); }
+.consola-cap[data-viu="0"] .estat-punt { background: var(--calent); }
+.consola-cap .creix { flex: 1; }
+
+/* --------------------------------------------------------------- transcripció */
+
+.transcripcio {
+  position: relative; z-index: 1; flex: 1; overflow-y: auto;
+  padding: var(--e4) var(--e4) var(--e5);
+  display: flex; flex-direction: column; gap: var(--e4);
+  -webkit-overflow-scrolling: touch;
+}
+
+.torn { max-width: 68ch; }
+.torn .qui {
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--apagat); margin-bottom: 6px; display: block;
+}
+.torn .diu { font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+
+.torn[data-rol="usuari"] { align-self: flex-end; text-align: right; }
+.torn[data-rol="usuari"] .diu {
+  display: inline-block; text-align: left;
+  background: var(--panell); border: 1px solid var(--linia);
+  padding: var(--e3) var(--e4); border-radius: 3px;
+}
+.torn[data-rol="assistent"] .diu { color: var(--fosfor); }
+.torn[data-rol="assistent"] .diu::before {
+  content: "> "; color: var(--senyal); font-family: var(--mono); font-weight: 700;
+}
+
+/* Traça de les eines: què ha consultat de debò. Auditoria, no decoració. */
+.traca {
+  margin-top: var(--e2); font-family: var(--mono); font-size: .6875rem;
+  color: var(--apagat); border-left: 1px solid var(--linia); padding-left: var(--e3);
+}
+.traca b { color: var(--senyal); font-weight: 400; }
+
+/* Proposta pendent de confirmació: l'únic camí perquè la IA escrigui */
+.proposta {
+  margin-top: var(--e3); border: 1px solid var(--calent);
+  background: rgba(232,163,60,.07); padding: var(--e3) var(--e4);
+}
+.proposta p { margin: 0 0 var(--e3); font-size: .9375rem; }
+.proposta .accions { display: flex; gap: var(--e2); }
+.proposta button {
+  min-height: 44px; padding: 0 var(--e4); border-radius: 3px;
+  font-family: inherit; font-size: .875rem; font-weight: 600;
+  border: 1px solid var(--linia); background: transparent; color: var(--fosfor);
+}
+.proposta button[data-si] { background: var(--calent); border-color: var(--calent); color: #1a1206; }
+
+/* Cursor de treball */
+.pensant { display: flex; align-items: center; gap: var(--e2);
+           font-family: var(--mono); font-size: .8125rem; color: var(--apagat); }
+.pensant i { width: 9px; height: 16px; background: var(--senyal); animation: parpelleja 1s steps(2) infinite; }
+@keyframes parpelleja { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+
+/* ------------------------------------------------------------------ entrada */
+
+.entrada-consola {
+  position: relative; z-index: 1; flex: none;
+  border-top: 1px solid var(--linia); background: var(--panell);
+  padding: var(--e3) var(--e4) calc(var(--e3) + env(safe-area-inset-bottom, 0px));
+}
+.suggeriments { display: flex; gap: var(--e2); overflow-x: auto; padding-bottom: var(--e3);
+                scrollbar-width: none; }
+.suggeriments::-webkit-scrollbar { display: none; }
+.suggeriments button {
+  flex: none; min-height: 44px; padding: 0 var(--e3); white-space: nowrap;
+  border: 1px solid var(--linia); background: transparent; color: var(--apagat);
+  border-radius: 3px; font-size: .8125rem;
+}
+.suggeriments button:active { color: var(--senyal); border-color: var(--senyal); }
+
+.fila-entrada { display: flex; align-items: flex-end; gap: var(--e2); }
+.fila-entrada textarea {
+  flex: 1; min-height: 52px; max-height: 160px; resize: none;
+  background: transparent; border: 1px solid var(--linia); border-radius: 3px;
+  color: var(--fosfor); padding: var(--e3); font: inherit; line-height: 1.4;
+}
+.fila-entrada textarea:focus { outline: none; border-color: var(--senyal); }
+.fila-entrada textarea::placeholder { color: var(--apagat); }
+
+.boto-consola {
+  flex: none; width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--linia); border-radius: 3px;
+  background: transparent; color: var(--fosfor);
+}
+.boto-consola[data-primari] { background: var(--senyal); border-color: var(--senyal); color: var(--neg); }
+.boto-consola:disabled { opacity: .35; }
+.boto-consola[data-escoltant="1"] {
+  border-color: var(--alerta); color: var(--alerta);
+  animation: batega 1.1s ease-in-out infinite;
+}
+@keyframes batega { 0%,100% { box-shadow: 0 0 0 0 rgba(239,95,82,.5); }
+                    50% { box-shadow: 0 0 0 10px rgba(239,95,82,0); } }
+
+.consola .avis-apagat {
+  margin: var(--e4); padding: var(--e4); border: 1px solid var(--calent);
+  background: rgba(232,163,60,.07); font-size: .875rem; line-height: 1.5;
+}
+.consola .avis-apagat strong { display: block; margin-bottom: var(--e2); color: var(--calent); }
+.consola code { font-family: var(--mono); background: var(--panell);
+                border: 1px solid var(--linia); padding: 1px 5px; border-radius: 2px; }
+</style>
+
+<script>
+/* Popu — MÒDUL · Conversa
+   La pantalla principal: hi parles i et respon amb les teves dades reals.
+   Veu d'entrada i de sortida quan el navegador les té (Chrome a Android sí). */
+
+App.registraVista('conversa', {
+  render: function (arrel) {
+
+    var idConversa = Cau.get('conversa.id', null);
+    var missatges = Cau.get('conversa.missatges', []) || [];
+    var disponible = null, ocupat = false, veuActiva = Cau.get('conversa.veu', false);
+
+    var potEscoltar = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    var potParlar = !!window.speechSynthesis;
+    var reconeixedor = null;
+
+    // ------------------------------------------------------------- estructura
+
+    arrel.innerHTML =
+      '<div class="consola">' +
+        '<div class="consola-cap" id="cap" data-viu="0">' +
+          '<span class="estat-punt"></span>' +
+          '<span id="estat-text">connectant…</span>' +
+          '<span class="creix"></span>' +
+          (potParlar ? '<button class="boto-consola" id="b-veu" style="width:44px;height:44px;border:0"' +
+            'aria-label="Llegir en veu alta">' + ic('veu', 'ic-p') + '</button>' : '') +
+          '<button class="boto-consola" id="b-nova" style="width:44px;height:44px;border:0"' +
+            'aria-label="Conversa nova">' + ic('mes', 'ic-p') + '</button>' +
+        '</div>' +
+        '<div class="transcripcio" id="transcripcio"></div>' +
+        '<div class="entrada-consola">' +
+          '<div class="suggeriments" id="suggeriments"></div>' +
+          '<div class="fila-entrada">' +
+            (potEscoltar ? '<button class="boto-consola" id="b-micro" aria-label="Parla">' +
+              ic('micro') + '</button>' : '') +
+            '<textarea id="camp" rows="1" placeholder="Pregunta\'m el que vulguis…" ' +
+              'autocomplete="off" autocapitalize="sentences"></textarea>' +
+            '<button class="boto-consola" data-primari id="b-envia" aria-label="Envia">' +
+              ic('envia') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    var tr = arrel.querySelector('#transcripcio');
+    var camp = arrel.querySelector('#camp');
+
+    // ---------------------------------------------------------------- pintura
+
+    function pinta() {
+      if (!missatges.length) {
+        tr.innerHTML =
+          '<div class="torn" data-rol="assistent">' +
+            '<span class="qui">Popu</span>' +
+            '<div class="diu">Soc el teu assistent. Miro les teves dades reals i et responc amb elles.\n' +
+            'Si no en tinc, t\'ho dic: no m\'invento res.</div>' +
+          '</div>';
+      } else {
+        tr.innerHTML = missatges.map(torn).join('');
+      }
+      lligaPropostes();
+      tr.scrollTop = tr.scrollHeight;
+    }
+
+    function torn(m) {
+      var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
+        '<span class="qui">' + (m.rol === 'usuari' ? 'Tu' : 'Popu') + '</span>' +
+        '<div class="diu">' + esc(m.text) + '</div>';
+
+      if (m.eines && m.eines.length) {
+        h += '<div class="traca">' + m.eines.map(function (e) {
+          return '<b>' + esc(e.eina) + '</b>' +
+                 (e.files === null || e.files === undefined ? '' : ' · ' + e.files + ' files');
+        }).join('<br>') + '</div>';
+      }
+
+      if (m.propostes && m.propostes.length) {
+        h += m.propostes.map(function (p, i) {
+          return '<div class="proposta" data-proposta="' + i + '">' +
+            '<p>' + esc(p.etiqueta) + '</p>' +
+            '<div class="accions">' +
+              '<button data-si="1">Confirma</button>' +
+              '<button data-no="1">Deixa-ho</button>' +
+            '</div></div>';
+        }).join('');
+      }
+      return h + '</div>';
+    }
+
+    function lligaPropostes() {
+      tr.querySelectorAll('.proposta').forEach(function (el) {
+        var m = missatges[missatges.length - 1];
+        var idx = Number(el.dataset.proposta);
+        var p = m && m.propostes ? m.propostes[idx] : null;
+        if (!p) return;
+
+        el.querySelector('[data-no]').addEventListener('click', function () {
+          el.innerHTML = '<p style="margin:0;color:var(--apagat)">Descartat.</p>';
+        });
+        el.querySelector('[data-si]').addEventListener('click', function (ev) {
+          ev.currentTarget.disabled = true;
+          ev.currentTarget.textContent = 'Desant…';
+          crida('conversa', 'confirma', { eina: p.eina, args: p.args })
+            .then(function () {
+              el.innerHTML = '<p style="margin:0;color:var(--senyal)">Fet.</p>';
+              Cau.treu('habits.' + fmt.avui());
+            })
+            .catch(function (err) {
+              el.innerHTML = '<p style="margin:0;color:var(--alerta)">' + esc(err.message) + '</p>';
+            });
+        });
+      });
+    }
+
+    function pintaEstat() {
+      var cap = arrel.querySelector('#cap');
+      var txt = arrel.querySelector('#estat-text');
+      if (!disponible) { cap.dataset.viu = '0'; txt.textContent = 'connectant…'; return; }
+      cap.dataset.viu = disponible.disponible ? '1' : '0';
+      txt.textContent = disponible.disponible ? 'a punt' : 'sense clau';
+    }
+
+    function pintaSuggeriments(llista) {
+      var s = arrel.querySelector('#suggeriments');
+      s.innerHTML = (llista || []).map(function (t) {
+        return '<button>' + esc(t) + '</button>';
+      }).join('');
+      s.querySelectorAll('button').forEach(function (b) {
+        b.addEventListener('click', function () { camp.value = b.textContent; envia(); });
+      });
+    }
+
+    function avisApagat(motiu) {
+      tr.innerHTML =
+        '<div class="avis-apagat">' +
+          '<strong>Encara no puc parlar</strong>' +
+          esc(motiu || 'Falta la clau de l\'API.') +
+          '<p style="margin:var(--e3) 0 0">Per activar-me:</p>' +
+          '<ol style="margin:var(--e2) 0 0;padding-left:1.2em;line-height:1.7">' +
+            '<li>Treu una clau a <code>aistudio.google.com</code> (gratis)</li>' +
+            '<li>Editor d\'Apps Script → engranatge <b>Configuració del projecte</b> → ' +
+                '<b>Propietats de l\'script</b> → afegeix <code>CLAU_IA</code> amb la clau</li>' +
+            '<li>Al full de càlcul, pestanya <code>_Config</code>, posa <code>ia_activa</code> a <code>SI</code></li>' +
+          '</ol>' +
+        '</div>';
+    }
+
+    // ----------------------------------------------------------------- enviar
+
+    function envia() {
+      var text = camp.value.trim();
+      if (!text || ocupat) return;
+
+      ocupat = true;
+      camp.value = '';
+      camp.style.height = 'auto';
+      arrel.querySelector('#b-envia').disabled = true;
+
+      missatges.push({ rol: 'usuari', text: text });
+      pinta();
+
+      tr.insertAdjacentHTML('beforeend',
+        '<div class="torn" data-rol="assistent" id="pensant">' +
+        '<span class="qui">Popu</span><div class="pensant"><i></i>consultant les teves dades…</div></div>');
+      tr.scrollTop = tr.scrollHeight;
+
+      crida('conversa', 'envia', { text: text, id_conversa: idConversa })
+        .then(function (r) {
+          idConversa = r.id_conversa;
+          Cau.set('conversa.id', idConversa);
+
+          if (r.error) {
+            missatges.push({ rol: 'assistent', text: r.error });
+          } else {
+            missatges.push({ rol: 'assistent', text: r.resposta,
+                             eines: r.eines, propostes: r.propostes });
+            if (veuActiva) parla(r.resposta);
+          }
+          Cau.set('conversa.missatges', missatges.slice(-40));
+          acaba();
+        })
+        .catch(function (err) {
+          missatges.push({ rol: 'assistent', text: err.message });
+          acaba();
+        });
+    }
+
+    function acaba() {
+      ocupat = false;
+      arrel.querySelector('#b-envia').disabled = false;
+      pinta();
+      camp.focus();
+    }
+
+    // -------------------------------------------------------------------- veu
+
+    function parla(text) {
+      if (!potParlar) return;
+      try {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(String(text).slice(0, 600));
+        u.lang = 'ca-ES'; u.rate = 1.05;
+        speechSynthesis.speak(u);
+      } catch (e) { /* si el navegador no en té, no passa res */ }
+    }
+
+    function escolta() {
+      var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Rec) return;
+      var boto = arrel.querySelector('#b-micro');
+
+      if (reconeixedor) { reconeixedor.stop(); reconeixedor = null; boto.dataset.escoltant = '0'; return; }
+
+      reconeixedor = new Rec();
+      reconeixedor.lang = 'ca-ES';
+      reconeixedor.interimResults = true;
+      reconeixedor.continuous = false;
+
+      reconeixedor.onresult = function (ev) {
+        var t = '';
+        for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+        camp.value = t;
+      };
+      reconeixedor.onerror = function (ev) {
+        boto.dataset.escoltant = '0'; reconeixedor = null;
+        App.brindis(ev.error === 'not-allowed'
+          ? 'Has de donar permís de micròfon' : 'No t\'he sentit', 'error');
+      };
+      reconeixedor.onend = function () {
+        boto.dataset.escoltant = '0'; reconeixedor = null;
+        if (camp.value.trim()) envia();
+      };
+
+      boto.dataset.escoltant = '1';
+      try { reconeixedor.start(); }
+      catch (e) { boto.dataset.escoltant = '0'; reconeixedor = null; }
+    }
+
+    // ------------------------------------------------------------------ lligams
+
+    arrel.querySelector('#b-envia').addEventListener('click', envia);
+    camp.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); envia(); }
+    });
+    camp.addEventListener('input', function () {
+      camp.style.height = 'auto';
+      camp.style.height = Math.min(160, camp.scrollHeight) + 'px';
+    });
+
+    if (potEscoltar) arrel.querySelector('#b-micro').addEventListener('click', escolta);
+
+    if (potParlar) {
+      var bv = arrel.querySelector('#b-veu');
+      bv.style.color = veuActiva ? 'var(--senyal)' : '';
+      bv.addEventListener('click', function () {
+        veuActiva = !veuActiva;
+        Cau.set('conversa.veu', veuActiva);
+        bv.style.color = veuActiva ? 'var(--senyal)' : '';
+        App.brindis(veuActiva ? 'Et parlaré en veu alta' : 'Veu desactivada');
+        if (!veuActiva && potParlar) speechSynthesis.cancel();
+      });
+    }
+
+    arrel.querySelector('#b-nova').addEventListener('click', function () {
+      crida('conversa', 'nova', {}).then(function (r) {
+        idConversa = r.id_conversa; missatges = [];
+        Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', []);
+        pinta();
+      });
+    });
+
+    // ------------------------------------------------------------------ arrencada
+
+    pinta();
+
+    crida('conversa', 'estat', {}).then(function (e) {
+      disponible = e;
+      pintaEstat();
+      pintaSuggeriments(e.suggeriments);
+      if (!e.disponible) avisApagat(e.motiu);
+      else if (!missatges.length) {
+        crida('conversa', 'historial', { id_conversa: idConversa }).then(function (h) {
+          if (h.missatges && h.missatges.length) {
+            idConversa = h.id_conversa;
+            missatges = h.missatges;
+            Cau.set('conversa.id', idConversa);
+            Cau.set('conversa.missatges', missatges.slice(-40));
+            pinta();
+          }
+        }).catch(function () {});
+      }
+    }).catch(function (err) {
+      disponible = { disponible: false, motiu: err.message };
+      pintaEstat();
+      if (!missatges.length) avisApagat(err.message);
+    });
+  }
+});
+</script>

@@ -1,0 +1,184 @@
+/**
+ * Popu — NUCLI · L'assistent
+ *
+ * Aquí viu la conversa: qui és Popu, què pot mirar i què no pot tocar.
+ * El transport (parlar amb Gemini) és a 50_IA.gs; això és el cervell del damunt.
+ *
+ * LES DUES REGLES QUE HO SOSTENEN TOT
+ *
+ *   1. NO POT INVENTAR-SE RES. Només pot afirmar el que hagi sortit d'una eina
+ *      en aquesta mateixa conversa. Zero files és una resposta vàlida: «no en
+ *      tinc dades». Una xifra plausible inventada és el pitjor error possible,
+ *      perquè és la que et farà deixar de creure-te'l.
+ *
+ *   2. NO ESCRIU MAI. Les eines marcades amb `escriu: true` NO s'executen:
+ *      es converteixen en una PROPOSTA que has de confirmar tu amb un botó.
+ *      (Requisit 6 del teu briefing.)
+ */
+
+var Assistent = (function () {
+
+  var MAX_VOLTES = 3;          // voltes d'eines abans de rendir-se
+  var MAX_RESULTAT = 8000;     // caràcters per resultat d'eina
+
+  // -------------------------------------------------------------------- eines
+
+  function eines() {
+    var totes = Moduls.einesIA().slice();
+
+    totes.push({
+      nom: 'quines_dades_hi_ha',
+      descripcio: 'Retorna quins mòduls i quines eines existeixen, i la data d\'avui. ' +
+                  'Crida-la si dubtes de si pots respondre una pregunta amb dades reals.',
+      esquema: { type: 'object', properties: {} },
+      executa: function () {
+        return {
+          files: 1,
+          data_avui: Utils.avui(),
+          moduls: Moduls.actius().map(function (m) { return m.id; }),
+          eines: Moduls.einesIA().map(function (e) { return e.nom; })
+        };
+      }
+    });
+
+    return totes;
+  }
+
+  function cerca_(llista, nom) {
+    for (var i = 0; i < llista.length; i++) if (llista[i].nom === nom) return llista[i];
+    return null;
+  }
+
+  function retalla_(obj) {
+    var s = Utils.json(obj);
+    if (s.length <= MAX_RESULTAT) return obj;
+    Log.avis('assistent', 'Resultat d\'eina retallat', { mida: s.length });
+    return {
+      retallat: true,
+      avis: 'El resultat era massa gran. Torna a demanar-ho amb un rang més curt.',
+      mostra: Utils.talla(s, 6000)
+    };
+  }
+
+  // ------------------------------------------------------------- instruccions
+
+  function sistema_() {
+    var fitxa;
+    try { fitxa = Moduls.contextIA({ compacte: true }); }
+    catch (e) { fitxa = ''; }
+
+    return [
+      'Ets Popu, l\'assistent personal d\'en Pol. Respons SEMPRE en català.',
+      '',
+      'Qui és en Pol: mestre de primària i agent rural. Fa senderisme i curses de',
+      'muntanya. Els contextos de la seva vida són docència, agent rural i personal.',
+      '',
+      '== REGLA ABSOLUTA SOBRE LES DADES ==',
+      'Només pots afirmar dades que hagin sortit d\'una crida a una eina en aquesta',
+      'mateixa conversa. Si una eina retorna 0 files, o no hi ha eina per a allò que',
+      'et pregunten, la resposta correcta és dir-ho clarament: «no en tinc dades».',
+      'No estimis. No dedueixis. No facis una mitjana plausible. No diguis',
+      '«probablement» ni «diria que». Si no ho has consultat, no ho saps.',
+      '',
+      '== NO POTS ESCRIURE ==',
+      'No modifiques res pel teu compte. Si et demana apuntar o registrar alguna',
+      'cosa, crida l\'eina corresponent: es convertirà en una proposta que ell haurà',
+      'de confirmar amb un botó. Digues-li que l\'ha de confirmar.',
+      '',
+      '== TO ==',
+      'Directe i curt. Sense preàmbuls, sense «és una bona pregunta», sense emojis.',
+      'Si la resposta cap en una línia, fes-ne una. Parla\'l de tu.',
+      '',
+      '== SITUACIÓ D\'AVUI (dades reals, ja consultades) ==',
+      fitxa || '(encara no hi ha cap mòdul amb dades)'
+    ].join('\n');
+  }
+
+  // ----------------------------------------------------------------- pregunta
+
+  /**
+   * missatges: [{rol:'usuari'|'assistent', text}] en ordre cronològic.
+   * Retorna {text, propostes, einesUsades, tokens, model}.
+   */
+  function pregunta(missatges) {
+    if (!IA.disponible()) {
+      var e = new Error(IA.motiu() || 'La capa d\'IA no està disponible.');
+      e.iaApagada = true;
+      throw e;
+    }
+
+    var llistaEines = eines();
+    var conversa = missatges.slice();
+    var propostes = [], einesUsades = [];
+    var tEntrada = 0, tSortida = 0, model = null;
+
+    for (var volta = 0; volta < MAX_VOLTES; volta++) {
+      var r = IA.genera({
+        sistema: sistema_(),
+        missatges: conversa,
+        eines: llistaEines,
+        model: 'bo',
+        maxTokens: 1200,
+        temperatura: 0
+      });
+
+      tEntrada += r.tokensEntrada; tSortida += r.tokensSortida; model = r.model;
+
+      if (!r.crides.length) {
+        return {
+          text: r.text || 'No sé què respondre a això.',
+          propostes: propostes, einesUsades: einesUsades,
+          tokens: { entrada: tEntrada, sortida: tSortida }, model: model
+        };
+      }
+
+      // Torna el torn del model sencer a la conversa (hi van les crides a eines)
+      conversa.push({ parts: r.contingutBrut.parts, role: 'model' });
+
+      var resultats = [];
+      for (var i = 0; i < r.crides.length; i++) {
+        var c = r.crides[i];
+        var eina = cerca_(llistaEines, c.nom);
+        var resultat;
+
+        if (!eina) {
+          resultat = { error: 'Aquesta eina no existeix.', files: 0 };
+        } else if (eina.escriu) {
+          propostes.push({
+            eina: eina.nom,
+            modul: eina._modul,
+            accio: eina.accio,
+            etiqueta: eina.etiqueta ? eina.etiqueta(c.args || {}) : eina.nom,
+            args: c.args || {}
+          });
+          resultat = { pendent_de_confirmacio: true,
+                       missatge: 'Proposta creada. Encara NO s\'ha fet res: en Pol l\'ha de confirmar.' };
+        } else {
+          try {
+            resultat = eina.executa(c.args || {});
+          } catch (err) {
+            Log.error('assistent.eina', 'L\'eina ' + c.nom + ' ha fallat: ' + err.message, c.args);
+            resultat = { error: 'L\'eina ha fallat: ' + err.message, files: 0 };
+          }
+        }
+
+        einesUsades.push({
+          eina: c.nom, args: c.args || {},
+          files: (resultat && resultat.files !== undefined) ? resultat.files : null
+        });
+        resultats.push({ nom: c.nom, resultat: retalla_(resultat) });
+      }
+
+      conversa.push(IA.missatgeEines(resultats));
+    }
+
+    Log.avis('assistent', 'S\'han esgotat les voltes d\'eines');
+    return {
+      text: 'He consultat les dades però no n\'he tret una resposta clara. Prova de preguntar-ho més concret.',
+      propostes: propostes, einesUsades: einesUsades,
+      tokens: { entrada: tEntrada, sortida: tSortida }, model: model
+    };
+  }
+
+  return { pregunta: pregunta, eines: eines };
+})();
