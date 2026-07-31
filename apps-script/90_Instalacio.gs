@@ -210,7 +210,8 @@ function reanomenaFullDeCalcul() {
  *      d'inventar-se una xifra  ← això és el que de debò importa
  */
 function provaIA() {
-  var linies = ['=== PROVA DE LA CAPA D\'IA ==='];
+  var linies = ['=== PROVA DE LA CAPA D\'IA ===',
+                '(fa 4 o 5 peticions: si tot seguit et surt el límit de quota, és per això)'];
 
   function afegeix(t) { linies.push(t); Logger.log(t); }
 

@@ -18,7 +18,11 @@
 
 var Assistent = (function () {
 
-  var MAX_VOLTES = 3;          // voltes d'eines abans de rendir-se
+  /* Cada volta és UNA petició sencera a Gemini. Amb la capa gratuïta, el
+     límit no són els diners sinó les peticions per minut: tres voltes per
+     pregunta esgoten la quota en un parell de preguntes. Dues n'hi ha prou
+     per a qualsevol cosa que sàpiga fer avui. */
+  var MAX_VOLTES = 2;
   var MAX_RESULTAT = 8000;     // caràcters per resultat d'eina
 
   // -------------------------------------------------------------------- eines

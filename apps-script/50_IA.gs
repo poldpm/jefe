@@ -106,8 +106,28 @@ var IA = (function () {
       var text = resposta.getContentText();
 
       if (codi === 429) {
-        var e429 = new Error('Has arribat al límit gratuït de peticions. Torna-ho a provar d\'aquí una estona.');
+        // Google diu quant s'ha d'esperar i quina quota s'ha exhaurit.
+        // Val la pena llegir-ho en comptes de reintentar a cegues.
+        var d = Utils.desJson(text, {});
+        var detalls = (d.error && d.error.details) || [];
+        var espera = null, quota = null;
+        for (var k = 0; k < detalls.length; k++) {
+          if (detalls[k].retryDelay) espera = String(detalls[k].retryDelay);
+          if (detalls[k].violations && detalls[k].violations[0]) {
+            quota = detalls[k].violations[0].quotaId || detalls[k].violations[0].quotaMetric;
+          }
+        }
+        Log.avis('ia.quota', 'Límit de quota assolit', { quota: quota, espera: espera });
+
+        var segons = espera ? parseInt(espera, 10) : null;
+        var e429 = new Error(
+          'Has arribat al límit gratuït de Gemini' +
+          (segons ? '. Torna-ho a provar d\'aquí ' + segons + ' segons.'
+                  : '. Espera un minut i torna-hi.') +
+          (quota ? ' (límit: ' + quota + ')' : '')
+        );
         e429.quota = true;
+        e429.esperaSegons = segons;
         throw e429;
       }
       if (codi >= 500) throw new Error('El servei d\'IA no respon ara mateix (codi ' + codi + ').');
@@ -229,9 +249,12 @@ var IA = (function () {
         return r;
       } catch (err) {
         intents++;
-        // Reintenta només el que té sentit reintentar, i poques vegades.
-        var recuperable = err.quota || /no respon ara mateix/.test(err.message || '');
-        if (!recuperable || intents >= 3) {
+        /* La quota NO es reintenta. Un límit per minut no es recupera en
+           quatre segons: reintentar-ho només afegeix espera abans de fallar
+           igualment, i encara consumeix més quota. Es falla de seguida i
+           es diu quant s'ha d'esperar. */
+        var recuperable = !err.quota && /no respon ara mateix/.test(err.message || '');
+        if (!recuperable || intents >= 2) {
           Log.error('ia.genera', err, { model: model, intents: intents });
           throw err;
         }
