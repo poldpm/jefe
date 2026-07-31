@@ -347,3 +347,40 @@ function triaModels() {
   Log.info('instalacio', 'Models triats', { barat: barat.id, bo: bo.id });
   return linies.join('\n');
 }
+
+
+/**
+ * Genera la clau d'accés per a la interfície servida des de fora.
+ *
+ * Executa-la un cop. Escriu la clau al registre: copia-la, enganxa-la a la
+ * pantalla de JEFE quan te la demani, i no la desis enlloc més.
+ * Si algun dia sospites que se t'ha escapat, torna a executar-la: la vella
+ * deixa de servir a l'instant.
+ */
+function generaClauAcces() {
+  var alfabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  var clau = '';
+  var bytes = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  for (var i = 0; i < 48; i++) {
+    clau += alfabet.charAt((bytes.charCodeAt(i % bytes.length) * (i + 7)) % alfabet.length);
+  }
+
+  PropertiesService.getScriptProperties().setProperty(PROP_CLAU_ACCES, clau);
+  Log.info('instalacio', 'Clau d\'accés generada');
+
+  var text = [
+    '',
+    '=== CLAU D\'ACCÉS DE JEFE ===',
+    '',
+    clau,
+    '',
+    'Copia-la ara. Aquesta és l\'única vegada que te la mostro còmodament.',
+    '(Sempre la pots recuperar a Configuració del projecte → Propietats de l\'script.)',
+    '',
+    'Qui tingui aquesta clau i l\'URL del desplegament pot llegir les teves dades.',
+    'No la posis en cap fitxer del projecte ni la comparteixis.',
+    '============================'
+  ].join('\n');
+  Logger.log(text);
+  return text;
+}

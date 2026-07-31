@@ -33,6 +33,60 @@ function include(fitxer) {
 }
 
 /**
+ * PORTA D'ENTRADA DES DE FORA D'APPS SCRIPT
+ *
+ * Existeix per un sol motiu: Apps Script serveix les seves pàgines dins d'un
+ * iframe que no delega permís de micròfon, i per tant l'escolta contínua no hi
+ * pot funcionar mai. Amb la interfície servida des de fora, sí.
+ *
+ * SEGURETAT — llegeix-ho abans de desplegar:
+ *   Perquè una pàgina d'un altre domini pugui cridar-lo, el desplegament ha de
+ *   ser d'accés «Qualsevol». La porta la tanca una clau llarga que viu a
+ *   Script Properties (CLAU_ACCES) i al teu navegador. Mai al repositori.
+ *   Sense clau correcta, aquesta funció no mira ni què li demanes.
+ *
+ * Es fa servir `text/plain` a posta: així el navegador no envia cap petició
+ * de comprovació prèvia, que Apps Script no sap respondre.
+ */
+function doPost(e) {
+  var resposta = function (obj) {
+    return ContentService.createTextOutput(JSON.stringify(obj))
+                         .setMimeType(ContentService.MimeType.JSON);
+  };
+
+  var peticio;
+  try {
+    peticio = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+  } catch (err) {
+    return resposta({ ok: false, error: 'La petició no és JSON vàlid.' });
+  }
+
+  var esperada = PropertiesService.getScriptProperties().getProperty(PROP_CLAU_ACCES);
+  if (!esperada) {
+    return resposta({ ok: false, error: 'El servidor no té clau d\'accés configurada. ' +
+                                        'Executa generaClauAcces() des de l\'editor.' });
+  }
+  if (!clausIguals_(String(peticio.clau || ''), esperada)) {
+    Log.avis('api.rebutjat', 'Petició amb clau incorrecta', { modul: peticio.modul });
+    return resposta({ ok: false, error: 'Clau d\'accés incorrecta.' });
+  }
+
+  return resposta(api(peticio.modul, peticio.accio, peticio.params || {}));
+}
+
+/**
+ * Comparació de claus en temps constant.
+ * Amb `===` el temps de resposta varia segons quants caràcters coincideixen,
+ * i això és suficient per endevinar una clau a base d'intents cronometrats.
+ */
+function clausIguals_(a, b) {
+  if (a.length !== b.length) return false;
+  var diferencia = 0;
+  for (var i = 0; i < a.length; i++) diferencia |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+  return diferencia === 0;
+}
+
+/**
  * Encaminador únic. Retorna SEMPRE {ok: bool, dades|error}.
  * El client no ha de gestionar excepcions, només mirar `ok`.
  */

@@ -68,28 +68,79 @@ var Jefe = (function () {
 
   // ------------------------------------------------------- crides al servidor
 
-  function crida(modul, accio, params) {
+  /* -------------------------------------------------------------------------
+     DOS TRANSPORTS, LA MATEIXA CRIDA
+
+     Dins d'Apps Script s'usa google.script.run, que ja ve autenticat.
+     Servida des de fora (GitHub Pages), s'usa fetch contra el desplegament,
+     amb la clau d'accés. Els mòduls no saben ni els importa quin dels dos és.
+
+     `text/plain` no és un error: amb JSON el navegador enviaria una petició
+     de comprovació prèvia que Apps Script no sap respondre. El cos segueix
+     sent JSON; només canvia l'etiqueta.
+     ------------------------------------------------------------------------- */
+
+  function dinsAppsScript() {
+    return !!(window.google && google.script && google.script.run);
+  }
+
+  var Servidor = {
+    config: function () { return Cau.get('servidor', null); },
+    desa: function (url, clau) { Cau.set('servidor', { url: url, clau: clau }); },
+    esborra: function () { Cau.treu('servidor'); }
+  };
+
+  function cridaLocal_(modul, accio, params) {
     return new Promise(function (resolta, falla) {
-      if (!window.google || !google.script || !google.script.run) {
-        var e = new Error('Aquesta pàgina no està servida per Apps Script.');
-        e.xarxa = true; return falla(e);
-      }
       google.script.run
         .withSuccessHandler(function (r) {
           App.enLinia(true);
           if (r && r.ok) return resolta(r.dades);
           var err = new Error((r && r.error) || 'El servidor ha respost sense dades.');
-          err.api = true;
-          falla(err);
+          err.api = true; falla(err);
         })
         .withFailureHandler(function (err) {
           App.enLinia(false);
           var e = new Error(err && err.message ? err.message : 'No hi ha connexió amb el servidor.');
-          e.xarxa = true;
-          falla(e);
+          e.xarxa = true; falla(e);
         })
         .api(modul, accio, params || {});
     });
+  }
+
+  function cridaRemota_(modul, accio, params) {
+    var cfg = Servidor.config();
+    if (!cfg || !cfg.url || !cfg.clau) {
+      var e = new Error('Encara no has connectat JEFE amb el teu servidor.');
+      e.senseServidor = true;
+      return Promise.reject(e);
+    }
+    return fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ clau: cfg.clau, modul: modul, accio: accio, params: params || {} })
+    })
+    .then(function (r) {
+      if (!r.ok) { var e = new Error('El servidor ha respost ' + r.status + '.'); e.xarxa = true; throw e; }
+      return r.json();
+    })
+    .then(function (r) {
+      App.enLinia(true);
+      if (r && r.ok) return r.dades;
+      var err = new Error((r && r.error) || 'El servidor ha respost sense dades.');
+      err.api = true;
+      if (/clau d'accés/i.test(err.message)) err.clauDolenta = true;
+      throw err;
+    })
+    .catch(function (err) {
+      if (!err.api && !err.senseServidor) { App.enLinia(false); err.xarxa = true; }
+      throw err;
+    });
+  }
+
+  function crida(modul, accio, params) {
+    return dinsAppsScript() ? cridaLocal_(modul, accio, params)
+                            : cridaRemota_(modul, accio, params);
   }
 
   // ------------------------------------------------- cua d'escriptures pendents
@@ -180,6 +231,13 @@ var Jefe = (function () {
       App.moduls = (estatInicial && estatInicial.moduls) || Cau.get('moduls', []);
       App.pintaNav();
       App.aplicaTema(Cau.get('tema', 'auto'));
+
+      // Servida des de fora i encara sense servidor: primer connectar.
+      if (!dinsAppsScript() && !Servidor.config()) {
+        App.ves('conversa');
+        setTimeout(function () { App.connecta(); }, 300);
+        return;
+      }
 
       // La conversa és la pantalla d'arrencada: és l'assistent, no el formulari.
       var darrera = Cau.get('vista', 'conversa');
@@ -290,6 +348,46 @@ var Jefe = (function () {
 
     // ----------------------------------------------------------------- tema
 
+    /**
+     * Pantalla de connexió. Només surt quan la interfície se serveix des de
+     * fora d'Apps Script i encara no sap a quin servidor ha de parlar.
+     * La clau es desa al navegador i no viatja enlloc més que al teu propi
+     * desplegament.
+     */
+    connecta: function (motiu) {
+      var cfg = Servidor.config() || {};
+      var cos = App.modal('Connecta JEFE',
+        (motiu ? '<div class="avis" style="margin-bottom:var(--e4)">' + esc(motiu) + '</div>' : '') +
+        '<label class="camp"><span>URL del desplegament</span>' +
+          '<input class="entrada" id="c-url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" ' +
+          'value="' + esc(cfg.url || '') + '"></label>' +
+        '<label class="camp"><span>Clau d\'accés</span>' +
+          '<input class="entrada" id="c-clau" type="password" autocomplete="off" ' +
+          'placeholder="la que t\'ha donat generaClauAcces()" value="' + esc(cfg.clau || '') + '"></label>' +
+        '<p class="menut" style="margin:0 0 var(--e4)">La clau es desa només en aquest ' +
+          'navegador. No surt d\'aquí excepte cap al teu propi servidor.</p>' +
+        '<button class="btn btn-primari btn-ple" data-connecta="1">Connecta</button>');
+
+      cos.querySelector('[data-connecta]').addEventListener('click', function (ev) {
+        var url = cos.querySelector('#c-url').value.trim();
+        var clau = cos.querySelector('#c-clau').value.trim();
+        if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
+          App.brindis('L\'URL ha d\'acabar en /exec', 'error'); return;
+        }
+        if (clau.length < 20) { App.brindis('La clau sembla massa curta', 'error'); return; }
+
+        ev.currentTarget.dataset.carregant = '1';
+        Servidor.desa(url, clau);
+        crida('nucli', 'ping', {})
+          .then(function () { App.tancaModal(); App.brindis('Connectat'); App.refresca(); })
+          .catch(function (err) {
+            ev.currentTarget.dataset.carregant = '0';
+            Servidor.esborra();
+            App.brindis(err.clauDolenta ? 'La clau no és correcta' : err.message, 'error');
+          });
+      });
+    },
+
     aplicaTema: function (tema) {
       Cau.set('tema', tema);
       if (tema === 'auto') document.documentElement.removeAttribute('data-tema');
@@ -303,9 +401,11 @@ var Jefe = (function () {
     if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
   });
 
-  return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, esc: esc, ic: ic, fmt: fmt };
+  return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida,
+           esc: esc, ic: ic, fmt: fmt, Servidor: Servidor, dinsAppsScript: dinsAppsScript };
 })();
 
 var App = Jefe.App, Comp = Jefe.Comp, Cau = Jefe.Cau, Cua = Jefe.Cua;
 var crida = Jefe.crida, esc = Jefe.esc, ic = Jefe.ic, fmt = Jefe.fmt;
+var Servidor = Jefe.Servidor, dinsAppsScript = Jefe.dinsAppsScript;
 </script>

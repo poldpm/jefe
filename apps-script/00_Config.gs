@@ -14,6 +14,7 @@ var NOM_FULL_CALCUL = 'JEFE — Assistent';
 /** Claus de Script Properties. Mai al codi, mai a cap fitxer versionat. */
 var PROP_ID_FULL = 'ID_FULL';
 var PROP_CLAU_IA = 'CLAU_IA';
+var PROP_CLAU_ACCES = 'CLAU_ACCES';   // porta d'entrada des de fora d'Apps Script
 
 /**
  * Valors per defecte del full `_Config`.
