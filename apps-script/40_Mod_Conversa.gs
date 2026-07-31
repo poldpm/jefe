@@ -51,6 +51,7 @@ var Conversa = (function () {
     return {
       disponible: IA.disponible(),
       motiu: IA.motiu(),
+      model: Config.get('model_bo'),
       suggeriments: suggeriments_()
     };
   }
