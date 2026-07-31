@@ -81,6 +81,60 @@ var Relleu = (function () {
     return linies;
   }
 
+  /**
+   * Converteix una polilínia en una corba suau.
+   *
+   * Marching squares retorna trams rectes entre les vores de cada cel·la, i
+   * això deixa cantonades punxegudes que una corba de nivell real no té.
+   * Aquí es fan dues coses:
+   *
+   *   1. ALLEUGERIR: es queda un punt de cada `salt`. Els punts massa junts
+   *      són els que porten el ziga-zaga de la graella; treure'ls elimina la
+   *      causa en comptes de dissimular-la.
+   *   2. SPLINE de Catmull-Rom passada a Bézier cúbica. La corba passa per
+   *      tots els punts que queden i entra i surt de cadascun amb la mateixa
+   *      direcció, que és el que la fa contínua a la vista.
+   *
+   * Es respecta si la línia és tancada: en una corba de nivell tancada, el
+   * punt d'unió no s'ha de notar.
+   */
+  function camiSuau(punts, ex, ey, salt) {
+    salt = salt || 2;
+
+    var tancada = punts.length > 3 &&
+      Math.abs(punts[0].x - punts[punts.length - 1].x) < 1e-6 &&
+      Math.abs(punts[0].y - punts[punts.length - 1].y) < 1e-6;
+
+    // 1. Alleugerir, conservant sempre l'últim punt
+    var p = [];
+    for (var i = 0; i < punts.length; i += salt) p.push(punts[i]);
+    if (p[p.length - 1] !== punts[punts.length - 1]) p.push(punts[punts.length - 1]);
+    if (tancada && p.length > 2) p.pop();               // el tancament el fa la Z
+    if (p.length < 3) return null;
+
+    var X = function (n) { return (n.x * ex).toFixed(2); };
+    var Y = function (n) { return (n.y * ey).toFixed(2); };
+    var v = function (i) {                              // índex amb voltes si és tancada
+      var n = p.length;
+      return tancada ? p[((i % n) + n) % n] : p[Math.max(0, Math.min(n - 1, i))];
+    };
+
+    // 2. Catmull-Rom → Bézier. 1/6 és la tensió estàndard; una mica menys
+    //    evita que la corba es passi de llarg als revolts tancats.
+    var T = 0.16;
+    var d = 'M' + X(p[0]) + ' ' + Y(p[0]);
+    var fins = tancada ? p.length : p.length - 1;
+
+    for (var j = 0; j < fins; j++) {
+      var p0 = v(j - 1), p1 = v(j), p2 = v(j + 1), p3 = v(j + 2);
+      var c1 = { x: p1.x + (p2.x - p0.x) * T, y: p1.y + (p2.y - p0.y) * T };
+      var c2 = { x: p2.x - (p3.x - p1.x) * T, y: p2.y - (p3.y - p1.y) * T };
+      d += 'C' + X(c1) + ' ' + Y(c1) + ',' + X(c2) + ' ' + Y(c2) + ',' + X(p2) + ' ' + Y(p2);
+    }
+
+    return d + (tancada ? 'Z' : '');
+  }
+
   /** Camp suau a partir d'una matriu gruixuda (files x cols de 0..1). */
   function camp(matriu, files, cols, sub) {
     sub = sub || 4;
@@ -127,9 +181,8 @@ var Relleu = (function () {
       var linies = encadena(isolinies(c.dades, c.files, c.cols, n));
       var mestra = (i === 2);                 // la corba mestra, més gruixuda
       linies.forEach(function (l) {
-        var d = 'M' + l.map(function (p) {
-          return (p.x * ex).toFixed(1) + ' ' + (p.y * ey).toFixed(1);
-        }).join('L');
+        var d = camiSuau(l, ex, ey, 2);
+        if (!d) return;
         camins.push('<path d="' + d + '" fill="none" stroke="' +
           (mestra ? 'var(--corba-mestra)' : 'var(--corba)') + '" stroke-width="' +
           (mestra ? 1.6 : .9) + '" stroke-linecap="round" stroke-linejoin="round" opacity="' +
@@ -210,11 +263,9 @@ var Relleu = (function () {
       var n = i / nivells;
       var linies = encadena(isolinies(cmp.dades, cmp.files, cmp.cols, n));
       for (var l = 0; l < linies.length; l++) {
-        if (linies[l].length < 4) continue;       // trossets solts: soroll visual
-        var d = 'M' + linies[l].map(function (p) {
-          return (p.x * ex).toFixed(1) + ' ' + (p.y * ey).toFixed(1);
-        }).join('L');
-        camins.push('<path d="' + d + '"/>');
+        if (linies[l].length < 6) continue;       // trossets solts: soroll visual
+        var d = camiSuau(linies[l], ex, ey, 3);
+        if (d) camins.push('<path d="' + d + '"/>');
       }
     }
 
