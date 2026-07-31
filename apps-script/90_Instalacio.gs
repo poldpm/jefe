@@ -272,3 +272,78 @@ function provaIA() {
   afegeix('=== FI ===');
   return linies.join('\n');
 }
+
+
+/**
+ * TRIA ELS MODELS — executa-la si l'API et diu que un model ja no existeix.
+ *
+ * Els noms dels models de Google canvien i es retiren sovint. Aquesta funció
+ * pregunta a l'API quins pots fer servir TU ara mateix, en tria un de ràpid i
+ * un de bo, i els desa a `_Config`. Cap nom de model viu escrit al codi.
+ *
+ * Si la tria automàtica no t'agrada, tens la llista sencera al registre i
+ * només has de canviar les cel·les `model_barat` i `model_bo` del full _Config.
+ */
+function triaModels() {
+  var linies = [];
+  function afegeix(t) { linies.push(t); Logger.log(t); }
+
+  var llista;
+  try {
+    llista = IA.models();
+  } catch (err) {
+    afegeix('FALLA: ' + err.message);
+    return linies.join('\n');
+  }
+
+  if (!llista.length) {
+    afegeix('L\'API no ha retornat cap model que pugui generar contingut.');
+    return linies.join('\n');
+  }
+
+  afegeix('=== MODELS DISPONIBLES AMB LA TEVA CLAU (' + llista.length + ') ===');
+  llista.forEach(function (m) {
+    afegeix('  ' + m.id + '   ·   ' + m.nom + '   ·   entrada ' + m.entrada + ' tokens');
+  });
+
+  // Descarta el que no serveix per conversar
+  var utils = llista.filter(function (m) {
+    return !/embedding|aqa|image|imagen|veo|tts|audio|native-audio|live/i.test(m.id);
+  });
+
+  function versio(id) {
+    var m = id.match(/(\d+)\.(\d+)/);
+    return m ? Number(m[1]) * 100 + Number(m[2]) : 0;
+  }
+  function puntua(m, volFlash) {
+    var p = versio(m.id) * 10;
+    if (volFlash && /flash/i.test(m.id)) p += 50;
+    if (!volFlash && /pro/i.test(m.id)) p += 50;
+    if (/lite/i.test(m.id)) p += volFlash ? 10 : -30;   // barat: millor lite; bo: pitjor
+    if (/preview|exp/i.test(m.id)) p -= 15;             // preferim els estables
+    if (/thinking/i.test(m.id)) p -= 10;                // pensa molt i costa quota
+    return p;
+  }
+
+  var barat = utils.slice().sort(function (a, b) { return puntua(b, true) - puntua(a, true); })[0];
+  var bo    = utils.slice().sort(function (a, b) { return puntua(b, false) - puntua(a, false); })[0];
+
+  if (!barat || !bo) {
+    afegeix('No he sabut triar. Posa un dels d\'aquí dalt a mà a _Config.');
+    return linies.join('\n');
+  }
+
+  Config.set('model_barat', barat.id);
+  Config.set('model_bo', bo.id);
+
+  afegeix('');
+  afegeix('=== TRIATS I DESATS A _Config ===');
+  afegeix('  model_barat (classificar, resums) : ' + barat.id);
+  afegeix('  model_bo    (conversa)            : ' + bo.id);
+  afegeix('');
+  afegeix('Si en vols uns altres, canvia aquestes dues cel·les al full _Config.');
+  afegeix('Ara executa provaIA() per comprovar que responen.');
+
+  Log.info('instalacio', 'Models triats', { barat: barat.id, bo: bo.id });
+  return linies.join('\n');
+}

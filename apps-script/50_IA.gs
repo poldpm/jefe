@@ -155,6 +155,37 @@ var IA = (function () {
     }
   };
 
+  /**
+   * Quins models pot fer servir AQUESTA clau, ara mateix.
+   * Els noms dels models canvien i es retiren sense avisar; per això no n'hi ha
+   * cap escrit a foc al codi: es demanen i es desen a `_Config`.
+   */
+  Gemini.models = function () {
+    var resposta = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+      { method: 'get', headers: { 'x-goog-api-key': clau_() }, muteHttpExceptions: true });
+
+    var codi = resposta.getResponseCode();
+    if (codi !== 200) {
+      throw new Error('No s\'ha pogut llegir la llista de models (codi ' + codi + '): ' +
+                      Utils.talla(resposta.getContentText(), 200));
+    }
+
+    var dades = Utils.desJson(resposta.getContentText(), {});
+    return (dades.models || [])
+      .filter(function (m) {
+        return (m.supportedGenerationMethods || []).indexOf('generateContent') !== -1;
+      })
+      .map(function (m) {
+        return {
+          id: String(m.name || '').replace(/^models\//, ''),
+          nom: m.displayName || '',
+          entrada: m.inputTokenLimit || 0,
+          sortida: m.outputTokenLimit || 0
+        };
+      });
+  };
+
   var PROVEIDORS = { gemini: Gemini };
 
   // ---------------------------------------------------------------- públic
@@ -216,11 +247,20 @@ var IA = (function () {
     return prov.respostaEines(resultats);
   }
 
+  /** Models disponibles per al proveïdor actiu. */
+  function models() {
+    var prov = PROVEIDORS[proveidor_()];
+    if (!prov || !prov.models) throw new Error('Aquest proveïdor no sap llistar models.');
+    if (!clau_()) throw new Error('Falta la clau de l\'API a Script Properties (CLAU_IA).');
+    return prov.models();
+  }
+
   return {
     disponible: disponible,
     motiu: motiu,
     estat: estat,
     genera: genera,
-    missatgeEines: missatgeEines
+    missatgeEines: missatgeEines,
+    models: models
   };
 })();
