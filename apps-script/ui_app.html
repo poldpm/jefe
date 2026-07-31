@@ -223,6 +223,7 @@ var Jefe = (function () {
 
     pintaNav: function () {
       var nav = document.getElementById('nav');
+      if (!nav) return;                    // sense barra de seccions: no és cap error
       var items = [{ id: 'inici', nom: 'Inici', icona: 'inici' }].concat(
         App.moduls.filter(function (m) { return m.teVista; })
       );

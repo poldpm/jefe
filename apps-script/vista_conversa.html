@@ -22,8 +22,7 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   position: fixed; left: 0; right: 0; top: 0;
-  /* +3px: la navegació té una vora doble de 3px que sobresurt de la seva alçada */
-  bottom: calc(var(--nav) + 3px + env(safe-area-inset-bottom, 0px));
+  bottom: env(safe-area-inset-bottom, 0px);
   display: flex; flex-direction: column;
   background:
     radial-gradient(ellipse 80% 60% at 50% 38%, #0b2137 0%, transparent 70%),
@@ -32,7 +31,7 @@
   padding-top: env(safe-area-inset-top, 0px);
   overflow: hidden;
 }
-@media (min-width: 900px) { .hud { top: 55px; bottom: 0; padding-top: 0; } }
+@media (min-width: 900px) { .hud { top: 0; bottom: 0; padding-top: 0; } }
 
 /* Quadrícula d'anàlisi */
 .hud::before {
@@ -191,6 +190,7 @@ App.registraVista('conversa', {
           (potParlar ? '<button class="bt bt-p" id="b-veu" aria-pressed="false" aria-label="Llegir en veu alta">' +
             ic('veu', 'ic-p') + '</button>' : '') +
           '<button class="bt bt-p" id="b-nova" aria-label="Conversa nova">' + ic('mes', 'ic-p') + '</button>' +
+          '<button class="bt bt-p" id="b-vistes" aria-label="Altres vistes">' + ic('modul', 'ic-p') + '</button>' +
           '<span class="rellotge" id="rellotge">--:--:--</span>' +
         '</div>' +
 
@@ -247,6 +247,7 @@ App.registraVista('conversa', {
       dre.push('estat <span class="val">' + hud.dataset.estat + '</span>');
       if (estatIA && estatIA.model) dre.push('model <span class="val">' + esc(estatIA.model) + '</span>');
       dre.push('veu <span class="val">' + (veuActiva ? 'ON' : 'OFF') + '</span>');
+      dre.push('escolta <span class="val">' + (continua ? 'CONTÍNUA' : 'OFF') + '</span>');
       dre.push('micro <span class="val">' + (potEscoltar ? 'OK' : 'NO') + '</span>');
       arrel.querySelector('#tel-dre').innerHTML = dre.join('<br>');
     }
@@ -381,41 +382,179 @@ App.registraVista('conversa', {
         speechSynthesis.cancel();
         var u = new SpeechSynthesisUtterance(String(text).slice(0, 600));
         u.lang = 'ca-ES'; u.rate = 1.05;
+        // Mentre parla, s'apaga l'escolta: si no, se sentiria a ell mateix
+        // i es respondria sol en bucle.
+        parlantAra = true;
+        if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
+
         u.onstart = function () { posaEstat('parlant', 'parlant'); };
         u.onboundary = function () { nucli.pols(0.7); };
-        u.onend = function () { posaEstat('repos', 'a punt'); };
+        u.onend = function () {
+          parlantAra = false;
+          if (continua) { posaEstat('escoltant', 'escoltant'); arrencaReconeixedor(); }
+          else posaEstat('repos', 'a punt');
+        };
         speechSynthesis.speak(u);
       } catch (e) {}
     }
 
-    function escolta() {
+    /* ---------------------------------------------------------------------
+       ESCOLTA CONTÍNUA
+
+       El botó del micròfon no és «prem i parla»: engega i es queda engegat.
+       Chrome talla el reconeixement cada pocs segons de silenci, així que
+       es torna a arrencar sol fins que l'apaguis.
+
+       Perquè no salti cada cop que dius qualsevol cosa a casa, només actua
+       quan sent la paraula clau. També s'atura mentre JEFE parla, per no
+       sentir-se a ell mateix.
+       --------------------------------------------------------------------- */
+
+    var CLAUS = ['jefe', 'jefa', 'xefe', 'chef', 'hefe', 'gefe'];   // el reconeixedor no sempre encerta
+    var continua = false, aturaVoluntaria = false, parlantAra = false;
+    var buffer = '', tempsBuffer = null;
+
+    function teParaulaClau(t) {
+      var n = t.toLowerCase();
+      for (var i = 0; i < CLAUS.length; i++) {
+        var p = n.indexOf(CLAUS[i]);
+        if (p !== -1) return n.slice(p + CLAUS[i].length).replace(/^[\s,.:;!?]+/, '');
+      }
+      return null;
+    }
+
+    function arrencaReconeixedor() {
       var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec) return;
-      var boto = arrel.querySelector('#b-micro');
-      if (reconeixedor) { reconeixedor.stop(); return; }
+      if (!Rec || reconeixedor || parlantAra) return;
 
       reconeixedor = new Rec();
-      reconeixedor.lang = 'ca-ES'; reconeixedor.interimResults = true; reconeixedor.continuous = false;
+      reconeixedor.lang = 'ca-ES';
+      reconeixedor.interimResults = true;
+      reconeixedor.continuous = true;
+      reconeixedor.maxAlternatives = 1;
+
+      reconeixedor.onstart = function () { posaEstat('escoltant', 'escoltant'); };
+
       reconeixedor.onresult = function (ev) {
-        var t = '';
-        for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
-        camp.value = t; nucli.pols(0.9);
+        var definitiu = '', provisional = '';
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          (ev.results[i].isFinal ? (definitiu += ev.results[i][0].transcript)
+                                 : (provisional += ev.results[i][0].transcript));
+        }
+        if (provisional) nucli.pols(Math.min(1, 0.35 + provisional.length / 40));
+        if (!definitiu) return;
+
+        buffer += ' ' + definitiu;
+        nucli.pols(1);
+
+        var ordre = teParaulaClau(buffer);
+        if (ordre === null) {
+          // Sense paraula clau: es descarta al cap d'un moment
+          clearTimeout(tempsBuffer);
+          tempsBuffer = setTimeout(function () { buffer = ''; }, 6000);
+          return;
+        }
+        // Espera un instant per si encara acabes la frase
+        clearTimeout(tempsBuffer);
+        tempsBuffer = setTimeout(function () {
+          var text = (teParaulaClau(buffer) || '').trim();
+          buffer = '';
+          if (text.length < 2) { App.brindis('Digues «JEFE» i la pregunta'); return; }
+          camp.value = text;
+          envia();
+        }, 1100);
       };
+
       reconeixedor.onerror = function (ev) {
-        boto.dataset.actiu = '0'; reconeixedor = null;
-        posaEstat('repos', 'a punt');
-        App.brindis(ev.error === 'not-allowed' ? 'Has de donar permís de micròfon' : 'No t\'he sentit', 'error');
+        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+          continua = false; aturaVoluntaria = true;
+          pintaMicro();
+          diagnosticMicro();
+        } else if (ev.error === 'no-speech' || ev.error === 'aborted') {
+          // normal: el bucle de onend ja el tornarà a arrencar
+        } else {
+          App.brindis('Micròfon: ' + ev.error, 'error');
+        }
       };
+
       reconeixedor.onend = function () {
-        boto.dataset.actiu = '0'; reconeixedor = null;
-        posaEstat('repos', 'a punt');
-        if (camp.value.trim()) envia();
+        reconeixedor = null;
+        if (continua && !aturaVoluntaria && !parlantAra) {
+          setTimeout(arrencaReconeixedor, 250);          // Chrome talla sol: es rearrenca
+        } else if (!continua) {
+          posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
+                    estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
+        }
       };
-      boto.dataset.actiu = '1';
-      posaEstat('escoltant', 'escoltant');
+
       try { reconeixedor.start(); }
-      catch (e) { boto.dataset.actiu = '0'; reconeixedor = null; posaEstat('repos', 'a punt'); }
+      catch (e) { reconeixedor = null; }
     }
+
+    function alternaEscolta() {
+      if (continua) {
+        continua = false; aturaVoluntaria = true;
+        if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
+        buffer = '';
+        pintaMicro();
+        posaEstat('repos', 'a punt');
+        App.brindis('Escolta aturada');
+        return;
+      }
+      continua = true; aturaVoluntaria = false;
+      pintaMicro();
+      arrencaReconeixedor();
+      App.brindis('Escoltant. Digues «JEFE» i la pregunta.');
+    }
+
+    function pintaMicro() {
+      var b = arrel.querySelector('#b-micro');
+      if (b) b.dataset.actiu = continua ? '1' : '0';
+      Cau.set('conversa.escolta', continua);
+      pintaTelemetria();
+    }
+
+    /**
+     * Per què no puc engegar el micròfon.
+     * Apps Script serveix la pàgina dins d'un iframe que no té permís de
+     * micròfon, i aleshores el navegador ni tan sols pregunta: falla de
+     * seguida. Això ho comprova i t'ho diu amb el nom exacte de l'error.
+     */
+    function diagnosticMicro() {
+      var dins = (window.self !== window.top);
+      function informa(detall) {
+        tr.insertAdjacentHTML('beforeend',
+          '<div class="avis-apagat"><strong>Micròfon bloquejat</strong>' +
+          esc(detall) +
+          (dins ? '<p style="margin:var(--e3) 0 0">La pàgina s\'està servint <b>dins d\'un iframe</b> ' +
+                  'd\'Apps Script, i aquest iframe no demana permís de micròfon. El navegador el ' +
+                  'bloqueja sense preguntar-te res: per això no et surt cap finestreta.</p>' : '') +
+          '<p style="margin:var(--e3) 0 var(--e2)"><b>Mentrestant pots dictar igual:</b></p>' +
+          '<ul style="margin:0;padding-left:1.2em;line-height:1.8">' +
+          '<li><b>Al mòbil:</b> toca el camp de text i prem el <b>micròfon del teclat</b> (Gboard). ' +
+          'Transcriu igual de bé i no necessita cap permís de la pàgina.</li>' +
+          '<li><b>Al PC:</b> clica el camp i prem <code>Windows + H</code> per dictar.</li>' +
+          '</ul></div>');
+        tr.scrollTop = tr.scrollHeight;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        informa('El navegador no exposa cap API de micròfon en aquest context.');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (flux) {
+          flux.getTracks().forEach(function (t) { t.stop(); });
+          informa('El micròfon sí que és accessible, però el reconeixement de veu l\'ha rebutjat. ' +
+                  'Torna-ho a provar; si insisteix, revisa els permisos del lloc al navegador.');
+        })
+        .catch(function (err) {
+          informa('El navegador ha dit: ' + (err && err.name ? err.name : 'error desconegut') +
+                  (err && err.message ? ' — ' + err.message : ''));
+        });
+    }
+
+    function escolta() { alternaEscolta(); }
 
     // ------------------------------------------------------------------ lligams
 
@@ -446,6 +585,23 @@ App.registraVista('conversa', {
         idConversa = r.id_conversa; missatges = []; ultimesEines = []; tokensSessio = 0;
         Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', []);
         pinta(); nucli.pols(1);
+      });
+    });
+
+    /* Substitut provisional de la barra de seccions que hem tret: un sol botó
+       que llista les vistes que hi ha. Quan decidim el menú, això marxa. */
+    arrel.querySelector('#b-vistes').addEventListener('click', function () {
+      var llista = (App.moduls && App.moduls.length) ? App.moduls : (Cau.get('moduls', []) || []);
+      var altres = llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
+      var cos = App.modal('Vistes',
+        '<div style="display:flex;flex-direction:column;gap:var(--e2)">' +
+        altres.map(function (m) {
+          return '<button class="btn btn-secundari btn-ple" data-ves="' + esc(m.id) + '">' +
+                 esc(m.nom) + '</button>';
+        }).join('') +
+        '<button class="btn btn-secundari btn-ple" data-ves="inici">Inici</button></div>');
+      cos.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () { App.tancaModal(); App.ves(b.dataset.ves); });
       });
     });
 
