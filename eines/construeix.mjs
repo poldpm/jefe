@@ -48,7 +48,28 @@ html = html.replace(/<\?!=\s*include\(\s*'([^']+)'\s*\);?\s*\?>/g, (_, nom) => {
 //    la pàgina el demanarà per xarxa un cop connectada.
 html = html.replace(/<\?!=\s*JSON\.stringify\(estat\)\s*\?>/g, 'null');
 
-// 3. Cap scriptlet pot sobreviure: seria text imprès a la pàgina
+// 3. Peces d'instal·lació. Només tenen sentit servint des de GitHub Pages:
+//    dins d'Apps Script el manifest no es pot registrar i el treballador de
+//    servei tampoc, perquè la pàgina va dins d'un iframe d'un altre domini.
+const INSTALLACIO = `
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icona.svg">
+  <meta name="apple-mobile-web-app-title" content="JEFE">
+  <script>
+    /* Sense treballador de servei registrat, Chrome ofereix «afegir drecera».
+       Amb ell, ofereix INSTAL·LAR l'aplicació de debò. */
+    if ('serviceWorker' in navigator) {
+      addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function (e) {
+          console.warn('JEFE: no s\\'ha pogut registrar el treballador de servei', e);
+        });
+      });
+    }
+  <\/script>`;
+
+html = html.replace('<!--INSTALLACIO-->', INSTALLACIO);
+
+// 4. Cap scriptlet pot sobreviure: seria text imprès a la pàgina
 const restants = html.match(/<\?[\s\S]{0,60}/g);
 if (restants) {
   console.error('  ✗ han quedat scriptlets sense resoldre:');
