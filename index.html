@@ -1849,14 +1849,34 @@ App.registraVista('conversa', {
       });
     }
 
-    function avisApagat(motiu) {
-      tr.innerHTML = '<div class="avis-apagat"><strong>Sistema sense clau</strong>' + esc(motiu || '') +
-        '<p style="margin:var(--e3) 0 var(--e2)">Per engegar-me:</p>' +
-        '<ol style="margin:0;padding-left:1.2em;line-height:1.8">' +
-        '<li>Clau a <code>aistudio.google.com</code></li>' +
-        '<li>Apps Script → Configuració del projecte → Propietats de l\'script → <code>CLAU_IA</code></li>' +
-        '<li>Full <code>_Config</code> → <code>ia_activa</code> = <code>SI</code></li>' +
-        '<li>Executa <code>triaModels</code> i després <code>provaIA</code></li></ol></div>';
+    /* Dos problemes ben diferents que abans es mostraven igual: no arribar al
+       servidor no és el mateix que arribar-hi i que no tingui clau d'IA. */
+    function avisApagat(motiu, esXarxa) {
+      var m = String(motiu || '');
+      var noArriba = esXarxa || /failed to fetch|network|servidor ha respost|connexió/i.test(m);
+
+      tr.innerHTML = noArriba
+        ? '<div class="avis-apagat"><strong>No arribo al servidor</strong>' + esc(m) +
+          '<p style="margin:var(--e3) 0 var(--e2)">Coses que ho provoquen, per ordre:</p>' +
+          '<ol style="margin:0;padding-left:1.2em;line-height:1.8">' +
+          '<li>El desplegament no és d\'accés <b>Qualsevol</b>. És la causa més freqüent, ' +
+              'i torna a passar si es crea una versió nova amb el manifest mal posat.</li>' +
+          '<li>L\'URL no acaba en <code>/exec</code>, o és la de <code>/dev</code>, ' +
+              'que exigeix sessió de Google i no serveix des de fora.</li>' +
+          '<li>No hi ha connexió.</li></ol>' +
+          '<button class="btn btn-secundari btn-ple" data-reconnecta="1" ' +
+          'style="margin-top:var(--e4)">Revisa l\'URL i la clau</button></div>'
+
+        : '<div class="avis-apagat"><strong>Sense clau d\'IA</strong>' + esc(m) +
+          '<p style="margin:var(--e3) 0 var(--e2)">Per engegar-me:</p>' +
+          '<ol style="margin:0;padding-left:1.2em;line-height:1.8">' +
+          '<li>Clau a <code>aistudio.google.com</code></li>' +
+          '<li>Apps Script → Configuració del projecte → Propietats de l\'script → <code>CLAU_IA</code></li>' +
+          '<li>Full <code>_Config</code> → <code>ia_activa</code> = <code>SI</code></li>' +
+          '<li>Executa <code>triaModels</code> i després <code>provaIA</code></li></ol></div>';
+
+      var b = tr.querySelector('[data-reconnecta]');
+      if (b) b.addEventListener('click', function () { App.connecta(m); });
     }
 
     // -------------------------------------------------------------------- enviar
@@ -2239,7 +2259,7 @@ App.registraVista('conversa', {
     }).catch(function (err) {
       estatIA = { disponible: false, motiu: err.message };
       posaEstat('apagat', 'sense connexió');
-      if (!missatges.length) avisApagat(err.message);
+      avisApagat(err.message, true);
     });
   }
 });
