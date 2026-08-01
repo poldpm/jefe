@@ -54,10 +54,21 @@
 
 .hud-cap {
   position: relative; z-index: 2; flex: none;
-  display: flex; align-items: center; gap: var(--e3);
-  padding: var(--e3) var(--e5);
+  display: flex; align-items: center; gap: var(--e2);
+  padding: var(--e2) var(--e3);
   font-family: var(--mono); font-size: .625rem; letter-spacing: .18em; text-transform: uppercase;
   color: var(--apagat);
+}
+/* A 375px hi havia vuit elements que sumaven més amplada que la pantalla i
+   la capçalera desbordava. El rellotge i l'etiqueta d'estat són informació
+   que ja surt a la telemetria: en pantalla estreta, fora. */
+@media (max-width: 439px) {
+  .hud-cap .rellotge { display: none; }
+  .hud-cap #etiqueta-estat { max-width: 8ch; overflow: hidden; text-overflow: ellipsis;
+                             white-space: nowrap; }
+}
+@media (max-width: 359px) {
+  .hud-cap #etiqueta-estat { display: none; }
 }
 .hud-cap .marca { color: var(--cian); font-weight: 700; letter-spacing: .3em; }
 .hud-cap .creix { flex: 1; }
@@ -73,17 +84,23 @@
 
 .hud-cos { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-.escenari { position: relative; flex: none; height: 34vh; min-height: 180px; max-height: 300px; }
+/* Ha d'estirar-se TAMBÉ al mòbil. Només ho feia a partir de 900px, i per això
+   el contingut es quedava amuntegat a dalt amb 190px morts a sota. */
+.costat-dret { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.escenari { position: relative; flex: none; height: 26vh; min-height: 158px; max-height: 240px; }
+/* Mida per alçada, no per amplada: així el nucli no pot sortir mai de l'escenari
+   ni menjar-se la telemetria dels costats. */
 .nucli-caixa { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-               width: min(72vw, 30vh); aspect-ratio: 1; }
+               height: 82%; aspect-ratio: 1; max-width: 56vw; }
 
 /* Telemetria: dades reals, no farciment */
 .telemetria {
-  position: absolute; top: var(--e2); font-family: var(--mono); font-size: .5625rem;
-  line-height: 1.7; color: var(--apagat); letter-spacing: .04em; max-width: 40%;
+  position: absolute; top: 2px; font-family: var(--mono); font-size: .5625rem;
+  line-height: 1.7; color: var(--apagat); letter-spacing: .04em; max-width: 30%;
 }
-.telemetria.esq { left: var(--e5); }
-.telemetria.dre { right: var(--e5); text-align: right; }
+.telemetria.esq { left: var(--e3); }
+.telemetria.dre { right: var(--e3); text-align: right; }
 .telemetria b { color: var(--cian); font-weight: 400; }
 .telemetria .val { color: var(--clar); font-variant-numeric: tabular-nums; }
 
