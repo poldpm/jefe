@@ -751,6 +751,70 @@ function arreglaClauBanc() {
 
 
 /**
+ * DIAGNÒSTIC DE LA MEMÒRIA DE COMERÇOS.
+ *
+ * Per quan entren moviments del banc i cap no es reconeix. Diu si la memòria
+ * és plena o buida, i per als últims moviments del banc ensenya la clau que
+ * en surt i si la memòria la té. Amb això es distingeix «són comerços nous»
+ * de «la consulta no lliga», que des de fora es veuen igual.
+ */
+function diagnosticMemoria() {
+  var l = ['=== MEMÒRIA DE COMERÇOS ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var mem;
+  try { mem = Dades.llegeix('FinancesMemoria'); }
+  catch (err) { a('FALLA: ' + err.message); a('Executa configuraJefe().'); return l.join('\n'); }
+
+  a('Comerços recordats ..... ' + mem.length);
+  if (!mem.length) {
+    a('');
+    a('La memòria és BUIDA. Si ja has importat, vol dir que el full encara no');
+    a('existia quan ho vas fer. Torna a passar la importació: no duplicarà res');
+    a('i aquesta vegada omplirà la memòria.');
+    return l.join('\n');
+  }
+
+  var index = {};
+  mem.forEach(function (m) { index[String(m.clau)] = m; });
+
+  a('');
+  a('Tres exemples del que recorda:');
+  mem.slice(0, 3).forEach(function (m) {
+    a('  «' + m.clau + '»  →  ' + m.categoria + '   (vist ' + m.cops + ' cops)');
+  });
+
+  var banc = Dades.llegeix('Moviments', function (f) {
+    return f.origen === 'banc' && !f.esborrat_el;
+  });
+  banc.sort(function (x, y) { return String(y.creat_el).localeCompare(String(x.creat_el)); });
+
+  a('');
+  a('Els sis moviments del banc més recents:');
+  banc.slice(0, 6).forEach(function (f) {
+    var clau = Finances.clauMemoria(f.descripcio, f.tipus);
+    var t = index[clau];
+    a('  ' + f.data + '  «' + Utils.talla(f.descripcio, 30) + '»');
+    a('     clau ....... ' + clau);
+    a('     a memòria .. ' + (t ? 'SÍ → ' + t.categoria : 'no'));
+    a('     ha quedat .. ' + f.categoria + (String(f.revisat).toUpperCase() === 'SI'
+                                            ? '  (ja revisat)' : '  (per revisar)'));
+  });
+
+  var desconeguts = banc.slice(0, 6).filter(function (f) {
+    return !index[Finances.clauMemoria(f.descripcio, f.tipus)];
+  }).length;
+
+  a('');
+  a(desconeguts === 6
+    ? 'Cap dels sis és a la memòria. Si algun d\'aquests comerços ja el tenies\n' +
+      'classificat abans, la clau no lliga i és un error meu: passa\'m aquest text.'
+    : 'La memòria reconeix part dels moviments: la consulta funciona.');
+  return l.join('\n');
+}
+
+
+/**
  * DIAGNÒSTIC DE NUTRICIÓ — per quan una ingesta és al full però no surt a l'app.
  *
  * Ensenya la data que fa servir el servidor, les últimes files tal com estan
