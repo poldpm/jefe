@@ -504,8 +504,14 @@ var Calendari = (function () {
         delMes: d.slice(0, 7) === quin,
         esAvui: d === avui,
         quants: seus.length,
-        // Tres punts com a molt: a partir d'aquí la casella deixa de llegir-se.
-        mostra: seus.slice(0, 3).map(function (e) { return { color: e.color, totElDia: e.totElDia }; })
+        /* Tres com a molt: a partir d'aquí la casella deixa de llegir-se.
+           Hi va el títol i l'hora a més del color perquè a l'escriptori la
+           casella és prou gran per ensenyar-los, i allà un punt no aprofita
+           l'espai que hi ha. Al mòbil, el mateix, i el CSS tria què s'ensenya. */
+        mostra: seus.slice(0, 3).map(function (e) {
+          return { color: e.color, totElDia: e.totElDia,
+                   titol: e.titol, hora: e.hora };
+        })
       };
     });
 

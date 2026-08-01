@@ -429,7 +429,8 @@ export function dades(AVUI, menys) {
       const seus = perDia[x] || [];
       caselles.push({ data: x, dia: Number(x.slice(8, 10)), delMes: x.slice(0, 7) === m,
                       esAvui: x === AVUI, quants: seus.length,
-                      mostra: seus.slice(0, 3).map(e => ({ color: e.color, totElDia: e.totElDia })) });
+                      mostra: seus.slice(0, 3).map(e => ({ color: e.color, totElDia: e.totElDia,
+                                                          titol: e.titol, hora: e.hora })) });
     }
     const triat = (p && p.data) || (m === AVUI.slice(0, 7) ? AVUI : m + '-01');
     return {

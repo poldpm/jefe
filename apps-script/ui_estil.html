@@ -915,6 +915,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
    d'una cita d'un quart estalvia obrir el dia per veure què és. */
 .mes-dia .punts i[data-tot="1"] { width: 10px; border-radius: 1px; }
 
+/* Els títols dins la casella només surten quan la casella és prou gran per
+   ensenyar-los. Al mòbil, els punts; a l'escriptori, el que hi diu. */
+.cal-titols { display: none; }
+
 .dia-cap-cal { margin: var(--e5) 0 var(--e2); }
 .dia-cap-cal .marge { margin: 0; }
 
@@ -1203,6 +1207,56 @@ input[type="checkbox"] { accent-color: var(--utm); }
   .capcalera-nutri .capcalera-fila,
   .capcalera-nutri .segments { max-width: 1100px; margin: 0 auto; }
   .capcalera-nutri .segments { margin-top: var(--e3); }
+
+  /* -----------------------------------------------------------------------
+     EL CALENDARI A L'ESCRIPTORI
+
+     Aquí la peça grossa és la graella, no el panell: al revés que a
+     nutrició. Amb les classes d'allà, el mes quedava encaixat en 340 px al
+     racó d'una pantalla de 1.900 i la resta era negre.
+
+     I les caselles deixen de ser un quadradet amb punts: hi caben els títols,
+     i llavors el mes es LLEGEIX d'un cop en comptes d'obligar-te a anar
+     tocant dies per saber què hi ha.
+     ----------------------------------------------------------------------- */
+  .cal-pagina {
+    display: grid; grid-template-columns: 1fr minmax(300px, 380px);
+    align-items: start; gap: var(--e6);
+    max-width: 1500px; margin: 0 auto;
+  }
+
+  .mes-graella { grid-auto-rows: minmax(112px, auto); }
+  .mes-dia { align-items: stretch; gap: 4px; padding: var(--e2); }
+  .mes-dia .n { font-size: 1rem; text-align: left; }
+  .mes-dia .punts { display: none; }
+
+  .cal-titols { display: flex; flex-direction: column; gap: 2px;
+                overflow: hidden; text-align: left; }
+  .cal-cita {
+    font-size: .75rem; line-height: 1.25; padding: 1px 4px;
+    border-left: 3px solid var(--seu, var(--corba-mestra));
+    background: var(--paper2); color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cal-cita b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* EL DE TOT EL DIA ES DISTINGEIX PER LA BARRA, NO PER OMPLIR-SE.
+     Omplert amb el color del calendari donava 3,8 amb el text a sobre, i no
+     es pot arreglar triant millor: aquests colors els posa Google i poden ser
+     qualsevol cosa, o sigui que no hi ha cap color de lletra que hi vagi bé
+     sempre. Amb la barra gruixuda el text sempre va sobre un fons conegut, i
+     de fet la pista més forta ja hi era: els que tenen hora la porten davant
+     i aquests no. */
+  .cal-cita[data-tot="1"] { border-left-width: 7px; font-weight: 600; }
+  .cal-mes-n { font-size: .6875rem; color: var(--ink-suau); padding-left: 4px; }
+
+  .mes-dia[aria-current="date"] .cal-cita { background: var(--paper); }
+  .mes-dia[data-fora="1"] .cal-titols { opacity: .45; }
+
+  .dia-cap-cal { margin: 0 0 var(--e2); }
+
+  /* La capçalera segueix l'amplada del contingut, com a la resta. */
+  .capcalera-nutri:has(+ .pagina .cal-pagina) .capcalera-fila { max-width: 1500px; }
 
   /* El formulari en una sola tira: a l'escriptori hi ha amplada de sobres i
      no cal fer-lo baixar set files. */

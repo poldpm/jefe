@@ -65,9 +65,13 @@ App.registraVista('calendari', {
     function pinta(d, dEnCau) {
       dades = d;
       arrel.innerHTML = capcalera(d) +
-        '<div class="pagina nutri">' +
-          '<section class="nutri-dalt">' + blocMes(d) + '</section>' +
-          '<section class="nutri-apats" id="c-dia">' + blocDia(d) + '</section>' +
+        /* Disposició pròpia i no la de nutrició: allà la columna estreta és
+           la de l'esquerra i la gran la de la dreta, i aquí és al revés. Amb
+           les seves classes, a l'escriptori la graella del mes quedava
+           encaixada en 340 px al racó d'una pantalla de 1.900. */
+        '<div class="pagina cal-pagina">' +
+          '<section class="cal-graella">' + blocMes(d) + '</section>' +
+          '<section class="cal-costat" id="c-dia">' + blocDia(d) + '</section>' +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
       lliga();
@@ -88,11 +92,24 @@ App.registraVista('calendari', {
             (c.data === d.diaTriat ? ' aria-current="date"' : '') +
             ' aria-label="' + esc(diuCasella(c)) + '">' +
             '<span class="n">' + c.dia + '</span>' +
+            /* Els punts i els títols hi són tots dos, i el full d'estil tria
+               què s'ensenya segons l'amplada. Decidir-ho aquí amb JavaScript
+               voldria dir tornar a pintar la graella cada cop que gires el
+               telèfon o canvies la finestra de mida. */
             '<span class="punts">' +
               c.mostra.map(function (e) {
                 return '<i' + (e.totElDia ? ' data-tot="1"' : '') +
                        (e.color ? ' style="background:' + esc(e.color) + '"' : '') + '></i>';
               }).join('') +
+            '</span>' +
+            '<span class="cal-titols">' +
+              c.mostra.map(function (e) {
+                return '<span class="cal-cita"' + (e.totElDia ? ' data-tot="1"' : '') +
+                  (e.color ? ' style="--seu:' + esc(e.color) + '"' : '') + '>' +
+                  (e.totElDia || !e.hora ? '' : '<b>' + esc(e.hora) + '</b> ') +
+                  esc(e.titol || '') + '</span>';
+              }).join('') +
+              (c.quants > 3 ? '<span class="cal-mes-n">+' + (c.quants - 3) + '</span>' : '') +
             '</span>' +
           '</button>';
         }).join('') +

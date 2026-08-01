@@ -263,7 +263,7 @@ const MOCK = `
           var seus = perDia[c.data] || [];
           c.quants = seus.length;
           c.mostra = seus.slice(0, 3).map(function (e) {
-            return { color: e.color, totElDia: e.totElDia };
+            return { color: e.color, totElDia: e.totElDia, titol: e.titol, hora: e.hora };
           });
         });
         return r;
