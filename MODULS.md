@@ -70,6 +70,7 @@ Tot és opcional excepte `id`, `nom` i `ordre`.
 | `fulls` | array | Els fulls que necessita. El nucli els crea i els migra. |
 | `accions` | objecte | Funcions cridables des de la interfície. |
 | `resumInici` | funció | Una línia per a la pantalla d'inici. Ha de ser barata. |
+| `resumPeriode` | funció | `(desde, fins)` → `{titol, linies: []}`. Què ha passat entre dues dates. Ho fa servir la revisió setmanal. Retorna `null` si no hi ha res a dir. |
 | `contextIA` | funció | Fitxa curta per a la conversa. **Mai el full sencer.** |
 | `einesIA` | array | Consultes que la IA pot fer per demanar-ne més dades. |
 | `vista` | text | Nom del fitxer HTML de la seva pantalla. |
@@ -246,7 +247,9 @@ App.registraVista('lectures', {
 - [ ] `contextIA()` cap en un parell de línies
 - [ ] Les eines de la IA retornen el recompte de files, encara que sigui zero
 - [ ] Cap acció esborra res: s'arxiva
-- [ ] Has executat `configuraPopu()` perquè el nucli li creï els fulls
+- [ ] Si té números que valgui la pena mirar cada setmana, implementa `resumPeriode()` i sortirà sol a la revisió del diumenge
+- [ ] Has executat `configuraJefe()` perquè el nucli li creï els fulls
+- [ ] Si té pantalla, l'has afegida a `ui_index.html` amb `include()`
 
 ---
 

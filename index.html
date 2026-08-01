@@ -789,6 +789,65 @@ h2 { font-size: 1.0625rem; }
   .safata-fila[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
 }
 
+/* =========================================================================
+   EL DIARI — el quadern de camp del marge del full
+
+   El que escrius tu i el que t'escriu ell van a la mateixa línia de temps,
+   però no s'han de confondre mai: el teu va sobre el paper, el seu va amb
+   la barra del marge al costat. Es distingeixen d'una ullada sense haver de
+   llegir cap etiqueta.
+   ========================================================================= */
+
+.dia-cap { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--e2); margin-bottom: var(--e2); }
+.dia-cap .marge { margin: 0; }
+
+#d-text {
+  width: 100%; min-height: 140px; padding: var(--e3);
+  border: 1.5px solid var(--neatline); border-radius: var(--r);
+  background: var(--paper); color: var(--ink); line-height: 1.55;
+  resize: vertical; -webkit-appearance: none; appearance: none;
+}
+#d-text:focus { border-color: var(--utm); outline: none; }
+#d-text::placeholder { color: var(--ink-suau); opacity: 1; }
+
+.anim { margin-top: var(--e3); }
+.anim .marge { display: block; margin-bottom: var(--e2); }
+.anim-tria { display: flex; gap: var(--e2); }
+.anim-tria button {
+  flex: 1; min-height: 44px; font: inherit; font-weight: 600;
+  background: transparent; color: var(--ink-suau);
+  border: 1px solid var(--neatline); border-radius: var(--r);
+}
+.anim-tria button[aria-pressed="true"] {
+  background: var(--fet); border-color: var(--fet-vora); color: var(--sobre-fet);
+}
+
+.dia-desa { display: flex; align-items: center; justify-content: space-between;
+            gap: var(--e3); margin-top: var(--e3); }
+.dia-desa .btn { flex: none; padding: 0 var(--e4); }
+
+.dia-bloc { margin-top: var(--e4); }
+.dia-titol {
+  display: block; width: 100%; text-align: left; padding: 0 0 var(--e2);
+  border: 0; background: none; color: var(--ink-suau);
+  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+}
+
+.apunt { padding: var(--e3) 0; border-top: 1px solid var(--utm-suau); }
+.apunt-text { line-height: 1.6; overflow-wrap: anywhere; }
+.apunt-qui { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--ink-suau); margin-bottom: var(--e2); }
+.apunt-anim { font-size: .8125rem; color: var(--ink-suau); margin-bottom: 2px; }
+
+/* El que ha escrit ell, amb la barra del marge: no es confon amb el teu. */
+.apunt[data-tipus="resum"], .apunt[data-tipus="revisio"] {
+  border-left: 2px solid var(--neatline); padding-left: var(--e3);
+  color: var(--ink-suau);
+}
+.apunt[data-tipus="revisio"] { border-left-color: var(--utm); }
+.apunt[data-tipus="revisio"] .apunt-qui { color: var(--utm); }
+
 /* «Fetes» i el botó de buidar-les, a la mateixa línia: el títol mana i el
    botó hi és sense demanar atenció, perquè buidar-les no és el que véns a fer. */
 .fetes-titol { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e3); }
@@ -6510,6 +6569,311 @@ App.registraVista('tasques', {
       }
 
       crida('tasques', 'pantalla', {})
+        .then(function (r) { aplica(r); })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
+    }
+
+    arrel.innerHTML = Comp.carregant(3);
+    carrega();
+  }
+});
+</script>
+
+<script>
+/* JEFE — MÒDUL · Diari i revisió
+   Món: full de mapa topogràfic. Aquí, el quadern de camp del marge.
+
+   LA DECISIÓ QUE MANA: el que escrius tu i el que t'escriu ell van a la
+   MATEIXA línia de temps. D'aquí a dos anys, quan vulguis saber com va anar
+   aquell octubre, voldràs llegir-ho tot seguit i no anar saltant de pantalla.
+
+   I el camp d'escriure és el primer que hi ha i està sempre obert, com a
+   tasques i pel mateix motiu: cada toc que separa el pensament del paper és
+   una excusa per no escriure. */
+
+App.registraVista('diari', {
+  render: function (arrel, params) {
+
+    var data = params.data || fmt.avui();
+    var dades = null;
+    var previPintat = null;
+    var ajornat = null;
+    var brut = false;          // hi ha canvis al camp sense desar
+
+    var ANIMS = [
+      { n: 1, mot: 'malament' },
+      { n: 2, mot: 'fluix' },
+      { n: 3, mot: 'normal' },
+      { n: 4, mot: 'bé' },
+      { n: 5, mot: 'molt bé' }
+    ];
+
+    // ------------------------------------------------------------- capçalera
+
+    function capcalera() {
+      var r = dades ? dades.ratxa : 0;
+      return '<header class="capcalera capcalera-nutri">' +
+        '<div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa', 'ic-p') + '</button>' +
+          '<span class="titol-periode" style="cursor:default">' +
+            '<b>Diari</b>' +
+            '<span>' + (r ? r + (r === 1 ? ' dia seguit' : ' dies seguits') : 'sense ratxa') + '</span>' +
+          '</span>' +
+          '<button class="btn btn-fantasma btn-icona" data-genera="1" aria-label="Demana-li el resum">' +
+            ic('avis', 'ic-p') + '</button>' +
+        '</div>' +
+      '</header>';
+    }
+
+    // ---------------------------------------------------------------- pintura
+
+    function pinta(d, dEnCau) {
+      dades = d;
+      var e = d.entrada;
+      var esAvui = d.data === d.avui;
+
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="camp-captura">' +
+              '<div class="dia-cap">' +
+                '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Dia anterior">' +
+                  ic('esquerra', 'ic-p') + '</button>' +
+                '<span class="marge">' + esc(fmt.relativa(d.data)) + '</span>' +
+                '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Dia següent"' +
+                  (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
+              '</div>' +
+              '<textarea id="d-text" rows="5" autocomplete="off" ' +
+                'placeholder="' + esc(esAvui ? 'Com ha anat el dia?' : 'Què va passar aquell dia?') + '">' +
+                esc(e ? e.text : '') + '</textarea>' +
+              blocAnim(e) +
+              '<div class="dia-desa">' +
+                '<span class="menut" id="d-estat">' + (e ? 'Desat' : '') + '</span>' +
+                '<button class="btn btn-primari" data-desa>Desa</button>' +
+              '</div>' +
+            '</div>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' + blocLinia(d) + '</section>' +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+
+      lliga();
+    }
+
+    /* Cinc caselles i prou. L'ànim és per rellegir-ho d'aquí a un any, no per
+       omplir cap gràfic, i mai no bloqueja res: pots escriure sense marcar-ne
+       cap i marcar-ne una sense escriure. */
+    function blocAnim(e) {
+      var sel = e && e.anim ? Number(e.anim) : 0;
+      var mot = ANIMS.filter(function (a) { return a.n === sel; })[0];
+      return '<div class="anim">' +
+        '<span class="marge">Com ha anat' + (mot ? ' · ' + esc(mot.mot) : '') + '</span>' +
+        '<div class="anim-tria" role="group" aria-label="Com ha anat el dia">' +
+          ANIMS.map(function (a) {
+            return '<button data-anim="' + a.n + '"' +
+                   (a.n === sel ? ' aria-pressed="true"' : ' aria-pressed="false"') +
+                   ' aria-label="' + esc(a.mot) + '">' + a.n + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    function blocLinia(d) {
+      if (!d.linia.length) {
+        return '<p class="menut" style="margin-top:var(--e5)">' +
+               'Encara no hi ha res escrit. Amb una línia al dia ja té sentit tornar-hi.</p>';
+      }
+
+      var htmlPerData = {};
+      var ordre = [];
+      d.linia.forEach(function (x) {
+        if (!htmlPerData[x.data]) { htmlPerData[x.data] = []; ordre.push(x.data); }
+        htmlPerData[x.data].push(x);
+      });
+
+      return '<p class="marge" style="margin-top:var(--e5)">Enrere</p>' +
+        ordre.map(function (dia) {
+          return '<div class="dia-bloc">' +
+            '<button class="dia-titol" data-ves="' + esc(dia) + '">' +
+              esc(fmt.relativa(dia)) + '</button>' +
+            htmlPerData[dia].map(apunt).join('') +
+          '</div>';
+        }).join('');
+    }
+
+    function apunt(x) {
+      var qui = x.tipus === 'entrada' ? '' : (x.tipus === 'revisio' ? 'Revisió de la setmana' : 'Tancament del dia');
+      var mot = ANIMS.filter(function (a) { return a.n === Number(x.anim); })[0];
+
+      return '<article class="apunt" data-tipus="' + esc(x.tipus) + '">' +
+        (qui ? '<p class="apunt-qui">' + esc(qui) + '</p>' : '') +
+        (mot ? '<p class="apunt-anim">' + esc(mot.mot) + '</p>' : '') +
+        '<div class="apunt-text">' + esc(x.text).replace(/\n/g, '<br>') + '</div>' +
+      '</article>';
+    }
+
+    // ---------------------------------------------------------------- accions
+
+    function lliga() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-salt]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var nova = fmt.suma(data, Number(b.dataset.salt));
+          if (nova > fmt.avui()) return;
+          desaSiCal(function () { App.ves('diari', { data: nova }); });
+        });
+      });
+      arrel.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          desaSiCal(function () { App.ves('diari', { data: b.dataset.ves }); });
+        });
+      });
+
+      var camp = arrel.querySelector('#d-text');
+      camp.addEventListener('input', function () {
+        brut = true;
+        var e = arrel.querySelector('#d-estat');
+        if (e) e.textContent = 'Sense desar';
+      });
+      /* Desar en sortir del camp, a més del botó. El que has escrit no es pot
+         perdre perquè hagis tocat una altra cosa sense pensar-hi. */
+      camp.addEventListener('blur', function () { if (brut) desa(); });
+
+      arrel.querySelector('[data-desa]').addEventListener('click', function () { desa(); });
+
+      arrel.querySelectorAll('[data-anim]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var ja = b.getAttribute('aria-pressed') === 'true';
+          arrel.querySelectorAll('[data-anim]').forEach(function (o) {
+            o.setAttribute('aria-pressed', 'false');
+          });
+          // Tornar a tocar la mateixa la treu: no hi ha manera de desmarcar-la si no.
+          if (!ja) b.setAttribute('aria-pressed', 'true');
+          brut = true;
+          desa();
+        });
+      });
+
+      var bg = arrel.querySelector('[data-genera]');
+      if (bg) bg.addEventListener('click', obreGenera);
+    }
+
+    function animTriat() {
+      var b = arrel.querySelector('[data-anim][aria-pressed="true"]');
+      return b ? Number(b.dataset.anim) : 0;
+    }
+
+    function desa(alAcabar) {
+      var camp = arrel.querySelector('#d-text');
+      if (!camp) { if (alAcabar) alAcabar(); return; }
+
+      var text = camp.value;
+      var anim = animTriat();
+      var estat = arrel.querySelector('#d-estat');
+      if (estat) estat.textContent = 'Desant…';
+      brut = false;
+
+      escriu('diari', 'escriu', { data: data, text: text, anim: anim },
+             { data: data, quants: 30 })
+        .then(function (r) {
+          var e2 = arrel.querySelector('#d-estat');
+          if (e2) e2.textContent = 'Desat';
+          aplica(r);
+          if (alAcabar) alAcabar();
+        })
+        .catch(function (err) {
+          brut = true;
+          var e2 = arrel.querySelector('#d-estat');
+          if (e2) e2.textContent = 'No s\'ha pogut desar';
+          App.brindis(err.message, 'error');
+          if (alAcabar) alAcabar();
+        });
+    }
+
+    /** Abans de marxar del dia, desa el que hi hagi sense desar. */
+    function desaSiCal(seguent) {
+      if (!brut) return seguent();
+      desa(seguent);
+    }
+
+    /* Poder demanar-li el resum ara. Serveix per no haver d'esperar a les deu
+       del vespre, i sobretot per veure què t'escriurà abans de fiar-t'hi. */
+    function obreGenera() {
+      var cos = App.modal('Demana-li que escrigui',
+        '<div class="form-ajustos">' +
+          '<p class="menut">Ho escriu amb les dades que hi ha ara mateix i ho deixa al diari. ' +
+            'Es pot repetir: reescriu el del mateix dia, no n\'acumula.' +
+            (dades && dades.iaActiva ? ''
+              : ' <b>La capa d\'IA està apagada</b>, o sigui que sortiran les xifres sense cap comentari.') +
+          '</p>' +
+          '<button class="btn btn-primari" data-fes="dia">Tancament d\'avui</button>' +
+          '<button class="btn btn-secundari" data-fes="setmana" style="margin-top:var(--e2)">' +
+            'Revisió de la setmana</button>' +
+        '</div>');
+
+      cos.querySelectorAll('[data-fes]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          cos.querySelectorAll('[data-fes]').forEach(function (o) { o.disabled = true; });
+          b.dataset.carregant = '1';
+          escriu('diari', 'generaAra',
+                 { data: fmt.avui(), setmanal: b.dataset.fes === 'setmana' },
+                 { data: data, quants: 30 })
+            .then(function (r) {
+              App.tancaModal();
+              App.brindis('Escrit');
+              aplica(r);
+            })
+            .catch(function (err) {
+              cos.querySelectorAll('[data-fes]').forEach(function (o) { o.disabled = false; });
+              b.dataset.carregant = '0';
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+    }
+
+    // ---------------------------------------------------------------- càrrega
+
+    function aplica(r, dEnCau) {
+      Cau.set('diari.' + data, r);
+      var nou = JSON.stringify(r);
+      if (nou === previPintat) return;
+
+      /* Mentre escriu no es repinta res: li esborraria el que està teclejant.
+         I si hi ha canvis sense desar, encara menys. */
+      if (previPintat !== null && (brut || App.interactuant())) {
+        var primer = !ajornat;
+        ajornat = r;
+        if (primer) setTimeout(quanPari, 400);
+        return;
+      }
+      previPintat = nou;
+      pinta(r, !!dEnCau);
+    }
+
+    function quanPari() {
+      if (!arrel.isConnected) { ajornat = null; return; }
+      if (brut || App.interactuant()) { setTimeout(quanPari, 400); return; }
+      var r = ajornat;
+      ajornat = null;
+      if (r) aplica(r);
+    }
+
+    function carrega() {
+      var desat = Cau.get('diari.' + data, null);
+      if (desat) {
+        try { previPintat = JSON.stringify(desat); pinta(desat, true); }
+        catch (e) { previPintat = null; }
+      }
+
+      crida('diari', 'pantalla', { data: data, quants: 30 })
         .then(function (r) { aplica(r); })
         .catch(function (err) {
           if (desat) App.brindis(err.message, 'error');

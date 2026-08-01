@@ -190,5 +190,103 @@ console.log('\nHàbits: un comptador es compta, no es jutja');
       cig2.mitjana7 === 5.3, String(cig2.mitjana7));    // (8+5+3)/3 = 5,33
 }
 
+// ------------------------------------------------------------------------ diari
+console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
+{
+  const AVUI = '2026-08-01';
+  let files = [];
+  let seq = 0;
+  const notificacions = [];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, isFinite, parseFloat,
+    Log: { info() {}, avis() {}, error() {} },
+    Utilities: {
+      formatDate: (d, tz, patro) => patro.indexOf('T') === -1
+        ? [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-')
+        : d.toISOString()
+    },
+    Config: { zonaHoraria: () => 'Europe/Madrid' },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const vives = files.slice();
+        if (typeof filtre === 'function') return vives.filter(filtre);
+        if (filtre) return vives.filter(f => Object.keys(filtre).every(k => String(f[k]) === String(filtre[k])));
+        return vives;
+      },
+      insereix: (full, obj) => { const nou = Object.assign({ id: 'd' + (++seq) }, obj); files.push(nou); return nou; },
+      actualitza: (full, id, canvis) => {
+        const f = files.filter(x => x.id === id)[0];
+        if (!f) return null;
+        Object.keys(canvis).forEach(k => { f[k] = canvis[k]; });
+        return f;
+      }
+    },
+    // Cap mòdul de debò: el diari no n'ha de conèixer ni un.
+    Moduls: {
+      resumInici: () => [
+        { modul: 'habits', etiqueta: 'Hàbits pendents', valor: 2, urgent: true },
+        { modul: 'tasques', etiqueta: 'Tasques per fer', valor: 5, urgent: false }
+      ],
+      resumPeriode: () => [{ modul: 'habits', titol: 'Hàbits', linies: ['Córrer: 4 de 7 dies'] }]
+    },
+    IA: { disponible: () => false, genera: () => { throw new Error('no hauria de cridar-se'); } },
+    Notifica: { envia: (titol, cos) => { notificacions.push({ titol, cos }); return { enviades: 1 }; } }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/40_Mod_Diari.gs', 'utf8'), ctx);
+  ctx.Utils.avui = () => AVUI;
+
+  ctx.Diari.escriu(AVUI, 'Al matí he anat a la Vall de Boí.', 4, 'app');
+  cal('desa l\'entrada del dia', ctx.Diari.entrada(AVUI).text.indexOf('Boí') !== -1,
+      JSON.stringify(ctx.Diari.entrada(AVUI)));
+  cal('desa l\'ànim', ctx.Diari.entrada(AVUI).anim === 4, String(ctx.Diari.entrada(AVUI).anim));
+
+  // LA REGLA QUE MÉS IMPORTA: des de la conversa s'afegeix, no es substitueix.
+  ctx.Diari.afegeixPerNom({ text: 'I al vespre reunió de claustre.' });
+  const e = ctx.Diari.entrada(AVUI);
+  cal('afegir des de la conversa NO esborra el que hi havia',
+      e.text.indexOf('Boí') !== -1 && e.text.indexOf('claustre') !== -1, e.text);
+  cal('i no en crea una segona per al mateix dia',
+      files.filter(f => f.data === AVUI && f.tipus === 'entrada' && !f.esborrat_el).length === 1,
+      String(files.filter(f => f.data === AVUI && f.tipus === 'entrada').length));
+  cal('afegir conserva l\'ànim que ja hi havia', e.anim === 4, String(e.anim));
+
+  // Escriure una segona vegada des de l'app SÍ que substitueix: és el camp de text.
+  ctx.Diari.escriu(AVUI, 'Text nou', 4, 'app');
+  cal('des de l\'app, el camp mana', ctx.Diari.entrada(AVUI).text === 'Text nou',
+      ctx.Diari.entrada(AVUI).text);
+
+  // Buidar-ho tot treu l'entrada en comptes de desar una línia en blanc.
+  ctx.Diari.escriu(AVUI, '   ', 0, 'app');
+  cal('buidar-ho treu l\'entrada', ctx.Diari.entrada(AVUI) === null,
+      JSON.stringify(ctx.Diari.entrada(AVUI)));
+
+  // El resum de la nit, amb la IA APAGADA.
+  const r = ctx.Diari.generaDiari(AVUI);
+  cal('el resum es fa igual sense IA', r.text.indexOf('Hàbits pendents: 2') !== -1, r.text);
+  cal('i ho diu, que no n\'hi ha hagut', r.ambIA === false, String(r.ambIA));
+  cal('el títol de l\'avís diu de què va, no «JEFE»',
+      notificacions.length === 1 && /hàbits pendents/i.test(notificacions[0].titol),
+      JSON.stringify(notificacions[0]));
+
+  // Repetir-lo no n'acumula un segon.
+  ctx.Diari.generaDiari(AVUI);
+  cal('generar-lo dues vegades el reescriu, no l\'acumula',
+      files.filter(f => f.tipus === 'resum' && f.data === AVUI).length === 1,
+      String(files.filter(f => f.tipus === 'resum').length));
+
+  const rev = ctx.Diari.generaSetmanal(AVUI);
+  cal('la revisió agafa la setmana sencera', rev.desde === '2026-07-26' && rev.fins === AVUI,
+      rev.desde + '/' + rev.fins);
+  cal('i porta les xifres dels mòduls', rev.text.indexOf('Córrer: 4 de 7 dies') !== -1, rev.text);
+
+  // Escriure el diari d'un dia que encara no ha arribat no té sentit.
+  let hoImpedeix = false;
+  try { ctx.Diari.escriu('2026-09-01', 'del futur', 0, 'app'); } catch (err) { hoImpedeix = true; }
+  cal('no deixa escriure un dia que no ha arribat', hoImpedeix, 'ho ha deixat fer');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

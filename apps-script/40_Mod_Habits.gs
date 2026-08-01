@@ -91,6 +91,10 @@ function MODUL_HABITS() {
       };
     },
 
+    /* Per a la revisió setmanal. El mòdul del diari no sap què és un hàbit:
+       demana al nucli què ha passat i el nucli ens ho pregunta a nosaltres. */
+    resumPeriode: function (desde, fins) { return Habits.resumPeriode(desde, fins); },
+
     contextIA: function () {
       var d = Habits.dia(Utils.avui());
       if (!d.habits.length) return 'Hàbits: cap definit.';
@@ -569,6 +573,44 @@ var Habits = (function () {
     };
   }
 
+  /**
+   * Què ha passat entre dues dates. Per a la revisió setmanal.
+   *
+   * Els dies que NO tocaven no es compten al denominador: dir «3 de 7» d'un
+   * hàbit de dilluns, dimecres i divendres seria acusar-lo de no fer-lo els
+   * dies que no havia de fer-lo.
+   */
+  function resumPeriode(desde, fins) {
+    var idx = indexRegistres_();
+    var calendari = Utils.rangDates(desde, fins);
+    var linies = [];
+
+    definicions().forEach(function (h) {
+      var regs = idx[h.id] || {};
+      var creacio = dataCreacio_(h);
+
+      if (esComptador_(h)) {
+        var f = finestra_(h, regs, fins, calendari.length);
+        if (!f.dies) return;
+        linies.push(h.nom + ': ' + f.suma + (h.unitat ? ' ' + h.unitat : '') +
+                    ' en ' + f.dies + (f.dies === 1 ? ' dia' : ' dies') +
+                    ' · ' + (Math.round(f.mitjana * 10) / 10) + ' al dia');
+        return;
+      }
+
+      var toquen = 0, fets = 0;
+      calendari.forEach(function (d) {
+        if (d < creacio || !exigit_(h, d)) return;
+        toquen++;
+        if (complert_(h, regs[d])) fets++;
+      });
+      if (!toquen) return;
+      linies.push(h.nom + ': ' + fets + ' de ' + toquen + (toquen === 1 ? ' dia' : ' dies'));
+    });
+
+    return linies.length ? { titol: 'Hàbits', linies: linies } : null;
+  }
+
   function resumTots() {
     var avui = Utils.avui();
     var idx = indexRegistres_();
@@ -811,6 +853,7 @@ var Habits = (function () {
     marca: marca,
     historic: historic,
     resumTots: resumTots,
+    resumPeriode: resumPeriode,
     crea: crea,
     edita: edita,
     registraPerNom: registraPerNom,

@@ -761,6 +761,65 @@ h2 { font-size: 1.0625rem; }
   .safata-fila[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
 }
 
+/* =========================================================================
+   EL DIARI — el quadern de camp del marge del full
+
+   El que escrius tu i el que t'escriu ell van a la mateixa línia de temps,
+   però no s'han de confondre mai: el teu va sobre el paper, el seu va amb
+   la barra del marge al costat. Es distingeixen d'una ullada sense haver de
+   llegir cap etiqueta.
+   ========================================================================= */
+
+.dia-cap { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--e2); margin-bottom: var(--e2); }
+.dia-cap .marge { margin: 0; }
+
+#d-text {
+  width: 100%; min-height: 140px; padding: var(--e3);
+  border: 1.5px solid var(--neatline); border-radius: var(--r);
+  background: var(--paper); color: var(--ink); line-height: 1.55;
+  resize: vertical; -webkit-appearance: none; appearance: none;
+}
+#d-text:focus { border-color: var(--utm); outline: none; }
+#d-text::placeholder { color: var(--ink-suau); opacity: 1; }
+
+.anim { margin-top: var(--e3); }
+.anim .marge { display: block; margin-bottom: var(--e2); }
+.anim-tria { display: flex; gap: var(--e2); }
+.anim-tria button {
+  flex: 1; min-height: 44px; font: inherit; font-weight: 600;
+  background: transparent; color: var(--ink-suau);
+  border: 1px solid var(--neatline); border-radius: var(--r);
+}
+.anim-tria button[aria-pressed="true"] {
+  background: var(--fet); border-color: var(--fet-vora); color: var(--sobre-fet);
+}
+
+.dia-desa { display: flex; align-items: center; justify-content: space-between;
+            gap: var(--e3); margin-top: var(--e3); }
+.dia-desa .btn { flex: none; padding: 0 var(--e4); }
+
+.dia-bloc { margin-top: var(--e4); }
+.dia-titol {
+  display: block; width: 100%; text-align: left; padding: 0 0 var(--e2);
+  border: 0; background: none; color: var(--ink-suau);
+  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+}
+
+.apunt { padding: var(--e3) 0; border-top: 1px solid var(--utm-suau); }
+.apunt-text { line-height: 1.6; overflow-wrap: anywhere; }
+.apunt-qui { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--ink-suau); margin-bottom: var(--e2); }
+.apunt-anim { font-size: .8125rem; color: var(--ink-suau); margin-bottom: 2px; }
+
+/* El que ha escrit ell, amb la barra del marge: no es confon amb el teu. */
+.apunt[data-tipus="resum"], .apunt[data-tipus="revisio"] {
+  border-left: 2px solid var(--neatline); padding-left: var(--e3);
+  color: var(--ink-suau);
+}
+.apunt[data-tipus="revisio"] { border-left-color: var(--utm); }
+.apunt[data-tipus="revisio"] .apunt-qui { color: var(--utm); }
+
 /* «Fetes» i el botó de buidar-les, a la mateixa línia: el títol mana i el
    botó hi és sense demanar atenció, perquè buidar-les no és el que véns a fer. */
 .fetes-titol { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e3); }

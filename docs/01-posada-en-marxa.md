@@ -67,7 +67,7 @@ npx.cmd clasp open
 
 S'obre l'editor a script.google.com. Allà:
 
-1. Al desplegable de funcions de la barra superior, tria **`configuraPopu`**
+1. Al desplegable de funcions de la barra superior, tria **`configuraJefe`**
 2. Prem **Executa**
 3. La primera vegada demana permisos:
    - *Aquesta aplicació no està verificada* → **Configuració avançada** → **Ves a JEFE (no segur)**
@@ -90,7 +90,7 @@ Obre l'URL que ha sortit al registre. Has de veure un full de càlcul anomenat
 
 **`_Moduls` buida és el resultat correcte en aquest bloc.** Els mòduls d'hàbits,
 captura, tasques i diari arriben als blocs següents, i cadascun es crearà els
-seus fulls tot sol quan tornis a executar `configuraPopu()`.
+seus fulls tot sol quan tornis a executar `configuraJefe()`.
 
 ---
 
@@ -140,7 +140,7 @@ npm.cmd run puja
 ```
 
 Si el canvi afecta els fulls (mòduls nous, columnes noves), executa també
-`configuraPopu()` un cop des de l'editor. És sempre segur: no esborra res.
+`configuraJefe()` un cop des de l'editor. És sempre segur: no esborra res.
 
 Si el canvi afecta la interfície, cal **Desplega → Gestiona desplegaments →
 edita el desplegament → versió: Nova**, o l'app seguirà servint la versió antiga.
@@ -163,6 +163,6 @@ edita el desplegament → versió: Nova**, o l'app seguirà servint la versió a
 | `Unexpected token '?'` en obrir l'app | Sintaxi de plantilla `<?` en un lloc on Apps Script no la pot processar. `npm.cmd run comprova` t'ho diu amb el fitxer i la línia. |
 | `User has not enabled the Apps Script API` | Pas 1 no fet, o fet amb l'altre compte |
 | `clasp push` no puja res | `.clasp.json` no té `"rootDir": "apps-script"` |
-| `JEFE no està configurat` a la web app | Falta executar `configuraPopu()` (pas 5) |
+| `JEFE no està configurat` a la web app | Falta executar `configuraJefe()` (pas 5) |
 | La web app mostra la versió antiga | Cal desplegar **una versió nova**, no només `clasp push` |
 | Un error i no saps què ha passat | Obre el full `_Registre`: hi és, amb data i origen |

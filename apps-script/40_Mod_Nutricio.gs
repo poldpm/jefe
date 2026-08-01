@@ -109,6 +109,8 @@ function MODUL_NUTRICIO() {
       };
     },
 
+    resumPeriode: function (desde, fins) { return Nutricio.resumPeriode(desde, fins); },
+
     contextIA: function () {
       var d = Nutricio.dia(Utils.avui());
       if (!d.totals.ingerides && !d.teCremades) return 'Nutrició: avui encara no hi ha res apuntat.';
@@ -434,8 +436,15 @@ var Nutricio = (function () {
    * respondre i esgotar el temps d'execució.
    */
   function periode(data, tipus) {
+    var r = agregat_(diesDe_(data, tipus));
+    r.tipus = tipus;
+    r.data = data;
+    return r;
+  }
+
+  /** El mateix càlcul per a qualsevol llista de dies, vingui d'on vingui. */
+  function agregat_(dies) {
     var a = ajustos();
-    var dies = diesDe_(data, tipus);
     var dins = {};
     for (var i = 0; i < dies.length; i++) dins[dies[i]] = true;
 
@@ -475,8 +484,6 @@ var Nutricio = (function () {
     };
 
     return {
-      tipus: tipus,
-      data: data,
       desde: dies[0],
       fins: dies[dies.length - 1],
       dies: files,
@@ -488,6 +495,38 @@ var Nutricio = (function () {
       netAcumulat:      suma(ambNet, 'net'),
       objectius: { deficit: a.objectiuDeficit, proteina: a.objectiuProteina }
     };
+  }
+
+  /**
+   * Què ha passat entre dues dates. Per a la revisió setmanal.
+   *
+   * Els dies sense res apuntat no entren a cap mitjana: si dijous no vas
+   * apuntar res, la mitjana de la setmana no ha de dir que vas menjar zero.
+   * Sí que es diu quants dies han quedat sense tancar, que és el que et
+   * convé saber.
+   */
+  function resumPeriode(desde, fins) {
+    var r = agregat_(Utils.rangDates(desde, fins));
+    if (!r.diesApuntats) return null;
+
+    var linies = [r.diesApuntats + ' de ' + r.dies.length + ' dies apuntats'];
+
+    if (r.diesAmbBalanc) {
+      var net = Math.round(r.mitjanaNet);
+      linies.push(net >= 0
+        ? 'Dèficit mitjà de ' + net + ' kcal (' + r.diesAmbBalanc + ' dies amb balanç)'
+        : 'Superàvit mitjà de ' + Math.abs(net) + ' kcal (' + r.diesAmbBalanc + ' dies amb balanç)');
+      linies.push('Acumulat de la setmana: ' + Math.round(r.netAcumulat) + ' kcal');
+    }
+    var senseTancar = r.diesApuntats - r.diesAmbBalanc;
+    if (senseTancar > 0) {
+      linies.push(senseTancar + (senseTancar === 1 ? ' dia sense les cremades' : ' dies sense les cremades'));
+    }
+
+    linies.push('Proteïna mitjana ' + Math.round(r.mitjanaProteina) + ' g' +
+      (r.objectius.proteina > 0 ? ' (objectiu ' + r.objectius.proteina + ')' : ''));
+
+    return { titol: 'Nutrició', linies: linies };
   }
 
   // ------------------------------------------------------------- pantalles
@@ -750,6 +789,7 @@ var Nutricio = (function () {
   return {
     r1: r1,
     dia: dia,
+    resumPeriode: resumPeriode,
     periode: periode,
     pantalla: pantalla,
     afegeix: afegeix,

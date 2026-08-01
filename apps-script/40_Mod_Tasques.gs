@@ -72,6 +72,8 @@ function MODUL_TASQUES() {
       };
     },
 
+    resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
+
     contextIA: function () {
       var d = Tasques.pantalla({});
       if (!d.tasques.length && !d.safata.length) return 'Tasques: no en té cap de pendent.';
@@ -269,6 +271,50 @@ var Tasques = (function () {
       perFer: pendents.length,
       vencudes: pendents.filter(function (t) { return t.vencuda; }).length
     };
+  }
+
+  /**
+   * Què ha passat entre dues dates. Per a la revisió setmanal.
+   *
+   * Diu les fetes, les que han entrat, i sobretot LA MÉS VELLA que segueix
+   * pendent. Aquesta última és l'única xifra que fa mal i és la que serveix:
+   * una tasca que arrossegues des de fa tres setmanes o la fas o la treus,
+   * però tenir-la allà no és tenir-la controlada.
+   */
+  function resumPeriode(desde, fins) {
+    var avui = Utils.avui();
+    var totes = vives_().map(function (f) { return ambDades_(f, avui); });
+
+    var fetes = vives_(function (f) {
+      var d = String(f.fet_el || '');
+      return f.estat === 'feta' && d >= desde && d <= fins;
+    }).length;
+
+    var noves = vives_(function (f) {
+      var d = String(f.creat_el || '').slice(0, 10);
+      return d >= desde && d <= fins;
+    }).length;
+
+    var pendents = totes.filter(function (t) { return t.estat === 'per_fer' || t.estat === 'fent'; });
+    var safata = totes.filter(function (t) { return t.estat === 'safata'; }).length;
+    var vencudes = pendents.filter(function (t) { return t.vencuda; });
+
+    if (!fetes && !noves && !pendents.length && !safata) return null;
+
+    var linies = [];
+    linies.push(fetes + (fetes === 1 ? ' feta' : ' fetes') + ' i ' +
+                noves + (noves === 1 ? ' de nova' : ' de noves'));
+    if (pendents.length) linies.push(pendents.length + ' pendents' +
+      (vencudes.length ? ', ' + vencudes.length + ' de vençudes' : ''));
+    if (safata) linies.push(safata + ' a la safata sense classificar');
+
+    if (vencudes.length) {
+      var vella = vencudes.slice().sort(function (a, b) {
+        return String(a.vencEl).localeCompare(String(b.vencEl));
+      })[0];
+      linies.push('La que fa més que arrossegues: «' + vella.text + '», vencia el ' + vella.vencEl);
+    }
+    return { titol: 'Tasques', linies: linies };
   }
 
   // ------------------------------------------------------------ escriptura
@@ -482,6 +528,7 @@ var Tasques = (function () {
     completaPerNom: completaPerNom,
     classificaPerNom: classificaPerNom,
     treuPerNom: treuPerNom,
+    resumPeriode: resumPeriode,
     pantalla: pantalla,
     compte: compte,
     captura: captura,

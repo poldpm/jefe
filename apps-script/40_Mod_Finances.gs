@@ -212,6 +212,8 @@ function MODUL_FINANCES() {
       };
     },
 
+    resumPeriode: function (desde, fins) { return Finances.resumPeriode(desde, fins); },
+
     contextIA: function () {
       var m = Finances.mes(Finances.mesActual());
       if (!m.moviments.length) return 'Finances: aquest mes encara no hi ha cap moviment apuntat.';
@@ -459,6 +461,56 @@ var Finances = (function () {
           (!mena || totes[i].mena === mena)) return totes[i];
     }
     return null;
+  }
+
+  /**
+   * Què ha passat entre dues dates. Per a la revisió setmanal.
+   *
+   * Els traspassos queden fora, igual que a la pantalla del mes: moure diners
+   * d'un compte teu a un altre no és ni gastar ni ingressar, i comptar-ho
+   * inflaria la setmana amb una xifra que no vol dir res.
+   */
+  function resumPeriode(desde, fins) {
+    var fora = exclosos_();
+    var idx = indexCategories_();
+
+    var files = moviments_(function (f) {
+      var d = String(f.data);
+      return d >= desde && d <= fins;
+    });
+    if (!files.length) return null;
+
+    var despeses = 0, ingressos = 0, perCat = {}, gran = null, perRevisar = 0;
+
+    files.forEach(function (f) {
+      if (String(f.revisat).toUpperCase() !== 'SI') perRevisar++;
+      if (fora[f.categoria]) return;
+      var imp = Math.abs(num_(f['import']));
+      if (f.tipus === 'i') { ingressos += imp; return; }
+      despeses += imp;
+      perCat[f.categoria] = (perCat[f.categoria] || 0) + imp;
+      if (!gran || imp > Math.abs(num_(gran['import']))) gran = f;
+    });
+
+    var linies = [];
+    linies.push('Gastat ' + eur(despeses) + ' en ' + files.length +
+                (files.length === 1 ? ' moviment' : ' moviments'));
+    if (ingressos) linies.push('Ingressat ' + eur(ingressos));
+
+    var caps = Object.keys(perCat).sort(function (a, b) { return perCat[b] - perCat[a]; });
+    if (caps.length) {
+      linies.push('On més: ' + caps.slice(0, 3).map(function (c) {
+        return (idx[c] ? idx[c].nom : 'sense categoria') + ' ' + eur(perCat[c]);
+      }).join(', '));
+    }
+    if (gran) {
+      linies.push('El més gros: ' + gran.descripcio + ' ' + eur(Math.abs(num_(gran['import']))));
+    }
+    if (perRevisar) {
+      linies.push(perRevisar + (perRevisar === 1 ? ' moviment per classificar' : ' moviments per classificar'));
+    }
+
+    return { titol: 'Finances', linies: linies };
   }
 
   // --------------------------------------------------------------- el mes
@@ -1549,6 +1601,7 @@ var Finances = (function () {
   return {
     eur: eur,
     mesActual: mesActual,
+    resumPeriode: resumPeriode,
     mes: mes,
     mesos: mesos,
     pantalla: pantalla,

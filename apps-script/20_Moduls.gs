@@ -106,6 +106,37 @@ var Moduls = (function () {
     return out;
   }
 
+  /**
+   * QUÈ HA PASSAT ENTRE DUES DATES, segons cada mòdul.
+   *
+   * Existeix per a la revisió setmanal, i és el que fa que la revisió pugui
+   * dir xifres de veritat en comptes de prosa. El mòdul que la genera no sap
+   * que existeixen ni els hàbits ni el banc: pregunta al nucli i el nucli
+   * pregunta a qui sàpiga contestar.
+   *
+   * És OPCIONAL. Un mòdul que no l'implementi senzillament no surt a la
+   * revisió, i no passa res. Un mòdul escrit d'aquí a un any que sí que la
+   * implementi hi surt sol, sense tocar la revisió.
+   *
+   * Retorna [{ modul, titol, linies: ['...'] }].
+   */
+  function resumPeriode(desde, fins) {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (typeof m[i].resumPeriode !== 'function') continue;
+      try {
+        var r = m[i].resumPeriode(desde, fins);
+        if (r && r.linies && r.linies.length) {
+          out.push({ modul: m[i].id, titol: r.titol || m[i].nom, linies: r.linies });
+        }
+      } catch (err) {
+        Log.error('moduls.resumPeriode', 'Mòdul ' + m[i].id + ': ' + err.message);
+      }
+    }
+    return out;
+  }
+
   var CAU_CONTEXT = 'ia_context';
 
   /**
@@ -215,6 +246,7 @@ var Moduls = (function () {
     actius: actius,
     sincronitzaFull: sincronitzaFull,
     resumInici: resumInici,
+    resumPeriode: resumPeriode,
     contextIA: contextIA,
     invalidaContext: invalidaContext,
     gestionaTornada: gestionaTornada,
