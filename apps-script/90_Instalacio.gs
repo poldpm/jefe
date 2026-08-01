@@ -204,7 +204,16 @@ function triggerTancamentNutricio() {
       { etiqueta: 'nutricio-tancament', url: './#nutricio', urgent: true }
     );
 
-    Log.info('trigger.tancament', 'Recordatori enviat', { data: dia, enviades: r.enviades });
+    /* «Enviat» NOMÉS si ha sortit d'aquí. Abans ho deia sempre, encara que
+       `enviades` fos zero perquè no hi havia cap aparell registrat: el
+       registre afirmava que l'avís havia sortit mentre en Pol el buscava al
+       telèfon. Un registre que menteix és pitjor que no tenir-ne. */
+    if (r.enviades > 0) {
+      Log.info('trigger.tancament', 'Recordatori enviat', { data: dia, enviades: r.enviades });
+    } else {
+      Log.avis('trigger.tancament', 'NO s\'ha pogut enviar: ' + (r.motiu || 'cap aparell l\'ha rebut'),
+               { data: dia, errors: r.errors || [] });
+    }
   } catch (err) {
     Log.error('trigger.tancament', err);
   }
@@ -919,21 +928,55 @@ function perQueNoMHasAvisat() {
 
   // ---- 5. I podria arribar-te?
   a('');
-  if (!Notifica.disponible()) {
+  var quants = 0;
+  var senseFirebase = !Notifica.disponible();
+  if (senseFirebase) {
     a('5. Firebase ................ NO — ' + Notifica.motiu());
   } else {
-    var quants = 0;
     try { quants = Notifica.dispositius().length; } catch (e) {}
     a('5. Firebase ................ correcte');
-    a('   Aparells registrats ..... ' + quants +
-      (quants ? '' : '  ← sense cap aparell no hi ha on enviar-ho'));
+    a('   Aparells registrats ..... ' + quants);
   }
 
+  // ---- I què n'ha dit el sistema d'avisos, últimament?
+  var avisos = Log.ultimes(300).filter(function (f) {
+    return String(f.origen).indexOf('notifica.') === 0 && f.nivell !== 'INFO';
+  });
+  if (avisos.length) {
+    a('');
+    a('6. Queixes del sistema d\'avisos:');
+    avisos.slice(0, 4).forEach(function (f) {
+      a('     ' + String(f.marca_temps).slice(0, 16).replace('T', ' ') + '  ' + f.nivell + '  ' + f.missatge);
+    });
+  }
+
+  /* EL VEREDICTE, EN UNA LÍNIA. Sense això, un diagnòstic de vint línies on
+     totes semblen bé menys la cinquena obliga a llegir-les totes i endevinar
+     quina mana. La primera cosa que falla és la que ho explica. */
   a('');
-  a('COM ES LLEGEIX');
-  a('El primer que surti malament és el motiu; la resta ja no importa.');
-  a('Si tot surt bé i l\'avís no arriba, executa provaAvisCremades(): fa exactament');
-  a('el que fa el trigger, ara mateix, i el registre en dirà el resultat.');
+  a('=========================================================');
+  if (senseFirebase) {
+    a('MOTIU: Firebase no està configurat. ' + Notifica.motiu());
+  } else if (!quants) {
+    a('MOTIU: NO HI HA CAP APARELL REGISTRAT.');
+    a('');
+    a('L\'avís s\'ha generat i no tenia on anar. La fitxa del teu telèfon no');
+    a('és al full: o no l\'has activat mai en aquest aparell, o la fitxa s\'ha');
+    a('renovat —passa en netejar les dades del lloc o en reinstal·lar l\'app—');
+    a('i la que hi havia ha deixat de servir.');
+    a('');
+    a('→ Obre JEFE al telèfon, engegades les notificacions des dels ajustos,');
+    a('  i torna a executar això. Ha de dir 1 aparell.');
+  } else if (motiu) {
+    a('MOTIU: avui no toca avisar — ' + motiu + '.');
+    a('Això no és cap error: és la regla. Per veure l\'avís igualment,');
+    a('executa provaAvisCremades() amb el dia sense tancar.');
+  } else if (!passat) {
+    a('MOTIU: encara no són les 23:45. Res per arreglar.');
+  } else {
+    a('Tot està a punt i avui tocaria avisar. Executa provaAvisCremades()');
+    a('per fer-ho saltar ara i veure què diu el registre.');
+  }
   return l.join('\n');
 }
 

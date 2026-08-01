@@ -2446,20 +2446,51 @@ var Notificacions = (function () {
   }
 
   /**
-   * Si ja estan actives, torna a registrar el treballador cada cop que obres
-   * l'app. És l'única manera que una versió nova hi entri: el registre només
-   * es fa en prémer el botó, i pel seu compte Chrome només ho mira un cop al
-   * dia. Sense això pots estar-te hores provant la versió d'abans sense cap
-   * senyal que ho estàs fent.
+   * Cada cop que obres l'app, si ja tens el permís donat:
+   *
+   *   1. Torna a registrar el treballador de servei. És l'única manera que
+   *      una versió nova hi entri: el registre només es fa en prémer el botó,
+   *      i pel seu compte Chrome només ho mira un cop al dia. Sense això pots
+   *      estar-te hores provant la versió d'abans sense cap senyal.
+   *
+   *   2. TORNA A APUNTAR LA FITXA DEL DISPOSITIU AL FULL. I això és el que
+   *      falla si no hi és: la fitxa d'FCM no és per sempre. Es renova sola
+   *      —quan netegis les dades del lloc, quan reinstal·lis l'app, o quan a
+   *      Firebase li sembla—, i el dia que es renova, la que hi ha desada al
+   *      full deixa de servir. Des de fora no es veu res: els avisos
+   *      senzillament deixen d'arribar, i no te n'assabentes fins que en
+   *      trobes a faltar un. Tornar-la a apuntar cada cop que obres l'app fa
+   *      que això es curi sol.
+   *
+   *      Al full és un «desa» per fitxa, o sigui que no s'hi acumula res: si
+   *      és la mateixa, només se'n refresca la data.
    */
   function actualitza() {
     if (!potSerHi() || Notification.permission !== 'granted') return;
+
     navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './fcm/' })
-      .then(function (reg) { return reg.update(); })
-      .catch(function () { /* sense xarxa: ja hi tornarem */ });
+      .then(function (reg) {
+        reg.update();
+        return prepara().then(function () { return reg; });
+      })
+      .then(function (reg) {
+        return missatgeria.getToken({ vapidKey: config.vapidKey, serviceWorkerRegistration: reg });
+      })
+      .then(function (fitxa) {
+        if (!fitxa) return;
+        // Si és la mateixa que ja vam apuntar, no cal molestar el servidor.
+        if (Cau.get('fitxa', '') === fitxa) return;
+        return crida('nucli', 'registraDispositiu', { fitxa: fitxa, nom: nomDispositiu() })
+          .then(function () { Cau.set('fitxa', fitxa); Cau.set('notificacions', true); });
+      })
+      .catch(function () { /* sense xarxa o sense clau: ja hi tornarem demà */ });
   }
 
-  actualitza();
+  /* Passats uns segons de l'arrencada, no durant.
+     Ara això baixa el SDK de Firebase per poder demanar la fitxa, i el que
+     mana en obrir l'app és que la primera pantalla surti de seguida. Cinc
+     segons més tard no els nota ningú, i la fitxa es refresca igual. */
+  setTimeout(actualitza, 5000);
 
   return { potSerHi: potSerHi, permis: permis, estat: estat, activa: activa,
            actualitza: actualitza };
