@@ -11,11 +11,13 @@
  *
  * DECISIONS DE CÀLCUL (les de FitFat, escrites perquè no es perdin)
  *
- *   1. Cremades = BASAL + ACTIVITAT. L'activitat és la que et dona el rellotge;
- *      el basal surt de la fórmula Mifflin–St Jeor amb les teves dades.
+ *   1. Les cremades són EL QUE ESCRIU EN POL, i prou. FitFat hi sumava un
+ *      metabolisme basal calculat amb Mifflin–St Jeor, però ell ja entra el
+ *      total del dia que li dona el rellotge. Sumar-hi un basal el comptaria
+ *      dues vegades. El càlcul s'ha tret, no amagat.
  *
- *   2. El dia no es tanca fins que hi ha activitat introduïda. Sense
- *      activitat no hi ha balanç: un dia en blanc no és un dia de dèficit zero.
+ *   2. El dia no es tanca fins que hi ha cremades introduïdes. Sense
+ *      cremades no hi ha balanç: un dia en blanc no és un dia de dèficit zero.
  *
  *   3. Balanç = cremades − ingerides. POSITIU vol dir dèficit.
  *
@@ -111,8 +113,7 @@ function MODUL_NUTRICIO() {
       l.push('- Proteïna: ' + Nutricio.r1(d.totals.proteina) + ' g' +
              (d.objectius.proteina > 0 ? ' (objectiu ' + d.objectius.proteina + ' g)' : ''));
       if (d.teCremades) {
-        l.push('- Cremades: ' + Math.round(d.cremades) + ' kcal (basal ' + Math.round(d.basal) +
-               ' + activitat ' + Math.round(d.activitat) + ')');
+        l.push('- Cremades: ' + Math.round(d.cremades) + ' kcal');
         l.push('- Balanç: ' + d.verdicte.text);
       } else {
         l.push('- Encara no has introduït l\'activitat del rellotge, o sigui que el dia no es pot tancar.');
@@ -199,41 +200,24 @@ var Nutricio = (function () {
   // ---------------------------------------------------------------- ajustos
 
   /**
-   * Objectius i dades corporals. Van a `_Config` amb prefix `nutri_`, que és
-   * un magatzem clau-valor del nucli pensat justament per això: no cal cap
-   * full nou ni tocar cap fitxer del nucli.
+   * Només els dos objectius. Van a `_Config` amb prefix `nutri_`, que és un
+   * magatzem clau-valor del nucli pensat justament per això: no cal cap full
+   * nou ni tocar cap fitxer del nucli.
    */
   function ajustos() {
-    var a = {
+    return {
       objectiuDeficit:  Config.getNum('nutri_objectiu_deficit', 0),
-      objectiuProteina: Config.getNum('nutri_objectiu_proteina', 0),
-      sexe:             Config.get('nutri_sexe', 'home'),
-      edat:             Config.getNum('nutri_edat', 0),
-      alcada:           Config.getNum('nutri_alcada', 0),
-      pes:              Config.getNum('nutri_pes', 0)
+      objectiuProteina: Config.getNum('nutri_objectiu_proteina', 0)
     };
-    a.basal = basal_(a);
-    return a;
-  }
-
-  /** Mifflin–St Jeor, la mateixa fórmula que feia servir FitFat. */
-  function basal_(a) {
-    if (!(a.edat > 0 && a.alcada > 0 && a.pes > 0)) return 0;
-    return Math.round(10 * a.pes + 6.25 * a.alcada - 5 * a.edat +
-                      (String(a.sexe) === 'dona' ? -161 : 5));
   }
 
   function desaAjustos(p) {
     var mapa = {
       objectiuDeficit:  'nutri_objectiu_deficit',
-      objectiuProteina: 'nutri_objectiu_proteina',
-      sexe:             'nutri_sexe',
-      edat:             'nutri_edat',
-      alcada:           'nutri_alcada',
-      pes:              'nutri_pes'
+      objectiuProteina: 'nutri_objectiu_proteina'
     };
     for (var k in mapa) {
-      if (p[k] !== undefined && p[k] !== null && p[k] !== '') Config.set(mapa[k], p[k]);
+      if (p[k] !== undefined && p[k] !== null) Config.set(mapa[k], p[k]);
     }
     return ajustos();
   }
@@ -265,8 +249,7 @@ var Nutricio = (function () {
 
     var fd = Dades.un('NutricioDies', { data: data });
     var teActivitat = !!(fd && String(fd.activitat).trim() !== '');
-    var activitat = fd ? num_(fd.activitat) : 0;
-    var cremades = a.basal + activitat;
+    var cremades = fd ? num_(fd.activitat) : 0;
     var teCremades = teActivitat && cremades > 0;
 
     var net = cremades - totals.ingerides;   // positiu = dèficit
@@ -275,8 +258,7 @@ var Nutricio = (function () {
       data: data,
       apats: apats,
       totals: totals,
-      basal: a.basal,
-      activitat: activitat,
+      activitat: cremades,
       teActivitat: teActivitat,
       cremades: cremades,
       teCremades: teCremades,
@@ -434,7 +416,7 @@ var Nutricio = (function () {
     var files = dies.map(function (d) {
       var t = perDia[d] || { ingerides: 0, proteina: 0 };
       var teAct = activitats[d] !== undefined;
-      var cremades = a.basal + (teAct ? activitats[d] : 0);
+      var cremades = teAct ? activitats[d] : 0;
       var teCremades = teAct && cremades > 0;
       return {
         data: d,
@@ -648,10 +630,8 @@ var Nutricio = (function () {
       canvis = {};
       if (String(s.targetDeficit || '').trim() !== '')  canvis.objectiuDeficit  = num_(s.targetDeficit);
       if (String(s.targetProtein || '').trim() !== '')  canvis.objectiuProteina = num_(s.targetProtein);
-      if (s.bSex)    canvis.sexe   = String(s.bSex);
-      if (s.bAge)    canvis.edat   = num_(s.bAge);
-      if (s.bHeight) canvis.alcada = num_(s.bHeight);
-      if (s.bWeight) canvis.pes    = num_(s.bWeight);
+      // El sexe, l'edat, l'alçada i el pes de FitFat no s'importen: només
+      // servien per calcular el basal, i el basal s'ha tret.
       informe.ajustos = Object.keys(canvis).length > 0;
     }
 

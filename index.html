@@ -3380,13 +3380,8 @@ App.registraVista('nutricio', {
           xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
         '</div>' +
 
-        (d.basal > 0
-          ? '<p class="menut">Basal ' + r0(d.basal) + ' + activitat ' + r0(d.activitat) +
-            ' = <b class="num">' + r0(d.cremades) + ' kcal</b></p>'
-          : '') +
-
         '<label class="camp-activitat">' +
-          '<span class="marge">Calories cremades (del rellotge)</span>' +
+          '<span class="marge">Calories cremades (total del dia, del rellotge)</span>' +
           '<input id="n-activitat" inputmode="decimal" value="' +
             (d.teActivitat ? esc(String(d.activitat)) : '') + '" placeholder="p. ex. 2400">' +
         '</label>' +
@@ -3581,6 +3576,16 @@ App.registraVista('nutricio', {
       });
     }
 
+    /** Torna a omplir els tres desplegables sense refer la pantalla. */
+    function refrescaGuardats() {
+      var opcions = '<option value="">Tria un aliment guardat…</option>' +
+        aliments.map(function (a) {
+          return '<option value="' + esc(a.id) + '">' + esc(a.nom) + ' · ' +
+                 r0(a.kcal100) + ' kcal · ' + r1(a.prot100) + ' g</option>';
+        }).join('');
+      arrel.querySelectorAll('[data-guardats]').forEach(function (s) { s.innerHTML = opcions; });
+    }
+
     function lligaApats() {
       arrel.querySelectorAll('.apat').forEach(function (sec) {
         var apat = sec.dataset.apat;
@@ -3641,12 +3646,23 @@ App.registraVista('nutricio', {
             App.brindis('Per desar-lo cal el nom i les kcal per 100 g', 'error');
             return;
           }
+          bd.disabled = true;
           crida('nutricio', 'desaAliment', {
             nom: nom.value.trim(), kcal100: num(kc.value), prot100: num(pr.value)
           }).then(function () {
-            App.brindis('Aliment desat');
-            return crida('nutricio', 'aliments', {}).then(function (l) { aliments = l; });
-          }).catch(function (err) { App.brindis(err.message, 'error'); });
+            return crida('nutricio', 'aliments', {});
+          }).then(function (l) {
+            aliments = l;
+            // Sense això es desava al servidor però no apareixia a cap
+            // desplegable fins a recarregar: exactament la cara que fa una
+            // cosa que no s'ha guardat.
+            refrescaGuardats();
+            bd.disabled = false;
+            App.brindis('«' + nom.value.trim() + '» desat a la teva llista');
+          }).catch(function (err) {
+            bd.disabled = false;
+            App.brindis(err.message, 'error');
+          });
         });
 
         sec.querySelectorAll('[data-treu]').forEach(function (b) {
@@ -3668,20 +3684,6 @@ App.registraVista('nutricio', {
         '<div class="form-ajustos">' +
           camp('objectiuDeficit', 'Dèficit diari objectiu (kcal)', a.objectiuDeficit) +
           camp('objectiuProteina', 'Proteïna diària objectiu (g)', a.objectiuProteina) +
-          '<hr>' +
-          '<p class="menut">Amb aquestes quatre dades es calcula el metabolisme basal ' +
-            '(fórmula Mifflin–St Jeor). Si les deixes buides, les calories cremades són ' +
-            'només les que escriguis tu cada dia.</p>' +
-          '<label><span class="marge">Sexe</span><select data-c="sexe">' +
-            '<option value="home"' + (a.sexe === 'home' ? ' selected' : '') + '>Home</option>' +
-            '<option value="dona"' + (a.sexe === 'dona' ? ' selected' : '') + '>Dona</option>' +
-          '</select></label>' +
-          camp('edat', 'Edat (anys)', a.edat) +
-          camp('alcada', 'Alçada (cm)', a.alcada) +
-          camp('pes', 'Pes (kg)', a.pes) +
-          '<p class="menut" id="aj-basal">' +
-            (a.basal > 0 ? 'Basal estimat: <b class="num">' + a.basal + ' kcal/dia</b>'
-                         : 'Omple edat, alçada i pes per calcular-lo.') + '</p>' +
           '<button class="btn btn-primari" data-desa-ajustos>Desa</button>' +
           '<hr>' +
           '<p class="marge">Portar-hi les dades de FitFat</p>' +
