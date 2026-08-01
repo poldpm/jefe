@@ -77,7 +77,7 @@ function netejaFullPerDefecte_(ss) {
 // ------------------------------------------------------------------ triggers
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
-                'triggerTancamentNutricio'];
+                'triggerTancamentNutricio', 'triggerBanc'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -104,6 +104,10 @@ function instalaTriggers() {
   // mirar l'hora real per no equivocar-se de jornada si li passa la mitjanit.
   ScriptApp.newTrigger('triggerTancamentNutricio')
     .timeBased().atHour(23).nearMinute(45).everyDays(1).create();
+
+  // El banc, de matinada: els moviments d'ahir ja hi són i tu encara dorms.
+  ScriptApp.newTrigger('triggerBanc')
+    .timeBased().atHour(6).everyDays(1).create();
 
   Log.info('instalacio', 'Triggers instal·lats', { horaResum: horaResum, diaRevisio: diaRevisio });
   return 'Triggers instal·lats: ' + TRIGGERS.join(', ');
@@ -196,6 +200,37 @@ function triggerTancamentNutricio() {
     Log.info('trigger.tancament', 'Recordatori enviat', { data: dia, enviades: r.enviades });
   } catch (err) {
     Log.error('trigger.tancament', err);
+  }
+}
+
+/**
+ * SINCRONITZACIÓ DEL BANC — cada matinada a les 6:00.
+ *
+ * Només avisa si hi ha alguna cosa a mirar. Un avís que diu «0 moviments
+ * nous» cada matí és soroll, i el soroll fa que deixis de mirar els avisos
+ * que sí que importen.
+ */
+function triggerBanc() {
+  try {
+    if (typeof FinancesBanc === 'undefined' || !FinancesBanc.disponible()) return;
+
+    var r = ambBloqueig_(function () { return FinancesBanc.sincronitza(); });
+    if (!r.nous) return;
+
+    // Si tot ha entrat ja classificat, no hi ha res a decidir: no molestem.
+    if (!r.perRevisar) {
+      Log.info('trigger.banc', r.nous + ' moviments nous, tots ja classificats');
+      return;
+    }
+
+    Notifica.envia(
+      r.perRevisar + (r.perRevisar === 1 ? ' moviment per classificar' : ' moviments per classificar'),
+      'Han entrat ' + r.nous + ' moviments del banc' +
+        (r.jaSabuts ? ' i ' + r.jaSabuts + ' ja sabia què eren' : '') + '.',
+      { etiqueta: 'finances-banc', url: './#finances' }
+    );
+  } catch (err) {
+    Log.error('trigger.banc', err);
   }
 }
 
@@ -572,6 +607,117 @@ function reparaDates(simulacio) {
 
   if (!simulacio && totals) Dades.invalida();
   return l.join('\n');
+}
+
+
+/* =========================================================================
+   CONNEXIÓ DEL BANC — executa-les en aquest ordre, un sol cop.
+   ========================================================================= */
+
+/** PAS 1 — comprova que les tres propietats de l'script estan ben posades. */
+function provaBanc() {
+  var l = ['=== CONNEXIÓ AMB ENABLE BANKING ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var r;
+  try { r = FinancesBanc.comprova(); }
+  catch (err) { a('FALLA: ' + err.message); return l.join('\n'); }
+
+  a('Aplicació ..... ' + r.aplicacio);
+  a('Entorn ........ ' + r.entorn + (r.produccio ? '  correcte' : '  ÉS SANDBOX: veuràs dades inventades'));
+  a('Activa ........ ' + (r.activa ? 'sí' : 'NO — falta activar-la al panell d\'Enable Banking'));
+  a('Adreça de tornada:');
+  a('  la que espera JEFE ... ' + r.redirect);
+  a('  registrada allà ...... ' + (r.redirectRegistrada ? 'sí' : 'NO'));
+
+  if (!r.redirectRegistrada) {
+    a('');
+    a('Aquesta és la que ha canviat en passar de l\'app antiga a JEFE.');
+    a('Afegeix-la a les redirect URLs de la teva aplicació a enablebanking.com.');
+    a('Registrades ara mateix: ' + JSON.stringify(r.registrades));
+    return l.join('\n');
+  }
+
+  a('');
+  a(r.produccio && r.activa ? 'Tot correcte. Ara: bancsDisponibles().'
+                            : 'Arregla el que surt marcat abans de continuar.');
+  return l.join('\n');
+}
+
+/** PAS 2 — el nom EXACTE del teu banc. Copia'l tal com surti. */
+function bancsDisponibles(pais) {
+  var l = FinancesBanc.bancs(pais || 'ES');
+  l.forEach(function (b) { Logger.log(b); });
+  Logger.log('\n' + l.length + ' entitats. Copia el nom exacte i executa connectaBanc("...").');
+  return l.length;
+}
+
+/** PAS 3 — obre l'enllaç que et doni i identifica't al teu banc. */
+function connectaBanc(nom) {
+  var url = FinancesBanc.connecta(nom);
+  Logger.log('OBRE AQUEST ENLLAÇ I IDENTIFICA\'T AL TEU BANC:\n' + url);
+  Logger.log('\nQuan tornis, la connexió ja quedarà feta sola.');
+  return url;
+}
+
+/** Com està la connexió, i què va passar l'última sincronització. */
+function estatBanc() {
+  var e = FinancesBanc.estat();
+  var l = ['=== BANC ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+  a('Banc ........ ' + (e.institution || '—'));
+  a('Connectat ... ' + (e.connected ? 'sí' : 'NO'));
+  a('Comptes ..... ' + ((e.accounts || []).length));
+  a('Caduca ...... ' + (e.caduca || '—'));
+  if (!e.authId) a('\n→ Encara no has executat connectaBanc().');
+  else if (!e.sessionId) a('\n→ Has demanat el permís però la tornada del banc no s\'ha desat.');
+  if (e.caduca && e.caduca < Utils.avui()) a('\n→ El permís ha caducat. Torna a executar connectaBanc().');
+  return l.join('\n');
+}
+
+/** Baixa els moviments ara mateix, sense esperar la matinada. */
+function sincronitzaBancAra() {
+  var r = FinancesBanc.sincronitza();
+  Logger.log('Moviments nous ......... ' + r.nous);
+  Logger.log('Ja sabia què eren ...... ' + (r.jaSabuts || 0));
+  Logger.log('Per classificar ........ ' + (r.perRevisar || 0));
+  Logger.log('Saldos actualitzats .... ' + (r.saldos || 0));
+  (r.errors || []).forEach(function (e) { Logger.log('  ERROR: ' + e); });
+  if (r.motiu) Logger.log(r.motiu);
+  return r.nous;
+}
+
+/**
+ * Repara la clau privada si en enganxar-la s'han perdut els salts de línia.
+ * El camp de Propietats de l'script és d'una sola línia, i sense els salts el
+ * PEM deixa de ser vàlid. No mostra MAI el contingut: només comptadors.
+ */
+function arreglaClauBanc() {
+  var p = PropertiesService.getScriptProperties();
+  var k = (p.getProperty('EB_PRIVATE_KEY') || '').trim();
+  if (!k) throw new Error('No hi ha cap propietat EB_PRIVATE_KEY.');
+
+  Logger.log('Com estava: ' + k.length + ' caràcters, ' + k.split('\n').length + ' línies');
+
+  var m = k.match(/-----BEGIN ([A-Z ]+?)-----([\s\S]*?)-----END/);
+  if (!m) throw new Error('No hi trobo les marques BEGIN/END. Torna a enganxar el .pem sencer.');
+
+  var tipus = m[1].trim();
+  if (tipus === 'RSA PRIVATE KEY') {
+    throw new Error('La clau és PKCS#1 i Apps Script només accepta PKCS#8. Cal convertir-la amb OpenSSL.');
+  }
+  if (tipus !== 'PRIVATE KEY') throw new Error('Tipus de clau inesperat: ' + tipus);
+
+  var cos = m[2].replace(/[^A-Za-z0-9+\/=]/g, '');
+  if (cos.length < 100) throw new Error('El cos de la clau és massa curt: s\'ha copiat a mitges.');
+
+  var pem = '-----BEGIN PRIVATE KEY-----\n' + cos.match(/.{1,64}/g).join('\n') +
+            '\n-----END PRIVATE KEY-----\n';
+  p.setProperty('EB_PRIVATE_KEY', pem);
+
+  Utilities.computeRsaSha256Signature('prova', pem);   // prova de foc
+  Logger.log('La clau ja signa correctament. Torna a executar provaBanc().');
+  return 'clau reparada';
 }
 
 

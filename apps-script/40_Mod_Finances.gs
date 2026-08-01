@@ -154,7 +154,33 @@ function MODUL_FINANCES() {
       categories:     function ()  { return Finances.categories(); },
       suggeriments:   function (p) { return Finances.suggeriments(p.text); },
       reclassifica:   function ()  { return Finances.reclassifica(); },
-      importa:        function (p) { return Finances.importa(p.dades, p.simulacio); }
+      importa:        function (p) { return Finances.importa(p.dades, p.simulacio); },
+      estatBanc:      function ()  { return FinancesBanc.estat(); },
+      sincronitzaBanc: function () { return FinancesBanc.sincronitza(); }
+    },
+
+    /* La tornada del banc després que en Pol s'hi hagi identificat. El nucli
+       no sap res d'Enable Banking: només pregunta si algú reclama aquesta
+       visita. Així una integració amb autorització externa no obliga a tocar
+       cap fitxer del nucli. */
+    reclamaTornada: function (p) {
+      return !!(p && (p.code || p.error) && FinancesBanc.estat().authId);
+    },
+
+    gestionaTornada: function (p) {
+      if (p.error) {
+        var cancellat = p.error === 'access_denied';
+        return HtmlService.createHtmlOutput(pagina_(
+          cancellat ? 'El permís no s\'ha donat' : 'El banc ha retornat un error',
+          esc_(p.error_description || p.error) +
+          (cancellat ? '<p>Sovint és perquè falta confirmar-ho a l\'app del banc, o perquè ' +
+                       's\'ha exhaurit el temps. Torna a executar <code>connectaBanc()</code>.</p>' : '')
+        ));
+      }
+      var r = FinancesBanc.creaSessio(p.code);
+      return HtmlService.createHtmlOutput(pagina_(
+        'Banc connectat',
+        '<p>' + r.comptes + ' compte(s). Ja pots tancar aquesta pestanya i tornar a JEFE.</p>'));
     },
 
     resumInici: function () {
@@ -228,6 +254,18 @@ function MODUL_FINANCES() {
 
     vista: 'vista_finances'
   };
+}
+
+
+/** Pàgina mínima per a les tornades del banc. Es veu tres segons a la vida. */
+function pagina_(titol, cos) {
+  return '<div style="font:16px/1.6 system-ui,sans-serif;padding:40px;max-width:34em;margin:0 auto">' +
+         '<h2 style="margin:0 0 .5em">' + titol + '</h2>' + cos + '</div>';
+}
+
+function esc_(t) {
+  return String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 

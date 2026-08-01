@@ -12,6 +12,16 @@
 /** Punt d'entrada de la web app. */
 function doGet(e) {
   try {
+    /* TORNADES DE FORA.
+       Alguns serveis externs —un banc obert per PSD2, per exemple— tornen a
+       aquesta mateixa adreça amb paràmetres a la URL en comptes de cridar
+       l'API. El nucli no sap res de cap servei concret: només pregunta si
+       algun mòdul reclama aquesta tornada i li dona el control. Sense això,
+       qualsevol integració amb una autorització externa obligaria a tocar
+       aquest fitxer, que és exactament el que no ha de passar mai. */
+    var tornada = Moduls.gestionaTornada(e && e.parameter);
+    if (tornada) return tornada;
+
     var plantilla = HtmlService.createTemplateFromFile('ui_index');
     plantilla.estat = estatSistema();
     return plantilla.evaluate()

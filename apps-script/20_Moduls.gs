@@ -149,6 +149,33 @@ var Moduls = (function () {
     return text;
   }
 
+  /**
+   * Dona el control al mòdul que reclami una tornada externa.
+   *
+   * Un mòdul que necessiti una autorització de fora declara `reclamaTornada`
+   * i `gestionaTornada`. El nucli no sap de quin servei es tracta ni què fa:
+   * només pregunta i s'aparta. Retorna la pàgina a ensenyar, o null si aquesta
+   * visita no és cap tornada i s'ha d'obrir l'app normal.
+   */
+  function gestionaTornada(parametres) {
+    var p = parametres || {};
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (typeof m[i].reclamaTornada !== 'function') continue;
+      try {
+        if (!m[i].reclamaTornada(p)) continue;
+        return m[i].gestionaTornada(p);
+      } catch (err) {
+        Log.error('moduls.tornada', 'Mòdul ' + m[i].id + ': ' + err.message);
+        return HtmlService.createHtmlOutput(
+          '<div style="font:16px/1.6 system-ui;padding:40px">' +
+          '<h2>No ha anat bé</h2><pre style="white-space:pre-wrap">' +
+          String(err.message) + '</pre></div>');
+      }
+    }
+    return null;
+  }
+
   /** L'esborra. La crida `Dades.invalida` a cada escriptura. */
   function invalidaContext() {
     try { CacheService.getScriptCache().remove(CAU_CONTEXT); } catch (e) {}
@@ -190,6 +217,7 @@ var Moduls = (function () {
     resumInici: resumInici,
     contextIA: contextIA,
     invalidaContext: invalidaContext,
+    gestionaTornada: gestionaTornada,
     einesIA: einesIA,
     perAlClient: perAlClient
   };
