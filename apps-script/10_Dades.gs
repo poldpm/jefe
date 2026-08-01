@@ -37,6 +37,11 @@ var Dades = (function () {
 
   function invalida(nom) {
     if (nom) delete memo[nom]; else memo = {};
+
+    /* Si canvia una dada, la fitxa que llegeix la IA deixa de valer. S'esborra
+       aquí perquè aquest és l'únic lloc pel qual passen TOTES les escriptures:
+       posar-ho a cada mòdul seria confiar que ningú se n'oblidi mai. */
+    if (typeof Moduls !== 'undefined' && Moduls.invalidaContext) Moduls.invalidaContext();
   }
 
   function esBuida_(fila) {

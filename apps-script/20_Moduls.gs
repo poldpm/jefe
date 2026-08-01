@@ -106,8 +106,30 @@ var Moduls = (function () {
     return out;
   }
 
-  /** Fitxa compacta per a la IA: cada mòdul aporta el seu resum en text curt. */
+  var CAU_CONTEXT = 'ia_context';
+
+  /**
+   * Fitxa compacta per a la IA: cada mòdul aporta el seu resum en text curt.
+   *
+   * ES DESA A LA MEMÒRIA CAU, i és el que fa que la segona pregunta d'una
+   * conversa sigui molt més ràpida que la primera. Muntar-la vol dir obrir el
+   * full de cada mòdul: amb hàbits i nutrició ja costava més que pensar la
+   * resposta, i cada mòdul nou hi suma.
+   *
+   * NO POT QUEDAR MAI ENDARRERIDA: si es desa qualsevol dada, la fitxa
+   * s'esborra tot seguit (ho fa `Dades.invalida`). Val més tornar-la a muntar
+   * que respondre amb el que hi havia fa un minut, perquè aquí la regla que
+   * mana és que JEFE no digui res que no sigui cert ara mateix.
+   */
   function contextIA(opcions) {
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) { /* sense cau: seguim */ }
+
+    if (cau) {
+      var desat = cau.get(CAU_CONTEXT);
+      if (desat !== null) return desat;
+    }
+
     var trossos = [];
     var m = actius();
     for (var i = 0; i < m.length; i++) {
@@ -119,7 +141,17 @@ var Moduls = (function () {
         Log.error('moduls.contextIA', 'Mòdul ' + m[i].id + ': ' + err.message);
       }
     }
-    return trossos.join('\n\n');
+
+    var text = trossos.join('\n\n');
+    // Cinc minuts com a molt. Encara que no s'escrigui res, el dia canvia i
+    // «avui» ha de deixar de ser ahir.
+    if (cau) { try { cau.put(CAU_CONTEXT, text, 300); } catch (e) {} }
+    return text;
+  }
+
+  /** L'esborra. La crida `Dades.invalida` a cada escriptura. */
+  function invalidaContext() {
+    try { CacheService.getScriptCache().remove(CAU_CONTEXT); } catch (e) {}
   }
 
   /** Eines que la IA pot cridar, aportades pels mòduls. */
@@ -157,6 +189,7 @@ var Moduls = (function () {
     sincronitzaFull: sincronitzaFull,
     resumInici: resumInici,
     contextIA: contextIA,
+    invalidaContext: invalidaContext,
     einesIA: einesIA,
     perAlClient: perAlClient
   };
