@@ -22,6 +22,8 @@ App.registraVista('habits', {
 
       arrel.innerHTML =
         '<header class="capcalera"><div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa') + '</button>' +
           '<div class="selector-data" style="flex:1">' +
             '<button class="btn btn-secundari btn-icona" data-dia="-1" aria-label="Dia anterior">' +
               ic('esquerra') + '</button>' +
@@ -203,6 +205,9 @@ App.registraVista('habits', {
     // ------------------------------------------------------------- accions
 
     function lligaCapcalera() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
       arrel.querySelectorAll('[data-dia]').forEach(function (b) {
         b.addEventListener('click', function () {
           var nova = fmt.suma(data, Number(b.dataset.dia));

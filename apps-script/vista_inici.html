@@ -11,6 +11,8 @@ App.registraVista('inici', {
 
       var html =
         '<header class="capcalera"><div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa') + '</button>' +
           '<div style="flex:1;min-width:0">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
@@ -57,6 +59,8 @@ App.registraVista('inici', {
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
       });
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
       var bt = arrel.querySelector('[data-tema]');
       if (bt) bt.addEventListener('click', function () {
         var ordre = ['auto', 'clar', 'fosc'];

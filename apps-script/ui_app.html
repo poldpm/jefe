@@ -240,8 +240,15 @@ var Jefe = (function () {
       }
 
       // La conversa és la pantalla d'arrencada: és l'assistent, no el formulari.
-      var darrera = Cau.get('vista', 'conversa');
-      App.ves(App.vistes[darrera] ? darrera : (App.vistes.conversa ? 'conversa' : 'inici'));
+      // I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar l'última
+      // vista convertia qualsevol pantalla sense sortida en una trampa que ni
+      // reinstal·lant l'app es desfeia, perquè la cau sobreviu a la instal·lació.
+      App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+
+      window.addEventListener('popstate', function (ev) {
+        var id = (ev.state && ev.state.vista) || 'conversa';
+        App.ves(App.vistes[id] ? id : 'conversa', null, true);
+      });
 
       Cua.envia();
       document.addEventListener('visibilitychange', function () {
@@ -259,11 +266,18 @@ var Jefe = (function () {
       }).catch(function () { /* sense connexió: seguim amb la cau */ });
     },
 
-    ves: function (id, params) {
+    ves: function (id, params, sensePila) {
       var def = App.vistes[id];
       if (!def) { id = 'inici'; def = App.vistes.inici; }
+
+      // El botó d'enrere del mòbil ha de funcionar: és el primer que prems quan
+      // vols sortir d'algun lloc. Només apilem els canvis de vista, no els de
+      // dins d'una vista (canviar de dia no és navegar).
+      if (!sensePila && App.actual && App.actual !== id) {
+        try { history.pushState({ vista: id }, ''); } catch (e) { /* no és cap error */ }
+      }
+
       App.actual = id;
-      Cau.set('vista', id);
 
       document.querySelectorAll('.nav a').forEach(function (a) {
         if (a.dataset.vista === id) a.setAttribute('aria-current', 'page');
