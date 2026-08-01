@@ -683,6 +683,50 @@ h2 { font-size: 1.0625rem; }
 .rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* Captura ràpida. El camp és el primer que hi ha i està sempre obert: si has
+   de prémer un botó per obrir-lo, ja has perdut la meitat del que volies
+   apuntar. */
+.camp-captura { display: block; }
+.captura-fila { display: flex; gap: var(--e2); margin-top: var(--e2); }
+.captura-fila input { flex: 1; min-width: 0; min-height: var(--toc); padding: 0 var(--e3);
+                      font: inherit; background: var(--paper); color: var(--ink);
+                      border: 1.5px solid var(--neatline); border-radius: var(--r); }
+.captura-fila .btn { flex: none; padding: 0 var(--e4); }
+
+/* La safata: el que has capturat i encara no has decidit què era. Els tres
+   contextos a un toc, perquè classificar-ho ha de costar menys que llegir-ho. */
+.safata-t { display: flex; flex-direction: column; gap: var(--e2); }
+.safata-fila { border: 1px solid var(--neatline); padding: var(--e3);
+               transition: opacity .25s ease, transform .25s var(--sortida); }
+.safata-fila[data-fet="1"] { opacity: 0; transform: translateX(20px); }
+.safata-text { margin-bottom: var(--e2); overflow-wrap: anywhere; }
+.safata-tria { display: flex; gap: var(--e2); }
+.safata-tria button { flex: 1; min-height: 44px; font: inherit; font-size: .8125rem;
+                      background: transparent; color: var(--ink-suau);
+                      border: 1px solid var(--neatline); border-radius: var(--r); }
+.safata-tria button:active { background: var(--ink); color: var(--paper); }
+.safata-tria .safata-fora { flex: none; width: 44px; color: var(--ink-suau);
+                            border-color: var(--utm-suau); }
+
+/* Una tasca: la casella per completar-la a l'esquerra, perquè és el que fas
+   més sovint i ha de caure sota el polze. */
+.tasques { display: flex; flex-direction: column; }
+.tasca { display: flex; align-items: flex-start; gap: var(--e3);
+         border-bottom: 1px solid var(--utm-suau); padding: var(--e2) 0;
+         transition: opacity .2s ease; }
+.tasca:last-child { border-bottom: 0; }
+.tasca[data-fent="1"] { opacity: .4; }
+.tasca[data-feta] .tasca-text { text-decoration: line-through; color: var(--ink-suau); }
+.tasca-marca { flex: none; width: 26px; height: 26px; margin-top: 9px;
+               border: 1.5px solid var(--neatline); border-radius: 50%;
+               background: transparent; padding: 0; }
+.tasca-marca[data-fet="1"] { background: var(--h1); border-color: var(--h1); }
+.tasca-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+             min-height: 44px; justify-content: center; background: none; border: 0;
+             padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.tasca-text { overflow-wrap: anywhere; }
+.tasca[data-vencuda] .menut { color: var(--avis); }
+
 /* Patrimoni. La data mana tant com la xifra: un valor de fa dos mesos no és el
    que tens, és el que tenies. Els que fa temps que no toques es marquen. */
 .act-fila { display: grid; grid-template-columns: minmax(0, 1fr) 56px auto;

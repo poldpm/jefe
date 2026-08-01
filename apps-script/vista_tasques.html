@@ -1,0 +1,292 @@
+<script>
+/* JEFE — MÒDUL · Tasques i captura ràpida
+   Món: full de mapa topogràfic.
+
+   LA DECISIÓ QUE MANA: el camp de capturar és el primer que hi ha i està
+   sempre obert. No demana context ni data ni prioritat, perquè cada camp
+   obligatori al moment de capturar és una excusa per no capturar, i el que no
+   s'apunta es perd. Tot cau a la safata i ja ho classificaràs.
+
+   La safata va a dalt i les pendents a sota: primer el que has de decidir,
+   després el que has de fer. */
+
+App.registraVista('tasques', {
+  render: function (arrel, params) {
+
+    var dades = null;
+
+    // ------------------------------------------------------------- capçalera
+
+    function capcalera() {
+      return '<header class="capcalera capcalera-nutri">' +
+        '<div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa', 'ic-p') + '</button>' +
+          '<span class="titol-periode" style="cursor:default">' +
+            '<b>Tasques</b>' +
+            '<span>' + (dades ? dades.tasques.length + ' pendents' : '') +
+              (dades && dades.vencudes ? ' · ' + dades.vencudes + ' vençudes' : '') + '</span>' +
+          '</span>' +
+        '</div>' +
+      '</header>';
+    }
+
+    // ---------------------------------------------------------------- pintura
+
+    function pinta(d, dEnCau) {
+      dades = d;
+
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            /* Sempre obert i sempre a dalt. Si has de prémer un botó per
+               obrir-lo, ja has perdut la meitat del que volies apuntar. */
+            '<label class="camp-captura">' +
+              '<span class="marge">Apunta-ho i segueix</span>' +
+              '<div class="captura-fila">' +
+                '<input id="t-captura" placeholder="Què t\'acaba de passar pel cap?" autocomplete="off">' +
+                '<button class="btn btn-primari" data-captura>' + ic('mes') + '</button>' +
+              '</div>' +
+            '</label>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' +
+            blocSafata(d) +
+            blocPendents(d) +
+          '</section>' +
+
+          '<section class="nutri-tanca">' + blocFetes(d) + '</section>' +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+
+      lliga();
+    }
+
+    /* La safata és el que has capturat i encara no has decidit què era.
+       Cada línia porta els tres contextos a un toc: classificar-la la treu
+       d'aquí sola, sense haver de dir a més que és «per fer». */
+    function blocSafata(d) {
+      if (!d.safata.length) return '';
+      return '<p class="marge">A la safata</p>' +
+        '<p class="menut">Toca on va cadascuna. Amb això surt de la safata.</p>' +
+        '<div class="safata-t">' +
+          d.safata.map(function (t) {
+            return '<div class="safata-fila" data-fila="' + esc(t.id) + '">' +
+              '<div class="safata-text">' + esc(t.text) + '</div>' +
+              '<div class="safata-tria">' +
+                d.contextos.map(function (c) {
+                  return '<button data-ctx="' + esc(c.clau) + '" data-id="' + esc(t.id) + '">' +
+                         esc(c.nom) + '</button>';
+                }).join('') +
+                '<button class="safata-fora" data-treu="' + esc(t.id) + '" aria-label="Treu-ho">' +
+                  ic('tancar', 'ic-p') + '</button>' +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+    }
+
+    function blocPendents(d) {
+      if (!d.tasques.length) {
+        return '<p class="marge" style="margin-top:var(--e5)">Per fer</p>' +
+               '<p class="menut">Res pendent. Bon senyal.</p>';
+      }
+
+      return '<p class="marge" style="margin-top:var(--e5)">Per fer</p>' +
+        '<div class="tasques">' +
+          d.tasques.map(function (t) {
+            return '<div class="tasca" data-t="' + esc(t.id) + '"' +
+              (t.vencuda ? ' data-vencuda="1"' : '') + '>' +
+              '<button class="tasca-marca" data-fet="' + esc(t.id) + '"' +
+                ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
+              '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
+                '<span class="tasca-text">' + esc(t.text) + '</span>' +
+                '<span class="menut">' +
+                  (t.contextNom ? esc(t.contextNom) : 'sense context') +
+                  (t.vencEl ? ' · ' + (t.vencuda ? 'vencia ' : '') + esc(fmt.relativa(t.vencEl)) : '') +
+                  (t.prioritat === 'alta' ? ' · prioritària' : '') +
+                '</span>' +
+              '</button>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+    }
+
+    function blocFetes(d) {
+      if (!d.fetes.length) return '';
+      return '<p class="marge">Fetes</p>' +
+        '<div class="tasques">' +
+          d.fetes.map(function (t) {
+            return '<div class="tasca" data-feta="1">' +
+              '<button class="tasca-marca" data-desfes="' + esc(t.id) + '"' +
+                ' data-fet="1" aria-label="Desfés"></button>' +
+              '<span class="tasca-cos">' +
+                '<span class="tasca-text">' + esc(t.text) + '</span>' +
+                '<span class="menut">' + esc(fmt.relativa(t.fetEl)) + '</span>' +
+              '</span>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+    }
+
+    // ---------------------------------------------------------------- accions
+
+    function lliga() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      var camp = arrel.querySelector('#t-captura');
+      function captura() {
+        var t = camp.value.trim();
+        if (!t) return;
+        camp.value = '';
+        /* S'envia i el camp queda lliure a l'instant: si has d'esperar la
+           resposta per apuntar la següent, ja no apuntes la següent. */
+        if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+        crida('tasques', 'captura', { text: t })
+          .then(function () { Cau.oblida('tasques.'); carrega(); })
+          .catch(function (err) { camp.value = t; App.brindis(err.message, 'error'); });
+      }
+      arrel.querySelector('[data-captura]').addEventListener('click', captura);
+      camp.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); captura(); }
+      });
+
+      arrel.querySelectorAll('[data-ctx]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var fila = b.closest('.safata-fila');
+          fila.dataset.fet = '1';
+          crida('tasques', 'edita', { id: b.dataset.id, context: b.dataset.ctx })
+            .then(function () { Cau.oblida('tasques.'); carrega(); })
+            .catch(function (err) { fila.dataset.fet = '0'; App.brindis(err.message, 'error'); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-treu]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          crida('tasques', 'treu', { id: b.dataset.treu })
+            .then(function () { Cau.oblida('tasques.'); carrega(); })
+            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-fet]:not([data-fet="1"])').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var t = b.closest('.tasca');
+          t.dataset.fent = '1';
+          crida('tasques', 'completa', { id: b.dataset.fet })
+            .then(function () { Cau.oblida('tasques.'); carrega(); })
+            .catch(function (err) { t.dataset.fent = '0'; App.brindis(err.message, 'error'); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-desfes]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          crida('tasques', 'completa', { id: b.dataset.desfes, desfes: true })
+            .then(function () { Cau.oblida('tasques.'); carrega(); })
+            .catch(function (err) { App.brindis(err.message, 'error'); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-obre]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var t = null;
+          for (var i = 0; i < dades.tasques.length; i++) {
+            if (dades.tasques[i].id === b.dataset.obre) t = dades.tasques[i];
+          }
+          if (t) obreTasca(t);
+        });
+      });
+    }
+
+    function obreTasca(t) {
+      var cos = App.modal('Tasca',
+        '<div class="form-ajustos">' +
+          '<label><span class="marge">Què s\'ha de fer</span>' +
+            '<input data-c="text" value="' + esc(t.text) + '" autocomplete="off"></label>' +
+          '<label><span class="marge">Context</span>' +
+            '<select data-c="context">' +
+              '<option value="">Sense context</option>' +
+              dades.contextos.map(function (c) {
+                return '<option value="' + esc(c.clau) + '"' +
+                       (t.context === c.clau ? ' selected' : '') + '>' + esc(c.nom) + '</option>';
+              }).join('') +
+            '</select></label>' +
+          '<label><span class="marge">Per quan</span>' +
+            '<input data-c="venc_el" type="date" value="' + esc(t.vencEl || '') + '"></label>' +
+          '<label class="cat-exclou"><input type="checkbox" data-c="prioritat"' +
+            (t.prioritat === 'alta' ? ' checked' : '') + '><span>Prioritària</span></label>' +
+          '<label><span class="marge">Nota</span>' +
+            '<textarea data-c="nota" rows="3">' + esc(t.nota || '') + '</textarea></label>' +
+          '<button class="btn btn-primari" data-desa>Desa</button>' +
+          '<button class="btn btn-secundari" data-treu-t style="margin-top:var(--e2)">Treu-la</button>' +
+        '</div>');
+
+      var camps = {};
+      cos.querySelectorAll('[data-c]').forEach(function (i) { camps[i.dataset.c] = i; });
+
+      cos.querySelector('[data-desa]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true;
+        crida('tasques', 'edita', {
+          id: t.id,
+          text: camps.text.value,
+          context: camps.context.value,
+          venc_el: camps.venc_el.value,
+          prioritat: camps.prioritat.checked ? 'alta' : '',
+          nota: camps.nota.value
+        }).then(function () {
+          App.tancaModal(); App.brindis('Desat');
+          Cau.oblida('tasques.'); carrega();
+        }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      cos.querySelector('[data-treu-t]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true;
+        crida('tasques', 'treu', { id: t.id })
+          .then(function () {
+            App.tancaModal(); App.brindis('Treta');
+            Cau.oblida('tasques.'); carrega();
+          })
+          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+    }
+
+    // ---------------------------------------------------------------- càrrega
+
+    function carrega() {
+      var desat = Cau.get('tasques.llista', null);
+      var previ = null;
+      if (desat) {
+        previ = JSON.stringify(desat);
+        try { pinta(desat, true); } catch (e) { previ = null; }
+      }
+
+      crida('tasques', 'pantalla', {})
+        .then(function (r) {
+          Cau.set('tasques.llista', r);
+          if (JSON.stringify(r) === previ) return;
+          // Només s'ajorna si ja hi ha alguna cosa pintada: amb la pantalla
+          // buida, repintar no pot destruir res.
+          if (previ !== null && App.interactuant()) {
+            var quan = function () {
+              document.removeEventListener('focusout', quan);
+              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
+            };
+            document.addEventListener('focusout', quan);
+            return;
+          }
+          pinta(r, false);
+        })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
+    }
+
+    arrel.innerHTML = Comp.carregant(3);
+    carrega();
+  }
+});
