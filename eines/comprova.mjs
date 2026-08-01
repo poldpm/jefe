@@ -26,12 +26,33 @@ for (const f of fitxers) {
   const p = path.join(DIR, f);
   const src = fs.readFileSync(p, 'utf8');
 
+  /* ---- 0. Etiquetes <script> desaparellades -------------------------------
+     Va PRIMER perquè és el que fa cegues totes les altres comprovacions:
+     l'expressió que treu els blocs busca del `<script>` al `</script>`, i si
+     el tancament no hi és, senzillament no troba cap bloc. Zero blocs vol dir
+     zero errors de sintaxi, i el fitxer passa net.
+     Va passar de debò: vista_tasques.html va sortir publicada sense tancar
+     l'etiqueta. El bloc es va menjar el codi d'arrencada que venia després,
+     la pàgina va petar sencera, i aquesta eina va dir «tot correcte». */
+  if (f.endsWith('.html')) {
+    const oberts = (src.match(/<script\b/gi) || []).length;
+    const tancats = (src.match(/<\/script\s*>/gi) || []).length;
+    if (oberts !== tancats) {
+      error(f, 'hi ha ' + oberts + ' `<script>` i ' + tancats + ' `</script>`. ' +
+               'Sense tancar, el bloc s\'empassa el que ve després.');
+      continue;
+    }
+  }
+
   // ---- 1. Sintaxi de JavaScript -------------------------------------------
   let blocs = [];
   if (f.endsWith('.gs')) blocs = [src];
   else if (f.endsWith('.html')) {
     const re = /<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi;
     let m; while ((m = re.exec(src))) blocs.push(m[1]);
+    if (!blocs.length && /<script\b/i.test(src)) {
+      error(f, 'té `<script>` però no se n\'ha pogut extreure cap bloc.');
+    }
   }
   blocs.forEach((bloc, i) => {
     const net = bloc.replace(/<\?[!=]?[\s\S]*?\?>/g, 'null');
