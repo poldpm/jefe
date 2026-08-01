@@ -2604,8 +2604,13 @@ App.registraVista('conversa', {
     }
 
     function amagaResposta() {
+      /* Una proposta PENDENT no pot desaparèixer sola: llavors no la
+         confirmaries mai. Però una que ja has confirmat o descartat sí que
+         pot: abans es mirava només si el missatge en portava, i n'hi hagués
+         hagut o no, la resposta es quedava a la pantalla per sempre. */
       var m = missatges[missatges.length - 1];
-      if (m && m.propostes && m.propostes.length) return;   // encara l'has de confirmar
+      var pendents = (m && m.propostes || []).filter(function (p) { return !p.resolta; });
+      if (pendents.length) return;
       respostaFresca = false;
       tr.innerHTML = '';
     }
@@ -2648,13 +2653,21 @@ App.registraVista('conversa', {
         if (!p) return;
         el.querySelector('[data-no]').addEventListener('click', function () {
           el.innerHTML = '<p style="margin:0;color:var(--apagat)">Descartat.</p>';
+          p.resolta = true;
         });
         el.querySelector('[data-si]').addEventListener('click', function (ev) {
           ev.currentTarget.disabled = true; ev.currentTarget.textContent = 'Desant…';
           crida('conversa', 'confirma', { eina: p.eina, args: p.args })
             .then(function () {
               el.innerHTML = '<p style="margin:0;color:var(--cian)">Fet.</p>';
-              Cau.treu('habits.' + fmt.avui()); Cau.treu('habits.mes'); Cau.treu('inici');
+              p.resolta = true;
+              /* La IA acaba d'escriure una dada. TOTES les pantalles que la
+                 mostraven han quedat velles, no només les d'hàbits: ara també
+                 pot apuntar una despesa o una ingesta. Sense això, obrir
+                 finances just després ensenyaria el mes sense el que acabes
+                 de confirmar. */
+              Cau.oblida('habits.'); Cau.oblida('nutricio.'); Cau.oblida('finances.');
+              Cau.treu('inici');
               nucli.pols(1);
             })
             .catch(function (err) {
