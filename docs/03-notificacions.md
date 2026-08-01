@@ -43,10 +43,20 @@ valors:** `apiKey`, `projectId`, `messagingSenderId`, `appId`.
 
 ## 3. Genera la clau VAPID
 
-**⚙️ Configuración del proyecto → Cloud Messaging**, baixa fins a *Configuración
-web* → **Certificados push web** → **Generar par de claves**.
+> **Aquesta no surt al bloc `firebaseConfig` del pas anterior.** Es genera a
+> part i viu en una altra pestanya. Si l'hi busques, no la trobaràs.
 
-Copia la clau que surt a la columna *Clave*. Aquesta és el `vapidKey`.
+**⚙️ Configuración del proyecto → pestanya Cloud Messaging** (a dalt, al costat
+de *General*), baixa fins a *Configuración web* → **Certificados push web** →
+**Generar par de claves**.
+
+Surt una clau llarga que comença per `B` i fa uns 87 caràcters. **Copia-la amb
+la icona de copiar**, no seleccionant-la a mà: es mostra retallada, i si te'n
+deixes un caràcter el registre del dispositiu fallarà sense dir-te per què.
+
+Si la secció *Certificados push web* no hi és, l'API està desactivada: a la
+mateixa pestanya, mira si *Firebase Cloud Messaging API (V1)* diu **Inhabilitada**,
+activa-la i recarrega.
 
 ## 4. Genera el compte de servei
 
