@@ -845,8 +845,14 @@ function diagnosticVelocitat() {
   });
 
   a('');
-  a('Si la suma de lectures passa dels 2 segons, toca deixar de llegir el full');
-  a('sencer a cada petició i guardar resums per mes.');
+  a('COM ES LLEGEIX AIXÒ');
+  a('Cada pestanya té un cost fix d\'uns 270 ms encara que estigui buida: és el');
+  a('viatge a Google Sheets. Les files a sobre costen poc —319 moviments només');
+  a('hi afegeixen 60 ms—, o sigui que el que encareix una pantalla és QUANTES');
+  a('pestanyes toca, no quantes files tenen.');
+  a('');
+  a('Preocupa\'t quan una pestanya sola passi del segon: llavors sí que seran');
+  a('les files, i tocarà partir-la per anys.');
   return l.join('\n');
 }
 
