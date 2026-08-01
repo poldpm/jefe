@@ -77,7 +77,7 @@ function netejaFullPerDefecte_(ss) {
 // ------------------------------------------------------------------ triggers
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
-                'triggerTancamentNutricio', 'triggerBanc'];
+                'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -108,6 +108,10 @@ function instalaTriggers() {
   // El banc, de matinada: els moviments d'ahir ja hi són i tu encara dorms.
   ScriptApp.newTrigger('triggerBanc')
     .timeBased().atHour(6).everyDays(1).create();
+
+  // El patrimoni, el 28 al vespre: a temps de mirar-t'ho abans que acabi el mes.
+  ScriptApp.newTrigger('triggerPatrimoni')
+    .timeBased().onMonthDay(28).atHour(21).create();
 
   Log.info('instalacio', 'Triggers instal·lats', { horaResum: horaResum, diaRevisio: diaRevisio });
   return 'Triggers instal·lats: ' + TRIGGERS.join(', ');
@@ -240,6 +244,48 @@ function triggerBanc() {
     );
   } catch (err) {
     Log.error('trigger.banc', err);
+  }
+}
+
+/**
+ * RECORDATORI DEL PATRIMONI — el dia 28 a les 21:00.
+ *
+ * Els comptes del banc s'actualitzen sols; el que no es pot llegir de cap
+ * lloc —Trade Republic, accions, criptos— només el saps tu. Aquest avís
+ * existeix perquè un valor de fa tres mesos no és el teu capital: és el que
+ * era. A l'app antiga arribava per correu; ara és una notificació, que és on
+ * mires.
+ */
+function triggerPatrimoni() {
+  try {
+    if (typeof Finances === 'undefined') return;
+    var p = Finances.patrimoni();
+    var manuals = p.actius.filter(function (a) { return !a.automatic; });
+    if (!manuals.length) return;
+
+    /* Els que fa menys d'una setmana que has tocat no compten: si acabes
+       d'actualitzar-ho tot, no t'ha d'avisar ningú. */
+    var vells = manuals.filter(function (a) { return a.dies === null || a.dies >= 7; });
+    if (!vells.length) {
+      Log.info('trigger.patrimoni', 'Tot actualitzat de fa poc, cap avís');
+      return;
+    }
+
+    vells.sort(function (a, b) { return (b.dies === null ? 9999 : b.dies) - (a.dies === null ? 9999 : a.dies); });
+
+    var detall = vells.slice(0, 3).map(function (a) {
+      return a.dies === null ? a.nom + ' (mai)' : a.nom + ' (fa ' + a.dies + ' dies)';
+    }).join(', ');
+
+    Notifica.envia(
+      vells.length === 1 ? 'Actualitza ' + vells[0].nom
+                         : vells.length + ' valors del patrimoni per actualitzar',
+      detall + '. Ara mateix tens anotat ' + Finances.eur(p.total) + '.',
+      { etiqueta: 'patrimoni', url: './#finances' }
+    );
+    Log.info('trigger.patrimoni', 'Recordatori enviat', { vells: vells.length });
+  } catch (err) {
+    Log.error('trigger.patrimoni', err);
   }
 }
 

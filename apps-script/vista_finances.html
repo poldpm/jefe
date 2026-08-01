@@ -65,9 +65,11 @@ App.registraVista('finances', {
       var titol = periode === 'mesos' ? 'Últims 12 mesos'
                 : periode === 'revisar' ? 'Per classificar'
                 : periode === 'recurrents' ? 'Cada mes'
+                : periode === 'patrimoni' ? 'Patrimoni'
                 : nomMes(mes);
       var sota = periode === 'revisar' ? 'safata'
                : periode === 'recurrents' ? 'recurrents'
+               : periode === 'patrimoni' ? 'que tens'
                : (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Mes'])[1];
 
       return '<header class="capcalera capcalera-nutri">' +
@@ -100,6 +102,8 @@ App.registraVista('finances', {
         }).join('') +
         '<button data-va="recurrents"' + (periode === 'recurrents' ? ' aria-current="true"' : '') +
           '>Cada mes</button>' +
+        '<button data-va="patrimoni"' + (periode === 'patrimoni' ? ' aria-current="true"' : '') +
+          '>Patrimoni</button>' +
         '<hr><button data-avui="1">Anar al mes actual</button>' +
       '</div>');
 
@@ -387,6 +391,144 @@ App.registraVista('finances', {
         '</div>';
 
       lligaCapcalera();
+    }
+
+    // --------------------------------------------------------------- patrimoni
+
+    /* «De quan» és tan important com «quant»: un valor de Trade Republic de fa
+       dos mesos no és el teu capital, és el que era. Per això cada actiu diu
+       quants dies fa del seu últim valor, i els que fa temps que no toques es
+       marquen. El compte del banc s'actualitza sol; la resta només ho saps tu. */
+    function pintaPatrimoni(d) {
+      var actius = d.actius || [];
+
+      arrel.innerHTML = capcalera(false) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="fitxa">' +
+              '<div class="xifra-gran">' + eurNum(d.total) + '<span class="u">€</span></div>' +
+              '<p class="verdicte">Suma dels últims valors coneguts de cada actiu.</p>' +
+            '</div>' +
+            '<button class="btn btn-secundari" data-nou-actiu style="width:100%">' +
+              ic('mes') + 'Afegeix un actiu</button>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' +
+            (actius.length
+              ? '<div class="cats">' + actius.map(function (a) {
+                  var vell = a.dies === null || a.dies >= 30;
+                  return '<button class="act-fila" data-actiu="' + esc(a.id) + '"' +
+                    ' data-nom="' + esc(a.nom) + '" data-auto="' + (a.automatic ? '1' : '0') + '">' +
+                    '<span class="rec-cos">' +
+                      '<b>' + esc(a.nom) + '</b>' +
+                      '<span class="menut"' + (vell ? ' data-vell="1"' : '') + '>' +
+                        (a.automatic ? 'del banc · ' : '') +
+                        (a.data === null ? 'encara sense valor'
+                          : a.dies === 0 ? 'avui'
+                          : 'fa ' + a.dies + (a.dies === 1 ? ' dia' : ' dies')) +
+                      '</span>' +
+                    '</span>' +
+                    (a.historic.length > 1 ? espurna(a.historic) : '') +
+                    '<span class="rec-import num">' +
+                      (a.valor === null ? '—' : eur(a.valor)) + '</span>' +
+                  '</button>';
+                }).join('') + '</div>'
+              : '<p class="menut">Encara no hi tens res. El compte del banc hi apareixerà sol ' +
+                'quan sincronitzi.</p>') +
+          '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+      arrel.querySelector('[data-nou-actiu]').addEventListener('click', function () { obreActiu(null); });
+      arrel.querySelectorAll('[data-actiu]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var a = null;
+          for (var i = 0; i < actius.length; i++) if (actius[i].id === b.dataset.actiu) a = actius[i];
+          if (a) obreActiu(a);
+        });
+      });
+    }
+
+    /** Una línia amb la forma dels últims valors. Diu si puja o baixa d'un cop d'ull. */
+    function espurna(hist) {
+      var vals = hist.map(function (h) { return h.valor; });
+      var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+      var rang = max - min || 1;
+      var punts = vals.map(function (v, i) {
+        return (i / (vals.length - 1) * 100).toFixed(1) + ',' +
+               (26 - (v - min) / rang * 22).toFixed(1);
+      }).join(' ');
+      var puja = vals[vals.length - 1] >= vals[0];
+      return '<svg class="espurna" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">' +
+             '<polyline points="' + punts + '" data-puja="' + (puja ? '1' : '0') + '"/></svg>';
+    }
+
+    function obreActiu(a) {
+      var editant = !!a;
+      var auto = editant && a.automatic;
+
+      var cos = App.modal(editant ? a.nom : 'Nou actiu',
+        '<div class="form-ajustos form-apunt">' +
+          (editant
+            ? '<label><span class="marge">Quant val ara</span>' +
+                '<input data-valor inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
+                  (a.valor === null ? '' : String(a.valor).replace('.', ',')) + '"></label>' +
+              '<button class="btn btn-primari" data-anota>Anota el valor d\'avui</button>' +
+              (auto
+                ? '<p class="menut" style="margin-top:var(--e3)">Aquest el porta el banc i ' +
+                  's\'actualitza sol cada matinada. Pots canviar-li el nom, però no el treguis: ' +
+                  'el banc en crearia un de nou al costat.</p>'
+                : '') +
+              '<hr>'
+            : '') +
+          '<label><span class="marge">Nom</span>' +
+            '<input data-nom autocomplete="off" placeholder="p. ex. Trade Republic" value="' +
+              (editant ? esc(a.nom) : '') + '"></label>' +
+          '<label><span class="marge">Tipus</span>' +
+            '<input data-tipus autocomplete="off" placeholder="estalvi, borsa, cripto…" value="' +
+              (editant ? esc(a.tipus || '') : '') + '"></label>' +
+          '<button class="btn btn-secundari" data-desa-actiu>' + (editant ? 'Desa el nom' : 'Crea') + '</button>' +
+          (editant && !auto
+            ? '<button class="btn btn-secundari" data-treu-actiu style="margin-top:var(--e2)">Treu-lo</button>' : '') +
+        '</div>');
+
+      var ba = cos.querySelector('[data-anota]');
+      if (ba) ba.addEventListener('click', function () {
+        var v = cos.querySelector('[data-valor]').value;
+        if (!String(v).trim()) { App.brindis('Posa-hi un valor', 'error'); return; }
+        ba.disabled = true;
+        crida('finances', 'anotaValor', { id: a.id, valor: num(v) })
+          .then(function () {
+            App.tancaModal(); App.brindis('Valor anotat');
+            Cau.oblida('finances.'); carrega();
+          })
+          .catch(function (err) { ba.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      cos.querySelector('[data-desa-actiu]').addEventListener('click', function () {
+        var nom = cos.querySelector('[data-nom]').value.trim();
+        if (!nom) { App.brindis('Posa-hi un nom', 'error'); return; }
+        var b = this;
+        b.disabled = true;
+        crida('finances', 'desaActiu', {
+          id: editant ? a.id : null, nom: nom,
+          tipus: cos.querySelector('[data-tipus]').value.trim()
+        }).then(function () {
+          App.tancaModal(); App.brindis(editant ? 'Desat' : 'Creat');
+          Cau.oblida('finances.'); carrega();
+        }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      var bt = cos.querySelector('[data-treu-actiu]');
+      if (bt) bt.addEventListener('click', function () {
+        bt.disabled = true;
+        crida('finances', 'arxivaActiu', { id: a.id })
+          .then(function () {
+            App.tancaModal(); App.brindis('Tret');
+            Cau.oblida('finances.'); carrega();
+          })
+          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+      });
     }
 
     // -------------------------------------------------------------- recurrents
@@ -1048,13 +1190,14 @@ App.registraVista('finances', {
     function repinta(d) {
       if (periode === 'revisar') pintaRevisar(d);
       else if (periode === 'recurrents') pintaRecurrents(d);
+      else if (periode === 'patrimoni') pintaPatrimoni(d);
       else if (periode === 'mesos') pintaMesos(d);
       else if (periode === 'estad') pintaEstad(d);
       else pintaMes(d);
     }
 
     function carrega() {
-      var volatil = periode === 'revisar' || periode === 'recurrents';
+      var volatil = periode === 'revisar' || periode === 'recurrents' || periode === 'patrimoni';
       var desat = volatil ? null : Cau.get(claded(), null);
       var previ = null;
       if (desat && desat.dades) {

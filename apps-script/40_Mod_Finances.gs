@@ -158,6 +158,10 @@ function MODUL_FINANCES() {
       pantalla:       function (p) { return Finances.pantalla(p); },
       pressupost:     function (p) { return Finances.desaPressupost(p.categoria, p.limit); },
       recurrents:     function ()  { return Finances.recurrents(); },
+      patrimoni:      function ()  { return Finances.patrimoni(); },
+      desaActiu:      function (p) { return Finances.desaActiu(p); },
+      arxivaActiu:    function (p) { return Finances.arxivaActiu(p.id); },
+      anotaValor:     function (p) { return Finances.anotaValor(p.id, p.valor, p.data); },
       desaRecurrent:  function (p) { return Finances.desaRecurrent(p); },
       arxivaRecurrent:function (p) { return Finances.arxivaRecurrent(p.id); },
       categories:     function ()  { return Finances.categories(); },
@@ -950,6 +954,100 @@ var Finances = (function () {
     return fets;
   }
 
+  // -------------------------------------------------------------- patrimoni
+
+  /**
+   * Què tens, i de quan.
+   *
+   * «De quan» és tan important com «quant»: un valor de Trade Republic de fa
+   * dos mesos no és el teu capital, és el que era. Per això cada actiu porta
+   * quants dies fa del seu últim valor, i el total diu clarament que és la
+   * suma dels últims coneguts.
+   */
+  function patrimoni() {
+    var actius = [];
+    try {
+      actius = Dades.llegeix('Patrimoni', function (x) { return !x.esborrat_el; });
+    } catch (err) { return { actius: [], total: 0 }; }
+
+    var hist = {};
+    try {
+      Dades.llegeix('PatrimoniHistoric').forEach(function (v) {
+        var k = String(v.id_actiu);
+        if (!hist[k]) hist[k] = [];
+        hist[k].push({ data: String(v.data), valor: Number(v.valor) || 0 });
+      });
+    } catch (err) { /* encara no n'hi ha */ }
+
+    var avui = Utils.avui();
+    var total = 0, mesVell = null;
+
+    var llista = actius.map(function (a) {
+      var h = (hist[a.id] || []).sort(function (x, y) { return x.data.localeCompare(y.data); });
+      var ultim = h.length ? h[h.length - 1] : null;
+      if (ultim) total += ultim.valor;
+
+      var dies = ultim ? Utils.diesEntre(ultim.data, avui) : null;
+      if (dies !== null && String(a.automatic).toUpperCase() !== 'SI') {
+        if (mesVell === null || dies > mesVell) mesVell = dies;
+      }
+
+      return {
+        id: a.id, nom: a.nom, tipus: a.tipus,
+        automatic: String(a.automatic).toUpperCase() === 'SI',
+        valor: ultim ? ultim.valor : null,
+        data: ultim ? ultim.data : null,
+        dies: dies,
+        // Només els últims dotze: l'històric sencer no cap ni es mira.
+        historic: h.slice(-12)
+      };
+    }).sort(function (a, b) { return (b.valor || 0) - (a.valor || 0); });
+
+    return { actius: llista, total: total, diesMesVell: mesVell };
+  }
+
+  function desaActiu(p) {
+    var nom = String(p.nom || '').trim();
+    if (!nom) throw new Error('Falta el nom.');
+
+    var fila = { nom: nom, tipus: String(p.tipus || '').trim(), automatic: 'NO' };
+
+    if (p.id) {
+      /* Un actiu automàtic el porta el banc: canviar-li el nom és teu, però
+         no pot deixar de ser automàtic o el banc en crearia un de nou al
+         costat i tindries el mateix compte dues vegades. */
+      var actual = Dades.perId('Patrimoni', p.id);
+      if (!actual) throw new Error('Aquest actiu no existeix.');
+      if (String(actual.automatic).toUpperCase() === 'SI') fila.automatic = 'SI';
+      return Dades.actualitza('Patrimoni', p.id, fila);
+    }
+    return Dades.insereix('Patrimoni', fila, 'act');
+  }
+
+  function arxivaActiu(id) {
+    if (!id) throw new Error('Falta l\'identificador.');
+    var r = Dades.actualitza('Patrimoni', id, { esborrat_el: Utils.ara() });
+    if (!r) throw new Error('Aquest actiu no existeix.');
+    return { tret: true };
+  }
+
+  /**
+   * Anota quant val avui.
+   * Un valor per dia: si t'equivoques i el tornes a posar, el corregeix en
+   * comptes d'inflar l'històric amb dues xifres del mateix dia.
+   */
+  function anotaValor(idActiu, valor, data) {
+    if (!idActiu) throw new Error('Falta l\'actiu.');
+    data = data || Utils.avui();
+    var v = parseFloat(String(valor === undefined ? '' : valor).replace(',', '.'));
+    if (!isFinite(v)) throw new Error('Aquest valor no és un número.');
+
+    return Dades.desa('PatrimoniHistoric', {
+      id: 'val_' + idActiu + '_' + data,
+      id_actiu: idActiu, data: data, valor: v
+    }, ['id'], 'val');
+  }
+
   // ------------------------------------------------------------- pantalles
 
   /**
@@ -968,6 +1066,7 @@ var Finances = (function () {
               : quin === 'estad' ? estadistiques(p.mes)
               : quin === 'revisar' ? perRevisar()
               : quin === 'recurrents' ? { llista: recurrents() }
+              : quin === 'patrimoni' ? patrimoni()
               : mes(p.mes);
 
     return {
@@ -1262,6 +1361,10 @@ var Finances = (function () {
     pressupostos: pressupostos,
     desaPressupost: desaPressupost,
     recurrents: recurrents,
+    patrimoni: patrimoni,
+    desaActiu: desaActiu,
+    arxivaActiu: arxivaActiu,
+    anotaValor: anotaValor,
     desaRecurrent: desaRecurrent,
     arxivaRecurrent: arxivaRecurrent,
     generaRecurrents: generaRecurrents,

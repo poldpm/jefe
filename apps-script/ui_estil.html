@@ -683,6 +683,22 @@ h2 { font-size: 1.0625rem; }
 .rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* Patrimoni. La data mana tant com la xifra: un valor de fa dos mesos no és el
+   que tens, és el que tenies. Els que fa temps que no toques es marquen. */
+.act-fila { display: grid; grid-template-columns: minmax(0, 1fr) 56px auto;
+            align-items: center; gap: var(--e3); width: 100%; min-height: 60px;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; text-align: left; font: inherit; color: inherit;
+            cursor: pointer; }
+.act-fila:last-child { border-bottom: 0; }
+.act-fila .menut[data-vell] { color: var(--avis); }
+.espurna { width: 56px; height: 28px; overflow: visible; }
+.espurna polyline { fill: none; stroke: var(--ink-suau); stroke-width: 1.5;
+                    stroke-linejoin: round; stroke-linecap: round;
+                    vector-effect: non-scaling-stroke; }
+.espurna polyline[data-puja="1"] { stroke: var(--h1); }
+.espurna polyline[data-puja="0"] { stroke: var(--h5); }
+
 /* Safata de revisió. Una fila per DECISIÓ, no per moviment: dotze compres a
    l'estanc són una sola targeta. En triar, la fila s'apaga i se'n va, i el que
    queda és el que et falta. */
