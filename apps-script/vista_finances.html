@@ -850,10 +850,12 @@ App.registraVista('finances', {
 
     function carrega() {
       var desat = periode === 'revisar' ? null : Cau.get(claded(), null);
+      var previ = null;
       if (desat && desat.dades) {
         cats = desat.categories || cats;
         sugg = desat.suggeriments || sugg;
-        try { repinta(desat.dades); } catch (e) { /* format vell: ja arribarà el bo */ }
+        previ = JSON.stringify(desat.dades);
+        try { repinta(desat.dades); } catch (e) { previ = null; }
       }
 
       crida('finances', 'pantalla', { periode: periode, mes: mes, quants: 12 })
@@ -862,6 +864,19 @@ App.registraVista('finances', {
           if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
           if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
           if (periode !== 'revisar') Cau.set(claded(), r);
+
+          /* Si no ha canviat res, no refem la pantalla: repintar-la només
+             serviria per tancar-te el que tinguis obert. I si ha canviat però
+             estàs tocant alguna cosa, s'espera que acabis. */
+          if (JSON.stringify(r.dades) === previ) return;
+          if (App.interactuant()) {
+            var quan = function () {
+              document.removeEventListener('focusout', quan);
+              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
+            };
+            document.addEventListener('focusout', quan);
+            return;
+          }
           repinta(r.dades);
         })
         .catch(function (err) {

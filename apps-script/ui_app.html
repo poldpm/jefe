@@ -329,6 +329,23 @@ var Jefe = (function () {
 
     refresca: function () { App.ves(App.actual); },
 
+    /**
+     * ESTÀS TOCANT ALGUNA COSA ARA MATEIX?
+     *
+     * Les vistes es pinten dues vegades: primer amb el que hi havia desat i
+     * després amb el que arriba del servidor. Aquesta segona vegada refà
+     * l'HTML, i si en aquell moment tenies un desplegable obert o estaves
+     * escrivint, allò desapareix: el menú es tanca sol i el que havies teclejat
+     * es perd. Abans de repintar, es pregunta.
+     */
+    interactuant: function () {
+      var a = document.activeElement;
+      if (!a) return false;
+      if (document.getElementById('fosc').dataset.obert === '1') return true;
+      var t = a.tagName;
+      return t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA' || a.isContentEditable;
+    },
+
     pintaNav: function () {
       var nav = document.getElementById('nav');
       if (!nav) return;                    // sense barra de seccions: no és cap error

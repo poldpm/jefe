@@ -536,6 +536,26 @@ h2 { font-size: 1.0625rem; }
 .ingesta .menut { overflow-wrap: anywhere; }
 .ingesta .btn-icona { min-width: 44px; }
 
+/* La llista d'aliments guardats. El nom mana; les xifres van petites i grises,
+   perquè el que hi busques és «tonyina» i no «185». Amb tot de la mateixa mida,
+   cada aliment és una frase que has de llegir sencera per descartar-la. */
+.cerca-aliment { width: 100%; min-height: var(--toc); margin-bottom: var(--e3);
+                 padding: 0 var(--e3); font: inherit; background: var(--paper);
+                 color: var(--ink); border: 1px solid var(--neatline); border-radius: var(--r); }
+.aliments { max-height: 56vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.aliment-fila { display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+                width: 100%; min-height: 56px; padding: var(--e2) var(--e3);
+                background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+                text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.aliment-fila:last-child { border-bottom: 0; }
+.aliment-fila:active { background: var(--paper2); }
+.aliment-nom { font-size: 1rem; overflow: hidden; text-overflow: ellipsis;
+               white-space: nowrap; max-width: 100%; }
+.aliment-dades { font-size: .6875rem; color: var(--ink-suau);
+                 font-variant-numeric: tabular-nums; }
+
+.tria-aliment { grid-column: 1 / -1; width: 100%; }
+
 .apat-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
              gap: var(--e2); padding: var(--e3); }
 .apat-form select, .apat-form input { min-width: 0; width: 100%; min-height: var(--toc);

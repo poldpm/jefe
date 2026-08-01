@@ -231,13 +231,12 @@ App.registraVista('nutricio', {
         '</div>' +
 
         '<div class="apat-form">' +
-          '<select data-guardats aria-label="Aliments guardats">' +
-            '<option value="">Tria un aliment guardat…</option>' +
-            aliments.map(function (a) {
-              return '<option value="' + esc(a.id) + '">' + esc(a.nom) + ' · ' +
-                     r0(a.kcal100) + ' kcal · ' + r1(a.prot100) + ' g</option>';
-            }).join('') +
-          '</select>' +
+          /* Llista pròpia i no un <select>: el desplegable natiu d'Android
+             dibuixa cada opció amb l'estil del sistema i no admet dues mides
+             de lletra a la mateixa línia. Amb el nom i les xifres iguals de
+             grosses, trobar un aliment costa llegir-ho tot. */
+          '<button class="btn btn-secundari tria-aliment" data-guardats>' +
+            ic('mes', 'ic-p') + 'Tria un aliment guardat</button>' +
           '<input data-nom placeholder="Aliment" autocomplete="off">' +
           '<input data-grams inputmode="decimal" placeholder="grams" class="num">' +
           '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num">' +
@@ -426,14 +425,55 @@ App.registraVista('nutricio', {
       });
     }
 
-    /** Torna a omplir els tres desplegables sense refer la pantalla. */
-    function refrescaGuardats() {
-      var opcions = '<option value="">Tria un aliment guardat…</option>' +
-        aliments.map(function (a) {
-          return '<option value="' + esc(a.id) + '">' + esc(a.nom) + ' · ' +
-                 r0(a.kcal100) + ' kcal · ' + r1(a.prot100) + ' g</option>';
-        }).join('');
-      arrel.querySelectorAll('[data-guardats]').forEach(function (s) { s.innerHTML = opcions; });
+    /**
+     * La llista d'aliments guardats.
+     *
+     * El nom mana i les xifres van petites i grises: el que busques és
+     * «tonyina», no «185». Amb tot de la mateixa mida, cada aliment és una
+     * frase que s'ha de llegir sencera per descartar-la.
+     */
+    function obreAliments(alTriar) {
+      if (!aliments.length) {
+        App.brindis('Encara no tens cap aliment guardat', 'error');
+        return;
+      }
+
+      var cos = App.modal('Aliments guardats',
+        '<input class="cerca-aliment" data-cerca placeholder="Cerca…" autocomplete="off">' +
+        '<div class="aliments" id="llista-aliments"></div>');
+
+      var llista = cos.querySelector('#llista-aliments');
+      var cerca = cos.querySelector('[data-cerca]');
+
+      function pinta(q) {
+        var n = String(q || '').trim().toLowerCase();
+        var mostrats = aliments.filter(function (a) {
+          return !n || String(a.nom).toLowerCase().indexOf(n) !== -1;
+        });
+        llista.innerHTML = mostrats.length
+          ? mostrats.map(function (a) {
+              return '<button class="aliment-fila" data-a="' + esc(a.id) + '">' +
+                '<span class="aliment-nom">' + esc(a.nom) + '</span>' +
+                '<span class="aliment-dades">' + r0(a.kcal100) + ' kcal · ' +
+                  r1(a.prot100) + ' g prot · per 100 g</span>' +
+              '</button>';
+            }).join('')
+          : '<p class="menut">Cap aliment amb aquest nom.</p>';
+
+        llista.querySelectorAll('[data-a]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var t = null;
+            for (var i = 0; i < aliments.length; i++) {
+              if (aliments[i].id === b.dataset.a) t = aliments[i];
+            }
+            App.tancaModal();
+            if (t) alTriar(t);
+          });
+        });
+      }
+
+      pinta('');
+      cerca.addEventListener('input', function () { pinta(cerca.value); });
     }
 
     function lligaApats() {
@@ -447,13 +487,10 @@ App.registraVista('nutricio', {
         var bt   = sec.querySelector('[data-afegeix]');
         var bd   = sec.querySelector('[data-desa-aliment]');
 
-        sel.addEventListener('change', function () {
-          var a = null;
-          for (var i = 0; i < aliments.length; i++) if (aliments[i].id === sel.value) a = aliments[i];
-          if (!a) return;
+        sel.addEventListener('click', function () { obreAliments(function (a) {
           nom.value = a.nom; kc.value = a.kcal100; pr.value = a.prot100;
-          sel.value = ''; refresca(); gr.focus();
-        });
+          refresca(); gr.focus();
+        }); });
 
         function llest() { return nom.value.trim() && num(gr.value) > 0; }
 
@@ -503,11 +540,10 @@ App.registraVista('nutricio', {
           }).then(function () {
             return crida('nutricio', 'aliments', {});
           }).then(function (l) {
+            // La llista es munta cada cop que s'obre, o sigui que amb tenir
+            // `aliments` al dia ja hi surt: no cal repintar res.
             aliments = l;
-            // Sense això es desava al servidor però no apareixia a cap
-            // desplegable fins a recarregar: exactament la cara que fa una
-            // cosa que no s'ha guardat.
-            refrescaGuardats();
+            Cau.oblida('nutricio.');
             bd.disabled = false;
             App.brindis('«' + nom.value.trim() + '» desat a la teva llista');
           }).catch(function (err) {
@@ -647,12 +683,14 @@ App.registraVista('nutricio', {
 
     function carrega() {
       var desat = Cau.get(claCau(), null);
+      var previ = null;
       if (desat && desat.dades) {
         aliments = desat.aliments && desat.aliments.length ? desat.aliments : aliments;
         ajustos = desat.ajustos || ajustos;
+        previ = JSON.stringify(desat.dades);
         try {
           if (periode === 'dia') pintaDia(desat.dades, true); else pintaPeriode(desat.dades);
-        } catch (e) { /* format vell: ja arribarà el bo */ }
+        } catch (e) { previ = null; }
       }
 
       crida('nutricio', 'pantalla', { periode: periode, data: data })
@@ -660,6 +698,22 @@ App.registraVista('nutricio', {
           if (r.aliments && r.aliments.length) aliments = r.aliments;
           ajustos = r.ajustos || ajustos;
           Cau.set(claCau(), r);
+
+          /* NO REFER LA PANTALLA SI NO CAL.
+             Si el servidor diu exactament el mateix que ja teníem —que és el
+             cas normal—, tornar a pintar-ho només serveix per destruir el que
+             tinguis obert o a mig escriure. I si ha canviat però estàs tocant
+             alguna cosa, s'espera que acabis. */
+          if (JSON.stringify(r.dades) === previ) return;
+
+          if (App.interactuant()) {
+            var quan = function () {
+              document.removeEventListener('focusout', quan);
+              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
+            };
+            document.addEventListener('focusout', quan);
+            return;
+          }
           if (periode === 'dia') pintaDia(r.dades, false); else pintaPeriode(r.dades);
         })
         .catch(function (err) {
