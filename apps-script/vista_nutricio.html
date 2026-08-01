@@ -118,7 +118,9 @@ App.registraVista('nutricio', {
 
         (teObjProt
           ? '<div class="prot-bloc">' +
-              '<div class="prot-cap"><span class="marge">Proteïna</span>' +
+              // La xifra de proteïna ja és just a sobre: aquí només cal dir
+              // fins on has d'arribar, no repetir-ne el nom.
+              '<div class="prot-cap"><span class="marge">Objectiu</span>' +
                 '<span class="num menut">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
               '</div>' +
               '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
