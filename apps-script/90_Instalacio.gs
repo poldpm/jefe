@@ -132,13 +132,16 @@ function treuTriggers() {
 // ------------------------------------------------- punts d'entrada dels triggers
 
 /**
- * Resum nocturn. La lògica arriba al bloc 6 (capa d'IA).
- * De moment surt de manera controlada i deixa constància: mai peta en silenci.
+ * El tancament del dia, cap a les deu del vespre. El fa el mòdul del diari.
+ *
+ * La comprovació de si `Resums` existeix es queda: si algun dia el mòdul del
+ * diari no hi és, el trigger ho ha de dir al registre i no petar. És la
+ * mateixa regla que amb qualsevol mòdul —el nucli no en dona cap per fet.
  */
 function triggerResumDiari() {
   try {
     if (typeof Resums === 'undefined' || typeof Resums.generaDiari !== 'function') {
-      Log.info('trigger.resum', 'Encara no implementat (arriba al bloc 6). Sense efecte.');
+      Log.avis('trigger.resum', 'No hi ha cap mòdul que sàpiga fer el resum del dia.');
       return;
     }
     ambBloqueig_(function () { return Resums.generaDiari(Utils.avui()); });
@@ -150,7 +153,7 @@ function triggerResumDiari() {
 function triggerRevisioSetmanal() {
   try {
     if (typeof Resums === 'undefined' || typeof Resums.generaSetmanal !== 'function') {
-      Log.info('trigger.revisio', 'Encara no implementat (arriba al bloc 6). Sense efecte.');
+      Log.avis('trigger.revisio', 'No hi ha cap mòdul que sàpiga fer la revisió setmanal.');
       return;
     }
     ambBloqueig_(function () { return Resums.generaSetmanal(Utils.avui()); });
@@ -292,7 +295,7 @@ function triggerPatrimoni() {
 /** Manteniment nocturn. Aquest sí que funciona des del primer dia. */
 function triggerManteniment() {
   try {
-    var informe = { rotades: 0, esquema: [], reintents: 0 };
+    var informe = { rotades: 0, esquema: [] };
 
     informe.rotades = Log.rota();
 
@@ -302,10 +305,12 @@ function triggerManteniment() {
       informe.esquema = Esquema.comprova();
     }
 
-    // Reintent de resums fallits — actiu quan arribi el bloc 6
-    if (typeof Resums !== 'undefined' && typeof Resums.reintentaFallits === 'function') {
-      informe.reintents = Resums.reintentaFallits();
-    }
+    /* Aquí hi havia previst un reintent dels resums que haguessin fallat, i
+       s'ha tret perquè seria mentida: el resum del dia es munta amb el que
+       diuen els mòduls ARA, i a les tres de la matinada «ara» ja és l'endemà.
+       Tornar-lo a generar li posaria a la nit de dimarts les xifres de
+       dimecres. Si un vespre falla, hi ha el botó de demanar-lo a mà, i al
+       registre en queda constància. */
 
     CacheService.getScriptCache().removeAll(['fitxa_ia']);
 
