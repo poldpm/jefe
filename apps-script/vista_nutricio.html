@@ -419,8 +419,8 @@ App.registraVista('nutricio', {
       inp.addEventListener('change', function () {
         if (inp.value === previ) return;
         previ = inp.value;
-        crida('nutricio', 'activitat', { data: data, kcal: num(inp.value) })
-          .then(function () { carrega(); })
+        escriu('nutricio', 'activitat', { data: data, kcal: num(inp.value) }, quePinto())
+          .then(function (r) { Cau.oblida('nutricio.'); aplica(r); })
           .catch(function (err) { App.brindis(err.message, 'error'); });
       });
     }
@@ -513,14 +513,15 @@ App.registraVista('nutricio', {
         function afegeix() {
           if (!llest()) return;
           bt.disabled = true;
-          crida('nutricio', 'afegeix', {
+          escriu('nutricio', 'afegeix', {
             data: data, apat: apat, nom: nom.value.trim(),
             grams: num(gr.value), kcal100: num(kc.value), prot100: num(pr.value)
-          }).then(function () {
+          }, quePinto()).then(function (r) {
             nom.value = gr.value = kc.value = pr.value = '';
+            bt.disabled = false;
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
             Cau.oblida('nutricio.');
-            carrega();
+            aplica(r);
           }).catch(function (err) {
             bt.disabled = false;
             App.brindis(err.message, 'error');
@@ -535,17 +536,16 @@ App.registraVista('nutricio', {
             return;
           }
           bd.disabled = true;
-          crida('nutricio', 'desaAliment', {
+          escriu('nutricio', 'desaAliment', {
             nom: nom.value.trim(), kcal100: num(kc.value), prot100: num(pr.value)
-          }).then(function () {
-            return crida('nutricio', 'aliments', {});
-          }).then(function (l) {
+          }, quePinto()).then(function (r) {
             // La llista es munta cada cop que s'obre, o sigui que amb tenir
-            // `aliments` al dia ja hi surt: no cal repintar res.
-            aliments = l;
+            // `aliments` al dia ja hi surt: `aplica` ho fa i, amb el tauler
+            // obert, s'espera a repintar fins que el tanquis.
             Cau.oblida('nutricio.');
             bd.disabled = false;
             App.brindis('«' + nom.value.trim() + '» desat a la teva llista');
+            aplica(r);
           }).catch(function (err) {
             bd.disabled = false;
             App.brindis(err.message, 'error');
@@ -555,8 +555,8 @@ App.registraVista('nutricio', {
         sec.querySelectorAll('[data-treu]').forEach(function (b) {
           b.addEventListener('click', function () {
             b.disabled = true;
-            crida('nutricio', 'treu', { id: b.dataset.treu })
-              .then(function () { carrega(); })
+            escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
+              .then(function (r) { Cau.oblida('nutricio.'); aplica(r); })
               .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
           });
         });
@@ -586,13 +586,12 @@ App.registraVista('nutricio', {
       cos.querySelector('[data-desa-ajustos]').addEventListener('click', function () {
         var p = {};
         cos.querySelectorAll('[data-c]').forEach(function (i) { p[i.dataset.c] = i.value; });
-        crida('nutricio', 'desaAjustos', p)
-          .then(function (nou) {
-            ajustos = nou;
+        escriu('nutricio', 'desaAjustos', p, quePinto())
+          .then(function (r) {
             App.tancaModal();
             App.brindis('Objectius desats');
             Cau.oblida('nutricio.');
-            carrega();
+            aplica(r);
           })
           .catch(function (err) { App.brindis(err.message, 'error'); });
       });
@@ -681,44 +680,70 @@ App.registraVista('nutricio', {
        arreglar és esperar-la amb la pantalla en blanc. */
     function claCau() { return 'nutricio.' + periode + '.' + data; }
 
+    var previPintat = null;   // JSON de les dades que hi ha pintades ara
+    var ajornat = null;       // pantalla que espera que pari de tocar coses
+
+    /**
+     * Rebre una pantalla i pintar-la si toca.
+     *
+     * La torna tant `pantalla` com qualsevol escriptura —vegeu `escriu()`—,
+     * perquè desar i tornar a demanar el dia eren dos viatges al servidor i a
+     * Apps Script el viatge és tot el cost. Entrar un aliment ha passat de dos
+     * segons llargs a un.
+     *
+     * NO REFER LA PANTALLA SI NO CAL: si el servidor diu exactament el mateix
+     * que ja teníem, repintar només serveix per destruir el que tinguis obert
+     * o a mig escriure. I si ha canviat però estàs tocant alguna cosa,
+     * s'espera que acabis.
+     */
+    function aplica(r, dEnCau) {
+      if (r.aliments && r.aliments.length) aliments = r.aliments;
+      ajustos = r.ajustos || ajustos;
+      Cau.set(claCau(), r);
+
+      var nou = JSON.stringify(r.dades);
+      if (nou === previPintat) return;
+
+      /* Només té sentit ajornar si ja hi ha alguna cosa pintada: si la
+         pantalla és buida, repintar no pot destruir res i no fer-ho et deixa
+         mirant l'esquelet de càrrega per sempre. */
+      if (previPintat !== null && App.interactuant()) {
+        var primer = !ajornat;
+        ajornat = r;
+        if (primer) setTimeout(quanPari, 400);
+        return;
+      }
+      previPintat = nou;
+      if (periode === 'dia') pintaDia(r.dades, !!dEnCau); else pintaPeriode(r.dades);
+    }
+
+    /* Es mira cada tant si ja ha acabat, en comptes d'esperar que salti el
+       focus. Un tauler obert sense cap camp enfocat no dispara `focusout` en
+       tancar-se, i llavors el que hi ha ajornat no es pinta mai. */
+    function quanPari() {
+      if (!arrel.isConnected) { ajornat = null; return; }
+      if (App.interactuant()) { setTimeout(quanPari, 400); return; }
+      var r = ajornat;
+      ajornat = null;
+      if (r) aplica(r);
+    }
+
+    /** Els paràmetres que necessita `pantalla` per tornar el que mirem ara. */
+    function quePinto() { return { periode: periode, data: data }; }
+
     function carrega() {
       var desat = Cau.get(claCau(), null);
-      var previ = null;
       if (desat && desat.dades) {
         aliments = desat.aliments && desat.aliments.length ? desat.aliments : aliments;
         ajustos = desat.ajustos || ajustos;
-        previ = JSON.stringify(desat.dades);
         try {
+          previPintat = JSON.stringify(desat.dades);
           if (periode === 'dia') pintaDia(desat.dades, true); else pintaPeriode(desat.dades);
-        } catch (e) { previ = null; }
+        } catch (e) { previPintat = null; }
       }
 
-      crida('nutricio', 'pantalla', { periode: periode, data: data })
-        .then(function (r) {
-          if (r.aliments && r.aliments.length) aliments = r.aliments;
-          ajustos = r.ajustos || ajustos;
-          Cau.set(claCau(), r);
-
-          /* NO REFER LA PANTALLA SI NO CAL.
-             Si el servidor diu exactament el mateix que ja teníem —que és el
-             cas normal—, tornar a pintar-ho només serveix per destruir el que
-             tinguis obert o a mig escriure. I si ha canviat però estàs tocant
-             alguna cosa, s'espera que acabis. */
-          if (JSON.stringify(r.dades) === previ) return;
-
-          /* Nomes te sentit ajornar si ja hi ha alguna cosa pintada: si la
-             pantalla es buida, repintar no pot destruir res i no fer-ho et deixa
-             mirant l'esquelet de carrega per sempre. */
-          if (previ !== null && App.interactuant()) {
-            var quan = function () {
-              document.removeEventListener('focusout', quan);
-              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
-            };
-            document.addEventListener('focusout', quan);
-            return;
-          }
-          if (periode === 'dia') pintaDia(r.dades, false); else pintaPeriode(r.dades);
-        })
+      crida('nutricio', 'pantalla', quePinto())
+        .then(function (r) { aplica(r); })
         .catch(function (err) {
           if (desat) App.brindis(err.message, 'error');
           else arrel.innerHTML = Comp.error(err, true);

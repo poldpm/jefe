@@ -8,12 +8,19 @@
    s'apunta es perd. Tot cau a la safata i ja ho classificaràs.
 
    La safata va a dalt i les pendents a sota: primer el que has de decidir,
-   després el que has de fer. */
+   després el que has de fer.
+
+   I EL QUE APUNTES SURT A L'INSTANT, sense esperar el servidor. Vegeu
+   `afegeixEsperant` més avall: capturar sis coses seguides no ha de ser sis
+   pauses de segon i mig mirant la pantalla. */
 
 App.registraVista('tasques', {
   render: function (arrel, params) {
 
     var dades = null;
+    var previPintat = null;    // JSON del que hi ha pintat ara mateix
+    var ajornat = null;        // pantalla que espera que pari d'escriure
+    var esperant = 0;          // captures enviades i encara sense resposta
 
     // ------------------------------------------------------------- capçalera
 
@@ -64,12 +71,16 @@ App.registraVista('tasques', {
 
     /* La safata és el que has capturat i encara no has decidit què era.
        Cada línia porta els tres contextos a un toc: classificar-la la treu
-       d'aquí sola, sense haver de dir a més que és «per fer». */
+       d'aquí sola, sense haver de dir a més que és «per fer».
+
+       El contenidor s'escriu SEMPRE, encara que estigui buit i amagat: és on
+       aterren les captures que encara no han tornat del servidor, i si no hi
+       fos les hauria de fer aparèixer repintant mitja pàgina. */
     function blocSafata(d) {
-      if (!d.safata.length) return '';
-      return '<p class="marge">A la safata</p>' +
+      return '<div id="t-safata-bloc"' + (d.safata.length ? '' : ' hidden') + '>' +
+        '<p class="marge">A la safata</p>' +
         '<p class="menut">Toca on va cadascuna. Amb això surt de la safata.</p>' +
-        '<div class="safata-t">' +
+        '<div class="safata-t" id="t-safata">' +
           d.safata.map(function (t) {
             return '<div class="safata-fila" data-fila="' + esc(t.id) + '">' +
               '<div class="safata-text">' + esc(t.text) + '</div>' +
@@ -83,7 +94,8 @@ App.registraVista('tasques', {
               '</div>' +
             '</div>';
           }).join('') +
-        '</div>';
+        '</div>' +
+      '</div>';
     }
 
     function blocPendents(d) {
@@ -114,7 +126,10 @@ App.registraVista('tasques', {
 
     function blocFetes(d) {
       if (!d.fetes.length) return '';
-      return '<p class="marge">Fetes</p>' +
+      return '<div class="fetes-titol">' +
+          '<p class="marge">Fetes</p>' +
+          '<button class="btn btn-fantasma btn-menut" data-neteja>Buida-les</button>' +
+        '</div>' +
         '<div class="tasques">' +
           d.fetes.map(function (t) {
             return '<div class="tasca" data-feta="1">' +
@@ -136,16 +151,34 @@ App.registraVista('tasques', {
       if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
 
       var camp = arrel.querySelector('#t-captura');
+
+      /**
+       * APUNTAR NO POT FER ESPERAR.
+       *
+       * La línia surt a la safata abans de sortir del telèfon i el camp queda
+       * lliure de seguida: pots dir-ne quatre de seguides sense que la
+       * pantalla et pari entre l'una i l'altra. Quan el servidor contesta,
+       * torna la llista de debò i la provisional desapareix sola.
+       *
+       * Si falla, es desfà i el text et torna al camp. No es perd.
+       */
       function captura() {
         var t = camp.value.trim();
         if (!t) return;
         camp.value = '';
-        /* S'envia i el camp queda lliure a l'instant: si has d'esperar la
-           resposta per apuntar la següent, ja no apuntes la següent. */
         if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
-        crida('tasques', 'captura', { text: t })
-          .then(function () { Cau.oblida('tasques.'); carrega(); })
-          .catch(function (err) { camp.value = t; App.brindis(err.message, 'error'); });
+
+        var provisional = afegeixEsperant(t);
+        esperant++;
+
+        escriu('tasques', 'captura', { text: t })
+          .then(function (r) { esperant--; aplica(r); })
+          .catch(function (err) {
+            esperant--;
+            if (provisional.parentNode) provisional.parentNode.removeChild(provisional);
+            camp.value = t;
+            App.brindis(err.message, 'error');
+          });
       }
       arrel.querySelector('[data-captura]').addEventListener('click', captura);
       camp.addEventListener('keydown', function (ev) {
@@ -156,8 +189,8 @@ App.registraVista('tasques', {
         b.addEventListener('click', function () {
           var fila = b.closest('.safata-fila');
           fila.dataset.fet = '1';
-          crida('tasques', 'edita', { id: b.dataset.id, context: b.dataset.ctx })
-            .then(function () { Cau.oblida('tasques.'); carrega(); })
+          escriu('tasques', 'edita', { id: b.dataset.id, context: b.dataset.ctx })
+            .then(aplica)
             .catch(function (err) { fila.dataset.fet = '0'; App.brindis(err.message, 'error'); });
         });
       });
@@ -165,8 +198,8 @@ App.registraVista('tasques', {
       arrel.querySelectorAll('[data-treu]').forEach(function (b) {
         b.addEventListener('click', function () {
           b.disabled = true;
-          crida('tasques', 'treu', { id: b.dataset.treu })
-            .then(function () { Cau.oblida('tasques.'); carrega(); })
+          escriu('tasques', 'treu', { id: b.dataset.treu })
+            .then(aplica)
             .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
         });
       });
@@ -175,19 +208,22 @@ App.registraVista('tasques', {
         b.addEventListener('click', function () {
           var t = b.closest('.tasca');
           t.dataset.fent = '1';
-          crida('tasques', 'completa', { id: b.dataset.fet })
-            .then(function () { Cau.oblida('tasques.'); carrega(); })
+          escriu('tasques', 'completa', { id: b.dataset.fet })
+            .then(aplica)
             .catch(function (err) { t.dataset.fent = '0'; App.brindis(err.message, 'error'); });
         });
       });
 
       arrel.querySelectorAll('[data-desfes]').forEach(function (b) {
         b.addEventListener('click', function () {
-          crida('tasques', 'completa', { id: b.dataset.desfes, desfes: true })
-            .then(function () { Cau.oblida('tasques.'); carrega(); })
+          escriu('tasques', 'completa', { id: b.dataset.desfes, desfes: true })
+            .then(aplica)
             .catch(function (err) { App.brindis(err.message, 'error'); });
         });
       });
+
+      var bn = arrel.querySelector('[data-neteja]');
+      if (bn) bn.addEventListener('click', neteja);
 
       arrel.querySelectorAll('[data-obre]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -197,6 +233,46 @@ App.registraVista('tasques', {
           }
           if (t) obreTasca(t);
         });
+      });
+    }
+
+    /** Una línia provisional a la safata, mentre el servidor no contesta. */
+    function afegeixEsperant(text) {
+      var bloc = arrel.querySelector('#t-safata-bloc');
+      bloc.hidden = false;
+      var el = document.createElement('div');
+      el.className = 'safata-fila';
+      el.dataset.esperant = '1';
+      el.innerHTML = '<div class="safata-text">' + esc(text) + '</div>';
+      arrel.querySelector('#t-safata').appendChild(el);
+      return el;
+    }
+
+    /* Buidar les fetes es pregunta: són moltes de cop i no es veu venir. Al
+       full hi continuen totes; el que es buida és la pantalla. */
+    function neteja() {
+      if (!dades || !dades.fetes.length) return;
+      var n = dades.fetes.length;
+
+      var cos = App.modal('Buidar les fetes',
+        '<div class="form-ajustos">' +
+          '<p>Desapareixeran de la llista ' + n + (n === 1 ? ' tasca feta' : ' tasques fetes') + '.</p>' +
+          '<p class="menut">Al full de càlcul hi continuen totes. El que es buida és la pantalla.</p>' +
+          '<button class="btn btn-primari" data-si>Buida-les</button>' +
+          '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">Deixa-ho estar</button>' +
+        '</div>');
+
+      cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+      cos.querySelector('[data-si]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true;
+        escriu('tasques', 'neteja', {})
+          .then(function (r) {
+            App.tancaModal();
+            App.brindis(n === 1 ? 'Buidada' : 'Buidades');
+            aplica(r);
+          })
+          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
     }
 
@@ -229,26 +305,26 @@ App.registraVista('tasques', {
       cos.querySelector('[data-desa]').addEventListener('click', function () {
         var b = this;
         b.disabled = true;
-        crida('tasques', 'edita', {
+        escriu('tasques', 'edita', {
           id: t.id,
           text: camps.text.value,
           context: camps.context.value,
           venc_el: camps.venc_el.value,
           prioritat: camps.prioritat.checked ? 'alta' : '',
           nota: camps.nota.value
-        }).then(function () {
+        }).then(function (r) {
           App.tancaModal(); App.brindis('Desat');
-          Cau.oblida('tasques.'); carrega();
+          aplica(r);
         }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
 
       cos.querySelector('[data-treu-t]').addEventListener('click', function () {
         var b = this;
         b.disabled = true;
-        crida('tasques', 'treu', { id: t.id })
-          .then(function () {
+        escriu('tasques', 'treu', { id: t.id })
+          .then(function (r) {
             App.tancaModal(); App.brindis('Treta');
-            Cau.oblida('tasques.'); carrega();
+            aplica(r);
           })
           .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -256,30 +332,53 @@ App.registraVista('tasques', {
 
     // ---------------------------------------------------------------- càrrega
 
+    /**
+     * Rebre una pantalla del servidor i pintar-la si toca.
+     *
+     * Ara la torna CADA escriptura, no només `pantalla`: desar i tornar a
+     * demanar la llista eren dos viatges, i a Apps Script el viatge és tot el
+     * cost. Amb un, apuntar una tasca passa de tres segons a un i mig.
+     *
+     * No es repinta mentre té un camp obert: repintar li tancaria el desplegable
+     * o li esborraria el que estava escrivint. S'espera i es pinta quan pari.
+     */
+    function aplica(r, dEnCau) {
+      Cau.set('tasques.llista', r);
+      var nou = JSON.stringify(r);
+      if (nou === previPintat && !esperant) return;
+
+      if (previPintat !== null && App.interactuant()) {
+        var primer = !ajornat;
+        ajornat = r;
+        if (primer) setTimeout(quanPari, 400);
+        return;
+      }
+      previPintat = nou;
+      pinta(r, !!dEnCau);
+    }
+
+    /* Es mira cada tant si ja ha acabat, en comptes d'esperar que salti el
+       focus: mentre escrius al camp de captura les línies provisionals es
+       queden a la vista, que és el que vols, i quan pares es posa al dia.
+       Amb `focusout` n'hi ha prou de tancar un tauler sense cap camp enfocat
+       perquè no salti mai i el que hi ha ajornat no es pinti. */
+    function quanPari() {
+      if (!arrel.isConnected) { ajornat = null; return; }
+      if (App.interactuant()) { setTimeout(quanPari, 400); return; }
+      var r = ajornat;
+      ajornat = null;
+      if (r) aplica(r);
+    }
+
     function carrega() {
       var desat = Cau.get('tasques.llista', null);
-      var previ = null;
       if (desat) {
-        previ = JSON.stringify(desat);
-        try { pinta(desat, true); } catch (e) { previ = null; }
+        try { previPintat = JSON.stringify(desat); pinta(desat, true); }
+        catch (e) { previPintat = null; }
       }
 
       crida('tasques', 'pantalla', {})
-        .then(function (r) {
-          Cau.set('tasques.llista', r);
-          if (JSON.stringify(r) === previ) return;
-          // Només s'ajorna si ja hi ha alguna cosa pintada: amb la pantalla
-          // buida, repintar no pot destruir res.
-          if (previ !== null && App.interactuant()) {
-            var quan = function () {
-              document.removeEventListener('focusout', quan);
-              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
-            };
-            document.addEventListener('focusout', quan);
-            return;
-          }
-          pinta(r, false);
-        })
+        .then(function (r) { aplica(r); })
         .catch(function (err) {
           if (desat) App.brindis(err.message, 'error');
           else arrel.innerHTML = Comp.error(err, true);

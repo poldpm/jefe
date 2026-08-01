@@ -58,7 +58,8 @@ function MODUL_TASQUES() {
       captura:  function (p) { return Tasques.captura(p.text, p.origen); },
       edita:    function (p) { return Tasques.edita(p.id, p); },
       completa: function (p) { return Tasques.completa(p.id, p.desfes); },
-      treu:     function (p) { return Tasques.treu(p.id); }
+      treu:     function (p) { return Tasques.treu(p.id); },
+      neteja:   function ()  { return Tasques.netejaFetes(); }
     },
 
     resumInici: function () {
@@ -340,6 +341,22 @@ var Tasques = (function () {
     return { tret: true };
   }
 
+  /**
+   * Buidar la llista de fetes.
+   *
+   * «Res s'esborra» segueix sent cert al full: es marquen amb data
+   * d'esborrat, igual que treure'n una de sola, i la fila hi continua. El que
+   * desapareix és de la pantalla. Una llista de fetes que no es pot buidar
+   * acaba sent soroll permanent a sota de la que sí que has de mirar.
+   */
+  function netejaFetes() {
+    var fetes = vives_(function (f) { return f.estat === 'feta'; });
+    if (!fetes.length) return { tretes: 0 };
+    var n = Dades.actualitzaMoltes('Tasques',
+      fetes.map(function (f) { return f.id; }), { esborrat_el: Utils.ara() });
+    return { tretes: n };
+  }
+
   // -------------------------------------------------------------------- IA
 
   function consultaIA(a) {
@@ -471,6 +488,7 @@ var Tasques = (function () {
     edita: edita,
     completa: completa,
     treu: treu,
+    netejaFetes: netejaFetes,
     consultaIA: consultaIA,
     apuntaPerNom: apuntaPerNom
   };

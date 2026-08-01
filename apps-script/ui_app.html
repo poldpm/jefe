@@ -158,6 +158,26 @@ var Jefe = (function () {
                             : cridaRemota_(modul, accio, params);
   }
 
+  /**
+   * ESCRIURE I TORNAR AMB LA PANTALLA JA REFETA, EN UN SOL VIATGE.
+   *
+   * `crida(...).then(carrega)` són dues anades al servidor, i a Apps Script
+   * cada anada costa un segon i mig facis el que facis. Amb això se'n fa una:
+   * el servidor desa i, abans de contestar, torna a muntar la pantalla.
+   *
+   * Es resol AMB LA PANTALLA, no amb el que ha tornat l'escriptura. Si el que
+   * et cal és això altre, fes servir `crida` de tota la vida.
+   */
+  function escriu(modul, accio, params, paramsPantalla) {
+    var p = {};
+    for (var k in (params || {})) p[k] = params[k];
+    p._pantalla = paramsPantalla || {};
+
+    return crida(modul, accio, p).then(function (r) {
+      return (r && r._pantalla !== undefined) ? r._pantalla : r;
+    });
+  }
+
   // ------------------------------------------------- cua d'escriptures pendents
 
   var Cua = {
@@ -478,11 +498,12 @@ var Jefe = (function () {
     if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
   });
 
-  return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida,
+  return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, escriu: escriu,
            esc: esc, ic: ic, fmt: fmt, Servidor: Servidor, dinsAppsScript: dinsAppsScript };
 })();
 
 var App = Jefe.App, Comp = Jefe.Comp, Cau = Jefe.Cau, Cua = Jefe.Cua;
-var crida = Jefe.crida, esc = Jefe.esc, ic = Jefe.ic, fmt = Jefe.fmt;
+var crida = Jefe.crida, escriu = Jefe.escriu;
+var esc = Jefe.esc, ic = Jefe.ic, fmt = Jefe.fmt;
 var Servidor = Jefe.Servidor, dinsAppsScript = Jefe.dinsAppsScript;
 </script>

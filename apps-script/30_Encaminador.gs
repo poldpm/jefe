@@ -128,8 +128,29 @@ function api(idModul, accio, params) {
       throw new Error('El mòdul «' + idModul + '» no té l\'acció «' + accio + '».');
     }
 
+    /* ESCRIURE I TORNAR A MIRAR, EN UN SOL VIATGE.
+       ------------------------------------------------------------------
+       Desar una cosa i després demanar la llista refeta eren dues peticions,
+       i a Apps Script la petició val un segon i mig ABANS de fer res: el
+       temps no és del que li demanes, és d'arribar-hi. Apuntar una tasca de
+       quatre paraules trigava tres segons, i tots dos segons i mig eren
+       espera pura.
+
+       Amb `_pantalla` als paràmetres, el client diu «i de passada torna'm la
+       pantalla». Es fa aquí i no a cada mòdul perquè el problema no és de cap
+       mòdul: és del transport. Així ho hereta qualsevol mòdul que es faci
+       d'ara endavant sense haver-hi pensat. */
+    var refresc = params && params._pantalla;
+    if (refresc) delete params._pantalla;
+
     var resultat = fn(params || {});
-    return { ok: true, dades: resultat === undefined ? null : resultat };
+    var dades = resultat === undefined ? null : resultat;
+
+    if (refresc && accio !== 'pantalla' && modul.accions &&
+        typeof modul.accions.pantalla === 'function') {
+      dades = { _resultat: dades, _pantalla: modul.accions.pantalla(refresc) };
+    }
+    return { ok: true, dades: dades };
 
   } catch (err) {
     Log.error('api.' + idModul + '.' + accio, err, { params: params });

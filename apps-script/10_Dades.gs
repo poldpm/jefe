@@ -238,6 +238,46 @@ var Dades = (function () {
     return creats;
   }
 
+  /**
+   * El mateix canvi a moltes files alhora.
+   *
+   * En bucle, `actualitza` faria una crida a Sheets per fila: netejar vint
+   * tasques fetes serien vint escriptures. Aquí s'escriu per TRAMS SEGUITS —
+   * les files consecutives van en una sola crida— i no es toca cap fila que
+   * no sigui a la llista.
+   */
+  function actualitzaMoltes(nom, ids, canvis) {
+    if (!ids || !ids.length) return 0;
+    var d = carrega_(nom);
+
+    var index = {};
+    llegeix(nom).forEach(function (o) { index[o.id] = o; });
+
+    var pendents = [];
+    for (var i = 0; i < ids.length; i++) {
+      var actual = index[ids[i]];
+      if (!actual) continue;
+      var fusionat = {};
+      for (var k in actual) if (k !== '_fila') fusionat[k] = actual[k];
+      for (var c in canvis) fusionat[c] = canvis[c];
+      if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
+      pendents.push({ fila: actual._fila, valors: aFila_(d.capcalera, fusionat) });
+    }
+    if (!pendents.length) return 0;
+
+    pendents.sort(function (a, b) { return a.fila - b.fila; });
+    var p = 0;
+    while (p < pendents.length) {
+      var q = p;
+      while (q + 1 < pendents.length && pendents[q + 1].fila === pendents[q].fila + 1) q++;
+      d.fulla.getRange(pendents[p].fila, 1, q - p + 1, d.capcalera.length)
+             .setValues(pendents.slice(p, q + 1).map(function (x) { return x.valors; }));
+      p = q + 1;
+    }
+    invalida(nom);
+    return pendents.length;
+  }
+
   function existeixFull(nom) {
     try { return !!Config.full().getSheetByName(nom); } catch (e) { return false; }
   }
@@ -254,6 +294,7 @@ var Dades = (function () {
     insereix: insereix,
     insereixMoltes: insereixMoltes,
     actualitza: actualitza,
+    actualitzaMoltes: actualitzaMoltes,
     desa: desa,
     existeixFull: existeixFull,
     capcalera: capcalera,

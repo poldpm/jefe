@@ -274,12 +274,12 @@ App.registraVista('finances', {
       cos.querySelector('[data-desa-limit]').addEventListener('click', function () {
         var b = this;
         b.disabled = true;
-        crida('finances', 'pressupost', { categoria: idCat, limit: num(cos.querySelector('[data-limit]').value) })
-          .then(function () {
+        escriu('finances', 'pressupost', { categoria: idCat, limit: num(cos.querySelector('[data-limit]').value) }, quePinto())
+          .then(function (r) {
             App.tancaModal();
             App.brindis('Límit desat');
             Cau.oblida('finances.');
-            carrega();
+            aplica(r);
           })
           .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -497,10 +497,10 @@ App.registraVista('finances', {
         var v = cos.querySelector('[data-valor]').value;
         if (!String(v).trim()) { App.brindis('Posa-hi un valor', 'error'); return; }
         ba.disabled = true;
-        crida('finances', 'anotaValor', { id: a.id, valor: num(v) })
-          .then(function () {
+        escriu('finances', 'anotaValor', { id: a.id, valor: num(v) }, quePinto())
+          .then(function (r) {
             App.tancaModal(); App.brindis('Valor anotat');
-            Cau.oblida('finances.'); carrega();
+            Cau.oblida('finances.'); aplica(r);
           })
           .catch(function (err) { ba.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -510,22 +510,22 @@ App.registraVista('finances', {
         if (!nom) { App.brindis('Posa-hi un nom', 'error'); return; }
         var b = this;
         b.disabled = true;
-        crida('finances', 'desaActiu', {
+        escriu('finances', 'desaActiu', {
           id: editant ? a.id : null, nom: nom,
           tipus: cos.querySelector('[data-tipus]').value.trim()
-        }).then(function () {
+        }, quePinto()).then(function (r) {
           App.tancaModal(); App.brindis(editant ? 'Desat' : 'Creat');
-          Cau.oblida('finances.'); carrega();
+          Cau.oblida('finances.'); aplica(r);
         }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
 
       var bt = cos.querySelector('[data-treu-actiu]');
       if (bt) bt.addEventListener('click', function () {
         bt.disabled = true;
-        crida('finances', 'arxivaActiu', { id: a.id })
-          .then(function () {
+        escriu('finances', 'arxivaActiu', { id: a.id }, quePinto())
+          .then(function (r) {
             App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); carrega();
+            Cau.oblida('finances.'); aplica(r);
           })
           .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -660,7 +660,7 @@ App.registraVista('finances', {
         }
         var b = this;
         b.disabled = true;
-        crida('finances', 'desaRecurrent', {
+        escriu('finances', 'desaRecurrent', {
           id: editant ? r.id : null,
           tipus: tipus, 'import': imp,
           descripcio: camps.descripcio.value.trim(),
@@ -668,19 +668,19 @@ App.registraVista('finances', {
           metode: camps.metode.value,
           dia: num(camps.dia.value),
           actiu: camps.actiu ? camps.actiu.checked : true
-        }).then(function () {
+        }, quePinto()).then(function (r) {
           App.tancaModal(); App.brindis(editant ? 'Desat' : 'Creat');
-          Cau.oblida('finances.'); carrega();
+          Cau.oblida('finances.'); aplica(r);
         }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
 
       var bt = cos.querySelector('[data-treu-rec]');
       if (bt) bt.addEventListener('click', function () {
         bt.disabled = true;
-        crida('finances', 'arxivaRecurrent', { id: r.id })
-          .then(function () {
+        escriu('finances', 'arxivaRecurrent', { id: r.id }, quePinto())
+          .then(function (p) {
             App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); carrega();
+            Cau.oblida('finances.'); aplica(p);
           })
           .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -1152,13 +1152,13 @@ App.registraVista('finances', {
 
         var b = this;
         b.disabled = true;
-        crida('finances', editant ? 'edita' : 'afegeix', editant ? Object.assign({ id: m.id }, p) : p)
-          .then(function () {
+        escriu('finances', editant ? 'edita' : 'afegeix', editant ? Object.assign({ id: m.id }, p) : p, quePinto())
+          .then(function (nova) {
             App.tancaModal();
             App.brindis(editant ? 'Moviment desat' : 'Apuntat');
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
             Cau.oblida('finances.');
-            carrega();
+            aplica(nova);
           })
           .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -1166,10 +1166,10 @@ App.registraVista('finances', {
       var bt = cos.querySelector('[data-treu]');
       if (bt) bt.addEventListener('click', function () {
         bt.disabled = true;
-        crida('finances', 'treu', { id: m.id })
-          .then(function () {
+        escriu('finances', 'treu', { id: m.id }, quePinto())
+          .then(function (r) {
             App.tancaModal(); App.brindis('Moviment tret');
-            Cau.oblida('finances.'); carrega();
+            Cau.oblida('finances.'); aplica(r);
           })
           .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -1196,41 +1196,71 @@ App.registraVista('finances', {
       else pintaMes(d);
     }
 
+    var previPintat = null;   // JSON del que hi ha pintat ara mateix
+    var ajornat = null;       // pantalla que espera que pari de tocar coses
+
+    /** Els paràmetres que necessita `pantalla` per tornar el que mirem ara. */
+    function quePinto() { return { periode: periode, mes: mes, quants: 12 }; }
+
+    /**
+     * Rebre una pantalla i pintar-la si toca.
+     *
+     * La torna tant `pantalla` com qualsevol escriptura —vegeu `escriu()`—,
+     * perquè desar i tornar a demanar el mes eren dos viatges al servidor i a
+     * Apps Script el viatge és tot el cost. Buidar la safata de revisió, que
+     * són vint decisions seguides, era vint esperes dobles.
+     *
+     * Si no ha canviat res no es refà la pantalla: repintar-la només serviria
+     * per tancar-te el que tinguis obert. I si ha canviat però estàs tocant
+     * alguna cosa, s'espera que acabis.
+     */
+    function aplica(r, dEnCau) {
+      cats = r.categories || cats;
+      if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
+      if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
+      if (periode !== 'revisar' && periode !== 'recurrents' && periode !== 'patrimoni') {
+        Cau.set(claded(), r);
+      }
+
+      var nou = JSON.stringify(r.dades);
+      if (nou === previPintat) return;
+
+      /* Només té sentit ajornar si ja hi ha alguna cosa pintada: si la
+         pantalla és buida, repintar no pot destruir res i no fer-ho et deixa
+         mirant l'esquelet de càrrega per sempre. */
+      if (previPintat !== null && App.interactuant()) {
+        var primer = !ajornat;
+        ajornat = r;
+        if (primer) setTimeout(quanPari, 400);
+        return;
+      }
+      previPintat = nou;
+      repinta(r.dades);
+    }
+
+    /* Es mira cada tant si ja ha acabat, en comptes d'esperar que salti el
+       focus: un tauler obert sense cap camp enfocat no dispara `focusout` en
+       tancar-se, i llavors el que hi ha ajornat no es pinta mai. */
+    function quanPari() {
+      if (!arrel.isConnected) { ajornat = null; return; }
+      if (App.interactuant()) { setTimeout(quanPari, 400); return; }
+      var r = ajornat;
+      ajornat = null;
+      if (r) aplica(r);
+    }
+
     function carrega() {
       var volatil = periode === 'revisar' || periode === 'recurrents' || periode === 'patrimoni';
       var desat = volatil ? null : Cau.get(claded(), null);
-      var previ = null;
       if (desat && desat.dades) {
         cats = desat.categories || cats;
         sugg = desat.suggeriments || sugg;
-        previ = JSON.stringify(desat.dades);
-        try { repinta(desat.dades); } catch (e) { previ = null; }
+        try { previPintat = JSON.stringify(desat.dades); repinta(desat.dades); }
+        catch (e) { previPintat = null; }
       }
 
-      crida('finances', 'pantalla', { periode: periode, mes: mes, quants: 12 })
-        .then(function (r) {
-          cats = r.categories || [];
-          if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
-          if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
-          if (!volatil) Cau.set(claded(), r);
-
-          /* Si no ha canviat res, no refem la pantalla: repintar-la només
-             serviria per tancar-te el que tinguis obert. I si ha canviat però
-             estàs tocant alguna cosa, s'espera que acabis. */
-          if (JSON.stringify(r.dades) === previ) return;
-          /* Nomes te sentit ajornar si ja hi ha alguna cosa pintada: si la
-             pantalla es buida, repintar no pot destruir res i no fer-ho et deixa
-             mirant l'esquelet de carrega per sempre. */
-          if (previ !== null && App.interactuant()) {
-            var quan = function () {
-              document.removeEventListener('focusout', quan);
-              setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
-            };
-            document.addEventListener('focusout', quan);
-            return;
-          }
-          repinta(r.dades);
-        })
+      crida('finances', 'pantalla', quePinto())
+        .then(function (r) { aplica(r); })
         .catch(function (err) {
           // Amb alguna cosa pintada, un error no ha de deixar-te sense res.
           if (desat) App.brindis(err.message, 'error');
