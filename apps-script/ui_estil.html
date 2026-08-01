@@ -133,6 +133,8 @@ h2 { font-size: 1.0625rem; }
 }
 .menut { font-size: .8125rem; color: var(--ink-suau); line-height: 1.4; }
 .xifra { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Xifres alineades en columna: als mapes les cotes són tabulars. */
+.num { font-variant-numeric: tabular-nums; }
 
 /* ----------------------------------------------------------- full i marge */
 
@@ -403,6 +405,105 @@ h2 { font-size: 1.0625rem; }
                border-bottom: 1px solid var(--avis);
                font-size: .8125rem; font-weight: 600; }
 .sense-xarxa .ic { color: var(--avis); }
+
+/* ---------------------------------------------------------------- nutrició */
+/* El balanç es llegeix com un perfil: el dèficit puja a la dreta i el
+   superàvit baixa a l'esquerra. La fita de l'objectiu és una marca al terreny,
+   no una barra de progrés: no vols "omplir" res, vols passar d'un punt. */
+
+.segments { display: flex; gap: 0; margin-top: var(--e3);
+            border: 1px solid var(--neatline); }
+.segments button { flex: 1; min-height: 40px; background: none; border: 0;
+                   border-right: 1px solid var(--neatline); cursor: pointer;
+                   font: inherit; font-size: .8125rem; letter-spacing: .06em;
+                   text-transform: uppercase; color: var(--ink-suau); }
+.segments button:last-child { border-right: 0; }
+.segments button[aria-selected="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+.fitxa { border: 1.5px solid var(--neatline); padding: var(--e4);
+         background: var(--paper2); margin-bottom: var(--e4); }
+.fitxa[data-estat="deficit_assolit"] { background: var(--h1); color: #0f1a0c; }
+.fitxa[data-estat="superavit"] { background: var(--avis-fons); color: #3a2600; }
+.fitxa .xifra-gran { font-size: 2.5rem; line-height: 1; font-weight: 700;
+                     font-variant-numeric: tabular-nums; }
+.fitxa .u { font-size: .875rem; font-weight: 400; margin-left: 4px; opacity: .7; }
+.verdicte { margin: var(--e3) 0 0; font-size: .9375rem; }
+
+.balanc { margin-top: var(--e4); }
+.balanc-via { position: relative; height: 12px; background: var(--roca);
+              border: 1px solid var(--neatline); }
+.balanc-via i { position: absolute; top: 0; bottom: 0; display: block; }
+.balanc-via i[data-costat="deficit"] { background: var(--h1); }
+.balanc-via i[data-costat="superavit"] { background: var(--h5); }
+.balanc-via u { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px;
+                background: var(--neatline); }
+.balanc-via b { position: absolute; top: -6px; width: 0; height: 0;
+                border-left: 5px solid transparent; border-right: 5px solid transparent;
+                border-top: 6px solid var(--gr); transform: translateX(-5px); }
+.balanc-peu { display: flex; justify-content: space-between; margin-top: var(--e1);
+              font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
+              color: var(--ink-suau); }
+.balanc-peu .fita-txt { color: var(--gr); }
+
+.tres-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
+               margin-bottom: var(--e3); }
+.tres-xifres .xifra { display: flex; flex-direction: column; gap: 2px;
+                      border-left: 2px solid var(--neatline); padding-left: var(--e2);
+                      font-weight: 400; }
+.tres-xifres .xifra b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.tres-xifres .xifra .u { font-size: .75rem; font-weight: 400; margin-left: 3px;
+                         color: var(--ink-suau); }
+
+.camp-activitat { display: block; margin: var(--e4) 0; }
+.camp-activitat input { width: 100%; min-height: var(--toc); margin-top: var(--e1);
+                        padding: 0 var(--e3); font: inherit; font-variant-numeric: tabular-nums;
+                        background: var(--paper); color: var(--ink);
+                        border: 1px solid var(--neatline); border-radius: var(--r); }
+
+.prot-bloc { margin-top: var(--e4); }
+.prot-cap { display: flex; justify-content: space-between; align-items: baseline;
+            margin-bottom: var(--e1); }
+.prot-barra { height: 8px; background: var(--roca); border: 1px solid var(--neatline); }
+.prot-barra i { display: block; height: 100%; background: var(--h3); }
+
+.apat { border: 1px solid var(--neatline); margin-bottom: var(--e4); }
+.apat-cap { display: flex; align-items: baseline; gap: var(--e2);
+            padding: var(--e3); border-bottom: 1px solid var(--neatline);
+            background: var(--paper2); }
+.apat-cap h2 { flex: 1; font-size: 1rem; }
+.apat-items:not(:empty) { border-bottom: 1px solid var(--neatline); }
+.ingesta { display: flex; align-items: center; gap: var(--e3);
+           padding: var(--e2) var(--e3); border-bottom: 1px solid var(--utm-suau); }
+.ingesta:last-child { border-bottom: 0; }
+.ingesta .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.apat-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); padding: var(--e3); }
+.apat-form select, .apat-form input { min-height: var(--toc); padding: 0 var(--e2);
+                                      font: inherit; background: var(--paper); color: var(--ink);
+                                      border: 1px solid var(--neatline); border-radius: var(--r); }
+.apat-form select, .apat-form [data-nom] { grid-column: 1 / -1; }
+.apat-form [data-afegeix] { grid-column: 1 / -1; }
+.apat-form [data-desa-aliment] { grid-column: 1 / -1; }
+
+.perfil { display: flex; align-items: flex-end; gap: 2px; height: 120px;
+          border-bottom: 1.5px solid var(--neatline); }
+.perfil-dia { flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+              align-items: center; gap: 2px; height: 100%; min-width: 0;
+              background: none; border: 0; padding: 0; cursor: pointer; }
+.perfil-dia i { display: block; width: 100%; background: var(--h0); }
+.perfil-dia[data-estat="deficit"] i { background: var(--h1); }
+.perfil-dia[data-estat="superavit"] i { background: var(--h5); }
+.perfil-dia span { font-size: .625rem; color: var(--ink-suau);
+                   font-variant-numeric: tabular-nums; }
+
+.form-ajustos label { display: block; margin-bottom: var(--e3); }
+.form-ajustos input, .form-ajustos select { width: 100%; min-height: var(--toc);
+                                            margin-top: var(--e1); padding: 0 var(--e3);
+                                            font: inherit; background: var(--paper);
+                                            color: var(--ink); border: 1px solid var(--neatline);
+                                            border-radius: var(--r); }
+.form-ajustos hr { border: 0; border-top: 3px double var(--neatline); margin: var(--e4) 0; }
+.form-ajustos [data-desa-ajustos] { width: 100%; }
 
 /* -------------------------------------------------------------------- modal */
 

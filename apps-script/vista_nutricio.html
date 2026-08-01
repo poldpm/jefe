@@ -1,0 +1,557 @@
+<script>
+/* JEFE — MÒDUL · Nutrició
+   Món: full de mapa topogràfic. Ve de FitFat, però parla l'idioma de JEFE.
+
+   LA DECISIÓ QUE MANA: apuntar un aliment ha de ser el camí més curt de la
+   pantalla. Si costa, no s'usa, i un comptador que no s'omple no serveix de
+   res. Per això el formulari d'afegir és sempre visible dins de cada àpat i
+   la llista d'aliments guardats hi és al primer toc: la majoria de dies
+   menges el mateix, i tornar a teclejar «pit de pollastre · 165 · 31» és
+   exactament la fricció que fa abandonar l'eina.
+
+   El balanç es llegeix com un perfil de terreny: el dèficit puja a la dreta,
+   el superàvit baixa a l'esquerra, i la marca de l'objectiu és una fita. */
+
+App.registraVista('nutricio', {
+  render: function (arrel, params) {
+
+    var data = params.data || fmt.avui();
+    var periode = params.periode || 'dia';
+    var dades = null, aliments = [], ajustos = null;
+
+    var APATS = [
+      { clau: 'dinar',   nom: 'Dinar'   },
+      { clau: 'berenar', nom: 'Berenar' },
+      { clau: 'sopar',   nom: 'Sopar'   }
+    ];
+
+    var r0 = function (n) { return Math.round(Number(n) || 0); };
+    var r1 = function (n) { return Math.round((Number(n) || 0) * 10) / 10; };
+    var num = function (v) {
+      var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(',', '.'));
+      return isFinite(n) ? n : 0;
+    };
+
+    // ------------------------------------------------------------- capçalera
+
+    function capcalera(esAvui) {
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa') + '</button>' +
+        '<div class="selector-data" style="flex:1">' +
+          '<button class="btn btn-secundari btn-icona" data-salt="-1" aria-label="Anterior">' +
+            ic('esquerra') + '</button>' +
+          '<button class="data" data-avui="1" style="background:none;border:0;min-height:var(--toc);padding:4px">' +
+            '<span class="marge" style="display:block">' + esc(etiquetaPeriode()) + '</span>' +
+            '<span style="font-size:1.0625rem;font-weight:700">' + esc(titolPeriode()) + '</span>' +
+          '</button>' +
+          '<button class="btn btn-secundari btn-icona" data-salt="1" aria-label="Següent"' +
+            (esAvui ? ' disabled' : '') + '>' + ic('dreta') + '</button>' +
+        '</div>' +
+        '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Objectius i cos">' +
+          ic('ajust') + '</button>' +
+      '</div>' +
+      '<div class="segments" role="tablist">' +
+        ['dia', 'setmana', 'mes'].map(function (p) {
+          return '<button role="tab" data-periode="' + p + '"' +
+                 (p === periode ? ' aria-selected="true"' : '') + '>' +
+                 (p === 'dia' ? 'Dia' : p === 'setmana' ? 'Setmana' : 'Mes') + '</button>';
+        }).join('') +
+      '</div></header>';
+    }
+
+    function etiquetaPeriode() {
+      if (periode === 'dia') return fmt.relativa(data);
+      return periode === 'setmana' ? 'Setmana' : 'Mes';
+    }
+
+    function titolPeriode() {
+      if (periode === 'dia') return fmt.llarga(data);
+      if (!dades || !dades.desde) return '…';
+      if (periode === 'mes') {
+        var d = new Date(Number(data.slice(0, 4)), Number(data.slice(5, 7)) - 1, 1);
+        var m = d.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
+        return m.charAt(0).toUpperCase() + m.slice(1);
+      }
+      return fmt.relativa(dades.desde) + ' → ' + fmt.relativa(dades.fins);
+    }
+
+    // ------------------------------------------------------------ vista dia
+
+    function pintaDia(d, dEnCau) {
+      dades = d;
+      arrel.innerHTML = capcalera(d.data === fmt.avui()) +
+        '<div class="pagina"><div class="dues-columnes">' +
+          '<section id="col-balanc"></section>' +
+          '<section id="col-apats"></section>' +
+        '</div>' +
+        (dEnCau ? '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+
+      document.getElementById('col-balanc').innerHTML = blocBalanc(d);
+      document.getElementById('col-apats').innerHTML =
+        APATS.map(function (m) { return blocApat(d, m); }).join('');
+
+      lligaCapcalera();
+      lligaBalanc();
+      lligaApats();
+    }
+
+    function blocBalanc(d) {
+      var t = d.totals;
+      var teObjProt = d.objectius.proteina > 0;
+      var pct = teObjProt ? Math.min(t.proteina / d.objectius.proteina * 100, 100) : 0;
+
+      return '<p class="marge" style="margin:0 0 var(--e2)">Balanç del dia</p>' +
+
+        '<div class="fitxa" data-estat="' + esc(d.verdicte.estat) + '">' +
+          '<div class="xifra-gran">' +
+            (d.teCremades
+              ? (d.net > 0 ? '−' : d.net < 0 ? '+' : '') + r0(Math.abs(d.net)) + '<span class="u">kcal</span>'
+              : '—') +
+          '</div>' +
+          '<p class="verdicte">' + esc(d.verdicte.text) + '</p>' +
+          (d.teCremades ? barraBalanc(d) : '') +
+        '</div>' +
+
+        '<div class="tres-xifres">' +
+          xifra('Ingerides', r0(t.ingerides), 'kcal') +
+          xifra('Proteïna', r1(t.proteina), 'g') +
+          xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
+        '</div>' +
+
+        (d.basal > 0
+          ? '<p class="menut">Basal ' + r0(d.basal) + ' + activitat ' + r0(d.activitat) +
+            ' = <b class="num">' + r0(d.cremades) + ' kcal</b></p>'
+          : '') +
+
+        '<label class="camp-activitat">' +
+          '<span class="marge">Calories cremades (del rellotge)</span>' +
+          '<input id="n-activitat" inputmode="decimal" value="' +
+            (d.teActivitat ? esc(String(d.activitat)) : '') + '" placeholder="p. ex. 2400">' +
+        '</label>' +
+
+        (teObjProt
+          ? '<div class="prot-bloc">' +
+              '<div class="prot-cap"><span class="marge">Proteïna</span>' +
+              '<span class="num">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span></div>' +
+              '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+              (t.proteina < d.objectius.proteina
+                ? '<p class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g.</p>' : '') +
+            '</div>'
+          : '');
+    }
+
+    function xifra(etiqueta, valor, unitat) {
+      return '<div class="xifra"><span class="marge">' + esc(etiqueta) + '</span>' +
+             '<b class="num">' + esc(String(valor)) +
+             (unitat ? '<span class="u">' + esc(unitat) + '</span>' : '') + '</b></div>';
+    }
+
+    /** El mateix escalat que FitFat: el centre és l'equilibri. */
+    function barraBalanc(d) {
+      var obj = d.objectius.deficit;
+      var escala = Math.max(800, obj * 1.4, Math.abs(d.net) * 1.15);
+      var ample = Math.min(Math.abs(d.net) / escala * 50, 50);
+      var deficit = d.net > 0;
+      var fita = obj > 0 ? Math.min(obj / escala * 50, 50) : 0;
+
+      return '<div class="balanc">' +
+        '<div class="balanc-via">' +
+          '<i style="left:' + (deficit ? 50 : 50 - ample) + '%;width:' + ample + '%" data-costat="' +
+            (deficit ? 'deficit' : 'superavit') + '"></i>' +
+          '<u></u>' +
+          (fita > 0 ? '<b style="left:' + (50 + fita) + '%"></b>' : '') +
+        '</div>' +
+        '<div class="balanc-peu"><span>← superàvit</span>' +
+          (fita > 0 ? '<span class="fita-txt">objectiu</span>' : '') +
+          '<span>dèficit →</span></div>' +
+      '</div>';
+    }
+
+    function blocApat(d, m) {
+      var apat = null;
+      for (var i = 0; i < d.apats.length; i++) if (d.apats[i].clau === m.clau) apat = d.apats[i];
+      if (!apat) apat = { items: [], kcal: 0, proteina: 0 };
+
+      return '<div class="apat" data-apat="' + esc(m.clau) + '">' +
+        '<div class="apat-cap">' +
+          '<h2>' + esc(m.nom) + '</h2>' +
+          '<span class="num menut">' +
+            (apat.items.length ? r0(apat.kcal) + ' kcal · ' + r1(apat.proteina) + ' g' : '') +
+          '</span>' +
+        '</div>' +
+
+        '<div class="apat-items">' +
+          (apat.items.length
+            ? apat.items.map(function (i) {
+                return '<div class="ingesta">' +
+                  '<div style="flex:1;min-width:0">' +
+                    '<div class="nm">' + esc(i.nom) + '</div>' +
+                    '<div class="menut num">' + r0(i.grams) + ' g · ' + r0(i.kcal100) +
+                      ' kcal/100 · ' + r1(i.prot100) + ' prot/100</div>' +
+                  '</div>' +
+                  '<div class="num" style="text-align:right">' +
+                    '<div>' + r0(i.kcal) + '</div>' +
+                    '<div class="menut">' + r1(i.prot) + ' g</div>' +
+                  '</div>' +
+                  '<button class="btn btn-fantasma btn-icona" data-treu="' + esc(i.id) +
+                    '" aria-label="Treu ' + esc(i.nom) + '">' + ic('tancar', 'ic-p') + '</button>' +
+                '</div>';
+              }).join('')
+            : '') +
+        '</div>' +
+
+        '<div class="apat-form">' +
+          '<select data-guardats aria-label="Aliments guardats">' +
+            '<option value="">Tria un aliment guardat…</option>' +
+            aliments.map(function (a) {
+              return '<option value="' + esc(a.id) + '">' + esc(a.nom) + ' · ' +
+                     r0(a.kcal100) + ' kcal · ' + r1(a.prot100) + ' g</option>';
+            }).join('') +
+          '</select>' +
+          '<input data-nom placeholder="Aliment" autocomplete="off">' +
+          '<input data-grams inputmode="decimal" placeholder="grams" class="num">' +
+          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num">' +
+          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num">' +
+          '<button class="btn btn-primari" data-afegeix>Afegeix</button>' +
+          '<button class="btn btn-secundari" data-desa-aliment>Desa l\'aliment</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // -------------------------------------------------------- setmana i mes
+
+    function pintaPeriode(d) {
+      dades = d;
+      var maxKcal = 0;
+      d.dies.forEach(function (x) { maxKcal = Math.max(maxKcal, x.ingerides, x.cremades || 0); });
+      if (!maxKcal) maxKcal = 1;
+
+      arrel.innerHTML = capcalera(true) +
+        '<div class="pagina">' +
+          '<div class="tres-xifres">' +
+            xifra('Ingerides / dia', r0(d.mitjanaIngerides), 'kcal') +
+            xifra('Proteïna / dia', r1(d.mitjanaProteina), 'g') +
+            xifra('Balanç / dia',
+                  d.diesAmbBalanc ? (d.mitjanaNet > 0 ? '−' : '+') + r0(Math.abs(d.mitjanaNet)) : '—',
+                  d.diesAmbBalanc ? 'kcal' : '') +
+          '</div>' +
+
+          '<p class="menut">' + d.diesApuntats + ' dies apuntats · ' +
+            d.diesAmbBalanc + ' amb balanç tancat' +
+            (d.diesAmbBalanc
+              ? ' · acumulat ' + (d.netAcumulat > 0 ? 'dèficit ' : 'superàvit ') +
+                r0(Math.abs(d.netAcumulat)) + ' kcal'
+              : '') + '</p>' +
+
+          '<p class="marge" style="margin:var(--e4) 0 var(--e2)">Dia a dia</p>' +
+          '<div class="perfil">' +
+            d.dies.map(function (x) {
+              var h = Math.round(x.ingerides / maxKcal * 100);
+              var estat = x.net === null ? 'obert' : (x.net > 0 ? 'deficit' : 'superavit');
+              return '<button class="perfil-dia" data-dia="' + esc(x.data) + '" data-estat="' + estat + '"' +
+                ' aria-label="' + esc(fmt.llarga(x.data)) + ': ' + r0(x.ingerides) + ' kcal">' +
+                '<i style="height:' + Math.max(h, x.apuntat ? 4 : 0) + '%"></i>' +
+                '<span>' + fmt.diaNumero(x.data) + '</span>' +
+              '</button>';
+            }).join('') +
+          '</div>' +
+          '<p class="menut">Toca un dia per obrir-lo.</p>' +
+        '</div>';
+
+      lligaCapcalera();
+      arrel.querySelectorAll('[data-dia]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.ves('nutricio', { data: b.dataset.dia, periode: 'dia' });
+        });
+      });
+    }
+
+    // -------------------------------------------------------------- accions
+
+    function lligaCapcalera() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-salt]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var n = Number(b.dataset.salt);
+          var nova = periode === 'dia' ? fmt.suma(data, n)
+                   : periode === 'setmana' ? fmt.suma(data, n * 7)
+                   : mouMes(data, n);
+          if (nova > fmt.avui() && periode === 'dia') return;
+          App.ves('nutricio', { data: nova, periode: periode });
+        });
+      });
+
+      var ba = arrel.querySelector('[data-avui]');
+      if (ba) ba.addEventListener('click', function () {
+        App.ves('nutricio', { data: fmt.avui(), periode: periode });
+      });
+
+      arrel.querySelectorAll('[data-periode]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.ves('nutricio', { data: data, periode: b.dataset.periode });
+        });
+      });
+
+      var baj = arrel.querySelector('[data-ajustos]');
+      if (baj) baj.addEventListener('click', obreAjustos);
+    }
+
+    function mouMes(iso, n) {
+      var y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7)) - 1 + n;
+      var d = new Date(y, m, 1);
+      var ultim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      var dia = Math.min(Number(iso.slice(8, 10)), ultim);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + dia).slice(-2);
+    }
+
+    function lligaBalanc() {
+      var inp = document.getElementById('n-activitat');
+      if (!inp) return;
+      var previ = inp.value;
+      inp.addEventListener('change', function () {
+        if (inp.value === previ) return;
+        previ = inp.value;
+        crida('nutricio', 'activitat', { data: data, kcal: num(inp.value) })
+          .then(function () { carrega(); })
+          .catch(function (err) { App.brindis(err.message, 'error'); });
+      });
+    }
+
+    function lligaApats() {
+      arrel.querySelectorAll('.apat').forEach(function (sec) {
+        var apat = sec.dataset.apat;
+        var sel  = sec.querySelector('[data-guardats]');
+        var nom  = sec.querySelector('[data-nom]');
+        var gr   = sec.querySelector('[data-grams]');
+        var kc   = sec.querySelector('[data-kcal]');
+        var pr   = sec.querySelector('[data-prot]');
+        var bt   = sec.querySelector('[data-afegeix]');
+        var bd   = sec.querySelector('[data-desa-aliment]');
+
+        sel.addEventListener('change', function () {
+          var a = null;
+          for (var i = 0; i < aliments.length; i++) if (aliments[i].id === sel.value) a = aliments[i];
+          if (!a) return;
+          nom.value = a.nom; kc.value = a.kcal100; pr.value = a.prot100;
+          sel.value = ''; refresca(); gr.focus();
+        });
+
+        function llest() { return nom.value.trim() && num(gr.value) > 0; }
+
+        // El botó ensenya el resultat abans de prémer-lo. Així no cal afegir
+        // per veure si t'has equivocat de coma.
+        function refresca() {
+          if (llest()) {
+            bt.textContent = 'Afegeix · ' + r0(num(gr.value) * num(kc.value) / 100) + ' kcal · ' +
+                             r1(num(gr.value) * num(pr.value) / 100) + ' g';
+          } else {
+            bt.textContent = 'Afegeix';
+          }
+        }
+
+        [nom, gr, kc, pr].forEach(function (i) {
+          i.addEventListener('input', refresca);
+          i.addEventListener('keydown', function (e) { if (e.key === 'Enter') afegeix(); });
+        });
+
+        function afegeix() {
+          if (!llest()) return;
+          bt.disabled = true;
+          crida('nutricio', 'afegeix', {
+            data: data, apat: apat, nom: nom.value.trim(),
+            grams: num(gr.value), kcal100: num(kc.value), prot100: num(pr.value)
+          }).then(function () {
+            nom.value = gr.value = kc.value = pr.value = '';
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            carrega();
+          }).catch(function (err) {
+            bt.disabled = false;
+            App.brindis(err.message, 'error');
+          });
+        }
+
+        bt.addEventListener('click', afegeix);
+
+        bd.addEventListener('click', function () {
+          if (!nom.value.trim() || num(kc.value) <= 0) {
+            App.brindis('Per desar-lo cal el nom i les kcal per 100 g', 'error');
+            return;
+          }
+          crida('nutricio', 'desaAliment', {
+            nom: nom.value.trim(), kcal100: num(kc.value), prot100: num(pr.value)
+          }).then(function () {
+            App.brindis('Aliment desat');
+            return crida('nutricio', 'aliments', {}).then(function (l) { aliments = l; });
+          }).catch(function (err) { App.brindis(err.message, 'error'); });
+        });
+
+        sec.querySelectorAll('[data-treu]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            b.disabled = true;
+            crida('nutricio', 'treu', { id: b.dataset.treu })
+              .then(function () { carrega(); })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
+        });
+      });
+    }
+
+    // -------------------------------------------------------------- ajustos
+
+    function obreAjustos() {
+      var a = ajustos || {};
+      var cos = App.modal('Objectius i cos',
+        '<div class="form-ajustos">' +
+          camp('objectiuDeficit', 'Dèficit diari objectiu (kcal)', a.objectiuDeficit) +
+          camp('objectiuProteina', 'Proteïna diària objectiu (g)', a.objectiuProteina) +
+          '<hr>' +
+          '<p class="menut">Amb aquestes quatre dades es calcula el metabolisme basal ' +
+            '(fórmula Mifflin–St Jeor). Si les deixes buides, les calories cremades són ' +
+            'només les que escriguis tu cada dia.</p>' +
+          '<label><span class="marge">Sexe</span><select data-c="sexe">' +
+            '<option value="home"' + (a.sexe === 'home' ? ' selected' : '') + '>Home</option>' +
+            '<option value="dona"' + (a.sexe === 'dona' ? ' selected' : '') + '>Dona</option>' +
+          '</select></label>' +
+          camp('edat', 'Edat (anys)', a.edat) +
+          camp('alcada', 'Alçada (cm)', a.alcada) +
+          camp('pes', 'Pes (kg)', a.pes) +
+          '<p class="menut" id="aj-basal">' +
+            (a.basal > 0 ? 'Basal estimat: <b class="num">' + a.basal + ' kcal/dia</b>'
+                         : 'Omple edat, alçada i pes per calcular-lo.') + '</p>' +
+          '<button class="btn btn-primari" data-desa-ajustos>Desa</button>' +
+          '<hr>' +
+          '<p class="marge">Portar-hi les dades de FitFat</p>' +
+          '<p class="menut">Tria el fitxer de «⚙ → Còpia de seguretat → Exporta». ' +
+            'Primer et diré què hi trobo i què faria; no s\'escriu res fins que ho confirmis. ' +
+            'No esborra ni sobreescriu mai res, i es pot repetir sense duplicar.</p>' +
+          '<input type="file" accept="application/json,.json" data-fitxer>' +
+          '<div id="aj-import"></div>' +
+        '</div>');
+
+      lligaImportacio(cos);
+
+      cos.querySelector('[data-desa-ajustos]').addEventListener('click', function () {
+        var p = {};
+        cos.querySelectorAll('[data-c]').forEach(function (i) { p[i.dataset.c] = i.value; });
+        crida('nutricio', 'desaAjustos', p)
+          .then(function (nou) {
+            ajustos = nou;
+            App.tancaModal();
+            App.brindis('Objectius desats');
+            carrega();
+          })
+          .catch(function (err) { App.brindis(err.message, 'error'); });
+      });
+    }
+
+    /**
+     * Importació en dos temps: primer un assaig que no escriu res i diu què
+     * faria, i només després l'escriptura. Amb dades que només existeixen en
+     * un telèfon, ensenyar el resultat abans de tocar-les no és una cortesia.
+     */
+    function lligaImportacio(cos) {
+      var fitxer = cos.querySelector('[data-fitxer]');
+      var sortida = cos.querySelector('#aj-import');
+      if (!fitxer) return;
+
+      fitxer.addEventListener('change', function () {
+        var f = fitxer.files && fitxer.files[0];
+        if (!f) return;
+        sortida.innerHTML = '<p class="menut">Llegint el fitxer…</p>';
+
+        var lector = new FileReader();
+        lector.onerror = function () {
+          sortida.innerHTML = '<p class="menut" style="color:var(--avis)">No he pogut llegir el fitxer.</p>';
+        };
+        lector.onload = function () {
+          var text = String(lector.result || '');
+          crida('nutricio', 'importaFitFat', { dades: text, simulacio: true })
+            .then(function (r) { mostraAssaig(r, text); })
+            .catch(function (err) {
+              sortida.innerHTML = '<p class="menut" style="color:var(--avis)">' + esc(err.message) + '</p>';
+            });
+        };
+        lector.readAsText(f);
+      });
+
+      function mostraAssaig(r, text) {
+        var res = r.ingestes + r.aliments + r.activitats;
+        sortida.innerHTML =
+          '<div class="fitxa" style="margin-top:var(--e3)">' +
+            '<p class="marge">Què hi he trobat</p>' +
+            '<p>' + r.ingestes + ' ingestes · ' + r.activitats + ' dies amb activitat · ' +
+              r.aliments + ' aliments' +
+              (r.jaHiEren ? ' · ' + r.jaHiEren + ' que ja hi eren i no tornaré a posar' : '') + '</p>' +
+            (r.ajustos ? '<p class="menut">També hi ha objectius i dades del cos.</p>' : '') +
+            (r.avisos && r.avisos.length
+              ? '<p class="menut" style="color:var(--avis)">' + r.avisos.map(esc).join('<br>') + '</p>' : '') +
+            (res > 0
+              ? '<button class="btn btn-primari" data-confirma style="width:100%;margin-top:var(--e3)">' +
+                  'Importa-ho' + '</button>'
+              : '<p class="menut">No hi ha res de nou per importar.</p>') +
+          '</div>';
+
+        var b = sortida.querySelector('[data-confirma]');
+        if (!b) return;
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          b.textContent = 'Important…';
+          crida('nutricio', 'importaFitFat', { dades: text, simulacio: false })
+            .then(function (fet) {
+              sortida.innerHTML = '<p class="menut">Importat: ' + fet.ingestes + ' ingestes, ' +
+                fet.activitats + ' dies i ' + fet.aliments + ' aliments.</p>';
+              App.brindis('Dades de FitFat importades');
+              Cau.set('nutricio.' + data, null);
+              carrega();
+            })
+            .catch(function (err) {
+              b.disabled = false;
+              b.textContent = 'Torna-ho a provar';
+              App.brindis(err.message, 'error');
+            });
+        });
+      }
+    }
+
+    function camp(clau, etiqueta, valor) {
+      return '<label><span class="marge">' + esc(etiqueta) + '</span>' +
+             '<input data-c="' + clau + '" inputmode="decimal" class="num" value="' +
+             esc(valor === undefined || valor === null || valor === 0 ? '' : String(valor)) + '"></label>';
+    }
+
+    // --------------------------------------------------------------- càrrega
+
+    function carrega() {
+      if (periode === 'dia') {
+        var cau = Cau.get('nutricio.' + data, null);
+        if (cau) pintaDia(cau, true);
+
+        Promise.all([
+          crida('nutricio', 'dia', { data: data }),
+          aliments.length ? Promise.resolve(aliments) : crida('nutricio', 'aliments', {}),
+          ajustos ? Promise.resolve(ajustos) : crida('nutricio', 'ajustos', {})
+        ]).then(function (r) {
+          aliments = r[1]; ajustos = r[2];
+          Cau.set('nutricio.' + data, r[0]);
+          pintaDia(r[0], false);
+        }).catch(function (err) {
+          if (!cau) arrel.innerHTML = Comp.error(err, true);
+          else App.brindis(err.message, 'error');
+        });
+        return;
+      }
+
+      crida('nutricio', periode, { data: data })
+        .then(pintaPeriode)
+        .catch(function (err) { arrel.innerHTML = Comp.error(err, true); });
+    }
+
+    arrel.innerHTML = Comp.carregant(4);
+    carrega();
+  }
+});
+</script>

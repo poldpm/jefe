@@ -12,6 +12,15 @@ credentials*
 client_secret*
 secrets*
 
+# Dades personals. El repositori és PÚBLIC: aquí no hi entra res teu.
+# Les còpies de FitFat i de finances són per importar-les, no per publicar-les.
+*copia*.json
+*backup*.json
+fitfat*.json
+finances*.json
+dades/
+Codi_AppsScript.gs
+
 # Dependències
 node_modules/
 
