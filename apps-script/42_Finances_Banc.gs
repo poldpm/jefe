@@ -108,14 +108,25 @@ var FinancesBanc = (function () {
        en copiar les propietats és la que ve. Si es deixa passar, el banc
        redirigeix cap allà, l'app antiga diu «Banc connectat» i desa la sessió
        al seu full: JEFE es queda sense connectar i ningú avisa de res.
-       Val més fallar aquí que descobrir-ho quan no arribi cap moviment. */
-    var meva = '';
-    try { meva = ScriptApp.getService().getUrl() || ''; } catch (e) {}
-    var idDesplegament = function (u) {
-      var m = String(u).match(/\/macros\/s\/([^\/]+)\//);
-      return m ? m[1] : '';
-    };
-    var idMeu = idDesplegament(meva), idSeu = idDesplegament(redirect);
+
+       Es comprova ANANT-HI i mirant qui contesta, no comparant
+       identificadors. El primer intent comparava EB_REDIRECT amb
+       `ScriptApp.getService().getUrl()`, que des de l'editor retorna la URL
+       /dev: dos desplegaments del mateix projecte, dos identificadors
+       diferents, i una alarma falsa sobre una configuració correcta.
+       Qui contesta no admet interpretacions. */
+    var quiContesta = null, respostaCurta = '';
+    try {
+      var resp = UrlFetchApp.fetch(redirect, { muteHttpExceptions: true, followRedirects: true });
+      var cos = resp.getContentText();
+      respostaCurta = Utils.talla(cos.replace(/\s+/g, ' '), 120);
+      if (/<title>\s*JEFE\s*<\/title>/i.test(cos)) quiContesta = 'jefe';
+      else if (/Finances backend actiu/i.test(cos)) quiContesta = 'app antiga de finances';
+      else quiContesta = 'algú altre';
+    } catch (e) {
+      quiContesta = null;                 // sense xarxa: no acusem ningú
+      respostaCurta = e.message;
+    }
 
     return {
       aplicacio: r.name,
@@ -124,9 +135,9 @@ var FinancesBanc = (function () {
       activa: !!r.active,
       redirect: redirect,
       redirectRegistrada: urls.indexOf(redirect) >= 0,
-      urlJefe: meva,
-      // Si no sabem la nostra adreça no acusem ningú: només ho diem.
-      apuntaAJefe: (!idMeu || !idSeu) ? null : (idMeu === idSeu),
+      quiContesta: quiContesta,
+      apuntaAJefe: quiContesta === null ? null : (quiContesta === 'jefe'),
+      resposta: respostaCurta,
       registrades: urls
     };
   }

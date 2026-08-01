@@ -629,19 +629,18 @@ function provaBanc() {
   a('Adreça de tornada:');
   a('  EB_REDIRECT diu ....... ' + r.redirect);
   a('  registrada a EB ....... ' + (r.redirectRegistrada ? 'sí' : 'NO'));
-  a('  apunta a JEFE ......... ' + (r.apuntaAJefe === null ? 'no ho puc comprovar'
-                                    : r.apuntaAJefe ? 'sí' : 'NO'));
-  if (r.urlJefe) a('  JEFE és a ............. ' + r.urlJefe);
+  a('  qui hi contesta ....... ' + (r.quiContesta || 'no ho he pogut comprovar'));
 
   if (r.apuntaAJefe === false) {
     a('');
-    a('ATURA\'T. EB_REDIRECT apunta a una altra aplicació, segurament la de');
-    a('finances d\'abans. Si continues, el banc hi redirigirà, aquella dirà que');
-    a('s\'ha connectat i desarà la sessió al SEU full. JEFE es quedarà sense');
-    a('connexió i no t\'ho dirà ningú.');
+    a('ATURA\'T. Aquella adreça no és JEFE, i el banc hi redirigirà. Si és');
+    a('l\'app antiga de finances, dirà que s\'ha connectat i desarà la sessió al');
+    a('SEU full: JEFE es quedarà sense connexió i no t\'ho dirà ningú.');
     a('');
-    a('Posa a EB_REDIRECT l\'adreça de JEFE que surt aquí sobre, i registra-la');
-    a('també a les redirect URLs d\'enablebanking.com.');
+    a('Ha contestat: ' + r.resposta);
+    a('');
+    a('Posa a EB_REDIRECT l\'adreça del desplegament de JEFE (la que acaba en');
+    a('/exec, la de «Implementar → Gestionar implementacions»).');
     return l.join('\n');
   }
 
