@@ -230,7 +230,11 @@ var Jefe = (function () {
     arrenca: function (estatInicial) {
       App.moduls = (estatInicial && estatInicial.moduls) || Cau.get('moduls', []);
       App.pintaNav();
-      App.aplicaTema(Cau.get('tema', 'auto'));
+      /* Fosc sempre, no «segons el que digui el sistema». Amb «auto», el
+         mateix JEFE sortia blanc al mòbil i fosc al PC segons com tingués
+         cadascun la configuració, i això no és una app: són dues. La sala de
+         comandament ja és fosca; la resta l'ha d'acompanyar. */
+      App.aplicaTema(Cau.get('tema', 'fosc'));
 
       // Servida des de fora i encara sense servidor: primer connectar.
       if (!dinsAppsScript() && !Servidor.config()) {
@@ -418,7 +422,7 @@ var Jefe = (function () {
       else document.documentElement.setAttribute('data-tema', tema);
     },
 
-    temaActual: function () { return Cau.get('tema', 'auto'); }
+    temaActual: function () { return Cau.get('tema', 'fosc'); }
   };
 
   document.addEventListener('keydown', function (ev) {

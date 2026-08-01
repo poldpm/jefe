@@ -601,15 +601,35 @@ h2 { font-size: 1.0625rem; }
 
   /* A l'escriptori hi cap tot alhora: xifres i tancament a l'esquerra, els
      àpats a la dreta. Al mòbil manen l'ordre i l'espai; aquí, la vista de
-     conjunt. */
-  .nutri { display: grid; grid-template-columns: minmax(300px, 380px) 1fr;
-           grid-template-areas: "dalt apats" "tanca apats"; align-items: start;
-           column-gap: var(--e5); }
+     conjunt.
+
+     `grid-template-rows: auto 1fr` és el que enganxa el tancament just sota
+     les xifres. Amb files automàtiques, la columna dels àpats —que és molt
+     més alta— repartia l'alçada entre les dues files i el tancament quedava
+     surant al mig de l'esquerra, lluny de tot. */
+  .nutri { display: grid; grid-template-columns: minmax(280px, 340px) 1fr;
+           grid-template-areas: "dalt apats" "tanca apats";
+           grid-template-rows: auto 1fr;
+           align-items: start; column-gap: var(--e6); row-gap: var(--e5);
+           max-width: 1100px; margin: 0 auto; }
   .nutri-dalt  { grid-area: dalt; }
   .nutri-apats { grid-area: apats; }
   .nutri-tanca { grid-area: tanca; }
+
+  /* La capçalera segueix la mateixa amplada que el contingut. Estirada a tota
+     la pantalla, la data quedava al centre de 1.900 px i els botons a dos
+     pams de distància, sense relació amb res del que hi ha a sota. */
   .capcalera-nutri { padding: var(--e3) var(--e5) 0; }
-  .segments { max-width: 420px; }
+  .capcalera-nutri .capcalera-fila,
+  .capcalera-nutri .segments { max-width: 1100px; margin: 0 auto; }
+  .capcalera-nutri .segments { margin-top: var(--e3); }
+
+  /* El formulari en una sola tira: a l'escriptori hi ha amplada de sobres i
+     no cal fer-lo baixar set files. */
+  .apat-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .apat-form select, .apat-form [data-nom] { grid-column: 1 / -1; }
+  .apat-form [data-afegeix] { grid-column: 1 / 3; }
+  .apat-form [data-desa-aliment] { grid-column: 3 / -1; }
 
   .nav {
     position: sticky; top: 0; bottom: auto;
