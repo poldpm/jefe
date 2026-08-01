@@ -63,6 +63,25 @@ const MOCK = `
   var INICI       = ${j(D.nucliInici())};
 
   var estatDia = JSON.parse(JSON.stringify(HABITS_DIA));
+  var nSeq = 100;
+
+  function recalculaNutri() {
+    var d = NUTRI.dia.dades;
+    d.apats.forEach(function (a) {
+      a.kcal = a.items.reduce(function (s, i) { return s + i.kcal; }, 0);
+      a.proteina = a.items.reduce(function (s, i) { return s + i.prot; }, 0);
+    });
+    d.totals = {
+      ingerides: d.apats.reduce(function (s, a) { return s + a.kcal; }, 0),
+      proteina: d.apats.reduce(function (s, a) { return s + a.proteina; }, 0)
+    };
+    d.net = d.teCremades ? d.cremades - d.totals.ingerides : null;
+    d.verdicte = d.teCremades
+      ? { estat: d.net >= d.objectius.deficit ? 'deficit_assolit' : (d.net > 0 ? 'deficit' : 'superavit'),
+          text: (d.net >= 0 ? 'Dèficit de ' : 'Superàvit de ') + Math.round(Math.abs(d.net)) + ' kcal' +
+                (d.net >= d.objectius.deficit ? ' — objectiu assolit' : '') }
+      : { estat: 'sense_dades', text: 'Introdueix les calories cremades per tancar el dia.' };
+  }
   var copia = function (o) { return JSON.parse(JSON.stringify(o)); };
 
   function habitPerId(id) {
@@ -127,8 +146,35 @@ const MOCK = `
       if (accio === 'pantalla') return copia(NUTRI[p.periode || 'dia'] || NUTRI.dia);
       if (accio === 'aliments') return copia(NUTRI.dia.aliments);
       if (accio === 'ajustos') return copia(NUTRI.dia.ajustos);
-      if (accio === 'afegeix' || accio === 'treu' || accio === 'activitat' ||
-          accio === 'desaAliment' || accio === 'treuAliment' || accio === 'desaAjustos') {
+      /* Escriure de veritat: si el mirall contesta sempre el mateix, un
+         formulari que desa sembla que no faci res i no es pot provar el cicle. */
+      if (accio === 'afegeix') {
+        var d = NUTRI.dia.dades;
+        var ap = d.apats.filter(function (a) { return a.clau === p.apat; })[0];
+        if (ap) {
+          var g = Number(p.grams) || 0;
+          ap.items.push({ id: 'i' + (++nSeq), nom: p.nom, grams: g,
+                          kcal100: Number(p.kcal100) || 0, prot100: Number(p.prot100) || 0,
+                          kcal: g * (Number(p.kcal100) || 0) / 100,
+                          prot: g * (Number(p.prot100) || 0) / 100 });
+          recalculaNutri();
+        }
+        return { ok: true };
+      }
+      if (accio === 'treu') {
+        NUTRI.dia.dades.apats.forEach(function (a) {
+          a.items = a.items.filter(function (i) { return i.id !== p.id; });
+        });
+        recalculaNutri();
+        return { ok: true };
+      }
+      if (accio === 'activitat') {
+        NUTRI.dia.dades.cremades = NUTRI.dia.dades.activitat = Number(p.kcal) || 0;
+        NUTRI.dia.dades.teCremades = (Number(p.kcal) || 0) > 0;
+        recalculaNutri();
+        return { ok: true };
+      }
+      if (accio === 'desaAliment' || accio === 'treuAliment' || accio === 'desaAjustos') {
         return { ok: true };
       }
       if (accio === 'importaFitFat') return { simulacio: true, dies: 0, ingestes: 0, avisos: [] };

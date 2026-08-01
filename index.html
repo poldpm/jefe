@@ -707,6 +707,19 @@ h2 { font-size: 1.0625rem; }
 
 .tria-aliment { grid-column: 1 / -1; width: 100%; }
 
+/* El botó que desplega el formulari de l'àpat. Sense marc propi: és el peu
+   de la fitxa de l'àpat, no una peça a part. */
+.apat-obre { border: 0; border-radius: 0; justify-content: flex-start;
+             padding: 0 var(--e3); color: var(--ink-suau); }
+.apat-obre[aria-expanded="true"] { color: var(--ink); border-bottom: 1px solid var(--neatline); }
+.apat-items:not(:empty) + .apat-obre { border-top: 0; }
+
+/* Per a qui ho escolta: «Afegeix-hi a Dinar». A la pantalla no cal, que el
+   títol de l'àpat és just a sobre; llegit en veu alta, sense el nom no saps
+   a quin dels tres l'estàs afegint. */
+.nomes-lectors { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+                 overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
 .apat-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
              gap: var(--e2); padding: var(--e3); }
 .apat-form select, .apat-form input { min-width: 0; width: 100%; min-height: var(--toc);
@@ -4349,6 +4362,7 @@ App.registraVista('nutricio', {
 
     var data = params.data || fmt.avui();
     var periode = params.periode || 'dia';
+    var apatObert = null;      // quin àpat té el formulari desplegat, si n'hi ha cap
     var dades = null, aliments = [], ajustos = null;
 
     var APATS = [
@@ -4538,6 +4552,7 @@ App.registraVista('nutricio', {
       var apat = null;
       for (var i = 0; i < d.apats.length; i++) if (d.apats[i].clau === m.clau) apat = d.apats[i];
       if (!apat) apat = { items: [], kcal: 0, proteina: 0 };
+      var obert = apatObert === m.clau;
 
       return '<div class="apat" data-apat="' + esc(m.clau) + '">' +
         '<div class="apat-cap">' +
@@ -4567,7 +4582,17 @@ App.registraVista('nutricio', {
             : '') +
         '</div>' +
 
-        '<div class="apat-form">' +
+        /* EL FORMULARI VE PLEGAT, I NOMÉS N'HI HA UN D'OBERT.
+           Els tres àpats amb el formulari desplegat feien la pàgina de 2.325
+           píxels: per veure el tancament del dia havies de passar per sobre de
+           tres formularis buits. Plegats, la pantalla és la llista del que has
+           menjat, que és el que véns a mirar. I obrir-ne un tanca l'altre
+           perquè, si no, tornes a tenir-los tots desplegats en quatre tocs. */
+        '<button class="btn btn-secundari btn-ple apat-obre" data-obre-form="' + esc(m.clau) + '"' +
+          ' aria-expanded="' + (obert ? 'true' : 'false') + '">' +
+          textObre(obert, m.nom) + '</button>' +
+
+        '<div class="apat-form"' + (obert ? '' : ' hidden') + '>' +
           /* Llista pròpia i no un <select>: el desplegable natiu d'Android
              dibuixa cada opció amb l'estil del sistema i no admet dues mides
              de lletra a la mateixa línia. Amb el nom i les xifres iguals de
@@ -4582,6 +4607,39 @@ App.registraVista('nutricio', {
           '<button class="btn btn-secundari" data-desa-aliment>Desa l\'aliment</button>' +
         '</div>' +
       '</div>';
+    }
+
+    function textObre(obert, nom) {
+      return ic(obert ? 'menys' : 'mes', 'ic-p') +
+             (obert ? 'Tanca' : 'Afegeix-hi') +
+             '<span class="nomes-lectors"> a ' + esc(nom) + '</span>';
+    }
+
+    /**
+     * Obrir el formulari d'un àpat en tanca qualsevol altre.
+     *
+     * Es fa tocant el DOM i no repintant la pàgina: repintar-la enmig d'un
+     * toc et tanca el teclat i et fa perdre el que estiguessis escrivint a
+     * l'altre àpat.
+     */
+    function obreForm(clau) {
+      apatObert = (apatObert === clau) ? null : clau;
+      arrel.querySelectorAll('.apat').forEach(function (sec) {
+        var obert = sec.dataset.apat === apatObert;
+        var f = sec.querySelector('.apat-form');
+        var b = sec.querySelector('[data-obre-form]');
+        if (f) f.hidden = !obert;
+        if (b) {
+          b.setAttribute('aria-expanded', obert ? 'true' : 'false');
+          b.innerHTML = textObre(obert, sec.querySelector('.apat-cap h2').textContent);
+        }
+      });
+      if (apatObert) enfocaCamp(apatObert);
+    }
+
+    function enfocaCamp(clau) {
+      var camp = arrel.querySelector('.apat[data-apat="' + clau + '"] [data-nom]');
+      if (camp) { try { camp.focus(); } catch (e) {} }
     }
 
     // -------------------------------------------------------- setmana i mes
@@ -4814,6 +4872,10 @@ App.registraVista('nutricio', {
     }
 
     function lligaApats() {
+      arrel.querySelectorAll('[data-obre-form]').forEach(function (b) {
+        b.addEventListener('click', function () { obreForm(b.dataset.obreForm); });
+      });
+
       arrel.querySelectorAll('.apat').forEach(function (sec) {
         var apat = sec.dataset.apat;
         var sel  = sec.querySelector('[data-guardats]');
@@ -4856,9 +4918,15 @@ App.registraVista('nutricio', {
           }, quePinto()).then(function (r) {
             nom.value = gr.value = kc.value = pr.value = '';
             bt.disabled = false;
+            /* El botó torna a dir «Afegeix». Si no, es queda amb la previsió
+               del que acabes d'apuntar i sembla que encara ho hagis de prémer. */
+            refresca();
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
             Cau.oblida('nutricio.');
-            aplica(r);
+            aplica(r, false, true);
+            /* El formulari es queda obert i amb el cursor a punt: després d'un
+               aliment normalment en ve un altre del mateix àpat. */
+            enfocaCamp(apat);
           }).catch(function (err) {
             bt.disabled = false;
             App.brindis(err.message, 'error');
@@ -4893,7 +4961,9 @@ App.registraVista('nutricio', {
           b.addEventListener('click', function () {
             b.disabled = true;
             escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
-              .then(function (r) { Cau.oblida('nutricio.'); aplica(r); })
+              // Treure'n un és una cosa que vols veure feta: es pinta encara
+              // que tinguis el formulari de l'àpat obert.
+              .then(function (r) { Cau.oblida('nutricio.'); aplica(r, false, true); })
               .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
           });
         });
@@ -5033,7 +5103,22 @@ App.registraVista('nutricio', {
      * o a mig escriure. I si ha canviat però estàs tocant alguna cosa,
      * s'espera que acabis.
      */
-    function aplica(r, dEnCau) {
+    /**
+     * @param forca  Repinta encara que tinguis un camp obert.
+     *
+     * PER QUÈ CAL AQUEST «FORÇA», que és un error que va estar-hi de debò:
+     * l'ajornament hi és per no esborrar-te el que estàs escrivint. Però
+     * després d'AFEGIR un aliment el formulari es queda obert i amb el cursor
+     * al camp del nom —a posta, perquè darrere d'un aliment normalment en ve
+     * un altre—, i això vol dir que sempre hi ha un camp enfocat. La pantalla
+     * s'ajornava, l'ajornament es tornava a ajornar cada quatre dècimes, i
+     * l'aliment que acabaves d'apuntar no sortia MAI a la llista: semblava que
+     * no s'hagués desat.
+     *
+     * Quan el que ha canviat és conseqüència del que acabes de fer tu, i els
+     * camps ja han quedat buits, no hi ha res a protegir: es pinta.
+     */
+    function aplica(r, dEnCau, forca) {
       if (r.aliments && r.aliments.length) aliments = r.aliments;
       ajustos = r.ajustos || ajustos;
       Cau.set(claCau(), r);
@@ -5044,7 +5129,7 @@ App.registraVista('nutricio', {
       /* Només té sentit ajornar si ja hi ha alguna cosa pintada: si la
          pantalla és buida, repintar no pot destruir res i no fer-ho et deixa
          mirant l'esquelet de càrrega per sempre. */
-      if (previPintat !== null && App.interactuant()) {
+      if (!forca && previPintat !== null && App.interactuant()) {
         var primer = !ajornat;
         ajornat = r;
         if (primer) setTimeout(quanPari, 400);

@@ -679,6 +679,19 @@ h2 { font-size: 1.0625rem; }
 
 .tria-aliment { grid-column: 1 / -1; width: 100%; }
 
+/* El botó que desplega el formulari de l'àpat. Sense marc propi: és el peu
+   de la fitxa de l'àpat, no una peça a part. */
+.apat-obre { border: 0; border-radius: 0; justify-content: flex-start;
+             padding: 0 var(--e3); color: var(--ink-suau); }
+.apat-obre[aria-expanded="true"] { color: var(--ink); border-bottom: 1px solid var(--neatline); }
+.apat-items:not(:empty) + .apat-obre { border-top: 0; }
+
+/* Per a qui ho escolta: «Afegeix-hi a Dinar». A la pantalla no cal, que el
+   títol de l'àpat és just a sobre; llegit en veu alta, sense el nom no saps
+   a quin dels tres l'estàs afegint. */
+.nomes-lectors { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+                 overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
 .apat-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
              gap: var(--e2); padding: var(--e3); }
 .apat-form select, .apat-form input { min-width: 0; width: 100%; min-height: var(--toc);
