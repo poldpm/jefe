@@ -1672,7 +1672,24 @@ var Notificacions = (function () {
     };
   }
 
-  return { potSerHi: potSerHi, permis: permis, estat: estat, activa: activa };
+  /**
+   * Si ja estan actives, torna a registrar el treballador cada cop que obres
+   * l'app. És l'única manera que una versió nova hi entri: el registre només
+   * es fa en prémer el botó, i pel seu compte Chrome només ho mira un cop al
+   * dia. Sense això pots estar-te hores provant la versió d'abans sense cap
+   * senyal que ho estàs fent.
+   */
+  function actualitza() {
+    if (!potSerHi() || Notification.permission !== 'granted') return;
+    navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './fcm/' })
+      .then(function (reg) { return reg.update(); })
+      .catch(function () { /* sense xarxa: ja hi tornarem */ });
+  }
+
+  actualitza();
+
+  return { potSerHi: potSerHi, permis: permis, estat: estat, activa: activa,
+           actualitza: actualitza };
 })();
 </script>
 
