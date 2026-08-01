@@ -446,6 +446,80 @@ function provaNotificacio() {
 
 
 /**
+ * REPARA LES DATES CONVERTIDES EN OBJECTE.
+ *
+ * `Dades.insereix` feia servir `appendRow`, que escriu com si haguessis
+ * teclejat a la cel·la i es salta el format de text de la columna. Resultat:
+ * '2026-08-01' es desava com un objecte Data amb zona horària, i després no
+ * coincidia amb res quan es buscava per text. Afecta TOTES les files desades
+ * d'una en una des del principi, a qualsevol full.
+ *
+ * Això les torna a text. NO canvia cap dia ni cap hora: només el tipus.
+ * Amb `simulacio` a cert no escriu res i et diu què trobaria.
+ */
+function reparaDates(simulacio) {
+  var l = ['=== REPARACIÓ DE DATES ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+  if (simulacio) a('ASSAIG: no s\'escriurà res.');
+
+  var ss = Config.full();
+  var tz = Config.zonaHoraria();
+  var totals = 0;
+
+  Esquema.declarat().forEach(function (def) {
+    var full = ss.getSheetByName(def.nom);
+    if (!full || full.getLastRow() < 2) return;
+
+    // Només les columnes que han de contenir text de data o marca de temps.
+    var interessants = [];
+    def.columnes.forEach(function (c, i) {
+      if (c.tipus === 'data' || c.tipus === 'iso') interessants.push({ col: i + 1, tipus: c.tipus });
+    });
+    if (!interessants.length) return;
+
+    var files = full.getLastRow() - 1;
+    var arreglades = 0;
+
+    interessants.forEach(function (c) {
+      var rang = full.getRange(2, c.col, files, 1);
+      var vals = rang.getValues();
+      var canvi = false;
+
+      for (var i = 0; i < vals.length; i++) {
+        var v = vals[i][0];
+        if (v instanceof Date) {
+          vals[i][0] = c.tipus === 'data'
+            ? Utilities.formatDate(v, tz, 'yyyy-MM-dd')
+            : Utilities.formatDate(v, tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
+          canvi = true;
+          arreglades++;
+        }
+      }
+
+      if (canvi && !simulacio) {
+        rang.setNumberFormat('@');     // que no torni a passar en aquesta columna
+        rang.setValues(vals);
+      }
+    });
+
+    if (arreglades) {
+      totals += arreglades;
+      a('  ' + def.nom + ': ' + arreglades + ' cel·les');
+    }
+  });
+
+  a('');
+  a(totals === 0
+    ? 'Cap data mal desada. Tot correcte.'
+    : (simulacio ? 'Es repararien ' + totals + ' cel·les. Executa reparaDates() sense arguments per fer-ho.'
+                 : totals + ' cel·les reparades.'));
+
+  if (!simulacio && totals) Dades.invalida();
+  return l.join('\n');
+}
+
+
+/**
  * DIAGNÒSTIC DE NUTRICIÓ — per quan una ingesta és al full però no surt a l'app.
  *
  * Ensenya la data que fa servir el servidor, les últimes files tal com estan

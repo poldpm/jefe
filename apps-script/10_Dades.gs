@@ -134,9 +134,22 @@ var Dades = (function () {
       nou.creat_el = Utils.ara();
     }
 
-    d.fulla.appendRow(aFila_(d.capcalera, nou));
+    // NO fer servir appendRow. Escriu com si haguessis teclejat a la cel·la:
+    // es salta el format de text de la columna i converteix '2026-08-01' en
+    // un objecte Data amb zona horària. Llavors la fila es desa d'una manera
+    // i es busca d'una altra, i no es troba mai. setValues sí que respecta el
+    // format, que és el que fa insereixMoltes des del primer dia.
+    escriuFila_(d, d.fulla.getLastRow() + 1, aFila_(d.capcalera, nou));
     invalida(nom);
     return nou;
+  }
+
+  /** Escriu una fila respectant el format de les columnes, creixent si cal. */
+  function escriuFila_(d, fila, valors) {
+    if (fila > d.fulla.getMaxRows()) {
+      d.fulla.insertRowsAfter(d.fulla.getMaxRows(), 100);
+    }
+    d.fulla.getRange(fila, 1, 1, d.capcalera.length).setValues([valors]);
   }
 
   /** Actualitza per id. Retorna l'objecte resultant, o null si no existeix. */
@@ -200,8 +213,11 @@ var Dades = (function () {
       files.push(aFila_(d.capcalera, nou));
     }
 
-    d.fulla.getRange(d.fulla.getLastRow() + 1, 1, files.length, d.capcalera.length)
-           .setValues(files);
+    var primera = d.fulla.getLastRow() + 1;
+    if (primera + files.length - 1 > d.fulla.getMaxRows()) {
+      d.fulla.insertRowsAfter(d.fulla.getMaxRows(), files.length + 100);
+    }
+    d.fulla.getRange(primera, 1, files.length, d.capcalera.length).setValues(files);
     invalida(nom);
     return creats;
   }
