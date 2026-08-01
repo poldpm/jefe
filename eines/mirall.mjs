@@ -224,6 +224,16 @@ const MOCK = `
       if (accio === 'calendaris') return copia(CAL.calendaris);
       if (accio === 'sincronitza') return { nous: 0, actualitzats: CAL.calendaris.length,
                                             total: CAL.calendaris.length };
+      if (accio === 'elsMeus') {
+        var encesos = [];
+        CAL.calendaris.forEach(function (c) {
+          if (c.principal || /escola/i.test(c.nom)) {   // «els meus», al mirall
+            if (!c.mostra) encesos.push(c.nom);
+            c.mostra = true;
+          }
+        });
+        return { encesos: encesos };
+      }
       if (accio === 'mostra') {
         CAL.calendaris.forEach(function (c) { if (c.id === p.id) c.mostra = !!p.mostra; });
         return { id: p.id, mostra: !!p.mostra };

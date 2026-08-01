@@ -442,6 +442,8 @@ var Jefe = (function () {
 
     modal: function (titol, html, alTancar) {
       var fosc = document.getElementById('fosc');
+      // Qui l'ha obert: en tancar-lo, el focus hi ha de tornar.
+      App._quiObria = document.activeElement;
       fosc.innerHTML =
         '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(titol) + '">' +
           '<div class="modal-cap"><h2>' + esc(titol) + '</h2>' +
@@ -462,6 +464,22 @@ var Jefe = (function () {
     tancaModal: function () {
       var fosc = document.getElementById('fosc');
       fosc.dataset.obert = '0';
+
+      /* EL FOCUS HA DE SORTIR D'AQUÍ ABANS QUE EL TAULER, i tornar a qui
+         l'obria. Sense això passaven dues coses, i totes dues es veien:
+         llegit en veu alta, quedaves dins d'un diàleg que ja no hi és; i
+         `interactuant()` seguia dient que sí durant tot el temps que el camp
+         encara existís, o sigui que qualsevol pantalla que esperés a
+         repintar-se «quan paris de tocar coses» no es repintava mai —el
+         calendari, canviant quins mires, no s'assabentava del canvi—. */
+      var dins = document.activeElement;
+      if (dins && fosc.contains(dins)) { try { dins.blur(); } catch (e) {} }
+      var obria = App._quiObria;
+      App._quiObria = null;
+      if (obria && obria.isConnected && typeof obria.focus === 'function') {
+        try { obria.focus({ preventScroll: true }); } catch (e) {}
+      }
+
       setTimeout(function () { if (fosc.dataset.obert !== '1') fosc.innerHTML = ''; }, 340);
       if (App._alTancar) { var f = App._alTancar; App._alTancar = null; f(); }
     },

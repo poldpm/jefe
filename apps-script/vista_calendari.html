@@ -15,6 +15,11 @@ App.registraVista('calendari', {
     var dia = params.data || null;
     var dades = null, cals = [];
     var previPintat = null, ajornat = null;
+    /* Va AQUÍ i no dins d'obreCalendaris: qui la marca és `lligaCals`, que és
+       una funció germana i no filla. Declarada allà dins, l'assignació de fora
+       creava una variable global i la de dins es quedava a fals per sempre: el
+       tauler es tancava i la pantalla no s'assabentava de res. */
+    var caCanviar = false;
 
     var DIES = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'];
     var MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol',
@@ -299,15 +304,51 @@ App.registraVista('calendari', {
     // ------------------------------------------------------ quins calendaris
 
     function obreCalendaris() {
+      caCanviar = false;
       var cos = App.modal('Quins calendaris vols veure',
         '<div class="form-ajustos">' +
           '<div id="cal-llista">' + llistaCals() + '</div>' +
-          '<button class="btn btn-secundari" data-sinc>Torna a buscar els meus calendaris</button>' +
+          '<button class="btn btn-secundari" data-meus>Encén tots els meus</button>' +
+          '<button class="btn btn-secundari" data-sinc style="margin-top:var(--e2)">' +
+            'Torna a buscar els meus calendaris</button>' +
+          '<p class="menut">«Els meus» són els que has fet tu. Els que et comparteixen ' +
+            '—festius, calendaris d\'equips— venen apagats: n\'hi pot haver deu i no els ' +
+            'vols tots a sobre.</p>' +
           '<p class="menut">Els esdeveniments no es copien enlloc: es llegeixen del teu ' +
             'Google Calendar cada cop. El que canviïs aquí només decideix què mires.</p>' +
-        '</div>');
+        '</div>',
+        function () {
+          // En tancar, i només si has tocat res.
+          if (!caCanviar) return;
+          Cau.oblida('calendari.');
+          carrega();
+        });
 
       lligaCals(cos);
+
+      cos.querySelector('[data-meus]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true; b.dataset.carregant = '1';
+        crida('calendari', 'elsMeus', {})
+          .then(function (r) {
+            App.brindis(r.encesos.length
+              ? r.encesos.length + (r.encesos.length === 1 ? ' encès' : ' encesos')
+              : 'Ja els tenies tots encesos');
+            return crida('calendari', 'calendaris', {});
+          })
+          .then(function (l) {
+            cals = l;
+            cos.querySelector('#cal-llista').innerHTML = llistaCals();
+            lligaCals(cos);
+            b.disabled = false; b.dataset.carregant = '0';
+            caCanviar = true;
+          })
+          .catch(function (err) {
+            b.disabled = false; b.dataset.carregant = '0';
+            App.brindis(err.message, 'error');
+          });
+      });
+
       cos.querySelector('[data-sinc]').addEventListener('click', function () {
         var b = this;
         b.disabled = true; b.dataset.carregant = '1';
@@ -349,8 +390,7 @@ App.registraVista('calendari', {
             .then(function () {
               i.disabled = false;
               cals.forEach(function (c) { if (c.id === i.dataset.cal) c.mostra = i.checked; });
-              Cau.oblida('calendari.');
-              carrega();
+              caCanviar = true;
             })
             .catch(function (err) {
               i.disabled = false; i.checked = !i.checked;

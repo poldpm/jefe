@@ -51,6 +51,7 @@ function MODUL_CALENDARI() {
       dia:        function (p) { return Calendari.dia(p.data); },
       calendaris: function ()  { return Calendari.calendaris(); },
       sincronitza:function ()  { return Calendari.sincronitzaCalendaris(); },
+      elsMeus:    function ()  { return Calendari.mostraElsMeus(); },
       mostra:     function (p) { return Calendari.mostra(p.id, p.mostra); },
       crea:       function (p) { return Calendari.crea(p); },
       edita:      function (p) { return Calendari.edita(p); },
@@ -181,31 +182,41 @@ var Calendari = (function () {
    * un cop l'any.
    */
   function sincronitzaCalendaris() {
-    var meus = CalendarApp.getAllCalendars();
+    var tots = CalendarApp.getAllCalendars();
     var principal = null;
     try { principal = CalendarApp.getDefaultCalendar().getId(); } catch (e) {}
 
-    var vistos = {};
+    /* ELS TEUS S'ENCENEN; ELS QUE ET COMPARTEIXEN, NO.
+       Abans només s'encenia el principal, i això deixava fora els calendaris
+       que t'has fet tu —el de l'escola, el de l'agent rural— que són
+       exactament els que vols veure. Els compartits, en canvi, són festius i
+       calendaris d'equips: n'hi pot haver deu i no els vols tots el primer
+       dia. La ratlla que separa les dues coses és qui n'és l'amo, no quin és
+       el principal. */
+    var meus = {};
+    try {
+      CalendarApp.getAllOwnedCalendars().forEach(function (c) { meus[c.getId()] = true; });
+    } catch (e) {
+      if (principal) meus[principal] = true;
+    }
+
     var nous = 0, actualitzats = 0;
 
-    meus.forEach(function (c, i) {
+    tots.forEach(function (c, i) {
       var id = c.getId();
-      vistos[id] = true;
       var existent = Dades.un('Calendaris', { id: id });
 
       if (existent) {
+        // El `mostra` NO es toca: si l'has canviat tu, mana el teu.
         Dades.actualitza('Calendaris', id, {
           nom: c.getName(), color: c.getColor(),
           principal: id === principal ? 'SI' : 'NO'
         });
         actualitzats++;
       } else {
-        /* Un calendari nou entra ENSENYANT-SE si és el principal, i amagat si
-           no. Els que et comparteixen —festius, calendaris d'equips— són
-           molts i no els vols tots a sobre el primer dia. */
         Dades.insereix('Calendaris', {
           id: id, nom: c.getName(), color: c.getColor(),
-          mostra: id === principal ? 'SI' : 'NO',
+          mostra: meus[id] ? 'SI' : 'NO',
           principal: id === principal ? 'SI' : 'NO',
           ordre: i + 1
         });
@@ -215,7 +226,35 @@ var Calendari = (function () {
 
     buidaCau();
     Log.info('calendari.sincronitza', 'Calendaris llegits', { nous: nous, actualitzats: actualitzats });
-    return { nous: nous, actualitzats: actualitzats, total: meus.length };
+    return { nous: nous, actualitzats: actualitzats, total: tots.length };
+  }
+
+  /**
+   * Encén tots els calendaris dels quals ets l'amo.
+   *
+   * Per als que ja estaven apuntats abans que això funcionés bé: la
+   * sincronització no toca mai el `mostra` d'un calendari que ja hi era —el
+   * que hagis triat tu mana—, i per tant una regla nova no s'aplica sola als
+   * vells. Això ho fa a mà i d'una vegada.
+   */
+  function mostraElsMeus() {
+    var meus = {};
+    try {
+      CalendarApp.getAllOwnedCalendars().forEach(function (c) { meus[c.getId()] = true; });
+    } catch (e) {
+      throw new Error('No puc llegir els teus calendaris: ' + e.message);
+    }
+
+    var encesos = [];
+    Dades.llegeix('Calendaris').forEach(function (c) {
+      if (meus[c.id] && String(c.mostra).toUpperCase() !== 'SI') {
+        Dades.actualitza('Calendaris', c.id, { mostra: 'SI' });
+        encesos.push(c.nom);
+      }
+    });
+
+    buidaCau();
+    return { encesos: encesos };
   }
 
   function calendaris() {
@@ -644,6 +683,7 @@ var Calendari = (function () {
     compta: compta,
     calendaris: calendaris,
     sincronitzaCalendaris: sincronitzaCalendaris,
+    mostraElsMeus: mostraElsMeus,
     mostra: mostra,
     crea: crea,
     edita: edita,
