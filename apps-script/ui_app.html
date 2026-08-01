@@ -356,8 +356,25 @@ var Jefe = (function () {
         else a.removeAttribute('aria-current');
       });
 
-      var arrel = document.getElementById('vista');
-      arrel.innerHTML = '';
+      /* CADA VISTA PINTA A LA SEVA PRÒPIA CAPSA, I NO AL CONTENIDOR.
+         -----------------------------------------------------------------
+         Abans totes rebien el mateix `#vista`. Una petició al servidor triga
+         un segon i mig, i si en aquell segon i mig canviaves de pantalla, la
+         resposta de la que havies deixat arribava i s'escrivia al mateix
+         `#vista` —que ara era d'una altra vista— i te la tornava a plantar
+         al davant. Des de fora: obres un apartat, en surts, i al cap d'uns
+         segons se't torna a obrir sol.
+
+         Amb una capsa per render, la vista vella escriu a un tros de DOM que
+         ja no penja d'enlloc: no es veu, i a més `arrel.isConnected` passa a
+         ser fals, que és el que les vistes ja miren per no fer feina de
+         franc. Val per a totes, i per a les que es facin d'ara endavant. */
+      var contenidor = document.getElementById('vista');
+      contenidor.innerHTML = '';
+      var arrel = document.createElement('div');
+      arrel.className = 'vista-capsa';
+      contenidor.appendChild(arrel);
+
       window.scrollTo(0, 0);
       try { def.render(arrel, params || {}); }
       catch (err) { arrel.innerHTML = Comp.error(err, false); }

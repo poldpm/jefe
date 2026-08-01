@@ -119,10 +119,13 @@ App.registraVista('nutricio', {
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
-      document.getElementById('col-dalt').innerHTML = blocDalt(d);
-      document.getElementById('col-apats').innerHTML =
+      /* `arrel.querySelector` i no `document.getElementById`: si la vista ja
+         no és a la pantalla, ha d'escriure a la seva capsa i no a la del que
+         hi hagi ara. Vegeu `App.ves` al nucli. */
+      arrel.querySelector('#col-dalt').innerHTML = blocDalt(d);
+      arrel.querySelector('#col-apats').innerHTML =
         APATS.map(function (m) { return blocApat(d, m); }).join('');
-      document.getElementById('col-tanca').innerHTML = blocTanca(d);
+      arrel.querySelector('#col-tanca').innerHTML = blocTanca(d);
 
       lligaCapcalera();
       lligaBalanc();
@@ -463,7 +466,7 @@ App.registraVista('nutricio', {
     }
 
     function lligaBalanc() {
-      var inp = document.getElementById('n-activitat');
+      var inp = arrel.querySelector('#n-activitat');
       if (!inp) return;
       var previ = inp.value;
       inp.addEventListener('change', function () {

@@ -143,7 +143,20 @@ const MOCK = `
     }
 
     if (modul === 'nutricio') {
-      if (accio === 'pantalla') return copia(NUTRI[p.periode || 'dia'] || NUTRI.dia);
+      if (accio === 'pantalla') {
+        var n = copia(NUTRI[p.periode || 'dia'] || NUTRI.dia);
+        // Un altre dia és un dia en blanc, com a la vida.
+        if ((p.periode || 'dia') === 'dia' && p.data && p.data !== AVUI) {
+          n.dades.data = p.data;
+          n.dades.apats.forEach(function (a) { a.items = []; a.kcal = 0; a.proteina = 0; });
+          n.dades.totals = { ingerides: 0, proteina: 0 };
+          n.dades.cremades = 0; n.dades.activitat = 0;
+          n.dades.teCremades = false; n.dades.teActivitat = false; n.dades.net = null;
+          n.dades.verdicte = { estat: 'sense_dades',
+                               text: 'Introdueix les calories cremades per tancar el dia.' };
+        }
+        return n;
+      }
       if (accio === 'aliments') return copia(NUTRI.dia.aliments);
       if (accio === 'ajustos') return copia(NUTRI.dia.ajustos);
       /* Escriure de veritat: si el mirall contesta sempre el mateix, un
