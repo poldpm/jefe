@@ -860,7 +860,7 @@ function reclassificaFinances() {
  *   3. Ha saltat i ha decidit callar  → el dia ja estava tancat, o buit
  *   4. Ha volgut avisar i no ha pogut → Firebase o el dispositiu
  *
- * No envia res. Per provar l'avís de debò hi ha `provaTancament()`.
+ * No envia res. Per provar l'avís de debò hi ha `provaAvisCremades()`.
  */
 function perQueNoMHasAvisat() {
   var l = ['=== L\'AVÍS DE LES CALORIES CREMADES ==='];
@@ -932,7 +932,7 @@ function perQueNoMHasAvisat() {
   a('');
   a('COM ES LLEGEIX');
   a('El primer que surti malament és el motiu; la resta ja no importa.');
-  a('Si tot surt bé i l\'avís no arriba, executa provaTancament(): fa exactament');
+  a('Si tot surt bé i l\'avís no arriba, executa provaAvisCremades(): fa exactament');
   a('el que fa el trigger, ara mateix, i el registre en dirà el resultat.');
   return l.join('\n');
 }
@@ -941,7 +941,7 @@ function perQueNoMHasAvisat() {
  * Fa ara mateix el que fa el trigger de les 23:45, amb les regles i tot.
  * Serveix per no haver d'esperar-se a la nit per saber si funciona.
  */
-function provaTancament() {
+function provaAvisCremades() {
   triggerTancamentNutricio();
   var ultima = Log.ultimes(20).filter(function (f) {
     return String(f.origen).indexOf('trigger.tancament') === 0;

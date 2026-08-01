@@ -134,7 +134,10 @@ App.registraVista('diari', {
     }
 
     function apunt(x) {
-      var qui = x.tipus === 'entrada' ? '' : (x.tipus === 'revisio' ? 'Revisió de la setmana' : 'Tancament del dia');
+      /* «Resum del dia» i no «tancament»: tancar el dia és el que fas tu a
+         nutrició quan hi poses les calories cremades. Si les dues coses es
+         diuen igual, no saps quina de les dues t'està parlant. */
+      var qui = x.tipus === 'entrada' ? '' : (x.tipus === 'revisio' ? 'Revisió de la setmana' : 'Resum del dia');
       var mot = ANIMS.filter(function (a) { return a.n === Number(x.anim); })[0];
 
       return '<article class="apunt" data-tipus="' + esc(x.tipus) + '">' +
