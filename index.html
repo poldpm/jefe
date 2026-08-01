@@ -2036,17 +2036,26 @@ App.registraVista('inici', {
 @keyframes bat { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
 /* Marc de cantonades. Apagades mentre no fa res, enceses quan t'escolta:
-   així el marc no és decoració, és l'estat de l'aparell. */
+   així el marc no és decoració, és l'estat de l'aparell.
+
+   El color va per variable i no per regla d'estat. Amb regles, un estat sense
+   la seva —«apagat», per exemple— es quedava amb el color del text i les L
+   sortien blanques i brillants: més cridaneres quan res funciona que quan tot
+   va bé. Amb una variable, cap estat pot quedar-se sense color. */
+.hud { --marc: rgba(79,214,224,.38); }
+.hud[data-estat="escoltant"], .hud[data-estat="parlant"] { --marc: var(--cian); }
+.hud[data-estat="apagat"] { --marc: rgba(232,163,60,.5); }
+
 .cantonada { position: absolute; width: 26px; height: 26px; pointer-events: none; z-index: 3;
-             border-color: var(--linia); transition: border-color .35s ease; }
-.cantonada.dg { top: 10px; left: 10px; border-top: 2px solid; border-left: 2px solid; }
-.cantonada.dd { top: 10px; right: 10px; border-top: 2px solid; border-right: 2px solid; }
-.cantonada.bg { bottom: 10px; left: 10px; border-bottom: 2px solid; border-left: 2px solid; }
-.cantonada.bd { bottom: 10px; right: 10px; border-bottom: 2px solid; border-right: 2px solid; }
-.hud[data-estat="repos"] .cantonada,
-.hud[data-estat="pensant"] .cantonada { border-color: rgba(79,214,224,.38); }
-.hud[data-estat="escoltant"] .cantonada,
-.hud[data-estat="parlant"] .cantonada { border-color: var(--cian); }
+             transition: border-color .35s ease; }
+.cantonada.dg { top: 10px; left: 10px;
+                border-top: 2px solid var(--marc); border-left: 2px solid var(--marc); }
+.cantonada.dd { top: 10px; right: 10px;
+                border-top: 2px solid var(--marc); border-right: 2px solid var(--marc); }
+.cantonada.bg { bottom: 10px; left: 10px;
+                border-bottom: 2px solid var(--marc); border-left: 2px solid var(--marc); }
+.cantonada.bd { bottom: 10px; right: 10px;
+                border-bottom: 2px solid var(--marc); border-right: 2px solid var(--marc); }
 
 /* LA VORA QUE RESPIRA.
    Mentre t'escolta, tota la pantalla batega amb el color del nucli. És l'únic
