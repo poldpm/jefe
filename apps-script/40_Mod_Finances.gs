@@ -152,6 +152,9 @@ function MODUL_FINANCES() {
       edita:          function (p) { return Finances.edita(p.id, p); },
       treu:           function (p) { return Finances.treu(p.id); },
       categories:     function ()  { return Finances.categories(); },
+      creaCategoria:  function (p) { return Finances.creaCategoria(p); },
+      editaCategoria: function (p) { return Finances.editaCategoria(p.id, p); },
+      arxivaCategoria:function (p) { return Finances.arxivaCategoria(p.id); },
       suggeriments:   function (p) { return Finances.suggeriments(p.text); },
       reclassifica:   function ()  { return Finances.reclassifica(); },
       perRevisar:     function ()  { return Finances.perRevisar(); },
@@ -978,6 +981,90 @@ var Finances = (function () {
 
   // ------------------------------------------------------------- categories
 
+  /**
+   * L'identificador surt del nom, no d'un número.
+   *
+   * Els moviments hi apunten, i el dia que obris el full vols poder llegir
+   * «i_bizum» i saber què és, no «cat_ln4k2x_a7f». Porta al davant si és de
+   * despeses o d'ingressos, com les que ja tenies.
+   */
+  function idCategoria_(nom, mena) {
+    var base = String(nom).toLowerCase()
+      .replace(/[àáâä]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôö]/g, 'o').replace(/[ùúûü]/g, 'u').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]/g, '').slice(0, 10);
+    if (!base) base = 'cat';
+
+    var prefix = (mena === 'i' ? 'i_' : 'c_');
+    var ocupats = {};
+    Dades.llegeix('Categories').forEach(function (c) { ocupats[String(c.id)] = true; });
+
+    var id = prefix + base, n = 2;
+    while (ocupats[id]) { id = prefix + base + n; n++; }
+    return id;
+  }
+
+  function creaCategoria(p) {
+    var nom = String(p.nom || '').trim();
+    if (!nom) throw new Error('Falta el nom de la categoria.');
+
+    var mena = p.mena === 'i' ? 'i' : 'd';
+    if (categoriaPerNom_(nom, mena)) {
+      throw new Error('Ja tens una categoria «' + nom + '» a ' +
+                      (mena === 'i' ? 'ingressos' : 'despeses') + '.');
+    }
+
+    var seguent = 0;
+    Dades.llegeix('Categories').forEach(function (c) {
+      seguent = Math.max(seguent, Number(c.ordre) || 0);
+    });
+
+    return Dades.insereix('Categories', {
+      id: idCategoria_(nom, mena),
+      nom: nom,
+      emoji: String(p.emoji || '').slice(0, 4),
+      mena: mena,
+      color: '',
+      exclou: p.exclou ? 'SI' : 'NO',
+      ordre: seguent + 1
+    }, 'cat');
+  }
+
+  function editaCategoria(id, p) {
+    if (!id) throw new Error('Falta la categoria.');
+    var canvis = {};
+    if (p.nom !== undefined) {
+      var nom = String(p.nom).trim();
+      if (!nom) throw new Error('El nom no pot quedar buit.');
+      canvis.nom = nom;
+    }
+    if (p.emoji !== undefined) canvis.emoji = String(p.emoji).slice(0, 4);
+    if (p.exclou !== undefined) canvis.exclou = p.exclou ? 'SI' : 'NO';
+
+    var r = Dades.actualitza('Categories', id, canvis);
+    if (!r) throw new Error('Aquesta categoria no existeix.');
+    return r;
+  }
+
+  /**
+   * Arxivar-la NO és esborrar-la, i tot i així es comprova primer.
+   * Si hi ha moviments que hi apunten, treure-la de la llista els deixaria
+   * assenyalant una cosa que no es veu: els números seguirien quadrant i el
+   * desglossament diria una categoria sense nom. Val més dir quants n'hi ha.
+   */
+  function arxivaCategoria(id) {
+    if (!id) throw new Error('Falta la categoria.');
+    var quants = moviments_(function (f) { return f.categoria === id; }).length;
+    if (quants) {
+      throw new Error('No la puc treure: hi ha ' + quants +
+        (quants === 1 ? ' moviment que hi apunta' : ' moviments que hi apunten') +
+        '. Canvia\'ls de categoria primer.');
+    }
+    var r = Dades.actualitza('Categories', id, { esborrat_el: Utils.ara() });
+    if (!r) throw new Error('Aquesta categoria no existeix.');
+    return { tret: true };
+  }
+
   /** Crea les categories del primer dia si el full és buit. */
   function sembraCategories() {
     if (Dades.compta('Categories') > 0) return { creades: 0 };
@@ -1006,6 +1093,9 @@ var Finances = (function () {
     decideixComerc: decideixComerc,
     decideixMoviment: decideixMoviment,
     categories: categories,
+    creaCategoria: creaCategoria,
+    editaCategoria: editaCategoria,
+    arxivaCategoria: arxivaCategoria,
     suggeriments: suggeriments,
     consultaIA: consultaIA,
     apuntaPerNom: apuntaPerNom,

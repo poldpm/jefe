@@ -608,6 +608,30 @@ h2 { font-size: 1.0625rem; }
 .mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
              font-size: .875rem; }
 
+/* Gestió de categories. Llista curta i formulari a sota: crear-ne una ha de
+   ser tan barat com adonar-te que et falta. */
+.cats-gest { max-height: 34vh; overflow-y: auto; margin-bottom: var(--e4);
+             border: 1px solid var(--utm-suau); }
+.cat-mena { margin: 0; padding: var(--e2) var(--e3); background: var(--paper2);
+            border-bottom: 1px solid var(--utm-suau);
+            letter-spacing: .1em; text-transform: uppercase; }
+.cat-gest { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+            padding: 0 var(--e2) 0 var(--e3); border-bottom: 1px solid var(--utm-suau); }
+.cat-gest:last-child { border-bottom: 0; }
+.cat-gest-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                white-space: nowrap; font-size: .9375rem; }
+
+.cat-nova-fila { display: grid; grid-template-columns: 68px minmax(0, 1fr);
+                 gap: var(--e2); margin: var(--e3) 0; }
+.cat-nova-fila input { min-width: 0; min-height: var(--toc); padding: 0 var(--e2);
+                       font: inherit; background: var(--paper); color: var(--ink);
+                       border: 1px solid var(--neatline); border-radius: var(--r); }
+.camp-emoji { text-align: center; font-size: 1.25rem; }
+.cat-exclou { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+              margin-bottom: var(--e2); font-size: .875rem; cursor: pointer; }
+.cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
+.cat-nova [data-crea-cat] { width: 100%; }
+
 /* Safata de revisió. Una fila per DECISIÓ, no per moviment: dotze compres a
    l'estanc són una sola targeta. En triar, la fila s'apaga i se'n va, i el que
    queda és el que et falta. */
@@ -4710,6 +4734,26 @@ App.registraVista('finances', {
     function obreAjustos() {
       var cos = App.modal('Finances',
         '<div class="form-ajustos">' +
+          '<p class="marge">Categories</p>' +
+          '<div id="fin-cats" class="cats-gest"></div>' +
+
+          '<div class="cat-nova">' +
+            '<div class="tipus-tria" role="group">' +
+              '<button data-nova-mena="d" aria-pressed="true">Despesa</button>' +
+              '<button data-nova-mena="i">Ingrés</button>' +
+            '</div>' +
+            '<div class="cat-nova-fila">' +
+              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji">' +
+              '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off">' +
+            '</div>' +
+            '<label class="cat-exclou">' +
+              '<input type="checkbox" data-nova-exclou>' +
+              '<span>Fora dels comptes (com els traspassos)</span>' +
+            '</label>' +
+            '<button class="btn btn-secundari" data-crea-cat>Crea la categoria</button>' +
+          '</div>' +
+
+          '<hr>' +
           '<p class="marge">Portar-hi les dades de l\'app antiga</p>' +
           '<p class="menut">Tria el fitxer que exportes des de finances. Primer et diré què hi ' +
             'trobo i què faria; no s\'escriu res fins que ho confirmis. No esborra ni sobreescriu ' +
@@ -4718,6 +4762,73 @@ App.registraVista('finances', {
           '<div id="fin-import"></div>' +
         '</div>');
 
+      // ---- categories
+      var menaNova = 'd';
+      var llista = cos.querySelector('#fin-cats');
+
+      function pintaCats() {
+        llista.innerHTML = ['d', 'i'].map(function (mena) {
+          var d_ = cats.filter(function (c) { return c.mena === mena; });
+          if (!d_.length) return '';
+          return '<p class="menut cat-mena">' + (mena === 'd' ? 'Despeses' : 'Ingressos') + '</p>' +
+            d_.map(function (c) {
+              return '<div class="cat-gest">' +
+                '<span class="cat-gest-nom">' + esc((c.emoji ? c.emoji + ' ' : '') + c.nom) +
+                  (c.exclou ? ' <span class="menut">· fora dels comptes</span>' : '') + '</span>' +
+                '<button class="btn btn-fantasma btn-icona" data-treu-cat="' + esc(c.id) +
+                  '" aria-label="Treu ' + esc(c.nom) + '">' + ic('tancar', 'ic-p') + '</button>' +
+              '</div>';
+            }).join('');
+        }).join('');
+
+        llista.querySelectorAll('[data-treu-cat]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            b.disabled = true;
+            crida('finances', 'arxivaCategoria', { id: b.dataset.treuCat })
+              .then(refrescaCats)
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
+        });
+      }
+
+      function refrescaCats() {
+        return crida('finances', 'categories', {}).then(function (l) {
+          cats = l; pintaCats();
+        });
+      }
+      pintaCats();
+
+      cos.querySelectorAll('[data-nova-mena]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          menaNova = b.dataset.novaMena;
+          cos.querySelectorAll('[data-nova-mena]').forEach(function (x) {
+            x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+          });
+        });
+      });
+
+      cos.querySelector('[data-crea-cat]').addEventListener('click', function () {
+        var nom = cos.querySelector('[data-nova-nom]');
+        var emoji = cos.querySelector('[data-nova-emoji]');
+        var exclou = cos.querySelector('[data-nova-exclou]');
+        if (!nom.value.trim()) { App.brindis('Posa-hi un nom', 'error'); nom.focus(); return; }
+
+        var b = this;
+        b.disabled = true;
+        crida('finances', 'creaCategoria', {
+          nom: nom.value.trim(), emoji: emoji.value.trim(),
+          mena: menaNova, exclou: exclou.checked
+        }).then(function () {
+          nom.value = ''; emoji.value = ''; exclou.checked = false;
+          b.disabled = false;
+          App.brindis('Categoria creada');
+          return refrescaCats();
+        }).catch(function (err) {
+          b.disabled = false; App.brindis(err.message, 'error');
+        });
+      });
+
+      // ---- importació
       var fitxer = cos.querySelector('[data-fitxer]');
       var sortida = cos.querySelector('#fin-import');
 

@@ -580,6 +580,30 @@ h2 { font-size: 1.0625rem; }
 .mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
              font-size: .875rem; }
 
+/* Gestió de categories. Llista curta i formulari a sota: crear-ne una ha de
+   ser tan barat com adonar-te que et falta. */
+.cats-gest { max-height: 34vh; overflow-y: auto; margin-bottom: var(--e4);
+             border: 1px solid var(--utm-suau); }
+.cat-mena { margin: 0; padding: var(--e2) var(--e3); background: var(--paper2);
+            border-bottom: 1px solid var(--utm-suau);
+            letter-spacing: .1em; text-transform: uppercase; }
+.cat-gest { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+            padding: 0 var(--e2) 0 var(--e3); border-bottom: 1px solid var(--utm-suau); }
+.cat-gest:last-child { border-bottom: 0; }
+.cat-gest-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                white-space: nowrap; font-size: .9375rem; }
+
+.cat-nova-fila { display: grid; grid-template-columns: 68px minmax(0, 1fr);
+                 gap: var(--e2); margin: var(--e3) 0; }
+.cat-nova-fila input { min-width: 0; min-height: var(--toc); padding: 0 var(--e2);
+                       font: inherit; background: var(--paper); color: var(--ink);
+                       border: 1px solid var(--neatline); border-radius: var(--r); }
+.camp-emoji { text-align: center; font-size: 1.25rem; }
+.cat-exclou { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+              margin-bottom: var(--e2); font-size: .875rem; cursor: pointer; }
+.cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
+.cat-nova [data-crea-cat] { width: 100%; }
+
 /* Safata de revisió. Una fila per DECISIÓ, no per moviment: dotze compres a
    l'estanc són una sola targeta. En triar, la fila s'apaga i se'n va, i el que
    queda és el que et falta. */
