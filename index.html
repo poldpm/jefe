@@ -1018,7 +1018,22 @@ var Jefe = (function () {
     set: function (clau, valor) {
       try { localStorage.setItem('jefe.' + clau, JSON.stringify(valor)); } catch (e) {}
     },
-    treu: function (clau) { try { localStorage.removeItem('jefe.' + clau); } catch (e) {} }
+    treu: function (clau) { try { localStorage.removeItem('jefe.' + clau); } catch (e) {} },
+
+    /* Tota una família de cop: després d'escriure una dada, TOTES les pantalles
+       que la mostraven han quedat velles, no només la que miraves. Sense això,
+       apuntar una despesa i canviar de mes t'ensenyaria el mes d'abans sense
+       el que acabes d'apuntar. */
+    oblida: function (prefix) {
+      try {
+        var fora = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('jefe.' + prefix) === 0) fora.push(k);
+        }
+        fora.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) {}
+    }
   };
 
   // ------------------------------------------------------- crides al servidor
@@ -4130,6 +4145,7 @@ App.registraVista('nutricio', {
           }).then(function () {
             nom.value = gr.value = kc.value = pr.value = '';
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            Cau.oblida('nutricio.');
             carrega();
           }).catch(function (err) {
             bt.disabled = false;
@@ -4202,6 +4218,7 @@ App.registraVista('nutricio', {
             ajustos = nou;
             App.tancaModal();
             App.brindis('Objectius desats');
+            Cau.oblida('nutricio.');
             carrega();
           })
           .catch(function (err) { App.brindis(err.message, 'error'); });
@@ -4265,7 +4282,7 @@ App.registraVista('nutricio', {
               sortida.innerHTML = '<p class="menut">Importat: ' + fet.ingestes + ' ingestes, ' +
                 fet.activitats + ' dies i ' + fet.aliments + ' aliments.</p>';
               App.brindis('Dades de FitFat importades');
-              Cau.set('nutricio.' + data, null);
+                      Cau.oblida('nutricio.');
               carrega();
             })
             .catch(function (err) {
@@ -4285,29 +4302,33 @@ App.registraVista('nutricio', {
 
     // --------------------------------------------------------------- càrrega
 
-    function carrega() {
-      if (periode === 'dia') {
-        var cau = Cau.get('nutricio.' + data, null);
-        if (cau) pintaDia(cau, true);
+    /* PRIMER EL QUE JA SABEM, DESPRÉS EL QUE ARRIBA.
+       Una petició a Apps Script costa entre un segon i mig i dos i mig i això
+       no ho arregla cap codi nostre: és la plataforma. El que sí que podem
+       arreglar és esperar-la amb la pantalla en blanc. */
+    function claCau() { return 'nutricio.' + periode + '.' + data; }
 
-        Promise.all([
-          crida('nutricio', 'dia', { data: data }),
-          aliments.length ? Promise.resolve(aliments) : crida('nutricio', 'aliments', {}),
-          ajustos ? Promise.resolve(ajustos) : crida('nutricio', 'ajustos', {})
-        ]).then(function (r) {
-          aliments = r[1]; ajustos = r[2];
-          Cau.set('nutricio.' + data, r[0]);
-          pintaDia(r[0], false);
-        }).catch(function (err) {
-          if (!cau) arrel.innerHTML = Comp.error(err, true);
-          else App.brindis(err.message, 'error');
-        });
-        return;
+    function carrega() {
+      var desat = Cau.get(claCau(), null);
+      if (desat && desat.dades) {
+        aliments = desat.aliments && desat.aliments.length ? desat.aliments : aliments;
+        ajustos = desat.ajustos || ajustos;
+        try {
+          if (periode === 'dia') pintaDia(desat.dades, true); else pintaPeriode(desat.dades);
+        } catch (e) { /* format vell: ja arribarà el bo */ }
       }
 
-      crida('nutricio', periode, { data: data })
-        .then(pintaPeriode)
-        .catch(function (err) { arrel.innerHTML = Comp.error(err, true); });
+      crida('nutricio', 'pantalla', { periode: periode, data: data })
+        .then(function (r) {
+          if (r.aliments && r.aliments.length) aliments = r.aliments;
+          ajustos = r.ajustos || ajustos;
+          Cau.set(claCau(), r);
+          if (periode === 'dia') pintaDia(r.dades, false); else pintaPeriode(r.dades);
+        })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
     }
 
     arrel.innerHTML = Comp.carregant(4);
@@ -4742,6 +4763,7 @@ App.registraVista('finances', {
           crida('finances', 'decideix', { clau: fila.dataset.clau, categoria: sel.value })
             .then(function (r) {
               fila.dataset.fet = '1';
+              Cau.oblida('finances.');
               App.brindis(r.tocats + (r.tocats === 1 ? ' moviment classificat' : ' moviments classificats'));
               setTimeout(function () { fila.remove(); comprovaBuit(); }, 260);
             })
@@ -4760,6 +4782,7 @@ App.registraVista('finances', {
           crida('finances', 'decideixUn', { id: fila.dataset.mov, categoria: sel.value })
             .then(function () {
               fila.dataset.fet = '1';
+              Cau.oblida('finances.');
               setTimeout(function () { fila.remove(); comprovaBuit(); }, 260);
             })
             .catch(function (err) {
@@ -4873,6 +4896,7 @@ App.registraVista('finances', {
       }
 
       function refrescaCats() {
+        Cau.oblida('finances.');
         return crida('finances', 'categories', {}).then(function (l) {
           cats = l; pintaCats();
         });
@@ -4967,6 +4991,7 @@ App.registraVista('finances', {
                 fet.categories + ' categories.</p>';
               App.brindis('Dades de finances importades');
               cats = []; sugg = [];
+              Cau.oblida('finances.');
               carrega();
             })
             .catch(function (err) {
@@ -5125,6 +5150,7 @@ App.registraVista('finances', {
             App.tancaModal();
             App.brindis(editant ? 'Moviment desat' : 'Apuntat');
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            Cau.oblida('finances.');
             carrega();
           })
           .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
@@ -5135,7 +5161,8 @@ App.registraVista('finances', {
         bt.disabled = true;
         crida('finances', 'treu', { id: m.id })
           .then(function () {
-            App.tancaModal(); App.brindis('Moviment tret'); carrega();
+            App.tancaModal(); App.brindis('Moviment tret');
+            Cau.oblida('finances.'); carrega();
           })
           .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
       });
@@ -5143,26 +5170,44 @@ App.registraVista('finances', {
 
     // --------------------------------------------------------------- càrrega
 
-    function carrega() {
-      var accio = periode === 'mesos' ? 'mesos'
-                : periode === 'estad' ? 'estadistiques'
-                : periode === 'revisar' ? 'perRevisar' : 'mes';
-      var params_ = periode === 'mesos' ? { quants: 12 } : { mes: mes };
+    /* PRIMER EL QUE JA SABEM, DESPRÉS EL QUE ARRIBA.
+       Cada petició a Apps Script costa entre un segon i mig i dos i mig, i
+       això no ho pot arreglar cap codi nostre: és la plataforma. El que sí que
+       podem arreglar és esperar-la amb la pantalla en blanc. Es pinta l'últim
+       que vam veure a l'instant i es corregeix quan torna el servidor.
 
-      Promise.all([
-        crida('finances', accio, params_),
-        cats.length ? Promise.resolve(cats) : crida('finances', 'categories', {}),
-        sugg.length ? Promise.resolve(sugg) : crida('finances', 'suggeriments', {})
-      ]).then(function (r) {
-        cats = r[1]; sugg = r[2];
-        if (!mes && r[0].mes) mes = r[0].mes;
-        if (periode === 'revisar') pintaRevisar(r[0]);
-        else if (periode === 'mesos') pintaMesos(r[0]);
-        else if (periode === 'estad') pintaEstad(r[0]);
-        else pintaMes(r[0]);
-      }).catch(function (err) {
-        arrel.innerHTML = Comp.error(err, true);
-      });
+       La safata no es guarda mai: allà les dades canvien a cada decisió que
+       prens, i ensenyar-ne una còpia vella seria fer-te decidir dues vegades. */
+    function claded() { return 'finances.' + periode + '.' + (mes || 'ara'); }
+
+    function repinta(d) {
+      if (periode === 'revisar') pintaRevisar(d);
+      else if (periode === 'mesos') pintaMesos(d);
+      else if (periode === 'estad') pintaEstad(d);
+      else pintaMes(d);
+    }
+
+    function carrega() {
+      var desat = periode === 'revisar' ? null : Cau.get(claded(), null);
+      if (desat && desat.dades) {
+        cats = desat.categories || cats;
+        sugg = desat.suggeriments || sugg;
+        try { repinta(desat.dades); } catch (e) { /* format vell: ja arribarà el bo */ }
+      }
+
+      crida('finances', 'pantalla', { periode: periode, mes: mes, quants: 12 })
+        .then(function (r) {
+          cats = r.categories || [];
+          if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
+          if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
+          if (periode !== 'revisar') Cau.set(claded(), r);
+          repinta(r.dades);
+        })
+        .catch(function (err) {
+          // Amb alguna cosa pintada, un error no ha de deixar-te sense res.
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
     }
 
     if (!mes) mes = new Date().toISOString().slice(0, 7);

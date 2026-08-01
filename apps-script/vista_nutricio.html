@@ -482,6 +482,7 @@ App.registraVista('nutricio', {
           }).then(function () {
             nom.value = gr.value = kc.value = pr.value = '';
             if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            Cau.oblida('nutricio.');
             carrega();
           }).catch(function (err) {
             bt.disabled = false;
@@ -554,6 +555,7 @@ App.registraVista('nutricio', {
             ajustos = nou;
             App.tancaModal();
             App.brindis('Objectius desats');
+            Cau.oblida('nutricio.');
             carrega();
           })
           .catch(function (err) { App.brindis(err.message, 'error'); });
@@ -617,7 +619,7 @@ App.registraVista('nutricio', {
               sortida.innerHTML = '<p class="menut">Importat: ' + fet.ingestes + ' ingestes, ' +
                 fet.activitats + ' dies i ' + fet.aliments + ' aliments.</p>';
               App.brindis('Dades de FitFat importades');
-              Cau.set('nutricio.' + data, null);
+                      Cau.oblida('nutricio.');
               carrega();
             })
             .catch(function (err) {
@@ -637,29 +639,33 @@ App.registraVista('nutricio', {
 
     // --------------------------------------------------------------- càrrega
 
-    function carrega() {
-      if (periode === 'dia') {
-        var cau = Cau.get('nutricio.' + data, null);
-        if (cau) pintaDia(cau, true);
+    /* PRIMER EL QUE JA SABEM, DESPRÉS EL QUE ARRIBA.
+       Una petició a Apps Script costa entre un segon i mig i dos i mig i això
+       no ho arregla cap codi nostre: és la plataforma. El que sí que podem
+       arreglar és esperar-la amb la pantalla en blanc. */
+    function claCau() { return 'nutricio.' + periode + '.' + data; }
 
-        Promise.all([
-          crida('nutricio', 'dia', { data: data }),
-          aliments.length ? Promise.resolve(aliments) : crida('nutricio', 'aliments', {}),
-          ajustos ? Promise.resolve(ajustos) : crida('nutricio', 'ajustos', {})
-        ]).then(function (r) {
-          aliments = r[1]; ajustos = r[2];
-          Cau.set('nutricio.' + data, r[0]);
-          pintaDia(r[0], false);
-        }).catch(function (err) {
-          if (!cau) arrel.innerHTML = Comp.error(err, true);
-          else App.brindis(err.message, 'error');
-        });
-        return;
+    function carrega() {
+      var desat = Cau.get(claCau(), null);
+      if (desat && desat.dades) {
+        aliments = desat.aliments && desat.aliments.length ? desat.aliments : aliments;
+        ajustos = desat.ajustos || ajustos;
+        try {
+          if (periode === 'dia') pintaDia(desat.dades, true); else pintaPeriode(desat.dades);
+        } catch (e) { /* format vell: ja arribarà el bo */ }
       }
 
-      crida('nutricio', periode, { data: data })
-        .then(pintaPeriode)
-        .catch(function (err) { arrel.innerHTML = Comp.error(err, true); });
+      crida('nutricio', 'pantalla', { periode: periode, data: data })
+        .then(function (r) {
+          if (r.aliments && r.aliments.length) aliments = r.aliments;
+          ajustos = r.ajustos || ajustos;
+          Cau.set(claCau(), r);
+          if (periode === 'dia') pintaDia(r.dades, false); else pintaPeriode(r.dades);
+        })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
     }
 
     arrel.innerHTML = Comp.carregant(4);

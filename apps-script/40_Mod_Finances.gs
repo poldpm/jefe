@@ -151,6 +151,11 @@ function MODUL_FINANCES() {
       afegeix:        function (p) { return Finances.afegeix(p); },
       edita:          function (p) { return Finances.edita(p.id, p); },
       treu:           function (p) { return Finances.treu(p.id); },
+      /* TOT EL QUE NECESSITA UNA PANTALLA, EN UNA SOLA CRIDA.
+         Cada petició a Apps Script costa 1,2 s abans de fer res, i mig segon
+         més per obrir el full. Tres crides per obrir finances volien dir
+         obrir el full tres vegades i esperar la més lenta de les tres. */
+      pantalla:       function (p) { return Finances.pantalla(p); },
       categories:     function ()  { return Finances.categories(); },
       creaCategoria:  function (p) { return Finances.creaCategoria(p); },
       editaCategoria: function (p) { return Finances.editaCategoria(p.id, p); },
@@ -813,6 +818,34 @@ var Finances = (function () {
       .slice(0, 12);
   }
 
+  // ------------------------------------------------------------- pantalles
+
+  /**
+   * Tot el que una pantalla necessita, d'una tirada.
+   *
+   * Aprofita que dins d'UNA execució cada full es llegeix un sol cop: demanar
+   * el mes, les categories i els suggeriments per separat volia dir tres
+   * execucions, tres obertures del full i tres lectures dels mateixos
+   * moviments. Aquí és una obertura i una lectura.
+   */
+  function pantalla(p) {
+    p = p || {};
+    var quin = p.periode || 'mes';
+
+    var dades = quin === 'mesos' ? mesos(p.quants || 12)
+              : quin === 'estad' ? estadistiques(p.mes)
+              : quin === 'revisar' ? perRevisar()
+              : mes(p.mes);
+
+    return {
+      periode: quin,
+      dades: dades,
+      categories: categories(),
+      // Els suggeriments només fan falta on hi ha el formulari d'apuntar.
+      suggeriments: (quin === 'mes') ? suggeriments('') : []
+    };
+  }
+
   // ------------------------------------------------------ safata de revisió
 
   /**
@@ -1092,6 +1125,7 @@ var Finances = (function () {
     mesActual: mesActual,
     mes: mes,
     mesos: mesos,
+    pantalla: pantalla,
     estadistiques: estadistiques,
     afegeix: afegeix,
     edita: edita,

@@ -77,7 +77,19 @@ function doPost(e) {
                                         'Executa generaClauAcces() des de l\'editor.' });
   }
   if (!clausIguals_(String(peticio.clau || ''), esperada)) {
-    Log.avis('api.rebutjat', 'Petició amb clau incorrecta', { modul: peticio.modul });
+    /* Deixar-ne constància SENSE obrir el full a cada intent.
+       Abans s'hi escrivia una línia sempre, i això vol dir que qualsevol que
+       trobi aquesta adreça pot fer treballar el full de càlcul tant com
+       vulgui, a mig segon per petició. Ara se n'apunta una cada deu minuts:
+       el senyal es conserva —si algú hi truca, ho sabràs— i el cost no.
+       La resta queda al registre d'execució d'Apps Script igualment. */
+    try {
+      var cau = CacheService.getScriptCache();
+      if (!cau.get('rebutjat')) {
+        cau.put('rebutjat', '1', 600);
+        Log.avis('api.rebutjat', 'Petició amb clau incorrecta', { modul: peticio.modul });
+      }
+    } catch (err) { /* sense cau: val més callar que costar mig segon */ }
     return resposta({ ok: false, error: 'Clau d\'accés incorrecta.' });
   }
 

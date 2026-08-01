@@ -63,7 +63,22 @@ var Jefe = (function () {
     set: function (clau, valor) {
       try { localStorage.setItem('jefe.' + clau, JSON.stringify(valor)); } catch (e) {}
     },
-    treu: function (clau) { try { localStorage.removeItem('jefe.' + clau); } catch (e) {} }
+    treu: function (clau) { try { localStorage.removeItem('jefe.' + clau); } catch (e) {} },
+
+    /* Tota una família de cop: després d'escriure una dada, TOTES les pantalles
+       que la mostraven han quedat velles, no només la que miraves. Sense això,
+       apuntar una despesa i canviar de mes t'ensenyaria el mes d'abans sense
+       el que acabes d'apuntar. */
+    oblida: function (prefix) {
+      try {
+        var fora = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('jefe.' + prefix) === 0) fora.push(k);
+        }
+        fora.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) {}
+    }
   };
 
   // ------------------------------------------------------- crides al servidor

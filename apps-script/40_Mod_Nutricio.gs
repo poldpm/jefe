@@ -79,6 +79,11 @@ function MODUL_NUTRICIO() {
     ],
 
     accions: {
+      /* Tot el que necessita una pantalla, en una sola crida. Cada petició a
+         Apps Script costa 1,2 s abans de fer res i mig segon més per obrir el
+         full; demanar el dia, els aliments i els objectius per separat volia
+         dir obrir-lo tres vegades. */
+      pantalla:       function (p) { return Nutricio.pantalla(p); },
       dia:            function (p) { return Nutricio.dia(p.data || Utils.avui()); },
       setmana:        function (p) { return Nutricio.periode(p.data || Utils.avui(), 'setmana'); },
       mes:            function (p) { return Nutricio.periode(p.data || Utils.avui(), 'mes'); },
@@ -450,6 +455,25 @@ var Nutricio = (function () {
     };
   }
 
+  // ------------------------------------------------------------- pantalles
+
+  /**
+   * Tot el que una pantalla necessita, d'una tirada.
+   * Dins d'UNA execució cada full es llegeix un sol cop; demanar-ho per
+   * separat volia dir tres execucions i tres obertures del mateix full.
+   */
+  function pantalla(p) {
+    p = p || {};
+    var quin = p.periode || 'dia';
+    return {
+      periode: quin,
+      dades: quin === 'dia' ? dia(p.data) : periode(p.data || Utils.avui(), quin),
+      // Els aliments només fan falta on hi ha el formulari d'afegir.
+      aliments: quin === 'dia' ? aliments() : [],
+      ajustos: ajustos()
+    };
+  }
+
   // -------------------------------------------------------------------- IA
 
   function consultaIA(a) {
@@ -653,6 +677,7 @@ var Nutricio = (function () {
     r1: r1,
     dia: dia,
     periode: periode,
+    pantalla: pantalla,
     afegeix: afegeix,
     treu: treu,
     desaActivitat: desaActivitat,

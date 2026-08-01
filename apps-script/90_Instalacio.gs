@@ -779,6 +779,79 @@ function reclassificaFinances() {
 
 
 /**
+ * ON SE'N VA EL TEMPS.
+ *
+ * Mesura cada peça per separat: obrir el full, llegir cada pestanya, i el que
+ * costa muntar cada pantalla. Executa-la de tant en tant a mesura que creixin
+ * les dades; el dia que una xifra es dispari, sabrem quina és sense endevinar.
+ *
+ * El cost de la CRIDA (anar i tornar a Apps Script) no surt aquí perquè no es
+ * pot mesurar des de dins: són 1,2–1,6 s i és de la plataforma.
+ */
+function diagnosticVelocitat() {
+  var l = ['=== ON SE\'N VA EL TEMPS ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+  function crono(nom, fn) {
+    var t = Date.now();
+    var r;
+    try { r = fn(); } catch (err) { a('  ' + nom + ': FALLA — ' + err.message); return null; }
+    a('  ' + nom + ': ' + (Date.now() - t) + ' ms');
+    return r;
+  }
+
+  a('');
+  a('Obrir el full de càlcul');
+  crono('SpreadsheetApp.openById', function () { return Config.full().getName(); });
+
+  a('');
+  a('Llegir cada pestanya (primera lectura, sense memòria)');
+  var fulls = ['Moviments', 'Categories', 'FinancesMemoria', 'Ingestes',
+               'Habits', 'HabitsRegistre', '_Registre'];
+  var total = 0;
+  fulls.forEach(function (nom) {
+    Dades.invalida(nom);
+    var t = Date.now();
+    var files;
+    try { files = Dades.llegeix(nom).length; }
+    catch (err) { a('  ' + nom + ': no hi és'); return; }
+    var ms = Date.now() - t;
+    total += ms;
+    a('  ' + nom + ': ' + ms + ' ms   (' + files + ' files)');
+  });
+  a('  ---- suma de lectures: ' + total + ' ms');
+
+  a('');
+  a('Muntar cada pantalla (amb les pestanyes ja llegides)');
+  Dades.invalida();
+  crono('Finances.pantalla(mes)', function () {
+    return Finances.pantalla({ periode: 'mes' });
+  });
+  Dades.invalida();
+  crono('Finances.pantalla(estad)', function () {
+    return Finances.pantalla({ periode: 'estad' });
+  });
+  Dades.invalida();
+  crono('Finances.pantalla(revisar)', function () {
+    return Finances.pantalla({ periode: 'revisar' });
+  });
+  Dades.invalida();
+  crono('Nutricio.pantalla(dia)', function () {
+    return Nutricio.pantalla({ periode: 'dia', data: Utils.avui() });
+  });
+  Dades.invalida();
+  crono('Moduls.contextIA (el que llegeix la IA)', function () {
+    Moduls.invalidaContext();
+    return Moduls.contextIA({ compacte: true });
+  });
+
+  a('');
+  a('Si la suma de lectures passa dels 2 segons, toca deixar de llegir el full');
+  a('sencer a cada petició i guardar resums per mes.');
+  return l.join('\n');
+}
+
+
+/**
  * DIAGNÒSTIC DE LA MEMÒRIA DE COMERÇOS.
  *
  * Per quan entren moviments del banc i cap no es reconeix. Diu si la memòria
