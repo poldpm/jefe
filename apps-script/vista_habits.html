@@ -219,10 +219,12 @@ App.registraVista('habits', {
       if (ba) ba.addEventListener('click', function () { App.ves('habits', { data: fmt.avui() }); });
       var bt = arrel.querySelector('[data-tema]');
       if (bt) bt.addEventListener('click', function () {
-        var ordre = ['auto', 'clar', 'fosc'];
-        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 3];
+        // Sense «auto»: qui decideix el tema ets tu, no la configuració del
+        // telèfon. Si no, el mateix JEFE surt blanc en un aparell i fosc a l'altre.
+        var ordre = ['fosc', 'clar'];
+        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 2];
         App.aplicaTema(seg);
-        App.brindis('Full ' + (seg === 'auto' ? 'automàtic' : seg === 'clar' ? 'de dia' : 'de nit'));
+        App.brindis('Full ' + (seg === 'clar' ? 'de dia' : 'de nit'));
       });
     }
 

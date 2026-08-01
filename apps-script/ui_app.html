@@ -233,8 +233,15 @@ var Jefe = (function () {
       /* Fosc sempre, no «segons el que digui el sistema». Amb «auto», el
          mateix JEFE sortia blanc al mòbil i fosc al PC segons com tingués
          cadascun la configuració, i això no és una app: són dues. La sala de
-         comandament ja és fosca; la resta l'ha d'acompanyar. */
-      App.aplicaTema(Cau.get('tema', 'fosc'));
+         comandament ja és fosca; la resta l'ha d'acompanyar.
+
+         Canviar el valor per defecte no n'hi ha prou: als aparells on ja s'ha
+         obert l'app hi ha un «auto» desat, i el que hi ha desat mana. Per això
+         es migra aquí. Queda el canvi manual a clar per si algun dia el sol de
+         cara ho demana, però no tornarà a decidir-ho el sistema. */
+      var tema = Cau.get('tema', 'fosc');
+      if (tema === 'auto') { tema = 'fosc'; Cau.set('tema', tema); }
+      App.aplicaTema(tema);
 
       // Servida des de fora i encara sense servidor: primer connectar.
       if (!dinsAppsScript() && !Servidor.config()) {

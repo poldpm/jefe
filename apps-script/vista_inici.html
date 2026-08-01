@@ -63,10 +63,10 @@ App.registraVista('inici', {
       if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
       var bt = arrel.querySelector('[data-tema]');
       if (bt) bt.addEventListener('click', function () {
-        var ordre = ['auto', 'clar', 'fosc'];
-        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 3];
+        var ordre = ['fosc', 'clar'];
+        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 2];
         App.aplicaTema(seg);
-        App.brindis('Full ' + (seg === 'auto' ? 'automàtic' : seg === 'clar' ? 'de dia' : 'de nit'));
+        App.brindis('Full ' + (seg === 'clar' ? 'de dia' : 'de nit'));
       });
     }
 
