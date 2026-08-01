@@ -355,9 +355,15 @@ export function dades(AVUI, menys) {
   // -------------------------------------------------------------- calendari
 
   const CALENDARIS = [
-    { id: 'principal@exemple', nom: 'El meu calendari', color: '#2c6e8f', mostra: true, principal: true },
-    { id: 'escola@exemple', nom: 'Escola', color: '#a8703f', mostra: true, principal: false },
-    { id: 'festius@exemple', nom: 'Festius de Catalunya', color: '#7fa15c', mostra: false, principal: false }
+    { id: 'principal@exemple', nom: 'El meu calendari', color: '#2c6e8f',
+      mostra: true, principal: true, meu: true },
+    { id: 'escola@exemple', nom: 'Feina · escola', color: '#a8703f',
+      mostra: true, principal: false, meu: true },
+    // Un d'un altre compte, compartit: es veu, i escriure-hi depèn del permís.
+    { id: 'claustre@altrecompte', nom: "Claustre (compte de l'escola)", color: '#8a5124',
+      mostra: true, principal: false, meu: false },
+    { id: 'festius@exemple', nom: 'Festius de Catalunya', color: '#7fa15c',
+      mostra: false, principal: false, meu: false }
   ];
 
   /* Cites repartides pel mes en curs, amb noms i durades de tot tipus: una de

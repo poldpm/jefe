@@ -1091,13 +1091,40 @@ h2 { font-size: 1.0625rem; }
 .sugg button:active { color: var(--ink); border-color: var(--ink); }
 
 .form-ajustos label { display: block; margin-bottom: var(--e3); }
-.form-ajustos input, .form-ajustos select { width: 100%; min-height: var(--toc);
-                                            margin-top: var(--e1); padding: 0 var(--e3);
-                                            font: inherit; background: var(--paper);
-                                            color: var(--ink); border: 1px solid var(--neatline);
-                                            border-radius: var(--r); }
+/* La casella amb la seva etiqueta al costat. `.form-ajustos label` és més
+   específic que `.cat-exclou` i li posava `display:block`, i llavors el buit
+   entre la casella i el text desapareixia: quedaven enganxats. */
+.form-ajustos label.cat-exclou { display: flex; align-items: center; gap: var(--e2); }
+
+/* `:not([type="checkbox"])` I `textarea`, i totes dues coses són arreglos.
+   ---------------------------------------------------------------------
+   Sense el `:not`, aquesta regla —que va més avall al full i per tant guanya
+   a igualtat de pes— convertia qualsevol casella de verificació d'un tauler
+   en un rectangle de 48 px d'alt i amplada sencera. Es veia als taulers de
+   tasques («Prioritària») i del calendari («Tot el dia»): un bloc fosc surant
+   sobre l'etiqueta.
+   I el `textarea` no hi era: les notes es pintaven sense estil, petites i
+   desalineades, al costat de camps que sí que en tenien. */
+.form-ajustos input:not([type="checkbox"]),
+.form-ajustos select,
+.form-ajustos textarea {
+  width: 100%; min-height: var(--toc);
+  margin-top: var(--e1); padding: var(--e2) var(--e3);
+  font: inherit; background: var(--paper);
+  color: var(--ink); border: 1px solid var(--neatline);
+  border-radius: var(--r); -webkit-appearance: none; appearance: none;
+}
+.form-ajustos input:not([type="checkbox"]) { padding: 0 var(--e3); }
+.form-ajustos textarea { line-height: 1.5; resize: vertical; }
+.form-ajustos input:focus, .form-ajustos select:focus, .form-ajustos textarea:focus {
+  border-color: var(--utm); outline: none;
+}
 .form-ajustos hr { border: 0; border-top: 3px double var(--neatline); margin: var(--e4) 0; }
-.form-ajustos [data-desa-ajustos] { width: 100%; }
+
+/* Els botons d'un tauler van un sota l'altre i a amplada sencera. Un «Desa» i
+   un «Treu-la» de costat, a més d'estrets, posen a la mateixa alçada i amb la
+   mateixa pinta la cosa que vols fer i la que no vols fer mai sense pensar. */
+.form-ajustos > button { width: 100%; }
 
 /* -------------------------------------------------------------------- modal */
 

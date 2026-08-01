@@ -39,6 +39,7 @@ function MODUL_CALENDARI() {
           { nom: 'color',           tipus: 'text' },
           { nom: 'mostra',          tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'principal',       tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'meu',             tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'ordre',           tipus: 'num'  },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }
@@ -210,7 +211,8 @@ var Calendari = (function () {
         // El `mostra` NO es toca: si l'has canviat tu, mana el teu.
         Dades.actualitza('Calendaris', id, {
           nom: c.getName(), color: c.getColor(),
-          principal: id === principal ? 'SI' : 'NO'
+          principal: id === principal ? 'SI' : 'NO',
+          meu: meus[id] ? 'SI' : 'NO'
         });
         actualitzats++;
       } else {
@@ -218,6 +220,7 @@ var Calendari = (function () {
           id: id, nom: c.getName(), color: c.getColor(),
           mostra: meus[id] ? 'SI' : 'NO',
           principal: id === principal ? 'SI' : 'NO',
+          meu: meus[id] ? 'SI' : 'NO',
           ordre: i + 1
         });
         nous++;
@@ -267,7 +270,8 @@ var Calendari = (function () {
     return f.map(function (x) {
       return { id: x.id, nom: x.nom, color: x.color || '',
                mostra: String(x.mostra).toUpperCase() === 'SI',
-               principal: String(x.principal).toUpperCase() === 'SI' };
+               principal: String(x.principal).toUpperCase() === 'SI',
+               meu: String(x.meu).toUpperCase() === 'SI' };
     });
   }
 
@@ -519,17 +523,28 @@ var Calendari = (function () {
     if (p.nota) opcions.description = String(p.nota);
 
     var e;
-    if (!p.hora) {
-      e = cal.createAllDayEvent(titol, Utils.aData(p.data), opcions);
-    } else {
-      var ini = quan_(p.data, p.hora);
-      var minuts = Number(p.durada) > 0 ? Number(p.durada) : 60;
-      var fi = new Date(ini.getTime() + minuts * 60000);
-      e = cal.createEvent(titol, ini, fi, opcions);
+    try {
+      if (!p.hora) {
+        e = cal.createAllDayEvent(titol, Utils.aData(p.data), opcions);
+      } else {
+        var ini = quan_(p.data, p.hora);
+        var minuts = Number(p.durada) > 0 ? Number(p.durada) : 60;
+        var fi = new Date(ini.getTime() + minuts * 60000);
+        e = cal.createEvent(titol, ini, fi, opcions);
+      }
+    } catch (err) {
+      /* El cas normal d'aquest error: un calendari que et comparteix algú
+         d'un altre compte i que t'han deixat MIRAR però no tocar. Dir-ho amb
+         paraules estalvia mitja hora de no entendre res. */
+      throw new Error('No he pogut escriure a «' + cal.getName() + '». ' +
+        'Si és un calendari d\'un altre compte, cal que des d\'allà et donin ' +
+        'permís per «fer canvis als esdeveniments», no només per veure\'ls. ' +
+        '(' + err.message + ')');
     }
 
     buidaCau();
-    Log.info('calendari.crea', 'Esdeveniment creat', { titol: titol, data: p.data });
+    Log.info('calendari.crea', 'Esdeveniment creat', { titol: titol, data: p.data,
+                                                       calendari: cal.getName() });
     return { id: e.getId(), titol: titol, data: p.data,
              hora: p.hora || '', calendari: cal.getName() };
   }

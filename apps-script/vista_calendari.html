@@ -202,6 +202,44 @@ App.registraVista('calendari', {
 
     // ----------------------------------------------------------------- fitxa
 
+    /**
+     * A QUIN CALENDARI VA.
+     *
+     * En crear, es tria. Es recorda l'últim que has fet servir, perquè si
+     * apuntes tres coses de l'escola seguides no has de triar-ho tres cops.
+     *
+     * En editar, NO es pot canviar: moure un esdeveniment d'un calendari a un
+     * altre no és editar-lo, és esborrar-lo aquí i crear-lo allà, i això amb
+     * els convidats a sobre no és el mateix esdeveniment. S'ensenya on és i
+     * prou; per moure'l, des de Google Calendar.
+     */
+    function blocOnVa(nou, e) {
+      if (!nou) {
+        var seu = cals.filter(function (c) { return c.id === e.calendari; })[0];
+        if (!seu || cals.length < 2) return '';
+        return '<p class="menut">És al calendari <b>' + esc(seu.nom) + '</b>. ' +
+               'Per canviar-lo de calendari, des de Google Calendar.</p>';
+      }
+
+      var on = cals.filter(function (c) { return c.mostra; });
+      if (on.length < 2) return '';
+
+      /* La clau NO comença per «calendari.»: quan es refresca la pantalla es
+         crida `Cau.oblida('calendari.')`, que s'emportaria també això. */
+      var ultim = Cau.get('ultimCalendari', '');
+      var triat = on.filter(function (c) { return c.id === ultim; })[0]
+               || on.filter(function (c) { return c.principal; })[0] || on[0];
+
+      return '<label><span class="marge">A quin calendari</span>' +
+        '<select data-c="calendari">' +
+          on.map(function (c) {
+            return '<option value="' + esc(c.id) + '"' +
+                   (c.id === triat.id ? ' selected' : '') + '>' +
+                   esc(c.nom) + (c.meu ? '' : ' · compartit') + '</option>';
+          }).join('') +
+        '</select></label>';
+    }
+
     function obreFitxa(e) {
       var nou = !e;
       var quan = nou ? (dades.diaTriat || dades.avui) : e.data;
@@ -227,6 +265,7 @@ App.registraVista('calendari', {
             '<input data-c="lloc" value="' + esc(nou ? '' : (e.lloc || '')) + '" autocomplete="off"></label>' +
           '<label><span class="marge">Nota</span>' +
             '<textarea data-c="nota" rows="2">' + esc(nou ? '' : (e.nota || '')) + '</textarea></label>' +
+          blocOnVa(nou, e) +
           '<button class="btn btn-primari" data-desa>' + (nou ? 'Apunta-ho' : 'Desa') + '</button>' +
           (nou ? '' :
             '<button class="btn btn-secundari" data-treu style="margin-top:var(--e2)">' +
@@ -255,7 +294,13 @@ App.registraVista('calendari', {
           lloc: camps.lloc.value,
           nota: camps.nota.value
         };
-        if (!nou) { p.id = e.id; p.calendari = e.calendari; }
+        if (!nou) {
+          p.id = e.id; p.calendari = e.calendari;
+        } else if (camps.calendari) {
+          p.calendari = camps.calendari.value;
+          // El pròxim ja vindrà triat: normalment n'apuntes uns quants seguits.
+          Cau.set('ultimCalendari', p.calendari);
+        }
 
         escriu('calendari', nou ? 'crea' : 'edita', p, quePinto())
           .then(function (r) {
