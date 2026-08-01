@@ -144,7 +144,11 @@ var FinancesBanc = (function () {
 
   function bancs(pais) {
     var r = eb_('/aspsps?country=' + (pais || 'ES'), { method: 'get' });
-    return (r.aspsps || []).map(function (b) { return b.name + '  [' + b.country + ']'; });
+    // La crida sencera, a punt de copiar. El nom del banc pot dur espais,
+    // punts i comes, i endevinar què va dins de les cometes no és feina seva.
+    return (r.aspsps || []).map(function (b) {
+      return 'connectaBanc("' + String(b.name).replace(/"/g, '\\"') + '")';
+    });
   }
 
   function connecta(nom) {

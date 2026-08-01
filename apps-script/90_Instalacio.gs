@@ -658,11 +658,18 @@ function provaBanc() {
   return l.join('\n');
 }
 
-/** PAS 2 — el nom EXACTE del teu banc. Copia'l tal com surti. */
+/**
+ * PAS 2 — el teu banc.
+ *
+ * Ho escriu com la crida sencera i no com una llista de noms a posta: si
+ * només surt el nom al costat del país, has d'endevinar si el país també va
+ * dins de les cometes. Copiant una línia sencera no hi ha res a endevinar.
+ */
 function bancsDisponibles(pais) {
   var l = FinancesBanc.bancs(pais || 'ES');
-  l.forEach(function (b) { Logger.log(b); });
-  Logger.log('\n' + l.length + ' entitats. Copia el nom exacte i executa connectaBanc("...").');
+  Logger.log('Copia i executa la línia del teu banc, sencera:\n');
+  l.forEach(function (b) { Logger.log('  ' + b); });
+  Logger.log('\n' + l.length + ' entitats a ' + (pais || 'ES') + '.');
   return l.length;
 }
 
