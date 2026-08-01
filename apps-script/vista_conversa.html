@@ -24,9 +24,12 @@
   position: fixed; left: 0; right: 0; top: 0;
   bottom: env(safe-area-inset-bottom, 0px);
   display: flex; flex-direction: column;
+  /* Fosc al centre i clar cap a les vores: el nucli es retalla contra el buit
+     en comptes de competir-hi, i el terreny apareix on hi ha lloc per mirar-lo.
+     A l'inrevés —clar al mig— el nucli i el fons il·luminat es barallaven. */
   background:
-    radial-gradient(ellipse 80% 60% at 50% 38%, #0b2137 0%, transparent 70%),
-    var(--neg);
+    radial-gradient(ellipse 78% 58% at 50% 44%, var(--neg) 22%, transparent 76%),
+    #0b2137;
   color: var(--clar);
   padding-top: env(safe-area-inset-top, 0px);
   overflow: hidden;
@@ -37,10 +40,13 @@
    Abans hi havia una quadrícula de línies rectes. Mateix color, mateix gruix
    i mateix esvaïment: només canvia que ara el terreny és de debò, calculat
    amb el mateix marching squares que el full de mes. */
+/* La màscara va a l'inrevés que abans: el terreny s'esvaeix al centre, on hi
+   ha el nucli, i es veu cap a fora. Les corbes deixen de passar per darrere
+   les partícules, que és on molestaven i on no es podien llegir. */
 .reticula {
   position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 25%, transparent 78%);
-  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, #000 25%, transparent 78%);
+  mask-image: radial-gradient(ellipse 72% 56% at 50% 44%, transparent 26%, #000 68%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 56% at 50% 44%, transparent 26%, #000 68%);
 }
 
 /* ---------------------------------------------------------------- capçalera */
@@ -77,11 +83,9 @@
   gap: var(--e3); padding: var(--e4) var(--e4) 0; text-align: center;
 }
 
-.nucli-caixa { flex: none; width: min(58vw, 34vh); aspect-ratio: 1; }
-
-.jefe-marca { margin: 0; font-family: var(--mono); font-size: .8125rem;
-              letter-spacing: .42em; text-indent: .42em; color: var(--cian); }
-.hud[data-estat="apagat"] .jefe-marca { color: var(--calent); }
+/* Sense nom a sota: el nucli ja diu qui és. La marca només repetia una
+   paraula que ja saps, i li prenia lloc al que de debò mires. */
+.nucli-caixa { flex: none; width: min(82vw, 46vh); aspect-ratio: 1; }
 
 /* ------------------------------------------------------------- transcripció */
 
@@ -202,7 +206,7 @@
                       white-space: nowrap; max-width: 100%; }
 
 @media (min-width: 900px) {
-  .nucli-caixa { width: min(30vw, 42vh); }
+  .nucli-caixa { width: min(42vw, 62vh); }
   .jefe-centre { gap: var(--e4); }
   .ordre-bt { width: 84px; height: 84px; }
   .jefe-moduls { gap: var(--e5); padding-bottom: var(--e4); }
@@ -240,7 +244,6 @@ App.registraVista('conversa', {
 
         '<div class="jefe-centre">' +
           '<div class="nucli-caixa" id="nucli-caixa"></div>' +
-          '<p class="jefe-marca">JEFE</p>' +
           '<div class="transcripcio" id="transcripcio"></div>' +
         '</div>' +
 
@@ -276,7 +279,9 @@ App.registraVista('conversa', {
     /* El terreny del fons es genera un sol cop: el SVG escala sol amb el
        contenidor, i la llavor és fixa perquè no balli a cada repintada. */
     arrel.querySelector('#reticula').innerHTML =
-      Relleu.fons(1000, 1000, { color: 'rgba(43,127,212,.16)', gruix: 1, nivells: 14 });
+      // Més marcades que abans: ara viuen al marge il·luminat, no darrere del
+      // nucli, i allà una línia al 16% no s'arriba a veure.
+      Relleu.fons(1000, 1000, { color: 'rgba(79,214,224,.30)', gruix: 1, nivells: 14 });
 
     function posaEstat(e, etiqueta) {
       hud.dataset.estat = e;
