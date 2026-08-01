@@ -28,8 +28,11 @@ var EB_BASE = 'https://api.enablebanking.com';
 var PROP_BANC = 'FINANCES_BANC';        // estat de la connexió (conté la sessió)
 var DIES_ACCES = 90;                    // quant dura el permís del banc
 
-/** Posa-hi el nom EXACTE que et doni bancsDisponibles(). */
-var MEU_BANC = '';
+/* AQUÍ NO HI HA CAP VARIABLE PER OMPLIR, i és a posta.
+   Hi havia un `MEU_BANC` per escriure-hi el nom del banc, com a l'app antiga.
+   Però aquest fitxer es publica des del repositori amb `clasp push -f`: el que
+   s'escrigui a l'editor desapareix a la següent pujada, sense avisar i sense
+   deixar rastre. El nom del banc va com a argument de connectaBanc(). */
 
 
 var FinancesBanc = (function () {
@@ -152,8 +155,28 @@ var FinancesBanc = (function () {
   }
 
   function connecta(nom) {
-    nom = nom || MEU_BANC;
-    if (!nom) throw new Error('Digues quin banc: connecta("CaixaBank"), o omple MEU_BANC.');
+    nom = String(nom || '').trim();
+    if (!nom) {
+      throw new Error('Digues quin banc, exactament com surti a bancsDisponibles(): ' +
+                      'connectaBanc("CaixaBank")');
+    }
+
+    /* El nom ha de ser EXACTE. Si no ho és, l'API contesta amb un error que no
+       diu què li passa, i et quedes mirant-lo. Val més comprovar-ho abans i
+       dir-li quins s'hi assemblen. */
+    var disponibles = (eb_('/aspsps?country=ES', { method: 'get' }).aspsps || [])
+      .map(function (b) { return b.name; });
+    if (disponibles.indexOf(nom) === -1) {
+      var busca = nom.toUpperCase();
+      var semblants = disponibles.filter(function (n) {
+        return n.toUpperCase().indexOf(busca) !== -1 || busca.indexOf(n.toUpperCase()) !== -1;
+      });
+      throw new Error('«' + nom + '» no és cap nom exacte d\'entitat.' +
+        (semblants.length
+          ? ' Volies dir algun d\'aquests?\n  ' +
+            semblants.map(function (n) { return 'connectaBanc("' + n + '")'; }).join('\n  ')
+          : ' Executa bancsDisponibles() i copia la línia sencera.'));
+    }
 
     var fins = new Date(Date.now() + DIES_ACCES * 864e5).toISOString().replace(/\.\d+Z$/, 'Z');
     var r = eb_('/auth', {
