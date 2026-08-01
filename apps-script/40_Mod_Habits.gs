@@ -20,6 +20,12 @@
  *
  *   5. Els hàbits `x_per_setmana` es compten per setmanes, no per dies:
  *      la ratxa són setmanes seguides, i la setmana en curs no trenca mai.
+ *
+ *   6. ELS COMPTADORS NO ES JUTGEN. Un comptador —els cigarros del dia— no té
+ *      objectiu, ni ratxa, ni percentatge de compliment, i no surt mai com a
+ *      «pendent». Només compta i ensenya cap on va. Posar-li un 40% de
+ *      compliment als cigarros seria una xifra sense cap significat, i pintar
+ *      de verd el dia que en fumes molts, directament una mentida.
  */
 function MODUL_HABITS() {
   return {
@@ -35,7 +41,7 @@ function MODUL_HABITS() {
         columnes: [
           { nom: 'id',                tipus: 'text' },
           { nom: 'nom',               tipus: 'text' },
-          { nom: 'tipus',             tipus: 'text', valors: ['si_no', 'quantitat'] },
+          { nom: 'tipus',             tipus: 'text', valors: ['si_no', 'quantitat', 'comptador'] },
           { nom: 'objectiu',          tipus: 'num'  },
           { nom: 'unitat',            tipus: 'text' },
           { nom: 'frequencia',        tipus: 'text', valors: ['diaria', 'dies_setmana', 'x_per_setmana'] },
@@ -89,6 +95,12 @@ function MODUL_HABITS() {
       var d = Habits.dia(Utils.avui());
       if (!d.habits.length) return 'Hàbits: cap definit.';
       var linies = d.habits.map(function (h) {
+        if (h.esComptador) {
+          return '- ' + h.nom + ' (comptador, no es completa): ' + (h.valor || 0) + ' avui' +
+                 (h.mitjana7 === null ? '' : ' · mitjana ' + h.mitjana7 + ' al dia els últims 7') +
+                 (h.canvi7 === null || h.canvi7 === undefined ? ''
+                   : ' · ' + (h.canvi7 > 0 ? '+' : '') + h.canvi7 + ' respecte la setmana anterior');
+        }
         return '- ' + h.nom + ': ' + (h.complert ? 'fet' : (h.exigit ? 'pendent' : 'no toca avui')) +
                ' · ratxa ' + h.ratxa + ' ' + h.unitatRatxa +
                ' · compliment 30 dies ' + h.pct30 + '%';
@@ -111,7 +123,9 @@ function MODUL_HABITS() {
       executa: function (args) { return Habits.consultaIA(args); }
     }, {
       nom: 'registra_habit',
-      descripcio: 'Marca un hàbit com a fet o no fet un dia concret. NO s\'executa directament: ' +
+      descripcio: 'Marca un hàbit com a fet o no fet un dia concret. Si l\'hàbit és un ' +
+                  'COMPTADOR (els cigarros, per exemple), `quantitat` és el total del dia; ' +
+                  'si no se\'n diu cap, se n\'hi suma un. NO s\'executa directament: ' +
                   'genera una proposta que en Pol ha de confirmar amb un botó.',
       escriu: true,
       esquema: {
@@ -119,16 +133,46 @@ function MODUL_HABITS() {
         properties: {
           nom_habit: { type: 'string', description: 'Nom de l\'hàbit' },
           data: { type: 'string', description: 'Data AAAA-MM-DD. Si s\'omet, avui.' },
-          fet: { type: 'boolean', description: 'true per marcar-lo fet, false per marcar-lo no fet' }
+          fet: { type: 'boolean', description: 'true per marcar-lo fet, false per marcar-lo no fet' },
+          quantitat: { type: 'number', description: 'Total del dia. Només per a comptadors i ' +
+                       'hàbits de quantitat. «N\'he fumat 5» és quantitat 5, no cinc crides.' }
         },
         required: ['nom_habit']
       },
       etiqueta: function (a) {
+        if (a.quantitat !== undefined && a.quantitat !== null) {
+          return 'Posar «' + (a.nom_habit || '?') + '» a ' + a.quantitat +
+                 (a.data ? ' el ' + a.data : ' avui');
+        }
         return 'Marcar «' + (a.nom_habit || '?') + '» com a ' +
                (a.fet === false ? 'NO fet' : 'fet') +
                (a.data ? ' el ' + a.data : ' avui');
       },
       executa: function (a) { return Habits.registraPerNom(a); }
+    }, {
+      nom: 'crea_habit',
+      descripcio: 'Crea un hàbit nou. `tipus` pot ser si_no (fet o no fet), quantitat (amb un ' +
+                  'objectiu diari, com «2 vegades rentar-se les dents») o comptador (només ' +
+                  'compta, sense objectiu ni ratxa, com els cigarros del dia). ' +
+                  'NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          nom:      { type: 'string', description: 'Com es diu' },
+          tipus:    { type: 'string', description: 'si_no, quantitat o comptador' },
+          objectiu: { type: 'number', description: 'Quants cops al dia. Només per a `quantitat`.' },
+          unitat:   { type: 'string', description: 'Què compta: cigarros, gots, minuts…' }
+        },
+        required: ['nom']
+      },
+      etiqueta: function (a) {
+        var t = a.tipus === 'comptador' ? 'comptador'
+              : a.tipus === 'quantitat' ? (a.objectiu || 1) + ' cops al dia'
+              : 'fet o no fet';
+        return 'Crear l\'hàbit «' + (a.nom || '?') + '» (' + t + ')';
+      },
+      executa: function (a) { return Habits.creaPerNom(a); }
     }],
 
     vista: 'vista_habits'
@@ -158,13 +202,19 @@ var Habits = (function () {
     return idx;
   }
 
+  function esComptador_(h) { return h.tipus === 'comptador'; }
+
   function objectiu_(h) {
+    if (esComptador_(h)) return 0;      // no en té: només compta
     var o = Number(h.objectiu);
     return o > 0 ? o : 1;
   }
 
   /** Aquest dia toca fer aquest hàbit? */
   function exigit_(h, data) {
+    /* Un comptador no s'exigeix mai. No hi ha res a complir, i si fos exigible
+       sortiria cada dia com a pendent i et diria que et falta fumar. */
+    if (esComptador_(h)) return false;
     if (h.frequencia === 'x_per_setmana') return true;   // s'avalua per setmanes
     if (h.frequencia === 'dies_setmana') {
       var dies = String(h.dies_setmana || '').split(',').map(function (s) { return s.trim(); });
@@ -174,6 +224,7 @@ var Habits = (function () {
   }
 
   function complert_(h, valor) {
+    if (esComptador_(h)) return false;   // no es completa: es compta
     return Number(valor || 0) >= objectiu_(h);
   }
 
@@ -276,8 +327,64 @@ var Habits = (function () {
     return Math.round((fets / exigits) * 100);
   }
 
+  /**
+   * Suma i mitjana d'una finestra de dies.
+   *
+   * El divisor són els dies que l'hàbit ja existia, no els de la finestra:
+   * si el vas crear dijous, la mitjana de la setmana no s'ha de repartir
+   * entre set dies i sortir-te la meitat del que fumes de debò.
+   *
+   * Un dia sense registre compta com a zero. En un comptador això és el que
+   * toca: si no vas prémer el botó, no en vas fer cap.
+   */
+  function finestra_(h, regs, fins, dies) {
+    var inici = Utils.sumaDies(fins, -(dies - 1));
+    var creacio = dataCreacio_(h);
+    if (inici < creacio) inici = creacio;
+    if (inici > fins) return { suma: 0, dies: 0, mitjana: null, maxim: 0 };
+
+    var suma = 0, compte = 0, maxim = 0, d = inici, guarda = 0;
+    while (d <= fins && guarda++ < 400) {
+      var v = Number(regs[d]) || 0;
+      suma += v; compte++;
+      if (v > maxim) maxim = v;
+      d = Utils.sumaDies(d, 1);
+    }
+    return { suma: suma, dies: compte, mitjana: compte ? suma / compte : null, maxim: maxim };
+  }
+
+  /**
+   * El que sí que vol dir alguna cosa en un comptador: quant en portes avui,
+   * per on et mous, i si això puja o baixa. Res de ratxes ni percentatges.
+   */
+  function estadistiquesComptador_(h, regs, avui) {
+    var ara = finestra_(h, regs, avui, 7);
+    var abans = finestra_(h, regs, Utils.sumaDies(avui, -7), 7);
+    var mes = finestra_(h, regs, avui, 30);
+
+    var canvi = null;
+    if (ara.mitjana !== null && abans.mitjana !== null && abans.dies >= 3) {
+      canvi = Math.round((ara.mitjana - abans.mitjana) * 10) / 10;
+    }
+
+    return {
+      esComptador: true,
+      unitatRatxa: 'dies',
+      ratxa: 0, ratxaMax: 0, pct30: null, pct7: null,
+      avui: Number(regs[avui]) || 0,
+      mitjana7: ara.mitjana === null ? null : Math.round(ara.mitjana * 10) / 10,
+      mitjana7Previa: abans.mitjana === null ? null : Math.round(abans.mitjana * 10) / 10,
+      canvi7: canvi,                       // positiu = n'has fet més que la setmana passada
+      total7: ara.suma,
+      total30: mes.suma,
+      maxim30: mes.maxim,
+      diesRegistrats: mes.dies
+    };
+  }
+
   function estadistiques_(h, regs, avui) {
     regs = regs || {};
+    if (esComptador_(h)) return estadistiquesComptador_(h, regs, avui);
     var perSetmanes = (h.frequencia === 'x_per_setmana');
     var e = {
       unitatRatxa: perSetmanes ? 'setmanes' : 'dies',
@@ -329,7 +436,12 @@ var Habits = (function () {
         pct30: est.pct30,
         pct7: est.pct7,
         aquestaSetmana: est.aquestaSetmana,
-        objectiuSetmanal: est.objectiuSetmanal
+        objectiuSetmanal: est.objectiuSetmanal,
+        // Només els comptadors: la resta són `undefined` i no viatgen.
+        esComptador: est.esComptador,
+        mitjana7: est.mitjana7,
+        canvi7: est.canvi7,
+        total30: est.total30
       };
     });
 
@@ -360,8 +472,12 @@ var Habits = (function () {
       var nou;
 
       if (valor === null || valor === undefined) {
-        var eraComplert = actual && complert_(h, actual.valor);
-        nou = eraComplert ? 0 : objectiu_(h);
+        if (esComptador_(h)) {
+          nou = (Number(actual && actual.valor) || 0) + 1;   // no alterna: suma
+        } else {
+          var eraComplert = actual && complert_(h, actual.valor);
+          nou = eraComplert ? 0 : objectiu_(h);
+        }
       } else {
         nou = Math.max(0, Number(valor) || 0);
       }
@@ -391,7 +507,13 @@ var Habits = (function () {
     var calendari = Utils.rangDates(desde, fins);
     var idx = indexRegistres_();
 
-    var files = definicions().map(function (h) {
+    /* Els comptadors no hi surten. Aquesta graella és de compliment —fet o no
+       fet— i un comptador no es compleix. Pintar-hi els cigarros de verd els
+       dies que en fumes molts seria llegir-ho just al revés. L'evolució d'un
+       comptador va a la seva fitxa, que és on té sentit. */
+    var files = definicions().filter(function (h) {
+      return h.tipus !== 'comptador';
+    }).map(function (h) {
       var regs = idx[h.id] || {};
       var creacio = dataCreacio_(h);
       var celles = calendari.map(function (d) {
@@ -464,7 +586,23 @@ var Habits = (function () {
     if (esNou && !nom) throw new Error('L\'hàbit necessita un nom.');
 
     var tipus = p.tipus || 'si_no';
-    if (['si_no', 'quantitat'].indexOf(tipus) === -1) throw new Error('Tipus desconegut: ' + tipus);
+    if (['si_no', 'quantitat', 'comptador'].indexOf(tipus) === -1) {
+      throw new Error('Tipus desconegut: ' + tipus);
+    }
+
+    /* Un comptador no té ni objectiu ni dies: es compta cada dia i prou.
+       S'imposa aquí i no al formulari perquè també hi arriba des de la
+       conversa i des d'una importació. */
+    if (tipus === 'comptador') {
+      p.tipus = 'comptador';
+      p.nom = nom;
+      p.frequencia = 'diaria';
+      p.dies_setmana = '';
+      p.objectiu_setmanal = '';
+      p.objectiu = 0;
+      p.unitat = String(p.unitat || '').trim();
+      return p;
+    }
 
     var freq = p.frequencia || 'diaria';
     if (['diaria', 'dies_setmana', 'x_per_setmana'].indexOf(freq) === -1) {
@@ -566,9 +704,41 @@ var Habits = (function () {
 
     var h = candidats[0];
     var data = Utils.esDataValida(a.data) ? a.data : Utils.avui();
-    var valor = (a.fet === false) ? 0 : objectiu_(h);
-    marca(h.id, data, valor);
-    return { fet: true, habit: h.nom, data: data, valor: valor };
+
+    var valor;
+    if (a.quantitat !== undefined && a.quantitat !== null && isFinite(Number(a.quantitat))) {
+      valor = Math.max(0, Number(a.quantitat));
+    } else if (esComptador_(h)) {
+      valor = null;                       // sense xifra, un comptador suma un
+    } else {
+      valor = (a.fet === false) ? 0 : objectiu_(h);
+    }
+
+    var d = marca(h.id, data, valor);
+    var resultat = d.habits.filter(function (x) { return x.id === h.id; })[0] || {};
+
+    if (esComptador_(h)) {
+      return { habit: h.nom, data: data, ara: resultat.valor,
+               mitjana7: resultat.mitjana7, unitat: h.unitat || '' };
+    }
+    return { fet: true, habit: h.nom, data: data, valor: resultat.valor, ratxa: resultat.ratxa };
+  }
+
+  /** Ve d'una proposta confirmada. Crear un hàbit parlant. */
+  function creaPerNom(a) {
+    var nou = crea({
+      nom: a.nom,
+      tipus: a.tipus || 'si_no',
+      objectiu: a.objectiu,
+      unitat: a.unitat,
+      frequencia: 'diaria'
+    });
+    return {
+      creat: true, nom: nou.nom, tipus: nou.tipus,
+      com: nou.tipus === 'comptador' ? 'cada toc en suma un, sense objectiu ni ratxa'
+         : nou.tipus === 'quantitat' ? 'cada toc en suma un fins a ' + nou.objectiu
+         : 'un toc el marca fet'
+    };
   }
 
   // ---------------------------------------------------------------- eina d'IA
@@ -644,6 +814,7 @@ var Habits = (function () {
     crea: crea,
     edita: edita,
     registraPerNom: registraPerNom,
+    creaPerNom: creaPerNom,
     arxiva: arxiva,
     reactiva: reactiva,
     consultaIA: consultaIA

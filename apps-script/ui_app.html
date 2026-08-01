@@ -48,7 +48,13 @@ var Jefe = (function () {
       var d = fmt.aData(t);
       return DIES_C[d.getDay()] + ' ' + d.getDate() + ' ' + MESOS[d.getMonth()].slice(0, 3) + '.';
     },
-    diaNumero: function (t) { return fmt.aData(t).getDate(); }
+    diaNumero: function (t) { return fmt.aData(t).getDate(); },
+
+    /* Amb coma i sense decimals inútils: «5,3» i «4», no «5.3» i «4.0». */
+    decimal: function (n) {
+      var v = Math.round((Number(n) || 0) * 10) / 10;
+      return (v % 1 === 0 ? String(v) : v.toFixed(1)).replace('.', ',');
+    }
   };
 
   // ------------------------------------------------------------ memòria cau

@@ -72,7 +72,14 @@ App.registraVista('habits', {
       lligaAvui();
     }
 
+    /* UN TOC SUMA UN. Sempre, sigui quin sigui l'hàbit.
+       Abans, un hàbit de dos cops al dia s'havia de marcar entrant a la fitxa,
+       pujant el comptador i tornant a sortir per deixar-lo complert. Ara el
+       toc va fent 0 → 1 → 2 → fet, i el següent torna a zero per desfer-ho.
+       Amb un hàbit de fet-o-no-fet això és exactament el que ja feia. */
     function franja(h) {
+      if (h.esComptador) return franjaComptador(h);
+
       var estat = !h.existiaEncara ? 'notoca'
                 : h.complert ? 'fet'
                 : !h.exigit ? 'notoca'
@@ -85,8 +92,8 @@ App.registraVista('habits', {
       if (h.frequencia === 'x_per_setmana') sota.push(h.aquestaSetmana + ' de ' + h.objectiuSetmanal + ' aquesta setmana');
       if (h.pct30 !== null && h.pct30 !== undefined) sota.push(h.pct30 + '% en 30 dies');
 
-      return '<div class="franja-fila">' +
-        '<button class="franja" data-marca="' + esc(h.id) + '" data-estat="' + estat + '"' +
+      return '<div class="franja-fila" data-h="' + esc(h.id) + '">' +
+        '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="' + estat + '"' +
           ' aria-pressed="' + (h.complert ? 'true' : 'false') + '">' +
           Relleu.franja(h.pct30, Relleu.llavor(h.id)) +
           '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
@@ -100,6 +107,47 @@ App.registraVista('habits', {
             (h.complert ? '<svg class="punxo" aria-hidden="true"><use href="#ic-punxo"/></svg>' : '') +
           '</span>' +
         '</button>' +
+        '<button class="franja-detall" data-detall="' + esc(h.id) + '"' +
+          ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('llegenda') + '</button>' +
+      '</div>';
+    }
+
+    /**
+     * UN COMPTADOR NO ES JUTJA: ES COMPTA.
+     *
+     * Ni ratxa, ni percentatge, ni el punxó de fet. La xifra del dia és el que
+     * mana i ocupa el lloc que als altres hi va la cota. A sota, l'única cosa
+     * que serveix per veure cap on vas: per on et mous i si això puja o baixa.
+     *
+     * Porta un botó de restar perquè és l'únic que no es pot desfer sol: si en
+     * un hàbit normal et passes de tocs, el següent torna a zero; aquí no es
+     * pot «tornar a zero» sense perdre el compte del dia.
+     */
+    function franjaComptador(h) {
+      var n = h.valor || 0;
+      var sota = [];
+      if (h.mitjana7 !== null && h.mitjana7 !== undefined) {
+        sota.push('mitjana ' + fmt.decimal(h.mitjana7) + (h.unitat ? ' ' + h.unitat : '') + ' al dia');
+      }
+      if (h.canvi7 !== null && h.canvi7 !== undefined && h.canvi7 !== 0) {
+        sota.push(fmt.decimal(Math.abs(h.canvi7)) +
+                  (h.canvi7 < 0 ? ' menys' : ' més') + ' que la setmana abans');
+      }
+
+      return '<div class="franja-fila" data-h="' + esc(h.id) + '" data-comptador="1">' +
+        '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="compta"' +
+          ' aria-label="Suma un a ' + esc(h.nom) + '">' +
+          '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
+          '<span>' +
+            '<span class="franja-nom">' + esc(h.nom) + '</span>' +
+            (sota.length ? '<span class="franja-sota">' + esc(sota.join(' · ')) + '</span>' : '') +
+          '</span>' +
+          '<span class="compt-xifra"><span class="n">' + n + '</span>' +
+            (h.unitat ? '<span class="u">' + esc(h.unitat) + '</span>' : '') + '</span>' +
+        '</button>' +
+        '<button class="franja-menys" data-resta="' + esc(h.id) + '"' +
+          (n > 0 ? '' : ' disabled') + ' aria-label="Treu-ne un de ' + esc(h.nom) + '">' +
+          ic('menys') + '</button>' +
         '<button class="franja-detall" data-detall="' + esc(h.id) + '"' +
           ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('llegenda') + '</button>' +
       '</div>';
@@ -229,45 +277,128 @@ App.registraVista('habits', {
     }
 
     function lligaAvui() {
-      arrel.querySelectorAll('[data-marca]').forEach(function (b) {
-        b.addEventListener('click', function () { alterna(b.dataset.marca, b); });
-      });
-      arrel.querySelectorAll('[data-detall]').forEach(function (b) {
-        b.addEventListener('click', function () { obreDetall(b.dataset.detall); });
-      });
+      arrel.querySelectorAll('.franja-fila').forEach(lligaFranja);
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { formulari(null); });
       });
     }
 
-    /** Escriptura optimista: es pinta a l'instant i es desa en segon pla. */
-    function alterna(id, boto) {
-      var h = null;
-      for (var i = 0; i < dades.habits.length; i++) if (dades.habits[i].id === id) h = dades.habits[i];
+    /* Per franja i no per pàgina: quan se'n repinta una de sola, se li lliguen
+       els botons a ella i prou. Passar-hi per sobre a totes hi afegiria un
+       segon oient a les que ja en tenien, i llavors un toc en valdria dos. */
+    function lligaFranja(fila) {
+      var s = fila.querySelector('[data-suma]');
+      if (s) s.addEventListener('click', function () { toca(s.dataset.suma, 1); });
+      var r = fila.querySelector('[data-resta]');
+      if (r) r.addEventListener('click', function () { toca(r.dataset.resta, -1); });
+      var d = fila.querySelector('[data-detall]');
+      if (d) d.addEventListener('click', function () { obreDetall(d.dataset.detall); });
+    }
+
+    /* ------------------------------------------------------------------------
+       TOCAR-NE DOS DE SEGUITS NO HA DE FER BALLAR RES
+
+       Abans, cada resposta del servidor repintava la pantalla sencera. Si en
+       tocaves un i, mentre allò tornava, en tocaves un altre, la resposta del
+       primer arribava amb una foto del dia on el segon encara no hi era: te'l
+       esborrava de la vista, i quan tornava el seu es tornava a pintar. D'aquí
+       que «es bugueja fort, però acaba quedant bé».
+
+       Ara passen dues coses. Una: el toc només repinta la seva pròpia franja,
+       no la pàgina. I dues: la pantalla NO es refà fins que no queda cap toc
+       per enviar ni cap resposta per arribar.
+
+       A més, el desat espera sis dècimes. Encendre'n tres de seguits són tres
+       tocs i UNA escriptura, no tres peticions creuant-se pel camí.
+       ------------------------------------------------------------------------ */
+
+    var espera = {};   // id -> temporitzador del desat que encara no ha sortit
+    var enVol = 0;     // peticions enviades i sense resposta
+
+    function habitPerId(id) {
+      if (!dades) return null;
+      for (var i = 0; i < dades.habits.length; i++) {
+        if (dades.habits[i].id === id) return dades.habits[i];
+      }
+      return null;
+    }
+
+    /**
+     * On va el comptador amb un toc més.
+     * En un hàbit normal, arribat a l'objectiu el següent torna a zero: així
+     * el mateix botó serveix per desfer-ho sense haver d'entrar enlloc.
+     * Un comptador no dona la volta —no pots «desfumar»— i per això té resta.
+     */
+    function seguent(h, delta) {
+      var v = Number(h.valor) || 0;
+      if (delta < 0) return Math.max(0, v - 1);
+      if (h.esComptador) return v + 1;
+      var nou = v + 1;
+      return nou > h.objectiu ? 0 : nou;
+    }
+
+    function toca(id, delta) {
+      var h = habitPerId(id);
       if (!h) return;
 
-      var nouValor = h.complert ? 0 : h.objectiu;
-      h.valor = nouValor; h.registrat = true; h.complert = nouValor >= h.objectiu;
+      var nou = seguent(h, delta);
+      if (nou === (Number(h.valor) || 0) && h.registrat) return;
 
-      boto.dataset.estat = h.complert ? 'fet' : 'nofet';
-      boto.setAttribute('aria-pressed', h.complert ? 'true' : 'false');
-      boto.dataset.pendent = '1';
-      if (navigator.vibrate) { try { navigator.vibrate(h.complert ? 14 : 6); } catch (e) {} }
-
+      h.valor = nou;
+      h.registrat = true;
+      h.complert = h.esComptador ? false : nou >= h.objectiu;
       Cau.set('habits.' + data, dades);
-      var clau = 'marca:' + id + ':' + data;
-      Cua.afegeix('habits', 'marca', { id: id, data: data, valor: nouValor }, clau);
+      repintaFranja(h);
+      if (navigator.vibrate) {
+        try { navigator.vibrate(h.complert ? 14 : 6); } catch (e) {}
+      }
 
-      crida('habits', 'marca', { id: id, data: data, valor: nouValor })
+      // La cua és la xarxa de seguretat: si no hi ha connexió, això s'envia sol.
+      Cua.afegeix('habits', 'marca', { id: id, data: data, valor: nou }, 'marca:' + id + ':' + data);
+
+      if (espera[id]) clearTimeout(espera[id]);
+      espera[id] = setTimeout(function () { desaMarca(id, nou); }, 600);
+    }
+
+    function desaMarca(id, valor) {
+      delete espera[id];
+      var clau = 'marca:' + id + ':' + data;
+      enVol++;
+
+      crida('habits', 'marca', { id: id, data: data, valor: valor })
         .then(function (d) {
+          enVol--;
           treuDeLaCua(clau);
-          Cau.set('habits.' + data, d);
-          pinta(d, false);
-          carregaMes();
+          posaAlDia(d);
         })
         .catch(function (err) {
+          enVol--;
           if (err.api) { treuDeLaCua(clau); App.brindis(err.message, 'error'); carrega(); }
         });
+    }
+
+    /** Refer la pantalla només quan ja no queda res en marxa. */
+    function posaAlDia(d) {
+      if (enVol || Object.keys(espera).length) return;
+      if (!arrel.isConnected) return;
+      dades = d;
+      Cau.set('habits.' + data, d);
+      /* Amb un tauler obert no es toca res: el que es veu a la franja ja és
+         el bo, i la ratxa es posarà al dia la pròxima vegada que carregui. */
+      if (App.interactuant()) return;
+      pinta(d, false);
+      carregaMes();
+    }
+
+    /** Repintar UNA franja, no la pàgina. */
+    function repintaFranja(h) {
+      var fila = arrel.querySelector('.franja-fila[data-h="' + h.id + '"]');
+      if (!fila || !fila.parentNode) return;
+      var caixa = document.createElement('div');
+      caixa.innerHTML = franja(h);
+      var nova = caixa.firstElementChild;
+      fila.parentNode.replaceChild(nova, fila);
+      lligaFranja(nova);
     }
 
     function marcaDia(id, dia) {
@@ -290,19 +421,36 @@ App.registraVista('habits', {
         var e = d.estadistiques, h = d.habit;
         var unitat = e.unitatRatxa === 'setmanes' ? 'setmanes' : 'dies';
 
+        var esCompt = h.tipus === 'comptador';
+
         var html =
           '<div style="display:flex;align-items:center;gap:var(--e3);margin-bottom:var(--e4)">' +
             '<svg class="ic ic-g" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
             '<h2 style="font-size:1.375rem">' + esc(h.nom) + '</h2>' +
           '</div>' +
-          '<div class="tira" style="margin-bottom:var(--e4)">' +
-            xifra(e.pct30 === null ? '—' : e.pct30 + '%', 'compliment 30 d') +
-            xifra(e.pct7 === null ? '—' : e.pct7 + '%', 'compliment 7 d') +
-            xifra(e.ratxa, 'ratxa · ' + unitat) +
-            xifra(e.ratxaMax, 'màxima') +
-          '</div>';
+          (esCompt
+            /* Les xifres d'un comptador són unes altres. Un «40% de compliment»
+               als cigarros no vol dir absolutament res. */
+            ? '<div class="tira" style="margin-bottom:var(--e4)">' +
+                xifra(e.avui, 'avui') +
+                xifra(e.mitjana7 === null ? '—' : fmt.decimal(e.mitjana7), 'al dia · 7 d') +
+                xifra(e.total30, 'en 30 dies') +
+                xifra(e.maxim30, 'el pitjor dia') +
+              '</div>' +
+              (e.canvi7 === null || e.canvi7 === 0 ? ''
+                : '<p class="menut" style="margin:calc(var(--e4) * -1) 0 var(--e4)">' +
+                  esc(fmt.decimal(Math.abs(e.canvi7)) + ' al dia ' +
+                      (e.canvi7 < 0 ? 'menys' : 'més') + ' que la setmana anterior' +
+                      (e.mitjana7Previa === null ? '' :
+                        ' (abans ' + fmt.decimal(e.mitjana7Previa) + ')')) + '</p>')
+            : '<div class="tira" style="margin-bottom:var(--e4)">' +
+                xifra(e.pct30 === null ? '—' : e.pct30 + '%', 'compliment 30 d') +
+                xifra(e.pct7 === null ? '—' : e.pct7 + '%', 'compliment 7 d') +
+                xifra(e.ratxa, 'ratxa · ' + unitat) +
+                xifra(e.ratxaMax, 'màxima') +
+              '</div>');
 
-        if (h.tipus === 'quantitat') {
+        if (h.tipus === 'quantitat' || esCompt) {
           html += '<div class="camp"><span class="marge">Valor exacte per a ' +
               esc(fmt.relativa(data).toLowerCase()) + '</span>' +
             '<div class="passos">' +
@@ -316,6 +464,28 @@ App.registraVista('habits', {
           '</div>';
         }
 
+        if (esCompt) {
+          /* Un comptador no té dies «fets» i «no fets»: té dies amb més i dies
+             amb menys. Una graella de caselles totes iguals no diria res; una
+             barra per dia sí que ensenya cap on va, que és per al que el vols. */
+          var sostre = 1;
+          d.calendari.forEach(function (c) {
+            var v = Number(c.valor) || 0;
+            if (v > sostre) sostre = v;
+          });
+          html += '<p class="marge" style="margin-bottom:var(--e2)">Últims 35 dies</p>' +
+            '<div class="barres" role="img" aria-label="' +
+              esc('Evolució dels últims 35 dies. Màxim ' + sostre + ' en un dia.') + '">' +
+              d.calendari.map(function (c) {
+                var v = Number(c.valor) || 0;
+                return '<span class="barra"' + (c.data === fmt.avui() ? ' data-avui="1"' : '') +
+                       ' title="' + esc(fmt.llarga(c.data) + ': ' + v) + '">' +
+                       '<i style="height:' + Math.round((v / sostre) * 100) + '%"></i></span>';
+              }).join('') +
+            '</div>' +
+            '<p class="menut">Una barra per dia. La més alta són ' + sostre +
+              (h.unitat ? ' ' + esc(h.unitat) : '') + '.</p>';
+        } else {
         html += '<p class="marge" style="margin-bottom:var(--e2)">Últims 35 dies · toca un dia per registrar-lo</p>' +
           '<div class="calendari">' +
           d.calendari.map(function (c) {
@@ -324,7 +494,10 @@ App.registraVista('habits', {
             return '<button data-e="' + est + '"' + (c.data === fmt.avui() ? ' data-avui="1"' : '') +
                    ' data-dia-cal="' + esc(c.data) + '" aria-label="' + esc(fmt.llarga(c.data)) + '">' +
                    fmt.diaNumero(c.data) + '</button>';
-          }).join('') + '</div>' +
+          }).join('') + '</div>';
+        }
+
+        html +=
 
           '<div style="display:flex;gap:var(--e2);margin-top:var(--e4)">' +
             '<button class="btn btn-secundari" style="flex:1" data-edita="1">' + ic('llapis') + 'Edita</button>' +
@@ -356,8 +529,7 @@ App.registraVista('habits', {
           cos.querySelector('[data-desa-valor]').addEventListener('click', function (ev) {
             ev.currentTarget.dataset.carregant = '1';
             crida('habits', 'marca', { id: id, data: data, valor: Number(camp.value) || 0 })
-              .then(function (dd) { App.tancaModal(); Cau.set('habits.' + data, dd);
-                                    pinta(dd, false); carregaMes(); App.brindis('Desat'); })
+              .then(function (dd) { App.tancaModal(); posaAlDia(dd); App.brindis('Desat'); })
               .catch(function (err) { App.brindis(err.message, 'error'); });
           });
         }
@@ -394,36 +566,50 @@ App.registraVista('habits', {
           'placeholder="Córrer, llegir, trucar a la mare…" autocomplete="off"></label>' +
         '<div class="camp"><span class="marge">Com el mesures</span><div class="opcions" id="f-tipus">' +
           opcio('si_no', 'Fet o no fet', (h ? h.tipus : 'si_no') === 'si_no') +
-          opcio('quantitat', 'Una quantitat', (h && h.tipus) === 'quantitat') +
-        '</div></div>' +
-        '<div id="f-quantitat" class="camp"' + ((h && h.tipus === 'quantitat') ? '' : ' hidden') + '>' +
-          '<span class="marge">Objectiu diari</span>' +
-          '<div style="display:flex;gap:var(--e2)">' +
-            '<input class="entrada" id="f-objectiu" type="number" min="1" inputmode="numeric" style="flex:1" ' +
-              'value="' + esc((h && h.objectiu) || 1) + '">' +
-            '<input class="entrada" id="f-unitat" style="flex:1" placeholder="km, min, pàg." ' +
-              'value="' + esc((h && h.unitat) || '') + '">' +
+          opcio('quantitat', 'Uns quants cops', (h && h.tipus) === 'quantitat') +
+          opcio('comptador', 'Només comptar', (h && h.tipus) === 'comptador') +
+        '</div>' +
+        '<p class="menut" id="f-explica">' + esc(explicaTipus((h && h.tipus) || 'si_no')) + '</p></div>' +
+
+        '<div id="f-objectiu-camp" class="camp"' + ((h && h.tipus === 'quantitat') ? '' : ' hidden') + '>' +
+          '<span class="marge">Quants cops al dia</span>' +
+          '<input class="entrada" id="f-objectiu" type="number" min="1" inputmode="numeric" ' +
+            'value="' + esc((h && h.objectiu) || 1) + '"></div>' +
+
+        '<div id="f-unitat-camp" class="camp"' +
+          ((h && (h.tipus === 'quantitat' || h.tipus === 'comptador')) ? '' : ' hidden') + '>' +
+          '<span class="marge">Què compta</span>' +
+          '<input class="entrada" id="f-unitat" placeholder="cigarros, km, min, pàg." ' +
+            'value="' + esc((h && h.unitat) || '') + '"></div>' +
+
+        '<div id="f-quan"' + ((h && h.tipus === 'comptador') ? ' hidden' : '') + '>' +
+          '<div class="camp"><span class="marge">Quan toca</span><div class="opcions" id="f-freq">' +
+            opcio('diaria', 'Cada dia', (h ? h.frequencia : 'diaria') === 'diaria') +
+            opcio('dies_setmana', 'Dies concrets', (h && h.frequencia) === 'dies_setmana') +
+            opcio('x_per_setmana', 'Cops per setmana', (h && h.frequencia) === 'x_per_setmana') +
           '</div></div>' +
-        '<div class="camp"><span class="marge">Quan toca</span><div class="opcions" id="f-freq">' +
-          opcio('diaria', 'Cada dia', (h ? h.frequencia : 'diaria') === 'diaria') +
-          opcio('dies_setmana', 'Dies concrets', (h && h.frequencia) === 'dies_setmana') +
-          opcio('x_per_setmana', 'Cops per setmana', (h && h.frequencia) === 'x_per_setmana') +
-        '</div></div>' +
-        '<div id="f-dies" class="camp"' + ((h && h.frequencia === 'dies_setmana') ? '' : ' hidden') + '>' +
-          '<span class="marge">Quins dies</span><div class="opcions" id="f-dies-opcions">' +
-          ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'].map(function (n, i) {
-            return opcio(String(i + 1), n, dies.indexOf(String(i + 1)) !== -1);
-          }).join('') + '</div></div>' +
-        '<div id="f-setmanal" class="camp"' + ((h && h.frequencia === 'x_per_setmana') ? '' : ' hidden') + '>' +
-          '<span class="marge">Quants cops per setmana</span>' +
-          '<input class="entrada" id="f-objectiu-setmanal" type="number" min="1" max="7" inputmode="numeric" ' +
-            'value="' + esc((h && h.objectiu_setmanal) || 3) + '"></div>' +
+          '<div id="f-dies" class="camp"' + ((h && h.frequencia === 'dies_setmana') ? '' : ' hidden') + '>' +
+            '<span class="marge">Quins dies</span><div class="opcions" id="f-dies-opcions">' +
+            ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'].map(function (n, i) {
+              return opcio(String(i + 1), n, dies.indexOf(String(i + 1)) !== -1);
+            }).join('') + '</div></div>' +
+          '<div id="f-setmanal" class="camp"' + ((h && h.frequencia === 'x_per_setmana') ? '' : ' hidden') + '>' +
+            '<span class="marge">Quants cops per setmana</span>' +
+            '<input class="entrada" id="f-objectiu-setmanal" type="number" min="1" max="7" inputmode="numeric" ' +
+              'value="' + esc((h && h.objectiu_setmanal) || 3) + '"></div>' +
+        '</div>' +
+
         '<button class="btn btn-primari btn-ple" data-desa="1">' +
           (esNou ? 'Crea l\'hàbit' : 'Desa els canvis') + '</button>';
 
       var cos = App.modal(esNou ? 'Nou hàbit' : 'Edita l\'hàbit', html);
 
-      grupExclusiu(cos, '#f-tipus', function (v) { cos.querySelector('#f-quantitat').hidden = (v !== 'quantitat'); });
+      grupExclusiu(cos, '#f-tipus', function (v) {
+        cos.querySelector('#f-objectiu-camp').hidden = (v !== 'quantitat');
+        cos.querySelector('#f-unitat-camp').hidden = (v !== 'quantitat' && v !== 'comptador');
+        cos.querySelector('#f-quan').hidden = (v === 'comptador');
+        cos.querySelector('#f-explica').textContent = explicaTipus(v);
+      });
       grupExclusiu(cos, '#f-freq', function (v) {
         cos.querySelector('#f-dies').hidden = (v !== 'dies_setmana');
         cos.querySelector('#f-setmanal').hidden = (v !== 'x_per_setmana');
@@ -474,6 +660,16 @@ App.registraVista('habits', {
       }, 220);
     }
 
+    /* Dir-ho amb un exemple i no amb una definició: la diferència entre
+       «quantitat» i «comptador» és què vols que et digui després, i això no
+       s'endevina del nom. */
+    function explicaTipus(v) {
+      if (v === 'quantitat') return 'Un toc en suma un. En arribar al nombre, queda fet.';
+      if (v === 'comptador') return 'Un toc en suma un, sense objectiu ni ratxa. ' +
+                                   'Per veure quant en fas i cap on va.';
+      return 'Un toc el marca fet. Un altre el desmarca.';
+    }
+
     function opcio(valor, text, actiu) {
       return '<button type="button" class="opcio" data-valor="' + esc(valor) + '" aria-pressed="' +
              (actiu ? 'true' : 'false') + '">' + esc(text) + '</button>';
@@ -496,7 +692,14 @@ App.registraVista('habits', {
 
     function carrega() {
       crida('habits', 'dia', { data: data })
-        .then(function (d) { Cau.set('habits.' + data, d); pinta(d, false); })
+        .then(function (d) {
+          /* Si mentre això arribava has tocat res, el que mana és el que has
+             tocat: aquesta foto ja és vella. Es descarta i prou. */
+          if (enVol || Object.keys(espera).length) return;
+          Cau.set('habits.' + data, d);
+          if (App.interactuant()) { dades = d; return; }
+          pinta(d, false);
+        })
         .catch(function (err) {
           if (dades) { App.brindis('Sense connexió', 'error'); return; }
           arrel.innerHTML = Comp.error(err, true);

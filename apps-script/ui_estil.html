@@ -260,6 +260,41 @@ h2 { font-size: 1.0625rem; }
 }
 .franja-detall:active { background: var(--utm-suau); }
 
+/* -------------------------------------------------------------------------
+   COMPTADORS — els que només compten (els cigarros del dia)
+
+   No porten corbes de nivell ni es pinten de fet: aquí no hi ha res assolit.
+   Un fons pla i la xifra grossa, que és tota la informació que hi ha.
+   ------------------------------------------------------------------------- */
+.franja[data-estat="compta"] { background: var(--paper); }
+
+.compt-xifra { display: flex; flex-direction: column; align-items: flex-end;
+               line-height: 1; min-width: 44px; }
+.compt-xifra .n { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.compt-xifra .u { font-size: .625rem; letter-spacing: .1em; text-transform: uppercase;
+                  color: var(--ink-suau); margin-top: 3px; }
+
+/* El botó de restar. Un comptador és l'únic que no es pot desfer sol —tornant
+   a tocar-lo en sumaria un altre—, i equivocar-se de toc passa. */
+.franja-menys {
+  flex: none; width: var(--toc);
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: var(--paper2); color: var(--ink-suau);
+}
+.franja-menys:active { background: var(--utm-suau); }
+.franja-menys[disabled] { opacity: .3; }
+
+/* Una barra per dia. Per a un comptador, la graella de caselles no diu res:
+   tots els dies serien iguals. L'altura sí que ensenya cap on va. */
+.barres { display: flex; align-items: flex-end; gap: 2px; height: 96px;
+          padding: var(--e2) 0; border-bottom: 1px solid var(--neatline);
+          margin-bottom: var(--e2); }
+.barres .barra { flex: 1; min-width: 0; height: 100%;
+                 display: flex; align-items: flex-end; }
+.barres .barra i { display: block; width: 100%; min-height: 2px;
+                   background: var(--ink-suau); }
+.barres .barra[data-avui="1"] i { background: var(--utm); }
+
 /* =========================================================================
    EL FULL DE MES — la vista d'escriptori, i la de mòbil en horitzontal
    Dies en columnes, hàbits en files, corbes de nivell calculades del
