@@ -443,3 +443,57 @@ function provaNotificacio() {
   afegeix('=== FI · mira\'t el mòbil ===');
   return linies.join('\n');
 }
+
+
+/**
+ * DIAGNÒSTIC DE NUTRICIÓ — per quan una ingesta és al full però no surt a l'app.
+ *
+ * Ensenya la data que fa servir el servidor, les últimes files tal com estan
+ * desades (amb el seu tipus real, que és on solen amagar-se aquestes coses)
+ * i què respon exactament l'acció que crida la pantalla.
+ */
+function diagnosticNutricio() {
+  var l = ['=== DIAGNÒSTIC DE NUTRICIÓ ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var avui = Utils.avui();
+  a('Avui, segons el servidor .... ' + avui + '   (zona ' + Session.getScriptTimeZone() + ')');
+
+  var files;
+  try {
+    files = Dades.llegeix('Ingestes');
+  } catch (err) {
+    a('FALLA: ' + err.message);
+    a('Executa configuraJefe() per crear els fulls que falten.');
+    return l.join('\n');
+  }
+
+  a('Files a Ingestes ............ ' + files.length);
+  a('');
+  a('Últimes files desades:');
+  files.slice(-6).forEach(function (f) {
+    a('  data=«' + f.data + '» (' + (typeof f.data) + ')' +
+      ' · apat=«' + f.apat + '»' +
+      ' · nom=«' + f.nom + '»' +
+      ' · grams=' + f.grams +
+      ' · kcal100=' + f.kcal100 +
+      (f.esborrat_el ? ' · TRET el ' + f.esborrat_el : ''));
+    a('    coincideix amb avui? ' + (String(f.data) === String(avui) ? 'SÍ' : 'NO'));
+  });
+
+  a('');
+  var d = Nutricio.dia(avui);
+  a('Nutricio.dia(' + avui + ') respon:');
+  d.apats.forEach(function (m) {
+    a('  ' + m.nom + ': ' + m.items.length + ' aliments · ' + Math.round(m.kcal) + ' kcal');
+  });
+  a('  Totals: ' + Math.round(d.totals.ingerides) + ' kcal · ' +
+    Nutricio.r1(d.totals.proteina) + ' g de proteïna');
+  a('  Cremades: ' + (d.teCremades ? Math.round(d.cremades) : 'sense introduir'));
+
+  a('');
+  a(d.totals.ingerides > 0
+    ? 'El servidor SÍ que retorna les dades: el problema és a la pantalla.'
+    : 'El servidor NO troba res per avui: mira les dates de les files de sobre.');
+  return l.join('\n');
+}
