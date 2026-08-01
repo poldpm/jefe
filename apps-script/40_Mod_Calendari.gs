@@ -1,0 +1,655 @@
+/**
+ * JEFE — MÒDUL · Calendari
+ *
+ * Cap línia del nucli s'ha tocat per afegir aquest fitxer.
+ *
+ * L'EXCEPCIÓ A «EL FULL DE CÀLCUL ÉS L'ÚNICA FONT DE VERITAT»
+ *
+ *   Els esdeveniments NO es copien al full. Es llegeixen de Google Calendar
+ *   cada cop que fan falta, i les altes i els canvis van directament allà.
+ *
+ *   És deliberat, i és l'única manera que no menteixi: el calendari el toques
+ *   des del mòbil, des de l'ordinador, i te l'omplen els altres amb
+ *   invitacions. Una còpia al full estaria desactualitzada la primera tarda,
+ *   i llavors tindries dues veritats que no coincideixen —que és pitjor que
+ *   no tenir-ne cap—. El full guarda el que és NOSTRE (què vols mirar i com);
+ *   els esdeveniments són de Google i allà es queden.
+ *
+ * QUÈ HI HA AL FULL, DONCS
+ *   Només la llista dels teus calendaris i quins vols veure. Res més.
+ *
+ * PERMISOS
+ *   Aquest mòdul fa que l'app demani accés al calendari. Cal tornar a
+ *   autoritzar-la una vegada. Vegeu `preparaCalendari()` a 90_Instalacio.gs.
+ */
+function MODUL_CALENDARI() {
+  return {
+    id: 'calendari',
+    nom: 'Calendari',
+    icona: 'calendari',
+    ordre: 5,                 // el primer: la pregunta del matí és «què tinc avui»
+    versioEsquema: 1,
+
+    fulls: [
+      {
+        nom: 'Calendaris',
+        columnes: [
+          { nom: 'id',              tipus: 'text' },   // l'id de Google
+          { nom: 'nom',             tipus: 'text' },
+          { nom: 'color',           tipus: 'text' },
+          { nom: 'mostra',          tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'principal',       tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'ordre',           tipus: 'num'  },
+          { nom: 'creat_el',        tipus: 'iso'  },
+          { nom: 'actualitzat_el',  tipus: 'iso'  }
+        ]
+      }
+    ],
+
+    accions: {
+      pantalla:   function (p) { return Calendari.pantalla(p); },
+      dia:        function (p) { return Calendari.dia(p.data); },
+      calendaris: function ()  { return Calendari.calendaris(); },
+      sincronitza:function ()  { return Calendari.sincronitzaCalendaris(); },
+      mostra:     function (p) { return Calendari.mostra(p.id, p.mostra); },
+      crea:       function (p) { return Calendari.crea(p); },
+      edita:      function (p) { return Calendari.edita(p); },
+      treu:       function (p) { return Calendari.treu(p.id, p.calendari); }
+    },
+
+    resumInici: function () {
+      var d = Calendari.dia(Utils.avui());
+      var queden = d.esdeveniments.filter(function (e) { return !e.passat; });
+      return {
+        etiqueta: queden.length ? 'El següent' : 'Res al calendari',
+        valor: queden.length ? (queden[0].totElDia ? queden[0].titol : queden[0].hora) : '—',
+        urgent: false,
+        accio: 'calendari'
+      };
+    },
+
+    contextIA: function () {
+      var avui = Utils.avui();
+      var l = [];
+
+      var d = Calendari.dia(avui);
+      l.push(d.esdeveniments.length
+        ? 'Calendari d\'avui:\n' + d.esdeveniments.map(function (e) {
+            return '- ' + (e.totElDia ? 'tot el dia' : e.hora + (e.horaFi ? '–' + e.horaFi : '')) +
+                   ' ' + e.titol + (e.lloc ? ' (' + e.lloc + ')' : '') +
+                   (e.passat ? ' [ja ha passat]' : '');
+          }).join('\n')
+        : 'Calendari: avui no hi ha res.');
+
+      var dema = Calendari.dia(Utils.sumaDies(avui, 1));
+      if (dema.esdeveniments.length) {
+        l.push('Demà: ' + dema.esdeveniments.map(function (e) {
+          return (e.totElDia ? '' : e.hora + ' ') + e.titol;
+        }).join('; '));
+      }
+      return l.join('\n');
+    },
+
+    resumPeriode: function (desde, fins) {
+      var r = Calendari.compta(desde, fins);
+      if (!r.quants) return null;
+      var linies = [r.quants + (r.quants === 1 ? ' cita' : ' cites')];
+      if (r.hores) linies.push(Math.round(r.hores * 10) / 10 + ' h ocupades');
+      if (r.diaPle) linies.push('El dia més ple: ' + r.diaPle.data + ', ' + r.diaPle.quants);
+      return { titol: 'Calendari', linies: linies };
+    },
+
+    einesIA: [{
+      nom: 'consulta_calendari',
+      descripcio: 'Què té en Pol al calendari en un dia o en un rang de dates. ' +
+                  'Serveix per respondre «què tinc demà», «quan tinc lliure aquesta setmana» ' +
+                  'o «a quina hora era allò del veterinari».',
+      esquema: {
+        type: 'object',
+        properties: {
+          data:  { type: 'string', description: 'Un dia concret AAAA-MM-DD' },
+          desde: { type: 'string', description: 'Data inicial AAAA-MM-DD' },
+          fins:  { type: 'string', description: 'Data final AAAA-MM-DD' },
+          conte: { type: 'string', description: 'Només els que continguin aquest text al títol' }
+        }
+      },
+      executa: function (a) { return Calendari.consultaIA(a); }
+    }, {
+      nom: 'apunta_al_calendari',
+      descripcio: 'Crea un esdeveniment al calendari. Cal el títol i el dia. Si no es diu ' +
+                  'cap hora, es fa de tot el dia. NO s\'executa directament: genera una ' +
+                  'proposta que en Pol ha de confirmar amb un botó.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          titol:   { type: 'string', description: 'Què és' },
+          data:    { type: 'string', description: 'Dia AAAA-MM-DD' },
+          hora:    { type: 'string', description: 'Hora d\'inici HH:MM. Si s\'omet, tot el dia.' },
+          durada:  { type: 'number', description: 'Minuts que dura. Si s\'omet, 60.' },
+          lloc:    { type: 'string', description: 'On és, si es diu' },
+          nota:    { type: 'string', description: 'Detalls, si n\'hi ha' }
+        },
+        required: ['titol', 'data']
+      },
+      etiqueta: function (a) {
+        return 'Apuntar al calendari «' + (a.titol || '?') + '» el ' + (a.data || '?') +
+               (a.hora ? ' a les ' + a.hora : ' (tot el dia)');
+      },
+      executa: function (a) { return Calendari.creaPerNom(a); }
+    }, {
+      nom: 'mou_del_calendari',
+      descripcio: 'Canvia el dia o l\'hora d\'un esdeveniment que ja existeix, o el treu. ' +
+                  'S\'identifica pel títol. NO s\'executa directament: genera una proposta.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          titol:  { type: 'string', description: 'Part del títol de l\'esdeveniment' },
+          data:   { type: 'string', description: 'On és ara, AAAA-MM-DD, si se sap' },
+          nova_data: { type: 'string', description: 'Dia nou AAAA-MM-DD' },
+          nova_hora: { type: 'string', description: 'Hora nova HH:MM' },
+          treu:   { type: 'boolean', description: 'true per treure\'l del calendari' }
+        },
+        required: ['titol']
+      },
+      etiqueta: function (a) {
+        if (a.treu) return 'TREURE del calendari «' + (a.titol || '?') + '»';
+        return 'Moure «' + (a.titol || '?') + '» a ' +
+               (a.nova_data || 'el mateix dia') + (a.nova_hora ? ' a les ' + a.nova_hora : '');
+      },
+      executa: function (a) { return Calendari.mouPerNom(a); }
+    }],
+
+    vista: 'vista_calendari'
+  };
+}
+
+
+var Calendari = (function () {
+
+  var CAU = 'cal_';           // prefix de la memòria cau dels mesos
+  var VIDA_CAU = 180;         // 3 minuts: prou per navegar, poc per mentir
+
+  // ------------------------------------------------------- els teus calendaris
+
+  /**
+   * Els calendaris que Google diu que tens, apuntats al full.
+   *
+   * S'ha de cridar a mà (hi ha un botó): demanar-los a Google cada cop que
+   * s'obre la pantalla serien dos segons regalats per una llista que canvia
+   * un cop l'any.
+   */
+  function sincronitzaCalendaris() {
+    var meus = CalendarApp.getAllCalendars();
+    var principal = null;
+    try { principal = CalendarApp.getDefaultCalendar().getId(); } catch (e) {}
+
+    var vistos = {};
+    var nous = 0, actualitzats = 0;
+
+    meus.forEach(function (c, i) {
+      var id = c.getId();
+      vistos[id] = true;
+      var existent = Dades.un('Calendaris', { id: id });
+
+      if (existent) {
+        Dades.actualitza('Calendaris', id, {
+          nom: c.getName(), color: c.getColor(),
+          principal: id === principal ? 'SI' : 'NO'
+        });
+        actualitzats++;
+      } else {
+        /* Un calendari nou entra ENSENYANT-SE si és el principal, i amagat si
+           no. Els que et comparteixen —festius, calendaris d'equips— són
+           molts i no els vols tots a sobre el primer dia. */
+        Dades.insereix('Calendaris', {
+          id: id, nom: c.getName(), color: c.getColor(),
+          mostra: id === principal ? 'SI' : 'NO',
+          principal: id === principal ? 'SI' : 'NO',
+          ordre: i + 1
+        });
+        nous++;
+      }
+    });
+
+    buidaCau();
+    Log.info('calendari.sincronitza', 'Calendaris llegits', { nous: nous, actualitzats: actualitzats });
+    return { nous: nous, actualitzats: actualitzats, total: meus.length };
+  }
+
+  function calendaris() {
+    var f = Dades.llegeix('Calendaris');
+    f.sort(function (a, b) {
+      var d = (String(b.principal).toUpperCase() === 'SI' ? 1 : 0) -
+              (String(a.principal).toUpperCase() === 'SI' ? 1 : 0);
+      return d !== 0 ? d : (Number(a.ordre) || 0) - (Number(b.ordre) || 0);
+    });
+    return f.map(function (x) {
+      return { id: x.id, nom: x.nom, color: x.color || '',
+               mostra: String(x.mostra).toUpperCase() === 'SI',
+               principal: String(x.principal).toUpperCase() === 'SI' };
+    });
+  }
+
+  function mostra(id, valor) {
+    var r = Dades.actualitza('Calendaris', id, { mostra: valor ? 'SI' : 'NO' });
+    if (!r) throw new Error('Aquest calendari no existeix.');
+    buidaCau();
+    return { id: id, mostra: !!valor };
+  }
+
+  /** Els que toca mirar. Si encara no s'han sincronitzat, el principal. */
+  function actius_() {
+    var l = calendaris().filter(function (c) { return c.mostra; });
+    if (l.length) return l;
+
+    try {
+      var p = CalendarApp.getDefaultCalendar();
+      return [{ id: p.getId(), nom: p.getName(), color: p.getColor(),
+                mostra: true, principal: true }];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // --------------------------------------------------------------- llegir
+
+  /* CacheService no sap llistar què hi ha desat, o sigui que no es poden
+     esborrar les claus dels mesos una per una. Es canvia el número de versió
+     que forma part de la clau: les velles queden orfes i moren soles quan se
+     'ls acabi el temps. */
+  function buidaCau() {
+    try { CacheService.getScriptCache().put(CAU + 'versio', String(Date.now()), 21600); } catch (e) {}
+  }
+
+  function versioCau_() {
+    try {
+      var c = CacheService.getScriptCache();
+      var v = c.get(CAU + 'versio');
+      if (!v) { v = String(Date.now()); c.put(CAU + 'versio', v, 21600); }
+      return v;
+    } catch (e) { return '0'; }
+  }
+
+  function hhmm_(data, tz) {
+    return Utilities.formatDate(data, tz, 'HH:mm');
+  }
+
+  /**
+   * Els esdeveniments d'un rang, de tots els calendaris que mires, ordenats.
+   *
+   * Cada calendari és una petició a Google, i per això el resultat es desa a
+   * la memòria cau tres minuts: navegar entre mesos endavant i enrere no ha
+   * de tornar a preguntar-ho tot cada cop.
+   */
+  function rang(desde, fins) {
+    var tz = Config.zonaHoraria();
+    var clau = CAU + versioCau_() + '_' + desde + '_' + fins;
+
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) {}
+    if (cau) {
+      var desat = cau.get(clau);
+      if (desat) { try { return JSON.parse(desat); } catch (e) {} }
+    }
+
+    var inici = Utils.aData(desde);
+    var final = Utils.aData(fins);
+    if (!inici || !final) throw new Error('Rang de dates no vàlid.');
+    inici.setHours(0, 0, 0, 0);
+    final.setHours(23, 59, 59, 999);
+
+    var ara = new Date();
+    var out = [];
+
+    actius_().forEach(function (c) {
+      var cal;
+      try { cal = CalendarApp.getCalendarById(c.id); } catch (e) { return; }
+      if (!cal) return;
+
+      var events;
+      try { events = cal.getEvents(inici, final); } catch (e) { return; }
+
+      events.forEach(function (e) {
+        var ini = e.getStartTime(), fi = e.getEndTime();
+        var totElDia = e.isAllDayEvent();
+        /* Un esdeveniment de tot el dia acaba a les 00:00 de l'endemà. Restar
+           un minut el deixa al dia que li toca; sense això, un dia de festa
+           surt marcat també al dia següent. */
+        var dataFi = Utilities.formatDate(new Date(fi.getTime() - (totElDia ? 60000 : 0)),
+                                          tz, 'yyyy-MM-dd');
+        out.push({
+          id: e.getId(),
+          calendari: c.id,
+          calendariNom: c.nom,
+          color: e.getColor() || c.color || '',
+          titol: e.getTitle() || '(sense títol)',
+          lloc: e.getLocation() || '',
+          nota: Utils.talla(e.getDescription() || '', 300),
+          data: Utilities.formatDate(ini, tz, 'yyyy-MM-dd'),
+          dataFi: dataFi,
+          totElDia: totElDia,
+          hora: totElDia ? '' : hhmm_(ini, tz),
+          horaFi: totElDia ? '' : hhmm_(fi, tz),
+          passat: fi < ara,
+          minuts: totElDia ? 0 : Math.round((fi - ini) / 60000)
+        });
+      });
+    });
+
+    out.sort(function (a, b) {
+      if (a.data !== b.data) return a.data.localeCompare(b.data);
+      if (a.totElDia !== b.totElDia) return a.totElDia ? -1 : 1;   // el de tot el dia, a dalt
+      return String(a.hora).localeCompare(String(b.hora));
+    });
+
+    if (cau) { try { cau.put(clau, JSON.stringify(out), VIDA_CAU); } catch (e) {} }
+    return out;
+  }
+
+  /** Un esdeveniment ocupa tots els dies que va de `data` a `dataFi`. */
+  function perDies_(events) {
+    var idx = {};
+    events.forEach(function (e) {
+      var d = e.data, guarda = 0;
+      while (d <= e.dataFi && guarda++ < 60) {
+        if (!idx[d]) idx[d] = [];
+        idx[d].push(e);
+        d = Utils.sumaDies(d, 1);
+      }
+    });
+    return idx;
+  }
+
+  function dia(data) {
+    data = Utils.esDataValida(data) ? data : Utils.avui();
+    var idx = perDies_(rang(data, data));
+    return { data: data, esAvui: data === Utils.avui(), esdeveniments: idx[data] || [] };
+  }
+
+  /**
+   * El mes sencer, en graella de setmanes de dilluns a diumenge.
+   *
+   * La graella arrenca el dilluns d'abans del dia 1 i acaba el diumenge de
+   * després de l'últim: així totes les files tenen set caselles i el mes no
+   * balla d'amplada segons en quin dia comenci.
+   */
+  function mes(quin, diaTriat) {
+    quin = /^\d{4}-\d{2}$/.test(String(quin || '')) ? quin : Utils.avui().slice(0, 7);
+    var avui = Utils.avui();
+
+    var primer = quin + '-01';
+    var ultim = Utils.aData(primer);
+    ultim.setMonth(ultim.getMonth() + 1);
+    ultim.setDate(0);
+    var ultimText = Utils.aText(ultim);
+
+    var inici = Utils.dillunsDe(primer);
+    var fiSetmana = Utils.dillunsDe(ultimText);
+    var fi = Utils.sumaDies(fiSetmana, 6);
+
+    var events = rang(inici, fi);
+    var idx = perDies_(events);
+
+    var caselles = Utils.rangDates(inici, fi).map(function (d) {
+      var seus = idx[d] || [];
+      return {
+        data: d,
+        dia: Number(d.slice(8, 10)),
+        delMes: d.slice(0, 7) === quin,
+        esAvui: d === avui,
+        quants: seus.length,
+        // Tres punts com a molt: a partir d'aquí la casella deixa de llegir-se.
+        mostra: seus.slice(0, 3).map(function (e) { return { color: e.color, totElDia: e.totElDia }; })
+      };
+    });
+
+    var triat = Utils.esDataValida(diaTriat) ? diaTriat
+              : (quin === avui.slice(0, 7) ? avui : primer);
+
+    return {
+      mes: quin, avui: avui, desde: inici, fins: fi,
+      caselles: caselles,
+      quants: events.filter(function (e) { return e.data.slice(0, 7) === quin; }).length,
+      diaTriat: triat,
+      esdeveniments: idx[triat] || [],
+      /* TOTS els del mes viatgen amb la pantalla. Ja els tenim llegits, i
+         enviar-los val bytes però no cap viatge; així, canviar de dia dins
+         del mes és instantani en comptes de segon i mig. */
+      tots: events
+    };
+  }
+
+  function pantalla(p) {
+    p = p || {};
+    return {
+      dades: mes(p.mes, p.data),
+      calendaris: calendaris()
+    };
+  }
+
+  function compta(desde, fins) {
+    var events = rang(desde, fins);
+    var hores = 0, perDia = {};
+    events.forEach(function (e) {
+      hores += (e.minuts || 0) / 60;
+      perDia[e.data] = (perDia[e.data] || 0) + 1;
+    });
+    var ple = null;
+    Object.keys(perDia).forEach(function (d) {
+      if (!ple || perDia[d] > ple.quants) ple = { data: d, quants: perDia[d] };
+    });
+    return { quants: events.length, hores: hores, diaPle: ple };
+  }
+
+  // ------------------------------------------------------------- escriure
+
+  function calendariPerEscriure_(id) {
+    if (id) {
+      var c = CalendarApp.getCalendarById(id);
+      if (c) return c;
+    }
+    var actius = actius_();
+    for (var i = 0; i < actius.length; i++) {
+      if (actius[i].principal) {
+        var p = CalendarApp.getCalendarById(actius[i].id);
+        if (p) return p;
+      }
+    }
+    return CalendarApp.getDefaultCalendar();
+  }
+
+  function quan_(data, hora) {
+    var d = Utils.aData(data);
+    if (!d) throw new Error('La data no és vàlida: «' + data + '».');
+    var p = String(hora || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!p) throw new Error('L\'hora ha de ser HH:MM.');
+    d.setHours(Number(p[1]), Number(p[2]), 0, 0);
+    return d;
+  }
+
+  function crea(p) {
+    var titol = String(p.titol || '').trim();
+    if (!titol) throw new Error('L\'esdeveniment necessita un títol.');
+    if (!Utils.esDataValida(p.data)) throw new Error('Falta el dia.');
+
+    var cal = calendariPerEscriure_(p.calendari);
+    var opcions = {};
+    if (p.lloc) opcions.location = String(p.lloc);
+    if (p.nota) opcions.description = String(p.nota);
+
+    var e;
+    if (!p.hora) {
+      e = cal.createAllDayEvent(titol, Utils.aData(p.data), opcions);
+    } else {
+      var ini = quan_(p.data, p.hora);
+      var minuts = Number(p.durada) > 0 ? Number(p.durada) : 60;
+      var fi = new Date(ini.getTime() + minuts * 60000);
+      e = cal.createEvent(titol, ini, fi, opcions);
+    }
+
+    buidaCau();
+    Log.info('calendari.crea', 'Esdeveniment creat', { titol: titol, data: p.data });
+    return { id: e.getId(), titol: titol, data: p.data,
+             hora: p.hora || '', calendari: cal.getName() };
+  }
+
+  function troba_(id, idCalendari) {
+    var cal = idCalendari ? CalendarApp.getCalendarById(idCalendari) : null;
+    var e = null;
+    if (cal) { try { e = cal.getEventById(id); } catch (err) {} }
+    if (!e) {
+      var llista = actius_();
+      for (var i = 0; i < llista.length && !e; i++) {
+        try { e = CalendarApp.getCalendarById(llista[i].id).getEventById(id); } catch (err) {}
+      }
+    }
+    if (!e) throw new Error('Aquest esdeveniment ja no hi és.');
+    return e;
+  }
+
+  function edita(p) {
+    var e = troba_(p.id, p.calendari);
+
+    if (p.titol !== undefined) e.setTitle(String(p.titol).trim() || e.getTitle());
+    if (p.lloc !== undefined) e.setLocation(String(p.lloc));
+    if (p.nota !== undefined) e.setDescription(String(p.nota));
+
+    if (p.data) {
+      if (p.hora) {
+        var ini = quan_(p.data, p.hora);
+        var minuts = Number(p.durada) > 0 ? Number(p.durada)
+                   : Math.max(15, Math.round((e.getEndTime() - e.getStartTime()) / 60000));
+        e.setTime(ini, new Date(ini.getTime() + minuts * 60000));
+      } else {
+        e.setAllDayDate(Utils.aData(p.data));
+      }
+    }
+
+    buidaCau();
+    Log.info('calendari.edita', 'Esdeveniment canviat', { id: p.id });
+    return { id: p.id, titol: e.getTitle() };
+  }
+
+  /**
+   * Treure'l del calendari. AQUÍ SÍ QUE S'ESBORRA DE DEBÒ, i és l'única cosa
+   * de tot JEFE que ho fa: Google Calendar no té «arxivat». Per això només hi
+   * arriba des d'un botó que ho diu, o des d'una proposta confirmada.
+   */
+  function treu(id, idCalendari) {
+    var e = troba_(id, idCalendari);
+    var titol = e.getTitle();
+    e.deleteEvent();
+    buidaCau();
+    Log.avis('calendari.treu', 'Esdeveniment esborrat del calendari', { titol: titol });
+    return { tret: true, titol: titol };
+  }
+
+  // -------------------------------------------------------------------- IA
+
+  function consultaIA(a) {
+    a = a || {};
+    var desde, fins;
+    if (Utils.esDataValida(a.data)) { desde = fins = a.data; }
+    else {
+      fins = Utils.esDataValida(a.fins) ? a.fins : Utils.sumaDies(Utils.avui(), 13);
+      desde = Utils.esDataValida(a.desde) ? a.desde : Utils.avui();
+    }
+    if (Utils.diesEntre(desde, fins) > 120) fins = Utils.sumaDies(desde, 120);
+
+    var events = rang(desde, fins);
+    var conte = String(a.conte || '').toLowerCase().trim();
+    if (conte) {
+      events = events.filter(function (e) { return e.titol.toLowerCase().indexOf(conte) !== -1; });
+    }
+
+    return {
+      files: events.length,                // el zero explícit: que no se n'inventi cap
+      rang: desde + '/' + fins,
+      esdeveniments: events.slice(0, 40).map(function (e) {
+        return {
+          data: e.data,
+          quan: e.totElDia ? 'tot el dia' : e.hora + (e.horaFi ? '–' + e.horaFi : ''),
+          titol: e.titol,
+          lloc: e.lloc || undefined,
+          calendari: e.calendariNom
+        };
+      })
+    };
+  }
+
+  /** Ve d'una proposta confirmada. */
+  function creaPerNom(a) {
+    var r = crea({
+      titol: a.titol, data: a.data, hora: a.hora,
+      durada: a.durada, lloc: a.lloc, nota: a.nota
+    });
+    return {
+      apuntat: true, titol: r.titol, data: r.data,
+      quan: r.hora ? 'a les ' + r.hora : 'tot el dia',
+      calendari: r.calendari
+    };
+  }
+
+  /**
+   * Trobar un esdeveniment pel títol. Si n'hi ha més d'un que hi encaixa, NO
+   * se'n tria cap: moure o esborrar el que no toca del calendari és de les
+   * poques coses d'aquí que no es poden desfer.
+   */
+  function mouPerNom(a) {
+    var q = String(a.titol || '').trim().toLowerCase();
+    if (!q) throw new Error('No has dit quin esdeveniment.');
+
+    var desde = Utils.esDataValida(a.data) ? a.data : Utils.sumaDies(Utils.avui(), -7);
+    var fins = Utils.esDataValida(a.data) ? a.data : Utils.sumaDies(Utils.avui(), 60);
+
+    var trobats = rang(desde, fins).filter(function (e) {
+      return e.titol.toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (!trobats.length) {
+      throw new Error('No trobo res al calendari que digui «' + a.titol + '»' +
+                      (a.data ? ' el ' + a.data : ' entre el ' + desde + ' i el ' + fins) + '.');
+    }
+    if (trobats.length > 1) {
+      throw new Error('N\'hi ha ' + trobats.length + ' que hi encaixen: ' +
+        trobats.slice(0, 5).map(function (e) {
+          return '«' + e.titol + '» el ' + e.data + (e.hora ? ' a les ' + e.hora : '');
+        }).join('; ') + '. Digues-me el dia.');
+    }
+
+    var e = trobats[0];
+    if (a.treu) {
+      treu(e.id, e.calendari);
+      return { tret: true, titol: e.titol, data: e.data };
+    }
+
+    if (!a.nova_data && !a.nova_hora) throw new Error('No has dit on el vols moure.');
+    edita({
+      id: e.id, calendari: e.calendari,
+      data: a.nova_data || e.data,
+      hora: a.nova_hora || (e.totElDia ? '' : e.hora)
+    });
+    return { mogut: true, titol: e.titol,
+             abans: e.data + (e.hora ? ' ' + e.hora : ''),
+             ara: (a.nova_data || e.data) + (a.nova_hora ? ' ' + a.nova_hora : '') };
+  }
+
+  return {
+    pantalla: pantalla,
+    mes: mes,
+    dia: dia,
+    rang: rang,
+    compta: compta,
+    calendaris: calendaris,
+    sincronitzaCalendaris: sincronitzaCalendaris,
+    mostra: mostra,
+    crea: crea,
+    edita: edita,
+    treu: treu,
+    consultaIA: consultaIA,
+    creaPerNom: creaPerNom,
+    mouPerNom: mouPerNom
+  };
+})();

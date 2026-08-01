@@ -891,6 +891,85 @@ h2 { font-size: 1.0625rem; }
 }
 
 /* =========================================================================
+   EL CALENDARI — la quadrícula UTM del full
+
+   La graella diu ON hi ha coses, no QUÈ hi ha: set columnes en una pantalla
+   de mòbil donen cinquanta píxels per dia i no hi cap cap títol sense
+   mentir. Un punt per cita ja respon la pregunta que fas mirant un mes
+   —quins dies tinc plens—, i el què és a sota, amb tot l'espai.
+   ========================================================================= */
+
+.mes-graella { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+               gap: 1px; background: var(--utm-suau);
+               border: 1.5px solid var(--neatline); }
+
+.mes-cap { background: var(--paper2); text-align: center; padding: var(--e1) 0;
+           font-size: .625rem; letter-spacing: .08em; text-transform: uppercase;
+           color: var(--ink-suau); }
+
+.mes-dia {
+  min-height: 52px; padding: 3px 2px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: 0; background: var(--paper); color: var(--ink); font: inherit;
+}
+.mes-dia .n { font-size: .8125rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+/* Els dies de l'altre mes hi són perquè la setmana no quedi coixa, no perquè
+   els miris: es queden apagats i no criden. */
+.mes-dia[data-fora="1"] { background: var(--paper2); }
+.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: .55; }
+.mes-dia[data-avui="1"] .n { font-weight: 700; color: var(--utm); }
+
+/* El dia que MIRES es marca amb el blau de la quadrícula, no amb l'ocre.
+   L'ocre d'aquesta app vol dir «fet» a tot arreu —als hàbits, al full de
+   mes—, i un dia del calendari no es fa: es mira. Fer servir la mateixa
+   tinta per a dues coses diferents és com es perd un sistema de color. */
+.mes-dia[aria-current="date"] { background: var(--utm-suau);
+                                box-shadow: inset 0 -3px 0 var(--utm); }
+/* La xifra torna a la tinta normal. Si el dia que mires és avui, el blau del
+   número quedava blau sobre blau pàl·lid: 3,57, per sota del mínim. El blau
+   ja el posen el fons i la ratlla; el número només ha de llegir-se. */
+.mes-dia[aria-current="date"] .n { font-weight: 700; color: var(--ink); }
+.mes-dia:active { background: var(--utm-suau); }
+
+.mes-dia .punts { display: flex; gap: 2px; min-height: 6px; align-items: center; }
+.mes-dia .punts i { width: 5px; height: 5px; border-radius: 50%;
+                    background: var(--corba-mestra); display: block; }
+/* El de tot el dia és una barra i no un punt: no té hora, i que es distingeixi
+   d'una cita d'un quart estalvia obrir el dia per veure què és. */
+.mes-dia .punts i[data-tot="1"] { width: 10px; border-radius: 1px; }
+
+.dia-cap-cal { margin: var(--e5) 0 var(--e2); }
+.dia-cap-cal .marge { margin: 0; }
+
+.cites { display: flex; flex-direction: column;
+         border: 1px solid var(--neatline); }
+.cita {
+  position: relative; display: flex; align-items: flex-start; gap: var(--e3);
+  width: 100%; min-height: 56px; padding: var(--e3);
+  border: 0; border-bottom: 1px solid var(--utm-suau);
+  background: var(--paper); color: var(--ink); text-align: left; font: inherit;
+}
+.cita:last-child { border-bottom: 0; }
+.cita:active { background: var(--paper2); }
+.cita[data-passat="1"] { opacity: .55; }
+
+.cita-quan { flex: none; width: 52px; display: flex; flex-direction: column;
+             line-height: 1.2; font-variant-numeric: tabular-nums; }
+.cita-quan b { font-size: .9375rem; }
+.cita-quan span { font-size: .75rem; color: var(--ink-suau); }
+.cita-quan .tot { font-size: .6875rem; letter-spacing: .04em;
+                  text-transform: uppercase; color: var(--ink-suau); }
+.cita-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cita-titol { font-weight: 600; overflow-wrap: anywhere; }
+.cita-color { flex: none; width: 4px; align-self: stretch; border-radius: 2px; }
+
+.cal-hores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e3); }
+
+/* Un enllaç dins d'un text: no és un botó amb marc, és una paraula que fa cosa. */
+.enllac { border: 0; background: none; padding: 0; font: inherit;
+          color: var(--utm); text-decoration: underline; text-underline-offset: 3px; }
+
+/* =========================================================================
    EL DIARI — el quadern de camp del marge del full
 
    El que escrius tu i el que t'escriu ell van a la mateixa línia de temps,
@@ -1250,6 +1329,14 @@ h2 { font-size: 1.0625rem; }
   </symbol>
   <symbol id="ic-diari" viewBox="0 0 24 24">
     <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H20v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M8.5 4v16"/>
+  </symbol>
+
+  <!-- El calendari: full quadriculat amb les dues anelles, com el de paret. -->
+  <symbol id="ic-calendari" viewBox="0 0 24 24">
+    <path d="M3.5 5.5h17v15h-17z"/>
+    <path d="M3.5 10h17"/>
+    <path d="M8 3v4M16 3v4"/>
+    <path d="M8 13.5h2.5M13.5 13.5H16M8 17h2.5M13.5 17H16"/>
   </symbol>
 
   <symbol id="ic-esquerra" viewBox="0 0 24 24"><path d="M15 4.5 8 12l7 7.5"/></symbol>
@@ -7224,6 +7311,423 @@ App.registraVista('diari', {
     }
 
     arrel.innerHTML = Comp.carregant(3);
+    carrega();
+  }
+});
+</script>
+
+<script>
+/* JEFE — MÒDUL · Calendari
+   Món: full de mapa topogràfic. Aquí, la quadrícula UTM del full.
+
+   LA DECISIÓ QUE MANA: la graella del mes ensenya ON hi ha coses, no QUÈ hi
+   ha. Set columnes en una pantalla de mòbil donen cinquanta píxels per dia:
+   no hi cap cap títol sense mentir. El que hi cap és un punt per cita, i
+   això ja respon la pregunta que fas mirant un mes —«quins dies tinc plens»—.
+   El què és a sota, del dia que toquis, amb tot l'espai i sense retallar res. */
+
+App.registraVista('calendari', {
+  render: function (arrel, params) {
+
+    var mes = params.mes || null;          // AAAA-MM
+    var dia = params.data || null;
+    var dades = null, cals = [];
+    var previPintat = null, ajornat = null;
+
+    var DIES = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'];
+    var MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol',
+                 'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
+
+    function nomMes(m) {
+      var t = MESOS[Number(m.slice(5, 7)) - 1];
+      return t.charAt(0).toUpperCase() + t.slice(1) + ' del ' + m.slice(0, 4);
+    }
+    function mouMes(m, n) {
+      var y = Number(m.slice(0, 4)), i = Number(m.slice(5, 7)) - 1 + n;
+      var d = new Date(y, i, 1);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+    }
+
+    // ------------------------------------------------------------- capçalera
+
+    function capcalera(d) {
+      var esActual = d.mes === d.avui.slice(0, 7);
+      return '<header class="capcalera capcalera-nutri">' +
+        '<div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
+            ic('esquerra', 'ic-p') + '</button>' +
+          '<button class="titol-periode" data-avui="1">' +
+            '<b>' + esc(nomMes(d.mes)) + '</b>' +
+            '<span>' + d.quants + (d.quants === 1 ? ' cita' : ' cites') +
+              (esActual ? ' · en curs' : '') + '</span>' +
+          '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent">' +
+            ic('dreta', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-nou="1" aria-label="Apunta al calendari">' +
+            ic('mes', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Quins calendaris">' +
+            ic('ajust', 'ic-p') + '</button>' +
+        '</div>' +
+      '</header>';
+    }
+
+    // ---------------------------------------------------------------- pintura
+
+    function pinta(d, dEnCau) {
+      dades = d;
+      arrel.innerHTML = capcalera(d) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' + blocMes(d) + '</section>' +
+          '<section class="nutri-apats" id="c-dia">' + blocDia(d) + '</section>' +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+      lliga();
+    }
+
+    /* La graella. Cada casella és un botó de 44 px d'alt: el dia que toques
+       és el que s'obre a sota, i tocar-ne un no és mai una acció que canviï
+       res, o sigui que no cal confirmar res ni patir per equivocar-se. */
+    function blocMes(d) {
+      return '<div class="mes-graella" role="grid" aria-label="' + esc(nomMes(d.mes)) + '">' +
+        DIES.map(function (n) {
+          return '<span class="mes-cap" aria-hidden="true">' + n + '</span>';
+        }).join('') +
+        d.caselles.map(function (c) {
+          return '<button class="mes-dia" data-dia="' + esc(c.data) + '"' +
+            (c.delMes ? '' : ' data-fora="1"') +
+            (c.esAvui ? ' data-avui="1"' : '') +
+            (c.data === d.diaTriat ? ' aria-current="date"' : '') +
+            ' aria-label="' + esc(diuCasella(c)) + '">' +
+            '<span class="n">' + c.dia + '</span>' +
+            '<span class="punts">' +
+              c.mostra.map(function (e) {
+                return '<i' + (e.totElDia ? ' data-tot="1"' : '') +
+                       (e.color ? ' style="background:' + esc(e.color) + '"' : '') + '></i>';
+              }).join('') +
+            '</span>' +
+          '</button>';
+        }).join('') +
+      '</div>';
+    }
+
+    function diuCasella(c) {
+      var d = fmt.llarga(c.data);
+      if (!c.quants) return d + ', res';
+      return d + ', ' + c.quants + (c.quants === 1 ? ' cita' : ' cites');
+    }
+
+    function blocDia(d) {
+      var l = d.esdeveniments || [];
+      return '<div class="dia-cap-cal">' +
+          '<p class="marge">' + esc(fmt.relativa(d.diaTriat)) + ' · ' +
+            esc(fmt.llarga(d.diaTriat)) + '</p>' +
+        '</div>' +
+        (l.length
+          ? '<div class="cites">' + l.map(cita).join('') + '</div>'
+          : '<p class="menut">Res apuntat aquest dia. ' +
+            '<button class="enllac" data-nou="1">Apunta-hi alguna cosa</button></p>');
+    }
+
+    function cita(e) {
+      return '<button class="cita" data-obre="' + esc(e.id) + '"' +
+        (e.passat ? ' data-passat="1"' : '') + '>' +
+        '<span class="cita-quan">' +
+          (e.totElDia ? '<span class="tot">tot el dia</span>'
+                      : '<b>' + esc(e.hora) + '</b>' +
+                        (e.horaFi ? '<span>' + esc(e.horaFi) + '</span>' : '')) +
+        '</span>' +
+        '<span class="cita-cos">' +
+          '<span class="cita-titol">' + esc(e.titol) + '</span>' +
+          (e.lloc ? '<span class="menut">' + esc(e.lloc) + '</span>' : '') +
+          (cals.length > 1 ? '<span class="menut">' + esc(e.calendariNom) + '</span>' : '') +
+        '</span>' +
+        (e.color ? '<span class="cita-color" style="background:' + esc(e.color) + '"></span>' : '') +
+      '</button>';
+    }
+
+    // ---------------------------------------------------------------- accions
+
+    function lliga() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-salt]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          mes = mouMes(dades.mes, Number(b.dataset.salt));
+          dia = null;
+          carrega();
+        });
+      });
+      var ba = arrel.querySelector('[data-avui]');
+      if (ba) ba.addEventListener('click', function () {
+        mes = null; dia = null; carrega();
+      });
+
+      /* Triar dia NO va al servidor: el mes ja porta tot el que hi ha, i
+         demanar-ho un altre cop per ensenyar el que ja tens seria un segon i
+         mig d'espera per res. */
+      arrel.querySelectorAll('[data-dia]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          dia = b.dataset.dia;
+          dades.diaTriat = dia;
+          dades.esdeveniments = deLDia(dia);
+          arrel.querySelectorAll('[data-dia]').forEach(function (o) {
+            o.removeAttribute('aria-current');
+          });
+          b.setAttribute('aria-current', 'date');
+          arrel.querySelector('#c-dia').innerHTML = blocDia(dades);
+          lligaDia();
+        });
+      });
+
+      lligaDia();
+
+      arrel.querySelectorAll('[data-nou]').forEach(function (b) {
+        b.addEventListener('click', function () { obreFitxa(null); });
+      });
+      var bj = arrel.querySelector('[data-ajustos]');
+      if (bj) bj.addEventListener('click', obreCalendaris);
+    }
+
+    function lligaDia() {
+      arrel.querySelectorAll('[data-obre]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var e = null;
+          (dades.esdeveniments || []).forEach(function (x) { if (x.id === b.dataset.obre) e = x; });
+          if (e) obreFitxa(e);
+        });
+      });
+      arrel.querySelectorAll('#c-dia [data-nou]').forEach(function (b) {
+        b.addEventListener('click', function () { obreFitxa(null); });
+      });
+    }
+
+    /** Els del dia, del que ja tenim del mes. */
+    function deLDia(d) {
+      var out = [];
+      (dades.tots || []).forEach(function (e) {
+        if (d >= e.data && d <= e.dataFi) out.push(e);
+      });
+      return out;
+    }
+
+    // ----------------------------------------------------------------- fitxa
+
+    function obreFitxa(e) {
+      var nou = !e;
+      var quan = nou ? (dades.diaTriat || dades.avui) : e.data;
+
+      var cos = App.modal(nou ? 'Apunta al calendari' : 'Aquesta cita',
+        '<div class="form-ajustos">' +
+          '<label><span class="marge">Què és</span>' +
+            '<input data-c="titol" value="' + esc(nou ? '' : e.titol) + '" ' +
+            'placeholder="Reunió, visita, sortida…" autocomplete="off"></label>' +
+          '<label><span class="marge">Dia</span>' +
+            '<input data-c="data" type="date" value="' + esc(quan) + '"></label>' +
+          '<label class="cat-exclou"><input type="checkbox" data-c="totdia"' +
+            ((nou || e.totElDia) && (nou ? false : e.totElDia) ? ' checked' : '') +
+            '><span>Tot el dia</span></label>' +
+          '<div class="cal-hores">' +
+            '<label><span class="marge">Hora</span>' +
+              '<input data-c="hora" type="time" value="' + esc(nou ? '09:00' : (e.hora || '09:00')) + '"></label>' +
+            '<label><span class="marge">Minuts que dura</span>' +
+              '<input data-c="durada" type="number" min="5" step="5" value="' +
+              esc(nou ? 60 : (e.minuts || 60)) + '"></label>' +
+          '</div>' +
+          '<label><span class="marge">On</span>' +
+            '<input data-c="lloc" value="' + esc(nou ? '' : (e.lloc || '')) + '" autocomplete="off"></label>' +
+          '<label><span class="marge">Nota</span>' +
+            '<textarea data-c="nota" rows="2">' + esc(nou ? '' : (e.nota || '')) + '</textarea></label>' +
+          '<button class="btn btn-primari" data-desa>' + (nou ? 'Apunta-ho' : 'Desa') + '</button>' +
+          (nou ? '' :
+            '<button class="btn btn-secundari" data-treu style="margin-top:var(--e2)">' +
+              'Treu-la del calendari</button>') +
+        '</div>');
+
+      var camps = {};
+      cos.querySelectorAll('[data-c]').forEach(function (i) { camps[i.dataset.c] = i; });
+
+      function refrescaHores() {
+        cos.querySelector('.cal-hores').hidden = camps.totdia.checked;
+      }
+      camps.totdia.addEventListener('change', refrescaHores);
+      refrescaHores();
+
+      cos.querySelector('[data-desa]').addEventListener('click', function () {
+        var b = this;
+        if (!camps.titol.value.trim()) { App.brindis('Digues què és', 'error'); return; }
+        b.disabled = true;
+
+        var p = {
+          titol: camps.titol.value.trim(),
+          data: camps.data.value,
+          hora: camps.totdia.checked ? '' : camps.hora.value,
+          durada: Number(camps.durada.value) || 60,
+          lloc: camps.lloc.value,
+          nota: camps.nota.value
+        };
+        if (!nou) { p.id = e.id; p.calendari = e.calendari; }
+
+        escriu('calendari', nou ? 'crea' : 'edita', p, quePinto())
+          .then(function (r) {
+            App.tancaModal();
+            App.brindis(nou ? 'Apuntat' : 'Desat');
+            Cau.oblida('calendari.');
+            aplica(r, false, true);
+          })
+          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      var bt = cos.querySelector('[data-treu]');
+      if (bt) bt.addEventListener('click', function () { confirmaTreure(e); });
+    }
+
+    /* Treure una cita del calendari és l'única cosa de tot JEFE que esborra
+       de debò: Google Calendar no té «arxivat». Per això es pregunta, i es
+       diu clar que no es podrà desfer. */
+    function confirmaTreure(e) {
+      App.tancaModal();
+      setTimeout(function () {
+        var cos = App.modal('Treure «' + e.titol + '»?',
+          '<div class="form-ajustos">' +
+            '<p>Del ' + esc(fmt.llarga(e.data)) +
+              (e.totElDia ? '' : ', a les ' + esc(e.hora)) + '.</p>' +
+            '<p class="menut"><strong>Això s\'esborra del calendari de Google i no es pot ' +
+              'desfer.</strong> No és com treure una tasca, que es queda arxivada al full.</p>' +
+            '<button class="btn btn-primari" data-si>Sí, treu-la</button>' +
+            '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">Deixa-ho estar</button>' +
+          '</div>');
+        cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+        cos.querySelector('[data-si]').addEventListener('click', function () {
+          var b = this;
+          b.disabled = true;
+          escriu('calendari', 'treu', { id: e.id, calendari: e.calendari }, quePinto())
+            .then(function (r) {
+              App.tancaModal(); App.brindis('Treta');
+              Cau.oblida('calendari.');
+              aplica(r, false, true);
+            })
+            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+        });
+      }, 220);
+    }
+
+    // ------------------------------------------------------ quins calendaris
+
+    function obreCalendaris() {
+      var cos = App.modal('Quins calendaris vols veure',
+        '<div class="form-ajustos">' +
+          '<div id="cal-llista">' + llistaCals() + '</div>' +
+          '<button class="btn btn-secundari" data-sinc>Torna a buscar els meus calendaris</button>' +
+          '<p class="menut">Els esdeveniments no es copien enlloc: es llegeixen del teu ' +
+            'Google Calendar cada cop. El que canviïs aquí només decideix què mires.</p>' +
+        '</div>');
+
+      lligaCals(cos);
+      cos.querySelector('[data-sinc]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true; b.dataset.carregant = '1';
+        crida('calendari', 'sincronitza', {})
+          .then(function (r) {
+            App.brindis(r.total + ' calendaris trobats');
+            return crida('calendari', 'calendaris', {});
+          })
+          .then(function (l) {
+            cals = l;
+            cos.querySelector('#cal-llista').innerHTML = llistaCals();
+            lligaCals(cos);
+            b.disabled = false; b.dataset.carregant = '0';
+          })
+          .catch(function (err) {
+            b.disabled = false; b.dataset.carregant = '0';
+            App.brindis(err.message, 'error');
+          });
+      });
+    }
+
+    function llistaCals() {
+      if (!cals.length) {
+        return '<p class="menut">Encara no s\'han llegit. Prem el botó de sota.</p>';
+      }
+      return cals.map(function (c) {
+        return '<label class="cat-exclou">' +
+          '<input type="checkbox" data-cal="' + esc(c.id) + '"' + (c.mostra ? ' checked' : '') + '>' +
+          '<span>' + esc(c.nom) + (c.principal ? ' · el teu' : '') + '</span>' +
+        '</label>';
+      }).join('');
+    }
+
+    function lligaCals(cos) {
+      cos.querySelectorAll('[data-cal]').forEach(function (i) {
+        i.addEventListener('change', function () {
+          i.disabled = true;
+          crida('calendari', 'mostra', { id: i.dataset.cal, mostra: i.checked })
+            .then(function () {
+              i.disabled = false;
+              cals.forEach(function (c) { if (c.id === i.dataset.cal) c.mostra = i.checked; });
+              Cau.oblida('calendari.');
+              carrega();
+            })
+            .catch(function (err) {
+              i.disabled = false; i.checked = !i.checked;
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+    }
+
+    // ---------------------------------------------------------------- càrrega
+
+    function quePinto() { return { mes: mes, data: dia }; }
+    function claCau() { return 'calendari.' + (mes || 'ara'); }
+
+    function aplica(r, dEnCau, forca) {
+      cals = r.calendaris || cals;
+      var d = r.dades;
+
+      Cau.set(claCau(), r);
+      var nou = JSON.stringify(d);
+      if (nou === previPintat) return;
+
+      if (!forca && previPintat !== null && App.interactuant()) {
+        var primer = !ajornat;
+        ajornat = r;
+        if (primer) setTimeout(quanPari, 400);
+        return;
+      }
+      previPintat = nou;
+      mes = d.mes;
+      dia = d.diaTriat;
+      pinta(d, !!dEnCau);
+    }
+
+    function quanPari() {
+      if (!arrel.isConnected) { ajornat = null; return; }
+      if (App.interactuant()) { setTimeout(quanPari, 400); return; }
+      var r = ajornat;
+      ajornat = null;
+      if (r) aplica(r);
+    }
+
+    function carrega() {
+      var desat = Cau.get(claCau(), null);
+      if (desat && desat.dades) {
+        cals = desat.calendaris || cals;
+        try { previPintat = JSON.stringify(desat.dades); pinta(desat.dades, true); }
+        catch (e) { previPintat = null; }
+      }
+
+      crida('calendari', 'pantalla', quePinto())
+        .then(function (r) { aplica(r); })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
+    }
+
+    arrel.innerHTML = Comp.carregant(4);
     carrega();
   }
 });

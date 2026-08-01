@@ -871,6 +871,51 @@ function reclassificaFinances() {
  *
  * No envia res. Per provar l'avís de debò hi ha `provaAvisCremades()`.
  */
+/**
+ * DONAR-LI ACCÉS AL CALENDARI.
+ *
+ * El mòdul del calendari fa que l'app necessiti un permís que abans no tenia.
+ * Google no el demana sol: cal executar una funció que el toqui, i llavors
+ * surt la pantalla d'autorització. Aquesta funció és exactament això, i de
+ * passada deixa la llista dels teus calendaris apuntada al full.
+ *
+ * S'ha d'executar UNA vegada, des de l'editor. Després, a l'app, els que
+ * vols veure es trien des del botó d'ajustos del calendari.
+ */
+function preparaCalendari() {
+  var l = ['=== CALENDARI ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var meus;
+  try {
+    meus = CalendarApp.getAllCalendars();
+  } catch (err) {
+    a('FALLA en accedir al calendari: ' + err.message);
+    a('');
+    a('Si no ha sortit la pantalla de permisos, torna a executar-ho.');
+    return l.join('\n');
+  }
+
+  a('Permís .................... concedit');
+  a('Calendaris que tens ....... ' + meus.length);
+
+  var r = Calendari.sincronitzaCalendaris();
+  a('Apuntats al full .......... ' + r.nous + ' de nous, ' + r.actualitzats + ' ja hi eren');
+  a('');
+  Calendari.calendaris().forEach(function (c) {
+    a('  ' + (c.mostra ? '[x]' : '[ ]') + ' ' + c.nom + (c.principal ? '   ← el teu' : ''));
+  });
+  a('');
+  a('Els marcats amb [x] són els que veuràs. Els altres hi són apagats: els');
+  a('que et comparteixen són molts i no els vols tots a sobre el primer dia.');
+  a('Es canvien des de l\'app, al botó d\'ajustos de la pantalla del calendari.');
+  a('');
+  a('ELS ESDEVENIMENTS NO ES COPIEN AL FULL. Es llegeixen de Google cada cop.');
+  a('Al full només hi ha aquesta llista i quins mires.');
+  return l.join('\n');
+}
+
+
 function perQueNoMHasAvisat() {
   var l = ['=== L\'AVÍS DE LES CALORIES CREMADES ==='];
   function a(t) { l.push(t); Logger.log(t); }

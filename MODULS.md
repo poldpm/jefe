@@ -264,7 +264,6 @@ buits és un sistema mort.
 | **Finances** | `Moviments`, `Categories`, `Pressupostos` | Cal decidir abans si les dades s'importen del banc o s'entren a mà. Sense això, el mòdul neix mal plantejat. |
 | **Salut** | `Registres`, `Mesures` | Se solapa amb hàbits. Primer cal veure què acabes registrant realment com a hàbit. |
 | **Entrenaments** | `Sessions`, `Rutes`, `Marques` | Té sentit el dia que s'integri amb el rellotge o amb Strava. Entrar-ho a mà és feina que no faràs. |
-| **Calendari** | Cap: llegiria de Google Calendar | Necessita permisos nous i decidir si escriu o només llegeix. |
 | **Correu** | Cap: llegiria de Gmail | El mateix, amb més risc: llegir correu és molta superfície. |
 | **Projectes** | `Projectes` + columna nova a `Tasques` | La V1 diu explícitament tasques planes. Afegir-ho abans de saber si les fas servir seria endevinar. |
 | **Objectius anuals** | `Objectius`, `Fites` | Necessita mesos de dades d'hàbits i tasques per dir res útil. |

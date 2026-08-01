@@ -352,6 +352,88 @@ export function dades(AVUI, menys) {
     ]
   });
 
+  // -------------------------------------------------------------- calendari
+
+  const CALENDARIS = [
+    { id: 'principal@exemple', nom: 'El meu calendari', color: '#2c6e8f', mostra: true, principal: true },
+    { id: 'escola@exemple', nom: 'Escola', color: '#a8703f', mostra: true, principal: false },
+    { id: 'festius@exemple', nom: 'Festius de Catalunya', color: '#7fa15c', mostra: false, principal: false }
+  ];
+
+  /* Cites repartides pel mes en curs, amb noms i durades de tot tipus: una de
+     tot el dia, una que se solapa, una de molt llarga i uns quants dies buits.
+     Els dies plens i els buits alhora són el que fa veure si la graella es
+     llegeix. */
+  const cites = (mesDemanat) => {
+    const m = mesDemanat || AVUI.slice(0, 7);
+    const d = (n) => m + '-' + ('0' + n).slice(-2);
+    const cru = [
+      [d(3), '09:00', '10:30', 'Claustre de mestres', 'Escola', 'escola@exemple'],
+      [d(3), '17:00', '18:00', 'Visita al veterinari', 'Sant Joan', 'principal@exemple'],
+      [d(7), null, null, 'Sortida de tercer a la Vall de Boí', '', 'escola@exemple'],
+      [d(11), '08:00', '14:00', 'Batuda de senglar al vessant nord', 'Coll de Fumanya', 'principal@exemple'],
+      [d(11), '19:30', '21:00', 'Sopar amb els de sempre', '', 'principal@exemple'],
+      [d(12), '10:00', '10:45', 'Reunió amb la direcció', 'Escola', 'escola@exemple'],
+      [d(18), '16:00', '17:00', 'Revisió del cotxe', 'Taller Puig', 'principal@exemple'],
+      [d(21), null, null, 'Aniversari de la mare', '', 'principal@exemple'],
+      [d(21), '20:00', '23:00', 'Dinar de família', 'Cal Manel', 'principal@exemple'],
+      [d(25), '11:00', '12:00', 'Formació d\'agents rurals', 'Solsona', 'principal@exemple'],
+      [Number(AVUI.slice(8)) > 1 ? AVUI : d(15), '12:30', '13:15', 'Cita d\'avui, per veure com es marca', '', 'principal@exemple']
+    ];
+    return cru.map((c, i) => {
+      const cal = CALENDARIS.filter(x => x.id === c[5])[0] || CALENDARIS[0];
+      const totElDia = !c[1];
+      const minuts = totElDia ? 0
+        : (Number(c[2].slice(0, 2)) * 60 + Number(c[2].slice(3))) -
+          (Number(c[1].slice(0, 2)) * 60 + Number(c[1].slice(3)));
+      return { id: 'ev' + i, calendari: cal.id, calendariNom: cal.nom, color: cal.color,
+               titol: c[3], lloc: c[4], nota: '', data: c[0], dataFi: c[0],
+               totElDia, hora: c[1] || '', horaFi: c[2] || '',
+               passat: c[0] < AVUI, minuts };
+    });
+  };
+
+  /* Data LOCAL. Amb toISOString, a la nit surt el dia d'abans i el mirall
+     et fa perseguir un error que no hi és. */
+  const localIso = (d) => [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
+  const dillunsDe = (iso) => {
+    const d = new Date(iso + 'T12:00:00');
+    const n = (d.getDay() + 6) % 7;          // 0 = dilluns
+    d.setDate(d.getDate() - n);
+    return localIso(d);
+  };
+  const suma = (iso, n) => {
+    const d = new Date(iso + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return localIso(d);
+  };
+
+  const calendariPantalla = (p) => {
+    const m = (p && p.mes) || AVUI.slice(0, 7);
+    const events = cites(m);
+    const perDia = {};
+    events.forEach(e => { (perDia[e.data] = perDia[e.data] || []).push(e); });
+
+    const ultim = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0);
+    const inici = dillunsDe(m + '-01');
+    const fi = suma(dillunsDe(m + '-' + ('0' + ultim.getDate()).slice(-2)), 6);
+
+    const caselles = [];
+    for (let x = inici; x <= fi; x = suma(x, 1)) {
+      const seus = perDia[x] || [];
+      caselles.push({ data: x, dia: Number(x.slice(8, 10)), delMes: x.slice(0, 7) === m,
+                      esAvui: x === AVUI, quants: seus.length,
+                      mostra: seus.slice(0, 3).map(e => ({ color: e.color, totElDia: e.totElDia })) });
+    }
+    const triat = (p && p.data) || (m === AVUI.slice(0, 7) ? AVUI : m + '-01');
+    return {
+      dades: { mes: m, avui: AVUI, desde: inici, fins: fi, caselles,
+               quants: events.length, diaTriat: triat,
+               esdeveniments: perDia[triat] || [], tots: events },
+      calendaris: CALENDARIS
+    };
+  };
+
   // ------------------------------------------------------------------ inici
 
   const nucliInici = () => ({
@@ -361,6 +443,7 @@ export function dades(AVUI, menys) {
       { id: 'tasques', nom: 'Tasques', icona: 'tasques', ordre: 15, teVista: true },
       { id: 'nutricio', nom: 'Nutrició', icona: 'nutricio', ordre: 20, teVista: true },
       { id: 'finances', nom: 'Finances', icona: 'finances', ordre: 30, teVista: true },
+      { id: 'calendari', nom: 'Calendari', icona: 'calendari', ordre: 5, teVista: true },
       { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true }
     ],
     targetes: [
@@ -374,6 +457,7 @@ export function dades(AVUI, menys) {
   });
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
+           CALENDARIS, calendariPantalla,
            CATEGORIES, finPantalla, tasquesPantalla, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici };
 }

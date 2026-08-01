@@ -29,7 +29,11 @@ const VISTA = process.argv[2] || 'habits';
 const CARPETA = process.env.MIRALL_CARPETA || '.mirall';
 
 const ARA = new Date();
-const iso = (d) => d.toISOString().slice(0, 10);
+/* La data LOCAL, no la de Greenwich. Amb `toISOString` a dos quarts d'una
+   de la nit a Madrid encara surt el dia d'abans, i llavors el mirall et
+   marca «ahir» al dia d'avui i et fa perseguir un error que no hi és. */
+const iso = (d) => [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2),
+                    ('0' + d.getDate()).slice(-2)].join('-');
 const AVUI = iso(ARA);
 const menys = (n) => { const d = new Date(ARA); d.setDate(d.getDate() - n); return iso(d); };
 
@@ -61,6 +65,13 @@ const MOCK = `
   var CONV_ESTAT  = ${j(D.conversaEstat())};
   var CONV_HIST   = ${j(D.conversaHistorial())};
   var INICI       = ${j(D.nucliInici())};
+  var CAL         = { calendaris: ${j(D.CALENDARIS)} };
+  var CAL_MESOS   = ${j(Object.fromEntries(
+       [-2, -1, 0, 1, 2, 3].map(n => {
+         const d = new Date(Number(AVUI.slice(0,4)), Number(AVUI.slice(5,7)) - 1 + n, 1);
+         const m = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+         return [m, D.calendariPantalla({ mes: m })];
+       })))};
 
   var estatDia = JSON.parse(JSON.stringify(HABITS_DIA));
   var nSeq = 100;
@@ -207,6 +218,47 @@ const MOCK = `
     if (modul === 'tasques') {
       if (accio === 'pantalla') return copia(TASQUES);
       return copia(TASQUES);
+    }
+
+    if (modul === 'calendari') {
+      if (accio === 'calendaris') return copia(CAL.calendaris);
+      if (accio === 'sincronitza') return { nous: 0, actualitzats: CAL.calendaris.length,
+                                            total: CAL.calendaris.length };
+      if (accio === 'mostra') {
+        CAL.calendaris.forEach(function (c) { if (c.id === p.id) c.mostra = !!p.mostra; });
+        return { id: p.id, mostra: !!p.mostra };
+      }
+      if (accio === 'pantalla') {
+        var quin = p.mes || AVUI.slice(0, 7);
+        var base = CAL_MESOS[quin];
+        if (!base) {
+          // Fora del que el mirall té preparat: mes buit, per veure com queda.
+          var buit = copia(CAL_MESOS[AVUI.slice(0, 7)]);
+          buit.dades.mes = quin; buit.dades.quants = 0;
+          buit.dades.tots = []; buit.dades.esdeveniments = [];
+          buit.dades.caselles.forEach(function (c) { c.quants = 0; c.mostra = []; });
+          return buit;
+        }
+        var r = copia(base);
+        r.calendaris = copia(CAL.calendaris);
+        var amagats = {};
+        CAL.calendaris.forEach(function (c) { if (!c.mostra) amagats[c.id] = true; });
+        r.dades.tots = r.dades.tots.filter(function (e) { return !amagats[e.calendari]; });
+        if (p.data) r.dades.diaTriat = p.data;
+        var perDia = {};
+        r.dades.tots.forEach(function (e) { (perDia[e.data] = perDia[e.data] || []).push(e); });
+        r.dades.esdeveniments = perDia[r.dades.diaTriat] || [];
+        r.dades.quants = r.dades.tots.length;
+        r.dades.caselles.forEach(function (c) {
+          var seus = perDia[c.data] || [];
+          c.quants = seus.length;
+          c.mostra = seus.slice(0, 3).map(function (e) {
+            return { color: e.color, totElDia: e.totElDia };
+          });
+        });
+        return r;
+      }
+      return { ok: true };
     }
 
     if (modul === 'diari') {
