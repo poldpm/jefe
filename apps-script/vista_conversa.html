@@ -70,6 +70,20 @@
 .hud[data-estat="apagat"]    .llum { background: var(--calent); }
 @keyframes bat { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
+/* Telemetria de cantonada: dades teves de veritat —què ha consultat, quantes
+   files, quants tokens—, no farciment decoratiu. Petita i al marge, però
+   llegible: al 9 px ja és prou discreta sense haver de rebaixar-ne el
+   contrast fins a fer-la endevinable. */
+.telemetria {
+  position: absolute; top: 42px; z-index: 1; pointer-events: none;
+  font-family: var(--mono); font-size: .5625rem; line-height: 1.75;
+  color: var(--apagat); letter-spacing: .04em; max-width: 38%;
+}
+.telemetria.esq { left: var(--e3); }
+.telemetria.dre { right: var(--e3); text-align: right; }
+.telemetria b { color: var(--cian); font-weight: 400; }
+.telemetria .val { color: var(--clar); font-variant-numeric: tabular-nums; }
+
 /* ------------------------------------------------------------------- cos
 
    El nucli al mig i res més. La conversa no viu aquí: apareix quan hi ha
@@ -242,6 +256,9 @@ App.registraVista('conversa', {
           '<button class="bt bt-p" id="b-vistes" aria-label="Ajustos de JEFE">' + ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
 
+        '<div class="telemetria esq" id="tel-esq"></div>' +
+        '<div class="telemetria dre" id="tel-dre"></div>' +
+
         '<div class="jefe-centre">' +
           '<div class="nucli-caixa" id="nucli-caixa"></div>' +
           '<div class="transcripcio" id="transcripcio"></div>' +
@@ -311,27 +328,49 @@ App.registraVista('conversa', {
       dre.push('escolta <span class="val">' + (continua ? 'CONTÍNUA' : 'OFF') + '</span>');
       dre.push('micro <span class="val">' + (potEscoltar ? 'OK' : 'NO') + '</span>');
 
-      // La telemetria ja no és permanent a la pantalla: viu al panell de JEFE,
-      // que és on la vas a buscar quan alguna cosa no rutlla.
       telemetriaActual = { esquerra: esq.join('<br>'), dreta: dre.join('<br>') };
+
+      var e = arrel.querySelector('#tel-esq'), d = arrel.querySelector('#tel-dre');
+      if (e) e.innerHTML = telemetriaActual.esquerra;
+      if (d) d.innerHTML = telemetriaActual.dreta;
     }
     var telemetriaActual = { esquerra: '', dreta: '' };
 
     // ------------------------------------------------------------------ pintura
 
-    /* NOMÉS L'ÚLTIM TORN. La conversa sencera no ha de ser a la vista: la
-       pantalla és per manar, no per rellegir. Quan JEFE ha contestat i tu ja
-       ho has llegit, allò se'n va i torna a quedar el nucli sol. */
+    /* LA RESPOSTA NOMÉS MENTRE ÉS D'ARA.
+       En obrir l'app no s'ensenya res: una resposta d'ahir penjada sota el
+       nucli no és informació, és brutícia. Apareix quan acaba de contestar i
+       marxa al toc següent o quan tornes a preguntar.
+
+       L'excepció són les propostes: una escriptura pendent de confirmar no pot
+       desaparèixer sola, perquè llavors no la confirmaries mai. */
+    var respostaFresca = false;
+
     function pinta() {
       var ultim = null;
-      for (var i = missatges.length - 1; i >= 0; i--) {
-        if (missatges[i].rol === 'assistent') { ultim = missatges[i]; break; }
+      if (respostaFresca) {
+        for (var i = missatges.length - 1; i >= 0; i--) {
+          if (missatges[i].rol === 'assistent') { ultim = missatges[i]; break; }
+        }
       }
       tr.innerHTML = ultim ? torn(ultim) : '';
       lligaPropostes();
       tr.scrollTop = 0;
       pintaTelemetria();
     }
+
+    function amagaResposta() {
+      var m = missatges[missatges.length - 1];
+      if (m && m.propostes && m.propostes.length) return;   // encara l'has de confirmar
+      respostaFresca = false;
+      tr.innerHTML = '';
+    }
+
+    tr.addEventListener('click', function (ev) {
+      if (ev.target.closest('.proposta') || ev.target.closest('button')) return;
+      amagaResposta();
+    });
 
     function torn(m) {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
@@ -423,6 +462,7 @@ App.registraVista('conversa', {
       if (App._tancaEscriptura) App._tancaEscriptura();
 
       missatges.push({ rol: 'usuari', text: text });
+      respostaFresca = false;          // la d'abans ja no val
       pinta();
       posaEstat('pensant', 'consultant dades');
       nucli.pols(1);
@@ -456,6 +496,7 @@ App.registraVista('conversa', {
 
     function acaba() {
       ocupat = false;
+      respostaFresca = true;           // acaba de dir-ho: ara sí que es veu
       clearInterval(App._cronometre);
       arrel.querySelector('#b-envia').disabled = false;
       posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
