@@ -77,7 +77,8 @@ function MODUL_HABITS() {
       crea: function (p) { return Habits.crea(p); },
       edita: function (p) { return Habits.edita(p.id, p); },
       arxiva: function (p) { return Habits.arxiva(p.id); },
-      reactiva: function (p) { return Habits.reactiva(p.id); }
+      reactiva: function (p) { return Habits.reactiva(p.id); },
+      ordena:   function (p) { Habits.ordena(p.ids); return Habits.dia(p.data || Utils.avui()); }
     },
 
     resumInici: function () {
@@ -725,6 +726,26 @@ var Habits = (function () {
   }
 
   /**
+   * L'ordre que decideix ell, no el de creació.
+   *
+   * Rep la llista sencera d'identificadors en l'ordre nou. Els que no hi
+   * siguin —perquè s'ha arxivat un mentre ho movia— queden al final amb
+   * l'ordre que tenien: no es perd cap hàbit per haver mogut els altres.
+   */
+  function ordena(ids) {
+    if (!ids || !ids.length) throw new Error('No m\'has dit cap ordre.');
+
+    var existents = {};
+    definicions(true).forEach(function (h) { existents[h.id] = true; });
+    var nets = ids.filter(function (id) { return existents[id]; });
+    if (!nets.length) throw new Error('Cap d\'aquests hàbits existeix.');
+
+    Dades.actualitzaMoltes('Habits', nets, function (h, i) { return { ordre: i + 1 }; });
+    Log.info('habits.ordena', 'Ordre canviat', { quants: nets.length });
+    return { ordenats: nets.length };
+  }
+
+  /**
    * Registra un hàbit buscant-lo pel nom. És el que executa una proposta
    * confirmada de la conversa; la IA no arriba mai aquí pel seu compte.
    */
@@ -860,6 +881,7 @@ var Habits = (function () {
     creaPerNom: creaPerNom,
     arxiva: arxiva,
     reactiva: reactiva,
+    ordena: ordena,
     consultaIA: consultaIA
   };
 })();

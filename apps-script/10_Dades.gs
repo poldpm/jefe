@@ -245,10 +245,16 @@ var Dades = (function () {
    * tasques fetes serien vint escriptures. Aquí s'escriu per TRAMS SEGUITS —
    * les files consecutives van en una sola crida— i no es toca cap fila que
    * no sigui a la llista.
+   *
+   * `canvis` pot ser el mateix objecte per a totes, o una FUNCIÓ
+   * `(objecteActual, posicio) => canvis` quan cada fila n'ha de rebre uns de
+   * diferents. Reordenar una llista és exactament aquest cas: el mateix camp
+   * amb un valor diferent a cada fila.
    */
   function actualitzaMoltes(nom, ids, canvis) {
     if (!ids || !ids.length) return 0;
     var d = carrega_(nom);
+    var perFila = (typeof canvis === 'function');
 
     var index = {};
     llegeix(nom).forEach(function (o) { index[o.id] = o; });
@@ -257,9 +263,10 @@ var Dades = (function () {
     for (var i = 0; i < ids.length; i++) {
       var actual = index[ids[i]];
       if (!actual) continue;
+      var seus = perFila ? canvis(actual, i) : canvis;
       var fusionat = {};
       for (var k in actual) if (k !== '_fila') fusionat[k] = actual[k];
-      for (var c in canvis) fusionat[c] = canvis[c];
+      for (var c in seus) fusionat[c] = seus[c];
       if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
       pendents.push({ fila: actual._fila, valors: aFila_(d.capcalera, fusionat) });
     }

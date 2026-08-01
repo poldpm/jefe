@@ -13,6 +13,7 @@ App.registraVista('habits', {
 
     var data = params.data || fmt.avui();
     var dades = null, mes = null;
+    var ordenant = false;      // mode de reordenar: les fites no es marquen
 
     // ------------------------------------------------------------- pintura
 
@@ -61,9 +62,15 @@ App.registraVista('habits', {
         return;
       }
 
-      var html = '<p class="marge" style="margin:0 0 var(--e2)">' +
-        (esAvui ? 'Control del dia' : 'Registre retroactiu · ' + esc(fmt.llarga(d.data))) + '</p>' +
-        '<div class="terreny">' + d.habits.map(franja).join('') + '</div>' +
+      var html = '<div class="terreny-cap">' +
+          '<p class="marge">' +
+            (esAvui ? 'Control del dia' : 'Registre retroactiu · ' + esc(fmt.llarga(d.data))) + '</p>' +
+          '<button class="btn btn-fantasma btn-menut" data-ordena="1">' +
+            (ordenant ? 'Fet' : 'Ordena') + '</button>' +
+        '</div>' +
+        (ordenant ? '<p class="menut">Mou-les amb les fletxes. Es desa sol.</p>' : '') +
+        '<div class="terreny"' + (ordenant ? ' data-ordenant="1"' : '') + '>' +
+          d.habits.map(franja).join('') + '</div>' +
         '<button class="btn btn-secundari btn-ple" data-nou="1" style="margin-top:var(--e3)">' +
         ic('mes') + 'Nou hàbit</button>';
 
@@ -72,11 +79,13 @@ App.registraVista('habits', {
       lligaAvui();
     }
 
-    /* UN TOC SUMA UN. Sempre, sigui quin sigui l'hàbit.
-       Abans, un hàbit de dos cops al dia s'havia de marcar entrant a la fitxa,
-       pujant el comptador i tornant a sortir per deixar-lo complert. Ara el
-       toc va fent 0 → 1 → 2 → fet, i el següent torna a zero per desfer-ho.
-       Amb un hàbit de fet-o-no-fet això és exactament el que ja feia. */
+    /* UNA FITA DE LA GRAELLA.
+       Un toc suma un, sempre, sigui quin sigui l'hàbit: 0 → 1 → 2 → fet, i el
+       següent torna a zero per desfer-ho. Amb un de fet-o-no-fet això és
+       exactament el que ja feia.
+
+       Cap a dins: símbol i nom a dalt, i al peu el que ha passat avui a
+       l'esquerra i la ratxa a la dreta. Res de corbes darrere del text. */
     function franja(h) {
       if (h.esComptador) return franjaComptador(h);
 
@@ -85,72 +94,88 @@ App.registraVista('habits', {
                 : !h.exigit ? 'notoca'
                 : h.registrat ? 'nofet' : 'pendent';
 
-      var sota = [];
-      if (h.tipus === 'quantitat') sota.push((h.valor || 0) + ' / ' + h.objectiu + (h.unitat ? ' ' + h.unitat : ''));
-      if (!h.exigit && h.existiaEncara) sota.push('avui no toca');
-      else if (estat === 'nofet') sota.push('marcat com a no fet');
-      if (h.frequencia === 'x_per_setmana') sota.push(h.aquestaSetmana + ' de ' + h.objectiuSetmanal + ' aquesta setmana');
-      if (h.pct30 !== null && h.pct30 !== undefined) sota.push(h.pct30 + '% en 30 dies');
+      /* Al peu hi cap una cosa i mitja, o sigui que hi va NOMÉS la que et diu
+         com estàs ara. El percentatge de trenta dies és per a la fitxa. */
+      var sota = h.tipus === 'quantitat' ? (h.valor || 0) + '/' + h.objectiu
+               : (!h.exigit && h.existiaEncara) ? 'avui no toca'
+               : h.frequencia === 'x_per_setmana' ? h.aquestaSetmana + '/' + h.objectiuSetmanal + ' setm.'
+               : '';
+
+      /* Llegit en veu alta, el contingut de la fita sonaria «Rentar-se les
+         dents1/23d». L'etiqueta ho diu amb paraules. */
+      var diu = h.nom + ', ' +
+        (!h.exigit && h.existiaEncara ? 'avui no toca'
+         : h.complert ? 'fet'
+         : h.tipus === 'quantitat' ? (h.valor || 0) + ' de ' + h.objectiu
+         : 'per fer');
 
       return '<div class="franja-fila" data-h="' + esc(h.id) + '">' +
         '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="' + estat + '"' +
+          ' aria-label="' + esc(diu) + '"' +
           ' aria-pressed="' + (h.complert ? 'true' : 'false') + '">' +
-          Relleu.franja(h.pct30, Relleu.llavor(h.id)) +
           '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
-          '<span>' +
-            '<span class="franja-nom">' + esc(h.nom) + '</span>' +
-            (sota.length ? '<span class="franja-sota">' + esc(sota.join(' · ')) + '</span>' : '') +
-          '</span>' +
-          '<span style="display:flex;align-items:center;gap:var(--e3)">' +
-            (h.ratxa > 0 ? '<span class="franja-cota"><span class="n">' + h.ratxa + '</span>' +
-              '<span class="u">' + (h.unitatRatxa === 'setmanes' ? 'setm.' : 'dies') + '</span></span>' : '') +
-            (h.complert ? '<svg class="punxo" aria-hidden="true"><use href="#ic-punxo"/></svg>' : '') +
+          '<span class="franja-nom">' + esc(h.nom) + '</span>' +
+          '<span class="franja-peu">' +
+            '<span class="franja-sota">' + esc(sota) + '</span>' +
+            (h.complert
+              ? '<svg class="punxo" aria-hidden="true"><use href="#ic-punxo"/></svg>'
+              : (h.ratxa > 0
+                  ? '<span class="franja-cota"><span class="n">' + h.ratxa + '</span>' +
+                    '<span class="u">' + (h.unitatRatxa === 'setmanes' ? 'st' : 'd') + '</span></span>'
+                  : '')) +
           '</span>' +
         '</button>' +
-        '<button class="franja-detall" data-detall="' + esc(h.id) + '"' +
-          ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('llegenda') + '</button>' +
+        botoDetall(h) +
       '</div>';
     }
 
     /**
      * UN COMPTADOR NO ES JUTJA: ES COMPTA.
      *
-     * Ni ratxa, ni percentatge, ni el punxó de fet. La xifra del dia és el que
-     * mana i ocupa el lloc que als altres hi va la cota. A sota, l'única cosa
-     * que serveix per veure cap on vas: per on et mous i si això puja o baixa.
+     * Ni ratxa, ni percentatge, ni el punxó de fet. La xifra del dia és tot el
+     * que hi ha i ocupa el peu sencer. La mitjana i si puja o baixa són a la
+     * fitxa: en una fita de cent píxels no hi caben sense fer-ho il·legible.
      *
-     * Porta un botó de restar perquè és l'únic que no es pot desfer sol: si en
-     * un hàbit normal et passes de tocs, el següent torna a zero; aquí no es
-     * pot «tornar a zero» sense perdre el compte del dia.
+     * Porta botó de restar perquè és l'únic que no es pot desfer sol: si en un
+     * hàbit normal et passes de tocs, el següent torna a zero; aquí no es pot
+     * tornar a zero sense perdre el compte del dia.
      */
     function franjaComptador(h) {
       var n = h.valor || 0;
-      var sota = [];
-      if (h.mitjana7 !== null && h.mitjana7 !== undefined) {
-        sota.push('mitjana ' + fmt.decimal(h.mitjana7) + (h.unitat ? ' ' + h.unitat : '') + ' al dia');
-      }
-      if (h.canvi7 !== null && h.canvi7 !== undefined && h.canvi7 !== 0) {
-        sota.push(fmt.decimal(Math.abs(h.canvi7)) +
-                  (h.canvi7 < 0 ? ' menys' : ' més') + ' que la setmana abans');
-      }
-
       return '<div class="franja-fila" data-h="' + esc(h.id) + '" data-comptador="1">' +
         '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="compta"' +
-          ' aria-label="Suma un a ' + esc(h.nom) + '">' +
+          ' aria-label="Suma un a ' + esc(h.nom) + '. En portes ' + n + '.">' +
           '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
-          '<span>' +
-            '<span class="franja-nom">' + esc(h.nom) + '</span>' +
-            (sota.length ? '<span class="franja-sota">' + esc(sota.join(' · ')) + '</span>' : '') +
+          '<span class="franja-nom">' + esc(h.nom) + '</span>' +
+          /* Sense la unitat: el nom de la fita ja diu què compta, i
+             «cigarros» retallat a «ciga» no és informació, és brossa. */
+          '<span class="franja-peu">' +
+            '<span class="compt-xifra"><span class="n">' + n + '</span></span>' +
           '</span>' +
-          '<span class="compt-xifra"><span class="n">' + n + '</span>' +
-            (h.unitat ? '<span class="u">' + esc(h.unitat) + '</span>' : '') + '</span>' +
         '</button>' +
-        '<button class="franja-menys" data-resta="' + esc(h.id) + '"' +
-          (n > 0 ? '' : ' disabled') + ' aria-label="Treu-ne un de ' + esc(h.nom) + '">' +
-          ic('menys') + '</button>' +
-        '<button class="franja-detall" data-detall="' + esc(h.id) + '"' +
-          ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('llegenda') + '</button>' +
+        (ordenant ? '' :
+          '<button class="franja-menys" data-resta="' + esc(h.id) + '"' +
+            (n > 0 ? '' : ' disabled') + ' aria-label="Treu-ne un de ' + esc(h.nom) + '">' +
+            ic('menys') + '</button>') +
+        botoDetall(h) +
       '</div>';
+    }
+
+    /* Ordenant, el peu de la fita és una barra per moure-la i no s'obre res.
+       Barra sencera i no dues cantonades: dos quadrats surant a sobre del nom
+       el tapaven, i a més eren dos objectius petits allà on el que fas és
+       justament repetir el toc uns quants cops. */
+    function botoDetall(h) {
+      if (ordenant) {
+        return '<div class="mou-barra">' +
+          '<button class="mou" data-cap="abans" data-mou="' + esc(h.id) + '"' +
+            ' aria-label="Mou «' + esc(h.nom) + '» cap endavant">' + ic('esquerra') + '</button>' +
+          '<button class="mou" data-cap="despres" data-mou="' + esc(h.id) + '"' +
+            ' aria-label="Mou «' + esc(h.nom) + '» cap endarrere">' + ic('dreta') + '</button>' +
+        '</div>';
+      }
+      return '<button class="franja-detall" data-detall="' + esc(h.id) + '"' +
+             ' aria-label="Històric de ' + esc(h.nom) + '">' + ic('llegenda') + '</button>';
     }
 
     // ------------------------------------------------------ el full de mes
@@ -281,6 +306,52 @@ App.registraVista('habits', {
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { formulari(null); });
       });
+      var bo = arrel.querySelector('[data-ordena]');
+      if (bo) bo.addEventListener('click', function () {
+        ordenant = !ordenant;
+        pintaAvui(dades, dades.data === fmt.avui(), false);
+      });
+    }
+
+    /**
+     * MOURE UNA FITA DE LLOC.
+     *
+     * Es mou primer a la pantalla i es desa després, com tot el que es toca
+     * aquí: si haguessis d'esperar el servidor entre fletxa i fletxa, moure'n
+     * una tres llocs serien cinc segons.
+     */
+    function mou(id, cap) {
+      var l = dades.habits;
+      var i = -1;
+      for (var k = 0; k < l.length; k++) if (l[k].id === id) i = k;
+      var j = i + (cap === 'abans' ? -1 : 1);
+      if (i < 0 || j < 0 || j >= l.length) return;
+
+      var t = l[i]; l[i] = l[j]; l[j] = t;
+      Cau.set('habits.' + data, dades);
+      pintaAvui(dades, dades.data === fmt.avui(), false);
+      if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+
+      // El focus torna al botó que has premut: si no, cada fletxa et deixa
+      // el teclat penjat i has de tornar a buscar la fita.
+      var seguent = arrel.querySelector('.franja-fila[data-h="' + id + '"] [data-cap="' + cap + '"]');
+      if (seguent) { try { seguent.focus(); } catch (e) {} }
+
+      if (espera.__ordre) clearTimeout(espera.__ordre);
+      espera.__ordre = setTimeout(desaOrdre, 700);
+    }
+
+    function desaOrdre() {
+      delete espera.__ordre;
+      var ids = dades.habits.map(function (h) { return h.id; });
+      enVol++;
+      crida('habits', 'ordena', { ids: ids, data: data })
+        .then(function (d) { enVol--; posaAlDia(d); })
+        .catch(function (err) {
+          enVol--;
+          App.brindis(err.message, 'error');
+          carrega();
+        });
     }
 
     /* Per franja i no per pàgina: quan se'n repinta una de sola, se li lliguen
@@ -293,6 +364,9 @@ App.registraVista('habits', {
       if (r) r.addEventListener('click', function () { toca(r.dataset.resta, -1); });
       var d = fila.querySelector('[data-detall]');
       if (d) d.addEventListener('click', function () { obreDetall(d.dataset.detall); });
+      fila.querySelectorAll('[data-mou]').forEach(function (b) {
+        b.addEventListener('click', function () { mou(b.dataset.mou, b.dataset.cap); });
+      });
     }
 
     /* ------------------------------------------------------------------------

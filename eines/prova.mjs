@@ -1,7 +1,7 @@
 /**
  * JEFE — proves del nucli
  *
- *   npm run prova     (i tambe des de )
+ *   npm run prova     (i també des de `npm run puja`)
  *
  * Executa el codi de debò dels fitxers del nucli fora d'Apps Script, amb
  * dobles a sota en lloc de Google Sheets. No toca cap dada teva.
@@ -104,6 +104,24 @@ console.log('\nDades.actualitzaMoltes: escriu per trams seguits');
   escriptures.length = 0;
   const n2 = ctx.Dades.actualitzaMoltes('Tasques', ['no_existeix'], { estat: 'x' });
   cal('id inexistent: no escriu res', n2 === 0 && escriptures.length === 0, String(n2));
+
+  // Amb una funció, cada fila rep uns canvis diferents. És el que fa possible
+  // reordenar una llista: el mateix camp amb un valor per fila.
+  escriptures.length = 0;
+  const capcalera2 = ['id', 'ordre'];
+  const files2 = [['a', 9], ['b', 9], ['c', 9]];
+  const fulla2 = {
+    getDataRange: () => ({ getValues: () => [capcalera2].concat(files2) }),
+    getRange: (fila, c, n) => ({ setValues: (v) => { escriptures.push({ fila, n, v }); } }),
+    getMaxRows: () => 100
+  };
+  ctx.Config.full = () => ({ getSheetByName: () => fulla2 });
+  ctx.Dades.invalida();
+
+  const n3 = ctx.Dades.actualitzaMoltes('Habits', ['c', 'a', 'b'],
+                                        (h, i) => ({ ordre: i + 1 }));
+  const escrits = escriptures.flatMap(e => e.v).map(f => f[0] + ':' + f[1]).sort().join(' ');
+  cal('amb funció, cada fila rep el seu valor', n3 === 3 && escrits === 'a:2 b:3 c:1', escrits);
 }
 
 // ------------------------------------------------------------------- comptadors
@@ -186,6 +204,20 @@ console.log('\nHàbits: un comptador es compta, no es jutja');
   // La mitjana es reparteix entre els dies que l'hàbit ja existia, no set fixos.
   habits[0].creat_el = '2026-07-30T09:00:00+02:00';
   const cig2 = ctx.Habits.dia(AVUI).habits.filter(h => h.id === 'h_cig')[0];
+  // Reordenar: el que ell decideix mana sobre l'ordre de creació.
+  const escritsOrdre = [];
+  ctx.Dades.actualitzaMoltes = (full, ids, fn) => {
+    ids.forEach((id, i) => escritsOrdre.push(id + ':' + fn({ id }, i).ordre));
+    return ids.length;
+  };
+  ctx.Habits.ordena(['h_dents', 'h_cig']);
+  cal('ordenar numera segons la llista rebuda',
+      escritsOrdre.join(' ') === 'h_dents:1 h_cig:2', escritsOrdre.join(' '));
+
+  let potaOrdre = false;
+  try { ctx.Habits.ordena(['no_existeix']); } catch (err) { potaOrdre = true; }
+  cal('ordenar amb identificadors que no hi són avisa', potaOrdre, 'ho ha deixat fer');
+
   cal('des que existeix i no set dies sempre',
       cig2.mitjana7 === 5.3, String(cig2.mitjana7));    // (8+5+3)/3 = 5,33
 }
