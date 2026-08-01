@@ -404,18 +404,29 @@ function provaNotificacio() {
   }
   afegeix('1. Compte de servei ..... correcte');
 
-  var config = Utils.desJson(Config.get('firebase_web', ''), null);
-  afegeix('2. Configuració web ..... ' + (config ? 'posada' : 'FALTA a _Config → firebase_web'));
-  afegeix('   clau VAPID ........... ' + (Config.get('firebase_vapid', '') ? 'posada' : 'FALTA a _Config → firebase_vapid'));
+  // La configuració web (apiKey, vapid…) no es comprova des d'aquí: viu a
+  // firebase.config.json, que és del client. Si algun dispositiu s'ha
+  // registrat, és que aquella configuració ja funciona. Val més comprovar
+  // el resultat que no pas repetir la declaració en dos llocs.
+  var d;
+  try {
+    d = Notifica.dispositius();
+  } catch (e) {
+    afegeix('2. Dispositius .......... FALLA: falta el full _Dispositius');
+    afegeix('');
+    afegeix('Executa configuraJefe() per crear-lo i torna a provar-ho.');
+    return linies.join('\n');
+  }
 
-  var d = Notifica.dispositius();
-  afegeix('3. Dispositius actius ... ' + d.length);
+  afegeix('2. Dispositius actius ... ' + d.length);
   d.forEach(function (x) { afegeix('   · ' + x.nom + '  (vist ' + x.vist_el + ')'); });
 
   if (!d.length) {
     afegeix('');
-    afegeix('No hi ha cap dispositiu. Obre JEFE al mòbil i accepta les');
-    afegeix('notificacions quan te les demani; després torna a executar això.');
+    afegeix('Cap dispositiu registrat encara. Al mòbil: obre JEFE, toca la icona');
+    afegeix('de quadrícula i prem «Activa les notificacions». Si el botó et diu');
+    afegeix('que Firebase no està configurat, és que firebase.config.json encara');
+    afegeix('té els valors d\'exemple o que no has fet git push.');
     return linies.join('\n');
   }
 
@@ -424,7 +435,7 @@ function provaNotificacio() {
     'Si llegeixes això, les notificacions funcionen.',
     { etiqueta: 'prova', url: './' }
   );
-  afegeix('4. Enviades ............. ' + r.enviades + ' de ' + d.length);
+  afegeix('3. Enviades ............. ' + r.enviades + ' de ' + d.length);
   (r.errors || []).forEach(function (e) {
     afegeix('   ERROR a ' + e.nom + ': codi ' + e.codi + ' — ' + e.text);
   });

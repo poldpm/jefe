@@ -103,7 +103,14 @@ npm.cmd run puja
 git add -A; git commit -m "notificacions"; git push
 ```
 
-## 6. Activa-les al mòbil
+## 6. Crea el full dels dispositius
+
+A l'editor d'Apps Script, executa **`configuraJefe()`**.
+
+Crea el full `_Dispositius`, on es desa quin telèfon ha de rebre què. No toca
+res del que ja tens: només afegeix el que falta.
+
+## 7. Activa-les al mòbil
 
 Obre JEFE al telèfon, toca la **icona de quadrícula** de la capçalera, i prem
 **«Activa les notificacions»**. Accepta el permís quan Android te'l demani.
@@ -112,12 +119,16 @@ Obre JEFE al telèfon, toca la **icona de quadrícula** de la capçalera, i prem
 > Chrome el denegaria sense preguntar-te i no hi hauria manera de tornar-hi
 > sense anar a la configuració del navegador.
 
-## 7. Comprova-ho
+## 8. Comprova-ho
 
 A l'editor d'Apps Script, obre `90_Instalacio.gs` i executa **`provaNotificacio`**.
 
 Si tot va bé, **et sonarà el telèfon**. Si no, el registre d'execució et dirà en
-quin dels quatre passos s'ha trencat.
+quin dels tres passos s'ha trencat.
+
+> `provaNotificacio` **no comprova la configuració web**, i és a posta: si un
+> dispositiu s'ha arribat a registrar, aquella configuració ja ha funcionat.
+> Comprovar el resultat val més que repetir la declaració en dos llocs.
 
 ---
 

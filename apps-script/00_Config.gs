@@ -39,10 +39,11 @@ var CONFIG_DEFECTE = {
   hora_resum: '22',    // franja horària del resum nocturn (0-23)
   dia_revisio: '7',    // 1 = dilluns ... 7 = diumenge
 
-  // Notificacions. Aquests dos SÓN públics: la configuració web de Firebase
-  // està pensada per anar al codi del client. El compte de servei no.
-  firebase_web: '',
-  firebase_vapid: '',
+  // La configuració web de Firebase NO és aquí: viu a firebase.config.json.
+  // Ha de ser un fitxer perquè el treballador de servei l'ha de poder llegir
+  // amb l'app tancada, i des d'allà no es pot cridar aquesta API. Una sola
+  // font per als dos, doncs. L'únic secret, el compte de servei, va a
+  // Script Properties (FIREBASE_COMPTE).
 
   // Manteniment
   max_files_registre: '5000'
