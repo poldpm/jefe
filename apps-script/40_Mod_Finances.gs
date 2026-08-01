@@ -156,6 +156,10 @@ function MODUL_FINANCES() {
          més per obrir el full. Tres crides per obrir finances volien dir
          obrir el full tres vegades i esperar la més lenta de les tres. */
       pantalla:       function (p) { return Finances.pantalla(p); },
+      pressupost:     function (p) { return Finances.desaPressupost(p.categoria, p.limit); },
+      recurrents:     function ()  { return Finances.recurrents(); },
+      desaRecurrent:  function (p) { return Finances.desaRecurrent(p); },
+      arxivaRecurrent:function (p) { return Finances.arxivaRecurrent(p.id); },
       categories:     function ()  { return Finances.categories(); },
       creaCategoria:  function (p) { return Finances.creaCategoria(p); },
       editaCategoria: function (p) { return Finances.editaCategoria(p.id, p); },
@@ -437,6 +441,12 @@ var Finances = (function () {
       balanc: ingressos - despeses,
       perRevisar: perRevisar,
       perClassificar: perClassificar,
+      pressupostos: pressupostos().map(function (b) {
+        var gastat = perCat[b.categoria] || 0;
+        var c = cats[b.categoria] || {};
+        return { categoria: b.categoria, nom: c.nom || b.categoria, emoji: c.emoji || '',
+                 limit: b.limit, gastat: gastat, pct: b.limit ? gastat / b.limit * 100 : 0 };
+      }).sort(function (a, b) { return b.pct - a.pct; }),
       perCategoria: llistaCat,
       ritme: ritme_(quin, despeses),
       moviments: files.map(function (f) {
@@ -818,6 +828,128 @@ var Finances = (function () {
       .slice(0, 12);
   }
 
+  // ----------------------------------------------------------- pressupostos
+
+  /**
+   * Un límit mensual per categoria.
+   *
+   * Límit 0 vol dir «sense pressupost»: la fila es queda però deixa de
+   * comptar. Aquí no s'esborra res, com a tota la resta.
+   */
+  function pressupostos() {
+    var out = [];
+    try {
+      Dades.llegeix('Pressupostos').forEach(function (f) {
+        var l = num_(f.limit_mensual);
+        if (l > 0) out.push({ id: f.id, categoria: f.id_categoria, limit: l });
+      });
+    } catch (err) { /* encara no hi ha el full */ }
+    return out;
+  }
+
+  function desaPressupost(idCategoria, limit) {
+    if (!idCategoria) throw new Error('Falta la categoria.');
+    return Dades.desa('Pressupostos', {
+      id: 'pres_' + idCategoria,
+      id_categoria: idCategoria,
+      limit_mensual: num_(limit)
+    }, ['id_categoria'], 'pres');
+  }
+
+  // ------------------------------------------------------------- recurrents
+
+  function recurrents() {
+    var cats = indexCategories_();
+    var f = [];
+    try {
+      f = Dades.llegeix('Recurrents', function (x) { return !x.esborrat_el; });
+    } catch (err) { return []; }
+
+    f.sort(function (a, b) { return (Number(a.dia) || 0) - (Number(b.dia) || 0); });
+    return f.map(function (x) {
+      var c = cats[x.categoria] || {};
+      return {
+        id: x.id, tipus: x.tipus, import: num_(x['import']),
+        categoria: x.categoria, categoriaNom: c.nom || x.categoria, emoji: c.emoji || '',
+        descripcio: x.descripcio, metode: x.metode, dia: Number(x.dia) || 1,
+        actiu: String(x.actiu).toUpperCase() !== 'NO',
+        ultimMes: x.ultim_mes
+      };
+    });
+  }
+
+  function desaRecurrent(p) {
+    var desc = String(p.descripcio || '').trim();
+    if (!desc) throw new Error('Falta dir què és.');
+    var imp = num_(p['import']);
+    if (imp <= 0) throw new Error('L\'import ha de ser més gran que zero.');
+
+    /* El dia va acotat a 28 a posta: així cau tots els mesos, també el
+       febrer. Un rebut del 31 no existiria mig any. */
+    var dia = Math.min(28, Math.max(1, Math.round(num_(p.dia)) || 1));
+    var tipus = p.tipus === 'i' ? 'i' : 'd';
+
+    var fila = {
+      tipus: tipus,
+      'import': imp,
+      categoria: p.categoria || (tipus === 'i' ? 'i_alti' : 'c_altd'),
+      descripcio: desc,
+      metode: METODES.indexOf(p.metode) !== -1 ? p.metode : 'domic',
+      dia: dia,
+      actiu: p.actiu === false ? 'NO' : 'SI'
+    };
+
+    if (p.id) {
+      var r = Dades.actualitza('Recurrents', p.id, fila);
+      if (!r) throw new Error('Aquest recurrent no existeix.');
+      return r;
+    }
+    return Dades.insereix('Recurrents', fila, 'rec');
+  }
+
+  function arxivaRecurrent(id) {
+    if (!id) throw new Error('Falta l\'identificador.');
+    var r = Dades.actualitza('Recurrents', id, { esborrat_el: Utils.ara() });
+    if (!r) throw new Error('Aquest recurrent no existeix.');
+    return { tret: true };
+  }
+
+  /**
+   * Crea els moviments dels recurrents que ja toquen aquest mes.
+   *
+   * `ultim_mes` és el que impedeix que se'n creï un de doble: es marca en
+   * crear-lo i no es torna a mirar fins al mes que ve. Per això es pot
+   * executar cada nit sense por, i per això NO es fa en llegir una pantalla:
+   * obrir finances no ha d'escriure't res al full.
+   */
+  function generaRecurrents(avui) {
+    avui = avui || Utils.avui();
+    var mesAra = avui.slice(0, 7);
+    var diaAvui = Number(avui.slice(8, 10));
+    var fets = [];
+
+    recurrents().forEach(function (r) {
+      if (!r.actiu) return;
+      if (String(r.ultimMes) === mesAra) return;      // ja creat aquest mes
+      if (r.dia > diaAvui) return;                    // encara no toca
+
+      afegeix({
+        data: mesAra + '-' + ('0' + r.dia).slice(-2),
+        tipus: r.tipus,
+        'import': r.import,
+        categoria: r.categoria,
+        descripcio: r.descripcio,
+        metode: r.metode,
+        origen: 'recurrent'
+      });
+      Dades.actualitza('Recurrents', r.id, { ultim_mes: mesAra });
+      fets.push({ descripcio: r.descripcio, import: r.import, tipus: r.tipus });
+    });
+
+    if (fets.length) Log.info('finances.recurrents', fets.length + ' recurrents creats', fets);
+    return fets;
+  }
+
   // ------------------------------------------------------------- pantalles
 
   /**
@@ -835,6 +967,7 @@ var Finances = (function () {
     var dades = quin === 'mesos' ? mesos(p.quants || 12)
               : quin === 'estad' ? estadistiques(p.mes)
               : quin === 'revisar' ? perRevisar()
+              : quin === 'recurrents' ? { llista: recurrents() }
               : mes(p.mes);
 
     return {
@@ -1126,6 +1259,12 @@ var Finances = (function () {
     mes: mes,
     mesos: mesos,
     pantalla: pantalla,
+    pressupostos: pressupostos,
+    desaPressupost: desaPressupost,
+    recurrents: recurrents,
+    desaRecurrent: desaRecurrent,
+    arxivaRecurrent: arxivaRecurrent,
+    generaRecurrents: generaRecurrents,
     estadistiques: estadistiques,
     afegeix: afegeix,
     edita: edita,

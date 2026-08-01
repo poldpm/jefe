@@ -212,6 +212,15 @@ function triggerTancamentNutricio() {
  */
 function triggerBanc() {
   try {
+    /* Els recurrents van AQUÍ i no en llegir una pantalla: obrir finances no
+       t'ha d'escriure res al full. I van abans del banc perquè si el rebut
+       que has apuntat com a recurrent també arriba del banc, el vegis com un
+       possible duplicat i no com dos moviments que no tenen res a veure. */
+    if (typeof Finances !== 'undefined') {
+      var nous = ambBloqueig_(function () { return Finances.generaRecurrents(); });
+      if (nous.length) Log.info('trigger.recurrents', nous.length + ' recurrents creats');
+    }
+
     if (typeof FinancesBanc === 'undefined' || !FinancesBanc.disponible()) return;
 
     var r = ambBloqueig_(function () { return FinancesBanc.sincronitza(); });

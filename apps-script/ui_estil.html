@@ -660,6 +660,29 @@ h2 { font-size: 1.0625rem; }
 .cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
 .cat-nova [data-crea-cat] { width: 100%; }
 
+/* Pressupost: la barra deixa de mesurar contra la categoria més grossa i
+   passa a mesurar contra el teu límit. Passat el límit, es tenyeix. */
+.cat-via[data-limit] { border-color: var(--corba-mestra); }
+.cat-via i[data-passat] { background: var(--h5); }
+.cat-xifra small { display: block; font-size: .625rem; font-weight: 400;
+                   color: var(--ink-suau); }
+
+/* Recurrents: el dia mana a l'esquerra, perquè el que preguntes és «quan
+   surt», no «quant». */
+.rec-fila { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
+            align-items: center; gap: var(--e3); width: 100%; min-height: 56px;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; text-align: left; font: inherit; color: inherit;
+            cursor: pointer; }
+.rec-fila:last-child { border-bottom: 0; }
+.rec-fila[data-apagat] { opacity: .45; }
+.rec-dia { display: flex; align-items: center; justify-content: center;
+           width: 34px; height: 34px; border: 1px solid var(--neatline);
+           font-size: .875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-cos { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 /* Safata de revisió. Una fila per DECISIÓ, no per moviment: dotze compres a
    l'estanc són una sola targeta. En triar, la fila s'apaga i se'n va, i el que
    queda és el que et falta. */

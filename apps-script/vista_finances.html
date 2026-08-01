@@ -64,8 +64,10 @@ App.registraVista('finances', {
       var mostraFletxes = periode === 'mes' || periode === 'estad';
       var titol = periode === 'mesos' ? 'Últims 12 mesos'
                 : periode === 'revisar' ? 'Per classificar'
+                : periode === 'recurrents' ? 'Cada mes'
                 : nomMes(mes);
       var sota = periode === 'revisar' ? 'safata'
+               : periode === 'recurrents' ? 'recurrents'
                : (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Mes'])[1];
 
       return '<header class="capcalera capcalera-nutri">' +
@@ -96,6 +98,8 @@ App.registraVista('finances', {
           return '<button data-va="' + p[0] + '"' +
                  (p[0] === periode ? ' aria-current="true"' : '') + '>' + p[1] + '</button>';
         }).join('') +
+        '<button data-va="recurrents"' + (periode === 'recurrents' ? ' aria-current="true"' : '') +
+          '>Cada mes</button>' +
         '<hr><button data-avui="1">Anar al mes actual</button>' +
       '</div>');
 
@@ -215,21 +219,66 @@ App.registraVista('finances', {
         }).join('');
     }
 
+    /**
+     * On van els diners, i quant en tens de marge.
+     *
+     * La barra mesura contra el PRESSUPOST quan n'hi ha, i contra la
+     * categoria més grossa quan no. Són dues preguntes diferents —«quant
+     * m'he passat» i «on va més»— i cadascuna vol la seva referència.
+     */
     function blocCategories(d) {
       if (!d.perCategoria.length) return '';
       var max = d.perCategoria[0].total || 1;
+      var lim = {};
+      (d.pressupostos || []).forEach(function (b) { lim[b.categoria] = b.limit; });
 
       return '<p class="marge">On van els diners</p>' +
+        '<p class="menut">Toca una categoria per posar-hi un límit mensual.</p>' +
         '<div class="cats">' +
           d.perCategoria.map(function (c) {
+            var l = lim[c.id] || 0;
+            var pct = l ? Math.min(c.total / l * 100, 100) : (c.total / max * 100);
+            var passat = l && c.total > l;
             return '<button class="cat-fila" data-cat="' + esc(c.id) + '"' +
-              ' aria-label="' + esc(c.nom) + ': ' + eur(c.total) + '">' +
+              ' data-nom="' + esc(c.nom) + '" data-limit="' + l + '"' +
+              ' aria-label="' + esc(c.nom) + ': ' + eur(c.total) +
+                (l ? ' de ' + eur(l) : '') + '">' +
               '<span class="cat-nom">' + esc(c.emoji ? c.emoji + ' ' : '') + esc(c.nom) + '</span>' +
-              '<span class="cat-via"><i style="width:' + (c.total / max * 100).toFixed(1) + '%"></i></span>' +
-              '<span class="cat-xifra num">' + eur(c.total) + '</span>' +
+              '<span class="cat-via"' + (l ? ' data-limit="1"' : '') + '>' +
+                '<i style="width:' + pct.toFixed(1) + '%"' +
+                  (passat ? ' data-passat="1"' : '') + '></i></span>' +
+              '<span class="cat-xifra num">' + eur(c.total) +
+                (l ? '<small' + (passat ? ' data-costat="superavit"' : '') + '>de ' + eur(l) + '</small>' : '') +
+              '</span>' +
             '</button>';
           }).join('') +
         '</div>';
+    }
+
+    /** El límit mensual d'una categoria. Buit o zero vol dir «sense límit». */
+    function obrePressupost(idCat, nom, actual) {
+      var cos = App.modal('Límit de ' + nom,
+        '<div class="form-ajustos">' +
+          '<p class="menut">Quant vols gastar-hi com a màxim cada mes. Deixa-ho ' +
+            'buit per treure el límit.</p>' +
+          '<label><span class="marge">Límit mensual (€)</span>' +
+            '<input data-limit inputmode="decimal" class="num camp-import" value="' +
+              (actual ? String(actual).replace('.', ',') : '') + '"></label>' +
+          '<button class="btn btn-primari" data-desa-limit>Desa</button>' +
+        '</div>');
+
+      cos.querySelector('[data-desa-limit]').addEventListener('click', function () {
+        var b = this;
+        b.disabled = true;
+        crida('finances', 'pressupost', { categoria: idCat, limit: num(cos.querySelector('[data-limit]').value) })
+          .then(function () {
+            App.tancaModal();
+            App.brindis('Límit desat');
+            Cau.oblida('finances.');
+            carrega();
+          })
+          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
     }
 
     // --------------------------------------------------------- mesos i estad
@@ -338,6 +387,161 @@ App.registraVista('finances', {
         '</div>';
 
       lligaCapcalera();
+    }
+
+    // -------------------------------------------------------------- recurrents
+
+    /* El que passa cada mes sense que hi facis res: el lloguer, les
+       subscripcions, la quota del gimnàs. Es creen sols de matinada el dia que
+       toca, i el que veus aquí és la LLISTA del que passarà, no el que ja ha
+       passat: això últim ja surt als moviments del mes com qualsevol altre. */
+    function pintaRecurrents(d) {
+      var llista = d.llista || [];
+      var mesAra = new Date().toISOString().slice(0, 7);
+      var totalD = llista.filter(function (r) { return r.actiu && r.tipus === 'd'; })
+        .reduce(function (s, r) { return s + r.import; }, 0);
+      var totalI = llista.filter(function (r) { return r.actiu && r.tipus === 'i'; })
+        .reduce(function (s, r) { return s + r.import; }, 0);
+
+      arrel.innerHTML = capcalera(false) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="tres-xifres">' +
+              xifra('Surten', eurNum(totalD), '€') +
+              xifra('Entren', eurNum(totalI), '€') +
+              xifra('Actius', llista.filter(function (r) { return r.actiu; }).length, '') +
+            '</div>' +
+            '<p class="menut">Es creen sols de matinada el dia que toca. Si el dia ' +
+              'que hi poses ja ha passat aquest mes, el primer es crearà el mes que ve.</p>' +
+            '<button class="btn btn-primari" data-nou-rec style="width:100%;margin-top:var(--e3)">' +
+              ic('mes') + 'Afegeix-ne un</button>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' +
+            (llista.length
+              ? '<div class="cats">' + llista.map(function (r) {
+                  var fet = String(r.ultimMes) === mesAra;
+                  return '<button class="rec-fila" data-rec="' + esc(r.id) + '"' +
+                    (r.actiu ? '' : ' data-apagat="1"') + '>' +
+                    '<span class="rec-dia">' + r.dia + '</span>' +
+                    '<span class="rec-cos">' +
+                      '<b>' + esc(r.descripcio) + '</b>' +
+                      '<span class="menut">' + esc((r.emoji ? r.emoji + ' ' : '') + r.categoriaNom) +
+                        ' · ' + esc(r.metode) +
+                        (r.actiu ? (fet ? ' · fet aquest mes' : ' · pendent') : ' · aturat') +
+                      '</span>' +
+                    '</span>' +
+                    '<span class="rec-import num" data-costat="' +
+                      (r.tipus === 'i' ? 'deficit' : '') + '">' +
+                      (r.tipus === 'i' ? '+' : '−') + eur(r.import) + '</span>' +
+                  '</button>';
+                }).join('') + '</div>'
+              : '<p class="menut">Encara no en tens cap.</p>') +
+          '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+      arrel.querySelector('[data-nou-rec]').addEventListener('click', function () { obreRecurrent(null); });
+      arrel.querySelectorAll('[data-rec]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var r = null;
+          for (var i = 0; i < llista.length; i++) if (llista[i].id === b.dataset.rec) r = llista[i];
+          if (r) obreRecurrent(r);
+        });
+      });
+    }
+
+    function obreRecurrent(r) {
+      var editant = !!r;
+      var tipus = editant ? r.tipus : 'd';
+
+      var cos = App.modal(editant ? 'Edita el recurrent' : 'Nou recurrent',
+        '<div class="form-ajustos form-apunt">' +
+          '<div class="tipus-tria" role="group">' +
+            '<button data-tipus="d"' + (tipus === 'd' ? ' aria-pressed="true"' : '') + '>Surt</button>' +
+            '<button data-tipus="i"' + (tipus === 'i' ? ' aria-pressed="true"' : '') + '>Entra</button>' +
+          '</div>' +
+          '<label><span class="marge">Import</span>' +
+            '<input data-c="import" inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
+              (editant ? String(r.import).replace('.', ',') : '') + '"></label>' +
+          '<label><span class="marge">Què és</span>' +
+            '<input data-c="descripcio" autocomplete="off" placeholder="p. ex. Lloguer" value="' +
+              (editant ? esc(r.descripcio) : '') + '"></label>' +
+          '<label><span class="marge">Categoria</span><select data-c="categoria"></select></label>' +
+          '<label><span class="marge">Com es paga</span>' +
+            '<select data-c="metode">' +
+              ['domic', 'targeta', 'transf', 'efectiu', 'online'].map(function (x) {
+                return '<option value="' + x + '"' +
+                       (editant && r.metode === x ? ' selected' : '') + '>' + x + '</option>';
+              }).join('') + '</select></label>' +
+          '<label><span class="marge">Quin dia del mes</span>' +
+            '<input data-c="dia" inputmode="numeric" class="num" value="' +
+              (editant ? r.dia : 1) + '"></label>' +
+          /* Fins al 28 i no fins al 31: així cau tots els mesos, també el
+             febrer. Un rebut del dia 31 no existiria mig any. */
+          '<p class="menut">Del 1 al 28. Més enllà no existeix tots els mesos.</p>' +
+          (editant
+            ? '<label class="cat-exclou"><input type="checkbox" data-c="actiu"' +
+              (r.actiu ? ' checked' : '') + '><span>Actiu</span></label>' : '') +
+          '<button class="btn btn-primari" data-desa-rec>' + (editant ? 'Desa' : 'Crea') + '</button>' +
+          (editant ? '<button class="btn btn-secundari" data-treu-rec style="margin-top:var(--e2)">Treu-lo</button>' : '') +
+        '</div>');
+
+      var camps = {};
+      cos.querySelectorAll('[data-c]').forEach(function (i) { camps[i.dataset.c] = i; });
+
+      function pintaCategories() {
+        camps.categoria.innerHTML = cats.filter(function (c) { return c.mena === tipus; })
+          .map(function (c) {
+            return '<option value="' + esc(c.id) + '"' +
+                   (editant && r.categoria === c.id ? ' selected' : '') + '>' +
+                   esc((c.emoji ? c.emoji + ' ' : '') + c.nom) + '</option>';
+          }).join('');
+      }
+      pintaCategories();
+
+      cos.querySelectorAll('[data-tipus]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          tipus = b.dataset.tipus;
+          cos.querySelectorAll('[data-tipus]').forEach(function (x) {
+            x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+          });
+          pintaCategories();
+        });
+      });
+
+      cos.querySelector('[data-desa-rec]').addEventListener('click', function () {
+        var imp = num(camps['import'].value);
+        if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        if (!camps.descripcio.value.trim()) {
+          App.brindis('Digues què és', 'error'); camps.descripcio.focus(); return;
+        }
+        var b = this;
+        b.disabled = true;
+        crida('finances', 'desaRecurrent', {
+          id: editant ? r.id : null,
+          tipus: tipus, 'import': imp,
+          descripcio: camps.descripcio.value.trim(),
+          categoria: camps.categoria.value,
+          metode: camps.metode.value,
+          dia: num(camps.dia.value),
+          actiu: camps.actiu ? camps.actiu.checked : true
+        }).then(function () {
+          App.tancaModal(); App.brindis(editant ? 'Desat' : 'Creat');
+          Cau.oblida('finances.'); carrega();
+        }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      var bt = cos.querySelector('[data-treu-rec]');
+      if (bt) bt.addEventListener('click', function () {
+        bt.disabled = true;
+        crida('finances', 'arxivaRecurrent', { id: r.id })
+          .then(function () {
+            App.tancaModal(); App.brindis('Tret');
+            Cau.oblida('finances.'); carrega();
+          })
+          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+      });
     }
 
     // ------------------------------------------------------ safata de revisió
@@ -676,7 +880,7 @@ App.registraVista('finances', {
 
       arrel.querySelectorAll('[data-cat]').forEach(function (b) {
         b.addEventListener('click', function () {
-          App.ves('finances', { mes: mes, periode: 'estad' });
+          obrePressupost(b.dataset.cat, b.dataset.nom, Number(b.dataset.limit) || 0);
         });
       });
     }
@@ -843,13 +1047,15 @@ App.registraVista('finances', {
 
     function repinta(d) {
       if (periode === 'revisar') pintaRevisar(d);
+      else if (periode === 'recurrents') pintaRecurrents(d);
       else if (periode === 'mesos') pintaMesos(d);
       else if (periode === 'estad') pintaEstad(d);
       else pintaMes(d);
     }
 
     function carrega() {
-      var desat = periode === 'revisar' ? null : Cau.get(claded(), null);
+      var volatil = periode === 'revisar' || periode === 'recurrents';
+      var desat = volatil ? null : Cau.get(claded(), null);
       var previ = null;
       if (desat && desat.dades) {
         cats = desat.categories || cats;
@@ -863,7 +1069,7 @@ App.registraVista('finances', {
           cats = r.categories || [];
           if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
           if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
-          if (periode !== 'revisar') Cau.set(claded(), r);
+          if (!volatil) Cau.set(claded(), r);
 
           /* Si no ha canviat res, no refem la pantalla: repintar-la només
              serviria per tancar-te el que tinguis obert. I si ha canviat però
