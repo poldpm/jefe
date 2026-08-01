@@ -4,13 +4,13 @@
   "description": "Assistent personal sobre Google Sheets i Apps Script",
   "private": true,
   "scripts": {
-    "comprova": "node eines/comprova.mjs && node eines/prova.mjs",
-    "puja": "node eines/comprova.mjs && node eines/prova.mjs && clasp push -f && node eines/desplega.mjs && node eines/construeix.mjs",
+    "comprova": "node eines/comprova.mjs && npm run prova",
+    "puja": "node eines/comprova.mjs && node eines/prova.mjs && node eines/prova-pont.mjs && clasp push -f && node eines/desplega.mjs && node eines/construeix.mjs",
     "obre": "clasp open",
     "registre": "clasp logs",
     "construeix": "node eines/construeix.mjs",
     "desplega": "node eines/desplega.mjs",
-    "prova": "node eines/prova.mjs",
+    "prova": "node eines/prova.mjs && node eines/prova-pont.mjs",
     "mirall": "node eines/construeix.mjs && node eines/mirall.mjs"
   },
   "devDependencies": {

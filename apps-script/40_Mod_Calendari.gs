@@ -533,13 +533,14 @@ var Calendari = (function () {
         e = cal.createEvent(titol, ini, fi, opcions);
       }
     } catch (err) {
-      /* El cas normal d'aquest error: un calendari que et comparteix algú
-         d'un altre compte i que t'han deixat MIRAR però no tocar. Dir-ho amb
-         paraules estalvia mitja hora de no entendre res. */
-      throw new Error('No he pogut escriure a «' + cal.getName() + '». ' +
-        'Si és un calendari d\'un altre compte, cal que des d\'allà et donin ' +
-        'permís per «fer canvis als esdeveniments», no només per veure\'ls. ' +
-        '(' + err.message + ')');
+      /* PROVAR-HO PER L'ALTRE COMPTE ABANS DE DONAR-HO PER PERDUT.
+         Aquest error, quan surt, gairebé sempre és el mateix: un calendari
+         d'un Workspace que t'han deixat MIRAR però no tocar, i que no et
+         deixaran tocar mai perquè ho té bloquejat l'administrador. Si hi ha
+         un pont amb aquell compte, l'escriptura hi passa i ja està. */
+      var perPont = provaPelPont_('crea', err, cal, p, titol);
+      if (perPont) return perPont;
+      throw errorDEscriptura_(cal, err);
     }
 
     buidaCau();
@@ -547,6 +548,47 @@ var Calendari = (function () {
                                                        calendari: cal.getName() });
     return { id: e.getId(), titol: titol, data: p.data,
              hora: p.hora || '', calendari: cal.getName() };
+  }
+
+  function errorDEscriptura_(cal, err) {
+    var nom = cal ? cal.getName() : 'aquest calendari';
+    if (CalendariPont.hiEs()) {
+      return new Error('Ni jo ni el compte de l\'escola hem pogut escriure a «' + nom +
+        '». Comprova amb provaPontEscola() que el pont segueix dret. (' + err.message + ')');
+    }
+    return new Error('No he pogut escriure a «' + nom + '». ' +
+      'Si és d\'un altre compte de Google, el teu no hi podrà escriure mai: cal ' +
+      'un pont amb aquell compte. Vegeu docs/04-calendari-escola.md. (' + err.message + ')');
+  }
+
+  function provaPelPont_(accio, err, cal, p, titol) {
+    if (!CalendariPont.hiEs()) return null;
+    var id = cal ? cal.getId() : (p.calendari || '');
+
+    try {
+      var r;
+      if (accio === 'crea') {
+        r = CalendariPont.crea({
+          calendari: id, titol: titol, data: p.data, hora: p.hora || '',
+          durada: Number(p.durada) > 0 ? Number(p.durada) : 60,
+          lloc: p.lloc || '', nota: p.nota || ''
+        });
+      } else if (accio === 'edita') {
+        r = CalendariPont.edita(p);
+      } else {
+        r = CalendariPont.treu(p);
+      }
+
+      buidaCau();
+      Log.info('calendari.pont', 'Fet pel compte de l\'escola', { accio: accio, calendari: id });
+      r = r || {};
+      r.perElPont = true;
+      return r;
+    } catch (errPont) {
+      Log.avis('calendari.pont', 'El pont tampoc ha pogut: ' + errPont.message,
+               { accio: accio, calendari: id, original: err.message });
+      return null;
+    }
   }
 
   function troba_(id, idCalendari) {
@@ -564,26 +606,35 @@ var Calendari = (function () {
   }
 
   function edita(p) {
-    var e = troba_(p.id, p.calendari);
+    var e, titolFinal;
+    try {
+      e = troba_(p.id, p.calendari);
 
-    if (p.titol !== undefined) e.setTitle(String(p.titol).trim() || e.getTitle());
-    if (p.lloc !== undefined) e.setLocation(String(p.lloc));
-    if (p.nota !== undefined) e.setDescription(String(p.nota));
+      if (p.titol !== undefined) e.setTitle(String(p.titol).trim() || e.getTitle());
+      if (p.lloc !== undefined) e.setLocation(String(p.lloc));
+      if (p.nota !== undefined) e.setDescription(String(p.nota));
 
-    if (p.data) {
-      if (p.hora) {
-        var ini = quan_(p.data, p.hora);
-        var minuts = Number(p.durada) > 0 ? Number(p.durada)
-                   : Math.max(15, Math.round((e.getEndTime() - e.getStartTime()) / 60000));
-        e.setTime(ini, new Date(ini.getTime() + minuts * 60000));
-      } else {
-        e.setAllDayDate(Utils.aData(p.data));
+      if (p.data) {
+        if (p.hora) {
+          var ini = quan_(p.data, p.hora);
+          var minuts = Number(p.durada) > 0 ? Number(p.durada)
+                     : Math.max(15, Math.round((e.getEndTime() - e.getStartTime()) / 60000));
+          e.setTime(ini, new Date(ini.getTime() + minuts * 60000));
+        } else {
+          e.setAllDayDate(Utils.aData(p.data));
+        }
       }
+      titolFinal = e.getTitle();
+    } catch (err) {
+      // Igual que en crear: si no hi arribo jo, potser hi arriba l'altre compte.
+      var perPont = provaPelPont_('edita', err, null, p, p.titol);
+      if (perPont) return perPont;
+      throw errorDEscriptura_(null, err);
     }
 
     buidaCau();
     Log.info('calendari.edita', 'Esdeveniment canviat', { id: p.id });
-    return { id: p.id, titol: e.getTitle() };
+    return { id: p.id, titol: titolFinal };
   }
 
   /**
@@ -592,9 +643,16 @@ var Calendari = (function () {
    * arriba des d'un botó que ho diu, o des d'una proposta confirmada.
    */
   function treu(id, idCalendari) {
-    var e = troba_(id, idCalendari);
-    var titol = e.getTitle();
-    e.deleteEvent();
+    var titol;
+    try {
+      var e = troba_(id, idCalendari);
+      titol = e.getTitle();
+      e.deleteEvent();
+    } catch (err) {
+      var perPont = provaPelPont_('treu', err, null, { id: id, calendari: idCalendari });
+      if (perPont) return perPont;
+      throw errorDEscriptura_(null, err);
+    }
     buidaCau();
     Log.avis('calendari.treu', 'Esdeveniment esborrat del calendari', { titol: titol });
     return { tret: true, titol: titol };
