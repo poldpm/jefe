@@ -359,9 +359,38 @@ var Diari = (function () {
    * dates. Aquest fitxer no sap quins mòduls hi ha ni què compten. El dia que
    * n'hi hagi un de nou, hi sortirà sol.
    */
+  var MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol',
+               'agost', 'setembre', 'octubre', 'novembre', 'desembre'];
+
+  /**
+   * «Del 23 al 29 de juliol», no «del 2026-07-23 al 2026-07-29».
+   * Això ho llegeix ell cada diumenge; una data de màquina al mig d'una frase
+   * en català fa que sembli un registre i no una carta.
+   */
+  function quanDiu_(desde, fins) {
+    var d = desde.split('-'), f = fins.split('-');
+    var mesD = MESOS[Number(d[1]) - 1], mesF = MESOS[Number(f[1]) - 1];
+
+    var de = function (m) { return (/^[aeiou]/.test(m) ? 'd\'' : 'de ') + m; };
+
+    /* «de l'1» i «a l'11», però «del 8» i «al 18»: l'apòstrof va davant dels
+       números que es diuen començant per vocal, i «vuit» no n'és cap. */
+    var art = function (prep, x) {
+      var n = Number(x);
+      return (n === 1 || n === 11)
+        ? (prep === 'de' ? 'de l\'' : 'a l\'') + n
+        : (prep === 'de' ? 'del ' : 'al ') + n;
+    };
+
+    return d[1] === f[1]
+      ? art('de', d[2]) + ' ' + art('a', f[2]) + ' ' + de(mesF)
+      : art('de', d[2]) + ' ' + de(mesD) + ' ' + art('a', f[2]) + ' ' + de(mesF);
+  }
+
   function generaSetmanal(fins) {
     fins = Utils.esDataValida(fins) ? fins : Utils.avui();
     var desde = Utils.sumaDies(fins, -6);
+    var quan = quanDiu_(desde, fins);
 
     var blocs = Moduls.resumPeriode(desde, fins);
     var meves = entrades(desde, fins);
@@ -371,10 +400,10 @@ var Diari = (function () {
       parts.push(b.titol.toUpperCase() + '\n' + b.linies.map(function (l) { return '· ' + l; }).join('\n'));
     });
 
-    var text = 'Setmana del ' + desde + ' al ' + fins + '\n\n' + parts.join('\n\n');
+    var text = 'Setmana ' + quan + '\n\n' + parts.join('\n\n');
 
     var comentari = comentari_(
-      'Revisió de la setmana del ' + desde + ' al ' + fins + '.\n\n' +
+      'Revisió de la setmana ' + quan + '.\n\n' +
       parts.join('\n\n') +
       (meves.length
         ? '\n\nEL QUE HA ESCRIT ELL AQUESTS DIES:\n' +

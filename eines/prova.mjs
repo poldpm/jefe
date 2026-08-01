@@ -312,6 +312,9 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
   const rev = ctx.Diari.generaSetmanal(AVUI);
   cal('la revisió agafa la setmana sencera', rev.desde === '2026-07-26' && rev.fins === AVUI,
       rev.desde + '/' + rev.fins);
+  cal('i la data la diu en català, no en format de màquina',
+      rev.text.indexOf("Setmana del 26 de juliol a l'1 d'agost") === 0,
+      rev.text.split('\n')[0]);
   cal('i porta les xifres dels mòduls', rev.text.indexOf('Córrer: 4 de 7 dies') !== -1, rev.text);
 
   // Escriure el diari d'un dia que encara no ha arribat no té sentit.

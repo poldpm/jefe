@@ -39,8 +39,11 @@ App.registraVista('diari', {
             '<b>Diari</b>' +
             '<span>' + (r ? r + (r === 1 ? ' dia seguit' : ' dies seguits') : 'sense ratxa') + '</span>' +
           '</span>' +
-          '<button class="btn btn-fantasma btn-icona" data-genera="1" aria-label="Demana-li el resum">' +
-            ic('avis', 'ic-p') + '</button>' +
+          /* No hi va el triangle d'avís: demanar-li que escrigui no és cap
+             alarma, i una icona que crida perill per a una cosa que no ho és
+             et fa deixar de fer cas a les que sí que ho són. */
+          '<button class="btn btn-fantasma btn-icona" data-genera="1" aria-label="Demana-li que escrigui">' +
+            ic('llegenda', 'ic-p') + '</button>' +
         '</div>' +
       '</header>';
     }
@@ -100,14 +103,22 @@ App.registraVista('diari', {
     }
 
     function blocLinia(d) {
-      if (!d.linia.length) {
+      /* L'entrada del dia que estàs editant NO es repeteix aquí sota: la
+         tens oberta al camp de dalt. Sortia dues vegades a la mateixa
+         pantalla, i la de sota semblava una altra cosa que havies escrit. El
+         que SÍ que hi surt d'aquell dia és el que t'hi va escriure ell. */
+      var linia = d.linia.filter(function (x) {
+        return !(x.data === d.data && x.tipus === 'entrada');
+      });
+
+      if (!linia.length) {
         return '<p class="menut" style="margin-top:var(--e5)">' +
-               'Encara no hi ha res escrit. Amb una línia al dia ja té sentit tornar-hi.</p>';
+               'Encara no hi ha res més escrit. Amb una línia al dia ja té sentit tornar-hi.</p>';
       }
 
       var htmlPerData = {};
       var ordre = [];
-      d.linia.forEach(function (x) {
+      linia.forEach(function (x) {
         if (!htmlPerData[x.data]) { htmlPerData[x.data] = []; ordre.push(x.data); }
         htmlPerData[x.data].push(x);
       });

@@ -22,6 +22,7 @@
   --utm:        #2c6e8f;   /* quadrícula UTM */
   --utm-suau:   #b9d2df;
   --gr:         #c8332b;   /* marca de sender GR: blanc sobre vermell */
+  --gr-ple:     #c8332b;   /* el mateix, per a superfícies plenes: no s'aclareix de nit */
   --avis:       #8a5a00;
   --avis-fons:  #fbf0d8;
 
@@ -183,7 +184,12 @@ h2 { font-size: 1.0625rem; }
 }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-.btn-primari  { background: var(--gr); border-color: var(--gr); color: #fff; }
+/* El vermell del botó NO és el mateix que el de la marca de sender.
+   `--gr` s'aclareix de nit perquè un traç prim es vegi sobre el paper fosc;
+   omplert amb lletra blanca a sobre, aquest mateix to dona 4,03 i el text
+   costa de llegir. El botó es queda amb el vermell de dia als dos temes:
+   5,3 sobre blanc, i sobre el paper fosc s'hi veu igual de bé. */
+.btn-primari  { background: var(--gr-ple); border-color: var(--gr-ple); color: #fff; }
 .btn-secundari{ background: transparent; }
 .btn-fantasma { background: transparent; border-color: transparent; color: var(--ink-suau); }
 .btn-ple      { width: 100%; }
@@ -597,10 +603,18 @@ h2 { font-size: 1.0625rem; }
 .balanc-via b { position: absolute; top: -6px; width: 0; height: 0;
                 border-left: 5px solid transparent; border-right: 5px solid transparent;
                 border-top: 6px solid var(--gr); transform: translateX(-5px); }
+/* LA RETOLACIÓ DEL PERFIL HEREDA EL COLOR DE LA SEVA SUPERFÍCIE.
+   Abans estava fixada a `--ink-suau` i a `--gr`, i aquest peu va A SOBRE de
+   la fitxa del balanç, que es pinta del color de l'estat. Sobre el verd del
+   dèficit assolit donava 2,95, i «objectiu» en vermell sobre verd, 1,93:
+   il·legible, i a més el pitjor parell possible per a qui no distingeix el
+   vermell del verd. Amb `currentColor` la retolació segueix el text de la
+   superfície sigui quina sigui, i l'objectiu es destaca amb el gruix i no
+   amb un color que allà no es veu. */
 .balanc-peu { display: flex; justify-content: space-between; margin-top: var(--e1);
               font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
-              color: var(--ink-suau); }
-.balanc-peu .fita-txt { color: var(--gr); }
+              color: currentColor; opacity: .82; }
+.balanc-peu .fita-txt { font-weight: 700; opacity: 1; }
 
 .tres-xifres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e2); }
 /* min-width:0 a tot arreu: als grids, el valor per defecte és `auto`, i un
@@ -874,11 +888,15 @@ h2 { font-size: 1.0625rem; }
 .dia-desa .btn { flex: none; padding: 0 var(--e4); }
 
 .dia-bloc { margin-top: var(--e4); }
+/* És un botó: porta al diari d'aquell dia. Feia 26 px d'alt i s'havia
+   d'encertar; ara en fa 44, que és el mínim per a un dit. */
 .dia-titol {
-  display: block; width: 100%; text-align: left; padding: 0 0 var(--e2);
+  display: flex; align-items: center; width: 100%; min-height: 44px;
+  text-align: left; padding: 0; margin-bottom: var(--e1);
   border: 0; background: none; color: var(--ink-suau);
   font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
 }
+.dia-titol:active { color: var(--ink); }
 
 .apunt { padding: var(--e3) 0; border-top: 1px solid var(--utm-suau); }
 .apunt-text { line-height: 1.6; overflow-wrap: anywhere; }
@@ -911,10 +929,20 @@ h2 { font-size: 1.0625rem; }
 .tasca:last-child { border-bottom: 0; }
 .tasca[data-fent="1"] { opacity: .4; }
 .tasca[data-feta] .tasca-text { text-decoration: line-through; color: var(--ink-suau); }
-.tasca-marca { flex: none; width: 26px; height: 26px; margin-top: 9px;
-               border: 1.5px solid var(--neatline); border-radius: 50%;
-               background: transparent; padding: 0; }
-.tasca-marca[data-fet="1"] { background: var(--h1); border-color: var(--h1); }
+/* LA RODONA DE COMPLETAR ÉS EL QUE MÉS ES TOCA DE TOTA LA PANTALLA, i feia
+   26 px. La rodona dibuixada es queda com era —una diana de 44 no és més
+   fàcil de llegir, és més gran i prou— però el BOTÓ ara fa 44×44 i la
+   centra. El que creix és on pots posar el dit, no el dibuix. */
+.tasca-marca { flex: none; width: 44px; height: 44px; padding: 0;
+               border: 0; background: transparent;
+               display: flex; align-items: center; justify-content: center; }
+.tasca-marca::before {
+  content: ''; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--neatline); background: transparent;
+  transition: background-color .2s var(--sortida), border-color .2s var(--sortida);
+}
+.tasca-marca[data-fet="1"]::before { background: var(--h1); border-color: var(--h1); }
+.tasca-marca:active::before { border-color: var(--utm); }
 .tasca-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
              min-height: 44px; justify-content: center; background: none; border: 0;
              padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }

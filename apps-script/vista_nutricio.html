@@ -26,7 +26,12 @@ App.registraVista('nutricio', {
     ];
 
     var r0 = function (n) { return Math.round(Number(n) || 0); };
-    var r1 = function (n) { return Math.round((Number(n) || 0) * 10) / 10; };
+    /* Amb coma, que aquí es parla català: «95,8 g» i no «95.8 g». I sense el
+       decimal quan és zero, que «140,0 g» no diu res que no digui «140 g». */
+    var r1 = function (n) {
+      var v = Math.round((Number(n) || 0) * 10) / 10;
+      return (v % 1 === 0 ? String(v) : v.toFixed(1)).replace('.', ',');
+    };
     var num = function (v) {
       var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(',', '.'));
       return isFinite(n) ? n : 0;
