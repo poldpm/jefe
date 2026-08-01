@@ -155,6 +155,14 @@ var Notifica = (function () {
   /**
    * Envia una notificació a tots els dispositius registrats.
    *
+   * EL TÍTOL HA DE DIR DE QUÈ VA L'AVÍS, i mai «JEFE». Android ja escriu el
+   * nom de l'app a la capçalera, i no el podem treure: un títol que repeteix
+   * el nom gasta l'única línia que es llegeix des de la pantalla bloquejada.
+   *   BÉ    «3 hàbits pendents»          + «Encara ets a temps: ...»
+   *   MALAMENT  «JEFE»                   + «Tens 3 hàbits pendents»
+   *
+   * El cos explica i dona el següent pas. El títol sol ja ha de servir.
+   *
    * opcions: { url, etiqueta, urgent }
    *   url      — on va en tocar-la (relativa a l'app)
    *   etiqueta — les notificacions amb la mateixa etiqueta es reemplacen
@@ -163,6 +171,10 @@ var Notifica = (function () {
    */
   function envia(titol, cos, opcions) {
     opcions = opcions || {};
+
+    if (/^\s*jefe\s*$/i.test(String(titol || ''))) {
+      Log.avis('notifica.envia', 'Títol que no diu res: repeteix el nom de l\'app', { titol: titol });
+    }
     if (!disponible()) {
       Log.avis('notifica.envia', 'Notificació descartada: Firebase no configurat', { titol: titol });
       return { enviades: 0, motiu: motiu() };

@@ -431,8 +431,8 @@ function provaNotificacio() {
   }
 
   var r = Notifica.envia(
-    'JEFE',
-    'Si llegeixes això, les notificacions funcionen.',
+    'Prova de notificacions',
+    'La cadena funciona de punta a punta: JEFE et pot escriure amb l\'app tancada.',
     { etiqueta: 'prova', url: './' }
   );
   afegeix('3. Enviades ............. ' + r.enviades + ' de ' + d.length);

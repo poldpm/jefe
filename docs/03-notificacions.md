@@ -153,7 +153,22 @@ Les notificacions porten **etiqueta**: dues amb la mateixa s'aixafen en comptes
 d'acumular-se. Sense això, set recordatoris d'hàbits deixarien set línies a la
 barra de notificacions.
 
-## Si alguna cosa falla
+## Com s'escriu un avís
+
+Android posa el nom de l'app i l'adreça a la capçalera, i **això no es pot
+treure**: que surti d'on ve la notificació és el que impedeix que qualsevol es
+faci passar pel teu banc. Per tant el títol no ha de repetir «JEFE» — gastaria
+l'única línia que es llegeix des de la pantalla bloquejada.
+
+**El títol diu de què va. El cos explica i dona el següent pas.**
+
+| | Títol | Cos |
+|---|---|---|
+| Bé | `3 hàbits pendents` | `Encara ets a temps. Córrer, llegir i estiraments.` |
+| Malament | `JEFE` | `Tens 3 hàbits pendents` |
+
+Si el títol és «JEFE», `Notifica.envia` ho deixa dit al registre. No atura res:
+val més un avís lleig que un avís perdut.
 
 | Símptoma | Causa |
 |---|---|
