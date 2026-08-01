@@ -1,6 +1,4 @@
-/** GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
- *  La font és eines/sw-notificacions.plantilla.js.
- *
+/**
  * JEFE — treballador de servei de les notificacions
  *
  * AIXÒ ÉS UNA PLANTILLA. El fitxer que es fa servir és
@@ -22,12 +20,7 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-var CONFIG = {
-  "apiKey": "AIzaSyBJYsvwHI6S9krnYrQ_gBsNoAAezVE97uo",
-  "projectId": "jefe-f0832",
-  "messagingSenderId": "440469306446",
-  "appId": "1:440469306446:web:c7020a8a44223e5374971f"
-};
+var CONFIG = /*__CONFIG__*/ null /*__FI__*/;
 
 if (CONFIG && CONFIG.apiKey) {
   firebase.initializeApp(CONFIG);

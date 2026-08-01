@@ -88,8 +88,36 @@ fs.writeFileSync(path.join(DESTI, 'index.html'), html);
 // GitHub Pages passa els fitxers per Jekyll si no li dius que no.
 fs.writeFileSync(path.join(DESTI, '.nojekyll'), '');
 
+// 5. El treballador de les notificacions, amb la configuració a dins.
+//    No la pot demanar quan arrenca: el navegador l'engega i dispara
+//    l'esdeveniment tot seguit, i el que es registri més tard no el sent.
+const swPlantilla = fs.readFileSync(path.join('eines', 'sw-notificacions.plantilla.js'), 'utf8');
+const fbBrut = JSON.parse(fs.readFileSync('firebase.config.json', 'utf8'));
+
+const posat = fbBrut.apiKey && !String(fbBrut.apiKey).startsWith('POSA-HI');
+const fbClient = posat ? {
+  apiKey: fbBrut.apiKey,
+  projectId: fbBrut.projectId,
+  messagingSenderId: fbBrut.messagingSenderId,
+  appId: fbBrut.appId
+} : null;
+
+const sw = swPlantilla
+  .replace('/**', '/** GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.\n *  La font és eines/sw-notificacions.plantilla.js.\n *')
+  .replace(/\/\*__CONFIG__\*\/[\s\S]*?\/\*__FI__\*\//,
+           JSON.stringify(fbClient, null, 2).replace(/\n/g, '\n'));
+
+if (sw.includes('__CONFIG__')) {
+  console.error('  ✗ no he trobat la marca de configuració a la plantilla del treballador');
+  process.exit(1);
+}
+fs.writeFileSync(path.join(DESTI, 'firebase-messaging-sw.js'), sw);
+
 const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(1);
 console.log('\nindex.html (arrel)  ·  ' + kb + ' kB  ·  ' + inclosos.length + ' fitxers inclosos');
 inclosos.forEach(n => console.log('   · ' + n));
+console.log('\nfirebase-messaging-sw.js  ·  configuració ' +
+            (posat ? 'de ' + fbBrut.projectId + ', posada a dins'
+                   : 'SENSE POSAR (valors d\'exemple a firebase.config.json)'));
 console.log('\nUna sola petició per obrir l\'app. L\'únic recurs extern és el SDK de');
 console.log('Firebase, i només es baixa si actives les notificacions.\n');
