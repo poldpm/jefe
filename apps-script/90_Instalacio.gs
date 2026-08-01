@@ -766,6 +766,14 @@ function reclassificaFinances() {
       Logger.log('  ' + p.comerc + '   (' + p.moviments + ')');
     });
   }
+  if (r.generiques && r.generiques.length) {
+    Logger.log('\nAquests NO s\'aprendran mai, i és a posta: no són comerços,');
+    Logger.log('són l\'etiqueta que posa el banc quan no en sap el nom. Cada un');
+    Logger.log('és una compra diferent i s\'han de mirar d\'un en un:');
+    r.generiques.forEach(function (p) {
+      Logger.log('  ' + p.comerc + '   (' + p.moviments + ')');
+    });
+  }
   return r.reclassificats + r.confirmats;
 }
 

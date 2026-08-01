@@ -542,6 +542,30 @@ var Finances = (function () {
       .trim();
   }
 
+  /* ETIQUETES QUE NO IDENTIFIQUEN NINGÚ.
+     Quan el banc no envia el nom del comerç, hi posa una fórmula genèrica.
+     A les dades d'en Pol, «COMPRA AMB TARGETA» surt 11 vegades i són onze
+     compres diferents que no tenen res a veure. Aprendre'n una categoria
+     arxivaria totes les futures a la mateixa carpeta sense dir res a ningú:
+     no seria ignorar-ho, seria equivocar-se en silenci, que és pitjor.
+     Aquestes no s'aprenen mai i sempre passen per revisió. */
+  var GENERIQUES = [
+    /^COMPRA (AMB|CON) ?(TARGETA|TARJETA)/,
+    /^(PAGO|PAGAMENT) (CON|AMB) ?(TARJETA|TARGETA)/,
+    /^COMPRA (TARJ|TARG)/,
+    /^(TRANSFERENCIA|TRANSFERENCIA|TRANSFERÈNCIA|TRASPAS|TRASPÀS)$/,
+    /^(BIZUM|REBUT|RECIBO|ABONO|CARREC|CARGO|MOVIMENT|MOVIMIENTO)$/,
+    /^(COMPRA|PAGAMENT|PAGO|TARGETA|TARJETA)$/,
+    /^\d+$/                                    // el que queda quan tot era un número
+  ];
+
+  function esGenerica_(clau) {
+    var c = String(clau || '').replace(/^[di]\|/, '');
+    if (c.length < 3) return true;
+    for (var i = 0; i < GENERIQUES.length; i++) if (GENERIQUES[i].test(c)) return true;
+    return false;
+  }
+
   function memoria_() {
     var m = {};
     try {
@@ -568,7 +592,7 @@ var Finances = (function () {
   /** Què sé d'aquest comerç? Null si és el primer cop que el veig. */
   function recordat(descripcio, tipus) {
     var clau = clauMemoria_(descripcio, tipus);
-    if (!clau) return null;
+    if (!clau || esGenerica_(clau)) return null;
     var f = null;
     try { f = Dades.un('FinancesMemoria', { clau: clau }); } catch (err) { return null; }
     if (!f) return null;
@@ -581,7 +605,7 @@ var Finances = (function () {
    */
   function recorda(descripcio, categoria, metode, tipus) {
     var clau = clauMemoria_(descripcio, tipus);
-    if (!clau || !categoria) return null;
+    if (!clau || !categoria || esGenerica_(clau)) return null;
 
     var existent = null;
     try { existent = Dades.un('FinancesMemoria', { clau: clau }); } catch (err) { return null; }
@@ -685,7 +709,7 @@ var Finances = (function () {
    */
   function reclassifica() {
     var mem = memoria_();
-    var reclassificats = 0, confirmats = 0, sensesaber = {};
+    var reclassificats = 0, confirmats = 0, sensesaber = {}, generiques = {};
 
     /* Dos casos, i tots dos són «ja ho sabíem»:
          · el moviment va quedar a Altres i la memòria sap què és
@@ -710,7 +734,8 @@ var Finances = (function () {
           confirmats++;
         }
       } else if (clau && altres) {
-        sensesaber[clau] = (sensesaber[clau] || 0) + 1;
+        if (esGenerica_(clau)) generiques[clau] = (generiques[clau] || 0) + 1;
+        else sensesaber[clau] = (sensesaber[clau] || 0) + 1;
       }
     });
 
@@ -718,8 +743,13 @@ var Finances = (function () {
       return { comerc: k, moviments: sensesaber[k] };
     }).sort(function (a, b) { return b.moviments - a.moviments; });
 
+    var gen = Object.keys(generiques).map(function (k) {
+      return { comerc: k, moviments: generiques[k] };
+    }).sort(function (a, b) { return b.moviments - a.moviments; });
+
     return { reclassificats: reclassificats, confirmats: confirmats,
-             comercosPerDecidir: pendents.length, pendents: pendents.slice(0, 40) };
+             comercosPerDecidir: pendents.length, pendents: pendents.slice(0, 40),
+             generiques: gen };
   }
 
   /** No esborra la fila: la marca. L'històric és intocable. */
