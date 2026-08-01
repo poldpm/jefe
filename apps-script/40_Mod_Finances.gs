@@ -413,6 +413,17 @@ var Finances = (function () {
                pct: despeses ? perCat[id] / despeses * 100 : 0 };
     }).sort(function (a, b) { return b.total - a.total; });
 
+    /* El que queda per classificar és de TOTS els mesos, no d'aquest.
+       La safata és global, i lligar-ne l'entrada al mes que miraves volia dir
+       que amb els pendents al maig i tu a l'agost, el botó no apareixia mai.
+       I el comptador d'abans només mirava els «sense revisar»: els 91
+       moviments a «Altres» venien de l'app antiga marcats com a revisats, o
+       sigui que no en comptava ni un. El botó no ha sortit mai. */
+    var perClassificar = moviments_(function (f) {
+      return f.categoria === 'c_altd' || f.categoria === 'i_alti' ||
+             String(f.revisat).toUpperCase() === 'NO';
+    }).length;
+
     return {
       mes: quin,
       ingressos: ingressos,
@@ -420,6 +431,7 @@ var Finances = (function () {
       traspassos: traspassos,
       balanc: ingressos - despeses,
       perRevisar: perRevisar,
+      perClassificar: perClassificar,
       perCategoria: llistaCat,
       ritme: ritme_(quin, despeses),
       moviments: files.map(function (f) {

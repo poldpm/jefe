@@ -4382,9 +4382,9 @@ App.registraVista('finances', {
           ? '<p class="menut">' + eur(d.traspassos) + ' en traspassos, fora dels comptes.</p>'
           : '') +
 
-        (d.perRevisar
+        (d.perClassificar
           ? '<button class="btn btn-secundari" data-revisar="1" style="width:100%;margin-top:var(--e3)">' +
-            d.perRevisar + ' per classificar</button>'
+            ic('llapis') + d.perClassificar + ' per classificar</button>'
           : '') +
 
         '<button class="btn btn-primari" data-apunta="1" style="width:100%;margin-top:var(--e4)">' +
