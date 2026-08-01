@@ -34,33 +34,52 @@ App.registraVista('nutricio', {
 
     // ------------------------------------------------------------- capçalera
 
-    /* Una sola línia per navegar i una tira prima per canviar de període.
-       Abans això ocupava un terç de la pantalla del mòbil per dir-te en quin
-       dia ets, que és el que menys espai hauria de demanar. */
+    var PERIODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
+
+    /* UNA SOLA LÍNIA. El títol diu on ets i, tocant-lo, tries.
+       Abans hi havia la fila de la data i una tira de períodes a sota: dues
+       franges fixes a dalt per una cosa que canvies un cop a la setmana. Les
+       fletxes es queden perquè el dia sí que el canvies constantment. */
     function capcalera(esAvui) {
+      var sota = (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Dia'])[1];
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="data-nutri" data-avui="1">' +
+          '<button class="titol-periode" data-obre-periode="1">' +
             '<b>' + esc(titolPeriode()) + '</b>' +
-            (periode === 'dia' ? '<span>' + esc(fmt.relativa(data)) + '</span>' : '') +
+            '<span>' + esc(sota) +
+              (periode === 'dia' && esAvui ? ' · avui' : '') + ' ▾</span>' +
           '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Següent"' +
             (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Objectius">' +
             ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
-        '<div class="segments" role="tablist">' +
-          ['dia', 'setmana', 'mes'].map(function (p) {
-            return '<button role="tab" data-periode="' + p + '"' +
-                   (p === periode ? ' aria-selected="true"' : '') + '>' +
-                   (p === 'dia' ? 'Dia' : p === 'setmana' ? 'Setmana' : 'Mes') + '</button>';
-          }).join('') +
-        '</div>' +
       '</header>';
+    }
+
+    function obrePeriode() {
+      var cos = App.modal('Què vols veure', '<div class="tria-periode">' +
+        PERIODES.map(function (p) {
+          return '<button data-va="' + p[0] + '"' +
+                 (p[0] === periode ? ' aria-current="true"' : '') + '>' + p[1] + '</button>';
+        }).join('') +
+        '<hr><button data-anar-avui="1">Anar a avui</button>' +
+      '</div>');
+
+      cos.querySelectorAll('[data-va]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.tancaModal();
+          App.ves('nutricio', { data: data, periode: b.dataset.va });
+        });
+      });
+      cos.querySelector('[data-anar-avui]').addEventListener('click', function () {
+        App.tancaModal();
+        App.ves('nutricio', { data: fmt.avui(), periode: periode });
+      });
     }
 
     function etiquetaPeriode() {
@@ -379,16 +398,8 @@ App.registraVista('nutricio', {
         });
       });
 
-      var ba = arrel.querySelector('[data-avui]');
-      if (ba) ba.addEventListener('click', function () {
-        App.ves('nutricio', { data: fmt.avui(), periode: periode });
-      });
-
-      arrel.querySelectorAll('[data-periode]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          App.ves('nutricio', { data: data, periode: b.dataset.periode });
-        });
-      });
+      var bp = arrel.querySelector('[data-obre-periode]');
+      if (bp) bp.addEventListener('click', obrePeriode);
 
       var baj = arrel.querySelector('[data-ajustos]');
       if (baj) baj.addEventListener('click', obreAjustos);

@@ -71,6 +71,12 @@
   --sobre-fet:  #14181a;
   --sobre-fet2: #4a3316;
 
+  /* Text sobre les tintes d'estat. Han de ser tokens i no valors fixats a
+     la regla: el fons canvia amb el tema, i una lletra escrita a ma es queda
+     igual fins que desapareix. */
+  --sobre-verd:   #0f1a0c;
+  --sobre-ambre:  #3a2600;
+
   --ombra: 0 1px 0 rgba(27,33,36,.10), 0 6px 18px rgba(27,33,36,.07);
 
   --r: 2px;                  /* els mapes no tenen cantonades rodones */
@@ -99,6 +105,7 @@
     --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
     --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
     --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+    --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
     --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
   }
 }
@@ -110,6 +117,7 @@
   --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
   --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
   --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+  --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
   --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
 }
 
@@ -455,6 +463,27 @@ h2 { font-size: 1.0625rem; }
 .data-nutri span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
                    color: var(--ink-suau); }
 
+/* El títol ÉS el selector de període. Una línia en comptes de dues, i el que
+   canvies un cop a la setmana deixa de tenir una franja fixa a la pantalla. */
+.titol-periode { flex: 1; min-width: 0; background: none; border: 0; padding: 2px var(--e2);
+                 min-height: 44px; cursor: pointer; font: inherit; color: inherit;
+                 display: flex; flex-direction: column; justify-content: center; }
+.titol-periode b { font-size: .9375rem; font-weight: 700; line-height: 1.2;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titol-periode span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
+                      color: var(--utm); overflow: hidden; text-overflow: ellipsis;
+                      white-space: nowrap; }
+
+.tria-periode { display: flex; flex-direction: column; gap: var(--e2); }
+.tria-periode button { min-height: var(--toc); width: 100%; text-align: left;
+                       padding: 0 var(--e4); font: inherit; font-size: 1rem;
+                       background: transparent; color: var(--ink);
+                       border: 1.5px solid var(--neatline); border-radius: var(--r); }
+.tria-periode button[aria-current="true"] { background: var(--ink); color: var(--paper);
+                                            font-weight: 700; }
+.tria-periode hr { width: 100%; border: 0; border-top: 1px solid var(--utm-suau);
+                   margin: var(--e2) 0; }
+
 .segments { display: flex; gap: 0; margin: var(--e2) 0 0;
             border-top: 1px solid var(--neatline); }
 .segments button { flex: 1; min-width: 0; min-height: 34px; background: none; border: 0;
@@ -469,8 +498,8 @@ h2 { font-size: 1.0625rem; }
 
 .fitxa { border: 1.5px solid var(--neatline); padding: var(--e4);
          background: var(--paper2); margin-bottom: var(--e4); }
-.fitxa[data-estat="deficit_assolit"] { background: var(--h1); color: #0f1a0c; }
-.fitxa[data-estat="superavit"] { background: var(--avis-fons); color: #3a2600; }
+.fitxa[data-estat="deficit_assolit"] { background: var(--h1); color: var(--sobre-verd); }
+.fitxa[data-estat="superavit"] { background: var(--avis-fons); color: var(--sobre-ambre); }
 .fitxa .xifra-gran { font-size: 2.5rem; line-height: 1; font-weight: 700;
                      font-variant-numeric: tabular-nums; }
 .fitxa .u { font-size: .875rem; font-weight: 400; margin-left: 4px; opacity: .7; }
@@ -499,9 +528,16 @@ h2 { font-size: 1.0625rem; }
 .tres-xifres .xifra { min-width: 0; display: flex; flex-direction: column; gap: 2px;
                       border-left: 2px solid var(--neatline); padding-left: var(--e2);
                       font-weight: 400; overflow: hidden; }
-.tres-xifres .xifra b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
-.tres-xifres .xifra .u { font-size: .75rem; font-weight: 400; margin-left: 3px;
+/* La xifra no es parteix mai. Un import com «−2960,33 €» partit deixa l'euro
+   sol a la línia de sota, i el que era un número passa a semblar un error.
+   Per això la mida arrenca petita i creix quan hi ha amplada, en comptes de
+   ser gran i confiar que hi càpiga. */
+.tres-xifres .xifra b { font-size: 1.0625rem; font-variant-numeric: tabular-nums;
+                        white-space: nowrap; }
+.tres-xifres .xifra .u { font-size: .75rem; font-weight: 400; margin-left: 2px;
                          color: var(--ink-suau); }
+@media (min-width: 420px) { .tres-xifres .xifra b { font-size: 1.1875rem; } }
+@media (min-width: 900px) { .tres-xifres .xifra b { font-size: 1.375rem; } }
 
 .camp-activitat { display: block; margin: var(--e4) 0; }
 .camp-activitat input { width: 100%; min-height: var(--toc); margin-top: var(--e1);
@@ -3646,33 +3682,52 @@ App.registraVista('nutricio', {
 
     // ------------------------------------------------------------- capçalera
 
-    /* Una sola línia per navegar i una tira prima per canviar de període.
-       Abans això ocupava un terç de la pantalla del mòbil per dir-te en quin
-       dia ets, que és el que menys espai hauria de demanar. */
+    var PERIODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
+
+    /* UNA SOLA LÍNIA. El títol diu on ets i, tocant-lo, tries.
+       Abans hi havia la fila de la data i una tira de períodes a sota: dues
+       franges fixes a dalt per una cosa que canvies un cop a la setmana. Les
+       fletxes es queden perquè el dia sí que el canvies constantment. */
     function capcalera(esAvui) {
+      var sota = (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Dia'])[1];
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="data-nutri" data-avui="1">' +
+          '<button class="titol-periode" data-obre-periode="1">' +
             '<b>' + esc(titolPeriode()) + '</b>' +
-            (periode === 'dia' ? '<span>' + esc(fmt.relativa(data)) + '</span>' : '') +
+            '<span>' + esc(sota) +
+              (periode === 'dia' && esAvui ? ' · avui' : '') + ' ▾</span>' +
           '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Següent"' +
             (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Objectius">' +
             ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
-        '<div class="segments" role="tablist">' +
-          ['dia', 'setmana', 'mes'].map(function (p) {
-            return '<button role="tab" data-periode="' + p + '"' +
-                   (p === periode ? ' aria-selected="true"' : '') + '>' +
-                   (p === 'dia' ? 'Dia' : p === 'setmana' ? 'Setmana' : 'Mes') + '</button>';
-          }).join('') +
-        '</div>' +
       '</header>';
+    }
+
+    function obrePeriode() {
+      var cos = App.modal('Què vols veure', '<div class="tria-periode">' +
+        PERIODES.map(function (p) {
+          return '<button data-va="' + p[0] + '"' +
+                 (p[0] === periode ? ' aria-current="true"' : '') + '>' + p[1] + '</button>';
+        }).join('') +
+        '<hr><button data-anar-avui="1">Anar a avui</button>' +
+      '</div>');
+
+      cos.querySelectorAll('[data-va]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.tancaModal();
+          App.ves('nutricio', { data: data, periode: b.dataset.va });
+        });
+      });
+      cos.querySelector('[data-anar-avui]').addEventListener('click', function () {
+        App.tancaModal();
+        App.ves('nutricio', { data: fmt.avui(), periode: periode });
+      });
     }
 
     function etiquetaPeriode() {
@@ -3991,16 +4046,8 @@ App.registraVista('nutricio', {
         });
       });
 
-      var ba = arrel.querySelector('[data-avui]');
-      if (ba) ba.addEventListener('click', function () {
-        App.ves('nutricio', { data: fmt.avui(), periode: periode });
-      });
-
-      arrel.querySelectorAll('[data-periode]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          App.ves('nutricio', { data: data, periode: b.dataset.periode });
-        });
-      });
+      var bp = arrel.querySelector('[data-obre-periode]');
+      if (bp) bp.addEventListener('click', obrePeriode);
 
       var baj = arrel.querySelector('[data-ajustos]');
       if (baj) baj.addEventListener('click', obreAjustos);
@@ -4300,6 +4347,16 @@ App.registraVista('finances', {
       if (!ambSigne) return (v < 0 ? '−' : '') + s;
       return (v > 0 ? '+' : v < 0 ? '−' : '') + s;
     }
+    /* Nomes el numero. L'euro va a la ranura d'unitat: enganxat al numero es
+       una paraula mes, i quan no hi cap el navegador el trenca i te'l deixa
+       en una linia tot sol. */
+    function eurNum(n, ambSigne) {
+      var v = Math.round((Number(n) || 0) * 100) / 100;
+      var t = Math.abs(v).toFixed(2).replace('.', ',');
+      if (!ambSigne) return (v < 0 ? '−' : '') + t;
+      return (v > 0 ? '+' : v < 0 ? '−' : '') + t;
+    }
+
     function nomMes(m) {
       var d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1);
       var t = d.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
@@ -4313,31 +4370,63 @@ App.registraVista('finances', {
 
     // ------------------------------------------------------------- capçalera
 
+    var PERIODES = [['mes', 'Mes'], ['mesos', 'Mesos'], ['estad', 'Estadístiques']];
+
+    /* UNA SOLA LÍNIA.
+       Abans hi havia la fila de la data i, a sota, una tira amb els tres
+       períodes: dues files fixes a dalt de tot per dir-te on ets. El títol ja
+       ho diu, i tocant-lo tries. El que es canvia cinc cops al dia —el mes—
+       té les fletxes al costat; el que es canvia un cop a la setmana no s'ha
+       de menjar una franja de pantalla per estar sempre a la vista. */
     function capcalera(esActual) {
+      var mostraFletxes = periode === 'mes' || periode === 'estad';
+      var titol = periode === 'mesos' ? 'Últims 12 mesos'
+                : periode === 'revisar' ? 'Per classificar'
+                : nomMes(mes);
+      var sota = periode === 'revisar' ? 'safata'
+               : (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Mes'])[1];
+
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa', 'ic-p') + '</button>' +
-          '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
-            ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="data-nutri" data-avui="1">' +
-            '<b>' + esc(nomMes(mes)) + '</b>' +
-            (esActual ? '<span>mes en curs</span>' : '') +
+          (mostraFletxes
+            ? '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
+              ic('esquerra', 'ic-p') + '</button>' : '') +
+          '<button class="titol-periode" data-obre-periode="1">' +
+            '<b>' + esc(titol) + '</b>' +
+            '<span>' + esc(sota) + (esActual && periode === 'mes' ? ' · en curs' : '') + ' ▾</span>' +
           '</button>' +
-          '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent"' +
-            (esActual ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
+          (mostraFletxes
+            ? '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent"' +
+              (esActual ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' : '') +
           '<button class="btn btn-fantasma btn-icona" data-apunta="1" aria-label="Apunta un moviment">' +
             ic('mes', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Ajustos">' +
             ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
-        '<div class="segments" role="tablist">' +
-          [['mes', 'Mes'], ['mesos', 'Mesos'], ['estad', 'Estadístiques']].map(function (p) {
-            return '<button role="tab" data-periode="' + p[0] + '"' +
-                   (p[0] === periode ? ' aria-selected="true"' : '') + '>' + p[1] + '</button>';
-          }).join('') +
-        '</div>' +
       '</header>';
+    }
+
+    function obrePeriode() {
+      var cos = App.modal('Què vols veure', '<div class="tria-periode">' +
+        PERIODES.map(function (p) {
+          return '<button data-va="' + p[0] + '"' +
+                 (p[0] === periode ? ' aria-current="true"' : '') + '>' + p[1] + '</button>';
+        }).join('') +
+        '<hr><button data-avui="1">Anar al mes actual</button>' +
+      '</div>');
+
+      cos.querySelectorAll('[data-va]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.tancaModal();
+          App.ves('finances', { mes: mes, periode: b.dataset.va });
+        });
+      });
+      cos.querySelector('[data-avui]').addEventListener('click', function () {
+        App.tancaModal();
+        App.ves('finances', { mes: null, periode: periode === 'revisar' ? 'mes' : periode });
+      });
     }
 
     // ------------------------------------------------------------ vista mes
@@ -4368,8 +4457,8 @@ App.registraVista('finances', {
         '</div>' +
 
         '<div class="tres-xifres">' +
-          xifra('Ingressos', eur(d.ingressos), '') +
-          xifra('Despeses', eur(d.despeses), '') +
+          xifra('Ingressos', eurNum(d.ingressos), '€') +
+          xifra('Despeses', eurNum(d.despeses), '€') +
           xifra('Moviments', d.moviments.length, '') +
         '</div>' +
 
@@ -4471,7 +4560,7 @@ App.registraVista('finances', {
         '<div class="pagina nutri">' +
           '<section class="nutri-dalt">' +
             '<div class="tres-xifres">' +
-              xifra('Acumulat', eur(d.acumulat, true), '') +
+              xifra('Acumulat', eurNum(d.acumulat, true), '€') +
               xifra('Mesos', d.mesos.length, '') +
               xifra('En positiu', d.mesos.filter(function (m) { return m.balanc >= 0; }).length, '') +
             '</div>' +
@@ -4511,9 +4600,9 @@ App.registraVista('finances', {
         '<div class="pagina nutri">' +
           '<section class="nutri-dalt">' +
             '<div class="tres-xifres">' +
-              xifra('Despeses', eur(d.despeses), '') +
-              xifra('Mes anterior', eur(d.despesesAnterior), '') +
-              xifra('Diferència', eur(d.diferencia, true), '') +
+              xifra('Despeses', eurNum(d.despeses), '€') +
+              xifra('Anterior', eurNum(d.despesesAnterior), '€') +
+              xifra('Diferència', eurNum(d.diferencia, true), '€') +
             '</div>' +
           '</section>' +
 
@@ -4702,16 +4791,8 @@ App.registraVista('finances', {
         });
       });
 
-      var ba = arrel.querySelector('[data-avui]');
-      if (ba) ba.addEventListener('click', function () {
-        App.ves('finances', { mes: null, periode: periode });
-      });
-
-      arrel.querySelectorAll('[data-periode]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          App.ves('finances', { mes: mes, periode: b.dataset.periode });
-        });
-      });
+      var bp = arrel.querySelector('[data-obre-periode]');
+      if (bp) bp.addEventListener('click', obrePeriode);
 
       arrel.querySelectorAll('[data-apunta]').forEach(function (b) {
         b.addEventListener('click', function () { obreApunt(null); });
