@@ -86,8 +86,16 @@ App.registraVista('finances', {
           (mostraFletxes
             ? '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent"' +
               (esActual ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' : '') +
-          '<button class="btn btn-fantasma btn-icona" data-apunta="1" aria-label="Apunta un moviment">' +
-            ic('mes', 'ic-p') + '</button>' +
+          /* El «+» de la capçalera NOMÉS on no hi ha el botó gros.
+             A la pantalla del mes, «Apunta un moviment» ja és just a sota del
+             balanç i a amplada sencera: tenir-hi a més una creueta petita a
+             dalt que fa exactament el mateix no dona cap opció, només fa
+             dubtar de si són dues coses diferents. A la resta de pantalles
+             —els mesos, les estadístiques, la safata— el botó gros no hi és,
+             i sense la creueta et quedaries sense manera d'apuntar res. */
+          (periode === 'mes' ? '' :
+            '<button class="btn btn-fantasma btn-icona" data-apunta="1" aria-label="Apunta un moviment">' +
+              ic('mes', 'ic-p') + '</button>') +
           '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Ajustos">' +
             ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
