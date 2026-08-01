@@ -627,13 +627,28 @@ function provaBanc() {
   a('Entorn ........ ' + r.entorn + (r.produccio ? '  correcte' : '  ÉS SANDBOX: veuràs dades inventades'));
   a('Activa ........ ' + (r.activa ? 'sí' : 'NO — falta activar-la al panell d\'Enable Banking'));
   a('Adreça de tornada:');
-  a('  la que espera JEFE ... ' + r.redirect);
-  a('  registrada allà ...... ' + (r.redirectRegistrada ? 'sí' : 'NO'));
+  a('  EB_REDIRECT diu ....... ' + r.redirect);
+  a('  registrada a EB ....... ' + (r.redirectRegistrada ? 'sí' : 'NO'));
+  a('  apunta a JEFE ......... ' + (r.apuntaAJefe === null ? 'no ho puc comprovar'
+                                    : r.apuntaAJefe ? 'sí' : 'NO'));
+  if (r.urlJefe) a('  JEFE és a ............. ' + r.urlJefe);
+
+  if (r.apuntaAJefe === false) {
+    a('');
+    a('ATURA\'T. EB_REDIRECT apunta a una altra aplicació, segurament la de');
+    a('finances d\'abans. Si continues, el banc hi redirigirà, aquella dirà que');
+    a('s\'ha connectat i desarà la sessió al SEU full. JEFE es quedarà sense');
+    a('connexió i no t\'ho dirà ningú.');
+    a('');
+    a('Posa a EB_REDIRECT l\'adreça de JEFE que surt aquí sobre, i registra-la');
+    a('també a les redirect URLs d\'enablebanking.com.');
+    return l.join('\n');
+  }
 
   if (!r.redirectRegistrada) {
     a('');
-    a('Aquesta és la que ha canviat en passar de l\'app antiga a JEFE.');
-    a('Afegeix-la a les redirect URLs de la teva aplicació a enablebanking.com.');
+    a('Aquesta adreça no està registrada a enablebanking.com. Afegeix-la a les');
+    a('redirect URLs de la teva aplicació.');
     a('Registrades ara mateix: ' + JSON.stringify(r.registrades));
     return l.join('\n');
   }

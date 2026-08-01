@@ -102,6 +102,21 @@ var FinancesBanc = (function () {
     var r = eb_('/application', { method: 'get' });
     var redirect = prop_('EB_REDIRECT');
     var urls = r.redirect_urls || [];
+
+    /* QUE ESTIGUI REGISTRADA NO VOL DIR QUE SIGUI LA NOSTRA.
+       L'app antiga de finances també tenia la seva adreça registrada aquí, i
+       en copiar les propietats és la que ve. Si es deixa passar, el banc
+       redirigeix cap allà, l'app antiga diu «Banc connectat» i desa la sessió
+       al seu full: JEFE es queda sense connectar i ningú avisa de res.
+       Val més fallar aquí que descobrir-ho quan no arribi cap moviment. */
+    var meva = '';
+    try { meva = ScriptApp.getService().getUrl() || ''; } catch (e) {}
+    var idDesplegament = function (u) {
+      var m = String(u).match(/\/macros\/s\/([^\/]+)\//);
+      return m ? m[1] : '';
+    };
+    var idMeu = idDesplegament(meva), idSeu = idDesplegament(redirect);
+
     return {
       aplicacio: r.name,
       entorn: r.environment,
@@ -109,6 +124,9 @@ var FinancesBanc = (function () {
       activa: !!r.active,
       redirect: redirect,
       redirectRegistrada: urls.indexOf(redirect) >= 0,
+      urlJefe: meva,
+      // Si no sabem la nostra adreça no acusem ningú: només ho diem.
+      apuntaAJefe: (!idMeu || !idSeu) ? null : (idMeu === idSeu),
       registrades: urls
     };
   }
