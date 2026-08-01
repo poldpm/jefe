@@ -439,14 +439,33 @@ h2 { font-size: 1.0625rem; }
    superàvit baixa a l'esquerra. La fita de l'objectiu és una marca al terreny,
    no una barra de progrés: no vols "omplir" res, vols passar d'un punt. */
 
-.segments { display: flex; gap: 0; margin-top: var(--e3);
-            border: 1px solid var(--neatline); }
-.segments button { flex: 1; min-height: 40px; background: none; border: 0;
+/* Capçalera compacta: navegar entre dies no ha de menjar-se un terç de la
+   pantalla. Les fletxes i la data mantenen els 44 px de zona tocable; la tira
+   de període és més prima perquè cada botó ocupa un terç de l'amplada, que ja
+   és una diana grossa. */
+.capcalera-nutri { padding: max(var(--e2), env(safe-area-inset-top, 0px)) var(--e3) 0; }
+.capcalera-nutri .capcalera-fila { gap: 0; }
+.capcalera-nutri .btn-icona { min-width: 44px; min-height: 44px; padding: 0; }
+
+.data-nutri { flex: 1; min-width: 0; background: none; border: 0; padding: 2px;
+              min-height: 44px; cursor: pointer; font: inherit; color: inherit;
+              display: flex; flex-direction: column; justify-content: center; }
+.data-nutri b { font-size: .9375rem; font-weight: 700; line-height: 1.2;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.data-nutri span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
+                   color: var(--ink-suau); }
+
+.segments { display: flex; gap: 0; margin: var(--e2) 0 0;
+            border-top: 1px solid var(--neatline); }
+.segments button { flex: 1; min-width: 0; min-height: 34px; background: none; border: 0;
                    border-right: 1px solid var(--neatline); cursor: pointer;
-                   font: inherit; font-size: .8125rem; letter-spacing: .06em;
+                   font: inherit; font-size: .75rem; letter-spacing: .06em;
                    text-transform: uppercase; color: var(--ink-suau); }
 .segments button:last-child { border-right: 0; }
 .segments button[aria-selected="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+/* Ordre de lectura: xifres, àpats, tancament. El mateix que feia FitFat. */
+.nutri { display: flex; flex-direction: column; gap: var(--e4); }
 
 .fitxa { border: 1.5px solid var(--neatline); padding: var(--e4);
          background: var(--paper2); margin-bottom: var(--e4); }
@@ -473,11 +492,13 @@ h2 { font-size: 1.0625rem; }
               color: var(--ink-suau); }
 .balanc-peu .fita-txt { color: var(--gr); }
 
-.tres-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
-               margin-bottom: var(--e3); }
-.tres-xifres .xifra { display: flex; flex-direction: column; gap: 2px;
+.tres-xifres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e2); }
+/* min-width:0 a tot arreu: als grids, el valor per defecte és `auto`, i un
+   camp o un número llarg empeny la columna més enllà de la pantalla. És el
+   que feia aparèixer la barra de desplaçament horitzontal. */
+.tres-xifres .xifra { min-width: 0; display: flex; flex-direction: column; gap: 2px;
                       border-left: 2px solid var(--neatline); padding-left: var(--e2);
-                      font-weight: 400; }
+                      font-weight: 400; overflow: hidden; }
 .tres-xifres .xifra b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .tres-xifres .xifra .u { font-size: .75rem; font-weight: 400; margin-left: 3px;
                          color: var(--ink-suau); }
@@ -500,22 +521,26 @@ h2 { font-size: 1.0625rem; }
             background: var(--paper2); }
 .apat-cap h2 { flex: 1; font-size: 1rem; }
 .apat-items:not(:empty) { border-bottom: 1px solid var(--neatline); }
-.ingesta { display: flex; align-items: center; gap: var(--e3);
+.ingesta { display: flex; align-items: center; gap: var(--e2);
            padding: var(--e2) var(--e3); border-bottom: 1px solid var(--utm-suau); }
 .ingesta:last-child { border-bottom: 0; }
 .ingesta .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ingesta .menut { overflow-wrap: anywhere; }
+.ingesta .btn-icona { min-width: 44px; }
 
-.apat-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); padding: var(--e3); }
-.apat-form select, .apat-form input { min-height: var(--toc); padding: 0 var(--e2);
+.apat-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+             gap: var(--e2); padding: var(--e3); }
+.apat-form select, .apat-form input { min-width: 0; width: 100%; min-height: var(--toc);
+                                      padding: 0 var(--e2);
                                       font: inherit; background: var(--paper); color: var(--ink);
                                       border: 1px solid var(--neatline); border-radius: var(--r); }
 .apat-form select, .apat-form [data-nom] { grid-column: 1 / -1; }
 .apat-form [data-afegeix] { grid-column: 1 / -1; }
 .apat-form [data-desa-aliment] { grid-column: 1 / -1; }
 
-.perfil { display: flex; align-items: flex-end; gap: 2px; height: 120px;
-          border-bottom: 1.5px solid var(--neatline); }
-.perfil-dia { flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+.perfil { display: flex; align-items: flex-end; gap: 1px; height: 120px;
+          border-bottom: 1.5px solid var(--neatline); overflow: hidden; }
+.perfil-dia { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end;
               align-items: center; gap: 2px; height: 100%; min-width: 0;
               background: none; border: 0; padding: 0; cursor: pointer; }
 .perfil-dia i { display: block; width: 100%; background: var(--h0); }
@@ -577,6 +602,18 @@ h2 { font-size: 1.0625rem; }
 
   .pagina { padding: var(--e5) var(--e5) var(--e7); }
   .dues-columnes { grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; }
+
+  /* A l'escriptori hi cap tot alhora: xifres i tancament a l'esquerra, els
+     àpats a la dreta. Al mòbil manen l'ordre i l'espai; aquí, la vista de
+     conjunt. */
+  .nutri { display: grid; grid-template-columns: minmax(300px, 380px) 1fr;
+           grid-template-areas: "dalt apats" "tanca apats"; align-items: start;
+           column-gap: var(--e5); }
+  .nutri-dalt  { grid-area: dalt; }
+  .nutri-apats { grid-area: apats; }
+  .nutri-tanca { grid-area: tanca; }
+  .capcalera-nutri { padding: var(--e3) var(--e5) 0; }
+  .segments { max-width: 420px; }
 
   .nav {
     position: sticky; top: 0; bottom: auto;
@@ -982,7 +1019,17 @@ var Jefe = (function () {
       // I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar l'última
       // vista convertia qualsevol pantalla sense sortida en una trampa que ni
       // reinstal·lant l'app es desfeia, perquè la cau sobreviu a la instal·lació.
-      App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+      //
+      // L'única excepció és una destinació demanada explícitament a l'adreça,
+      // que és com arriben les notificacions: tocar «falten les cremades» ha
+      // de dur a Nutrició i no a la conversa. Es consumeix i prou: no es desa.
+      var demanada = String(location.hash || '').replace(/^#/, '');
+      if (demanada && App.vistes[demanada]) {
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        App.ves(demanada);
+      } else {
+        App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+      }
 
       window.addEventListener('popstate', function (ev) {
         var id = (ev.state && ev.state.vista) || 'conversa';
@@ -3294,30 +3341,33 @@ App.registraVista('nutricio', {
 
     // ------------------------------------------------------------- capçalera
 
+    /* Una sola línia per navegar i una tira prima per canviar de període.
+       Abans això ocupava un terç de la pantalla del mòbil per dir-te en quin
+       dia ets, que és el que menys espai hauria de demanar. */
     function capcalera(esAvui) {
-      return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa') + '</button>' +
-        '<div class="selector-data" style="flex:1">' +
-          '<button class="btn btn-secundari btn-icona" data-salt="-1" aria-label="Anterior">' +
-            ic('esquerra') + '</button>' +
-          '<button class="data" data-avui="1" style="background:none;border:0;min-height:var(--toc);padding:4px">' +
-            '<span class="marge" style="display:block">' + esc(etiquetaPeriode()) + '</span>' +
-            '<span style="font-size:1.0625rem;font-weight:700">' + esc(titolPeriode()) + '</span>' +
+      return '<header class="capcalera capcalera-nutri">' +
+        '<div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
+            ic('esquerra', 'ic-p') + '</button>' +
+          '<button class="data-nutri" data-avui="1">' +
+            '<b>' + esc(titolPeriode()) + '</b>' +
+            (periode === 'dia' ? '<span>' + esc(fmt.relativa(data)) + '</span>' : '') +
           '</button>' +
-          '<button class="btn btn-secundari btn-icona" data-salt="1" aria-label="Següent"' +
-            (esAvui ? ' disabled' : '') + '>' + ic('dreta') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Següent"' +
+            (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Objectius">' +
+            ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
-        '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Objectius i cos">' +
-          ic('ajust') + '</button>' +
-      '</div>' +
-      '<div class="segments" role="tablist">' +
-        ['dia', 'setmana', 'mes'].map(function (p) {
-          return '<button role="tab" data-periode="' + p + '"' +
-                 (p === periode ? ' aria-selected="true"' : '') + '>' +
-                 (p === 'dia' ? 'Dia' : p === 'setmana' ? 'Setmana' : 'Mes') + '</button>';
-        }).join('') +
-      '</div></header>';
+        '<div class="segments" role="tablist">' +
+          ['dia', 'setmana', 'mes'].map(function (p) {
+            return '<button role="tab" data-periode="' + p + '"' +
+                   (p === periode ? ' aria-selected="true"' : '') + '>' +
+                   (p === 'dia' ? 'Dia' : p === 'setmana' ? 'Setmana' : 'Mes') + '</button>';
+          }).join('') +
+        '</div>' +
+      '</header>';
     }
 
     function etiquetaPeriode() {
@@ -3338,31 +3388,62 @@ App.registraVista('nutricio', {
 
     // ------------------------------------------------------------ vista dia
 
+    /* L'ordre és el de FitFat, i és el bo: les xifres del dia a dalt de tot
+       perquè és el que mires primer, després els àpats que és on treballes, i
+       el tancament al final perquè és l'última cosa que fas del dia. */
     function pintaDia(d, dEnCau) {
       dades = d;
       arrel.innerHTML = capcalera(d.data === fmt.avui()) +
-        '<div class="pagina"><div class="dues-columnes">' +
-          '<section id="col-balanc"></section>' +
-          '<section id="col-apats"></section>' +
-        '</div>' +
-        (dEnCau ? '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>' : '') +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt" id="col-dalt"></section>' +
+          '<section class="nutri-apats" id="col-apats"></section>' +
+          '<section class="nutri-tanca" id="col-tanca"></section>' +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
-      document.getElementById('col-balanc').innerHTML = blocBalanc(d);
+      document.getElementById('col-dalt').innerHTML = blocDalt(d);
       document.getElementById('col-apats').innerHTML =
         APATS.map(function (m) { return blocApat(d, m); }).join('');
+      document.getElementById('col-tanca').innerHTML = blocTanca(d);
 
       lligaCapcalera();
       lligaBalanc();
       lligaApats();
     }
 
-    function blocBalanc(d) {
+    /** Les tres xifres del dia, i la barra de proteïna si hi ha objectiu. */
+    function blocDalt(d) {
       var t = d.totals;
       var teObjProt = d.objectius.proteina > 0;
       var pct = teObjProt ? Math.min(t.proteina / d.objectius.proteina * 100, 100) : 0;
 
-      return '<p class="marge" style="margin:0 0 var(--e2)">Balanç del dia</p>' +
+      return '<div class="tres-xifres">' +
+          xifra('Ingerides', r0(t.ingerides), 'kcal') +
+          xifra('Proteïna', r1(t.proteina), 'g') +
+          xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
+        '</div>' +
+
+        (teObjProt
+          ? '<div class="prot-bloc">' +
+              '<div class="prot-cap"><span class="marge">Proteïna</span>' +
+                '<span class="num menut">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
+              '</div>' +
+              '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+              (t.proteina < d.objectius.proteina
+                ? '<p class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g.</p>' : '') +
+            '</div>'
+          : '');
+    }
+
+    /** El tancament: què has cremat, i què en surt. */
+    function blocTanca(d) {
+      return '<p class="marge">Tancament del dia</p>' +
+
+        '<label class="camp-activitat">' +
+          '<span class="menut">Calories cremades (total del dia, del rellotge)</span>' +
+          '<input id="n-activitat" inputmode="decimal" value="' +
+            (d.teActivitat ? esc(String(d.activitat)) : '') + '" placeholder="p. ex. 2400">' +
+        '</label>' +
 
         '<div class="fitxa" data-estat="' + esc(d.verdicte.estat) + '">' +
           '<div class="xifra-gran">' +
@@ -3372,29 +3453,7 @@ App.registraVista('nutricio', {
           '</div>' +
           '<p class="verdicte">' + esc(d.verdicte.text) + '</p>' +
           (d.teCremades ? barraBalanc(d) : '') +
-        '</div>' +
-
-        '<div class="tres-xifres">' +
-          xifra('Ingerides', r0(t.ingerides), 'kcal') +
-          xifra('Proteïna', r1(t.proteina), 'g') +
-          xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
-        '</div>' +
-
-        '<label class="camp-activitat">' +
-          '<span class="marge">Calories cremades (total del dia, del rellotge)</span>' +
-          '<input id="n-activitat" inputmode="decimal" value="' +
-            (d.teActivitat ? esc(String(d.activitat)) : '') + '" placeholder="p. ex. 2400">' +
-        '</label>' +
-
-        (teObjProt
-          ? '<div class="prot-bloc">' +
-              '<div class="prot-cap"><span class="marge">Proteïna</span>' +
-              '<span class="num">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span></div>' +
-              '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-              (t.proteina < d.objectius.proteina
-                ? '<p class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g.</p>' : '') +
-            '</div>'
-          : '');
+        '</div>';
     }
 
     function xifra(etiqueta, valor, unitat) {
@@ -3502,13 +3561,16 @@ App.registraVista('nutricio', {
 
           '<p class="marge" style="margin:var(--e4) 0 var(--e2)">Dia a dia</p>' +
           '<div class="perfil">' +
-            d.dies.map(function (x) {
+            d.dies.map(function (x, i) {
               var h = Math.round(x.ingerides / maxKcal * 100);
               var estat = x.net === null ? 'obert' : (x.net > 0 ? 'deficit' : 'superavit');
+              // Amb 31 dies, 31 números no hi caben i empenyen la pàgina cap
+              // a fora. Al mes se n'etiqueta un de cada cinc; a la setmana tots.
+              var etiqueta = periode === 'setmana' || i === 0 || (i + 1) % 5 === 0;
               return '<button class="perfil-dia" data-dia="' + esc(x.data) + '" data-estat="' + estat + '"' +
                 ' aria-label="' + esc(fmt.llarga(x.data)) + ': ' + r0(x.ingerides) + ' kcal">' +
                 '<i style="height:' + Math.max(h, x.apuntat ? 4 : 0) + '%"></i>' +
-                '<span>' + fmt.diaNumero(x.data) + '</span>' +
+                '<span>' + (etiqueta ? fmt.diaNumero(x.data) : '') + '</span>' +
               '</button>';
             }).join('') +
           '</div>' +

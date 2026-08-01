@@ -76,7 +76,8 @@ function netejaFullPerDefecte_(ss) {
 
 // ------------------------------------------------------------------ triggers
 
-var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment'];
+var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
+                'triggerTancamentNutricio'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -96,6 +97,13 @@ function instalaTriggers() {
 
   ScriptApp.newTrigger('triggerManteniment')
     .timeBased().atHour(3).everyDays(1).create();
+
+  // Recordatori de tancament del dia. Apps Script no garanteix el minut exacte:
+  // dispara dins d'una finestra d'un quart d'hora. Per això demanem les 23:45
+  // i no les 23:55 —així la finestra queda dins del dia— i el gestor torna a
+  // mirar l'hora real per no equivocar-se de jornada si li passa la mitjanit.
+  ScriptApp.newTrigger('triggerTancamentNutricio')
+    .timeBased().atHour(23).nearMinute(45).everyDays(1).create();
 
   Log.info('instalacio', 'Triggers instal·lats', { horaResum: horaResum, diaRevisio: diaRevisio });
   return 'Triggers instal·lats: ' + TRIGGERS.join(', ');
@@ -140,6 +148,54 @@ function triggerRevisioSetmanal() {
     ambBloqueig_(function () { return Resums.generaSetmanal(Utils.avui()); });
   } catch (err) {
     Log.error('trigger.revisio', err);
+  }
+}
+
+/**
+ * RECORDATORI DE TANCAMENT — cada nit, cap a les 23:45.
+ *
+ * Sense les calories cremades no hi ha balanç, i un dia sense tancar no es
+ * recupera l'endemà: ja no te'n recordes. Per això l'avís va abans de
+ * mitjanit i no al matí següent.
+ *
+ * L'hora no és exacta a posta: Apps Script dispara dins d'una finestra d'un
+ * quart d'hora, així que aquí es torna a mirar el rellotge. Si ja ha passat
+ * la mitjanit, el dia que cal tancar és el d'ahir, no el d'avui.
+ */
+function triggerTancamentNutricio() {
+  try {
+    if (typeof Nutricio === 'undefined') return;
+
+    var ara = new Date();
+    var tz = Config.zonaHoraria();
+    var hora = Number(Utilities.formatDate(ara, tz, 'H'));
+    var dia = Utilities.formatDate(ara, tz, 'yyyy-MM-dd');
+    if (hora < 12) dia = Utils.sumaDies(dia, -1);   // se n'ha anat de mitjanit
+
+    var d = Nutricio.dia(dia);
+    if (d.teCremades) {
+      Log.info('trigger.tancament', 'Dia ja tancat, cap avís', { data: dia });
+      return;
+    }
+
+    // Un dia en què no has apuntat absolutament res no és un dia oblidat:
+    // és un dia que no comptes. Avisar-ne seria soroll.
+    if (!d.totals.ingerides) {
+      Log.info('trigger.tancament', 'Dia sense cap registre, cap avís', { data: dia });
+      return;
+    }
+
+    var r = Notifica.envia(
+      'Falten les calories cremades',
+      'Portes ' + Math.round(d.totals.ingerides) + ' kcal i ' +
+        Nutricio.r1(d.totals.proteina) + ' g de proteïna. Entra el que has cremat ' +
+        'i el dia queda tancat.',
+      { etiqueta: 'nutricio-tancament', url: './#nutricio', urgent: true }
+    );
+
+    Log.info('trigger.tancament', 'Recordatori enviat', { data: dia, enviades: r.enviades });
+  } catch (err) {
+    Log.error('trigger.tancament', err);
   }
 }
 

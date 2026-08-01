@@ -411,14 +411,33 @@ h2 { font-size: 1.0625rem; }
    superàvit baixa a l'esquerra. La fita de l'objectiu és una marca al terreny,
    no una barra de progrés: no vols "omplir" res, vols passar d'un punt. */
 
-.segments { display: flex; gap: 0; margin-top: var(--e3);
-            border: 1px solid var(--neatline); }
-.segments button { flex: 1; min-height: 40px; background: none; border: 0;
+/* Capçalera compacta: navegar entre dies no ha de menjar-se un terç de la
+   pantalla. Les fletxes i la data mantenen els 44 px de zona tocable; la tira
+   de període és més prima perquè cada botó ocupa un terç de l'amplada, que ja
+   és una diana grossa. */
+.capcalera-nutri { padding: max(var(--e2), env(safe-area-inset-top, 0px)) var(--e3) 0; }
+.capcalera-nutri .capcalera-fila { gap: 0; }
+.capcalera-nutri .btn-icona { min-width: 44px; min-height: 44px; padding: 0; }
+
+.data-nutri { flex: 1; min-width: 0; background: none; border: 0; padding: 2px;
+              min-height: 44px; cursor: pointer; font: inherit; color: inherit;
+              display: flex; flex-direction: column; justify-content: center; }
+.data-nutri b { font-size: .9375rem; font-weight: 700; line-height: 1.2;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.data-nutri span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
+                   color: var(--ink-suau); }
+
+.segments { display: flex; gap: 0; margin: var(--e2) 0 0;
+            border-top: 1px solid var(--neatline); }
+.segments button { flex: 1; min-width: 0; min-height: 34px; background: none; border: 0;
                    border-right: 1px solid var(--neatline); cursor: pointer;
-                   font: inherit; font-size: .8125rem; letter-spacing: .06em;
+                   font: inherit; font-size: .75rem; letter-spacing: .06em;
                    text-transform: uppercase; color: var(--ink-suau); }
 .segments button:last-child { border-right: 0; }
 .segments button[aria-selected="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+/* Ordre de lectura: xifres, àpats, tancament. El mateix que feia FitFat. */
+.nutri { display: flex; flex-direction: column; gap: var(--e4); }
 
 .fitxa { border: 1.5px solid var(--neatline); padding: var(--e4);
          background: var(--paper2); margin-bottom: var(--e4); }
@@ -445,11 +464,13 @@ h2 { font-size: 1.0625rem; }
               color: var(--ink-suau); }
 .balanc-peu .fita-txt { color: var(--gr); }
 
-.tres-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
-               margin-bottom: var(--e3); }
-.tres-xifres .xifra { display: flex; flex-direction: column; gap: 2px;
+.tres-xifres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e2); }
+/* min-width:0 a tot arreu: als grids, el valor per defecte és `auto`, i un
+   camp o un número llarg empeny la columna més enllà de la pantalla. És el
+   que feia aparèixer la barra de desplaçament horitzontal. */
+.tres-xifres .xifra { min-width: 0; display: flex; flex-direction: column; gap: 2px;
                       border-left: 2px solid var(--neatline); padding-left: var(--e2);
-                      font-weight: 400; }
+                      font-weight: 400; overflow: hidden; }
 .tres-xifres .xifra b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .tres-xifres .xifra .u { font-size: .75rem; font-weight: 400; margin-left: 3px;
                          color: var(--ink-suau); }
@@ -472,22 +493,26 @@ h2 { font-size: 1.0625rem; }
             background: var(--paper2); }
 .apat-cap h2 { flex: 1; font-size: 1rem; }
 .apat-items:not(:empty) { border-bottom: 1px solid var(--neatline); }
-.ingesta { display: flex; align-items: center; gap: var(--e3);
+.ingesta { display: flex; align-items: center; gap: var(--e2);
            padding: var(--e2) var(--e3); border-bottom: 1px solid var(--utm-suau); }
 .ingesta:last-child { border-bottom: 0; }
 .ingesta .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ingesta .menut { overflow-wrap: anywhere; }
+.ingesta .btn-icona { min-width: 44px; }
 
-.apat-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); padding: var(--e3); }
-.apat-form select, .apat-form input { min-height: var(--toc); padding: 0 var(--e2);
+.apat-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+             gap: var(--e2); padding: var(--e3); }
+.apat-form select, .apat-form input { min-width: 0; width: 100%; min-height: var(--toc);
+                                      padding: 0 var(--e2);
                                       font: inherit; background: var(--paper); color: var(--ink);
                                       border: 1px solid var(--neatline); border-radius: var(--r); }
 .apat-form select, .apat-form [data-nom] { grid-column: 1 / -1; }
 .apat-form [data-afegeix] { grid-column: 1 / -1; }
 .apat-form [data-desa-aliment] { grid-column: 1 / -1; }
 
-.perfil { display: flex; align-items: flex-end; gap: 2px; height: 120px;
-          border-bottom: 1.5px solid var(--neatline); }
-.perfil-dia { flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+.perfil { display: flex; align-items: flex-end; gap: 1px; height: 120px;
+          border-bottom: 1.5px solid var(--neatline); overflow: hidden; }
+.perfil-dia { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end;
               align-items: center; gap: 2px; height: 100%; min-width: 0;
               background: none; border: 0; padding: 0; cursor: pointer; }
 .perfil-dia i { display: block; width: 100%; background: var(--h0); }
@@ -549,6 +574,18 @@ h2 { font-size: 1.0625rem; }
 
   .pagina { padding: var(--e5) var(--e5) var(--e7); }
   .dues-columnes { grid-template-columns: minmax(320px, 380px) 1fr; align-items: start; }
+
+  /* A l'escriptori hi cap tot alhora: xifres i tancament a l'esquerra, els
+     àpats a la dreta. Al mòbil manen l'ordre i l'espai; aquí, la vista de
+     conjunt. */
+  .nutri { display: grid; grid-template-columns: minmax(300px, 380px) 1fr;
+           grid-template-areas: "dalt apats" "tanca apats"; align-items: start;
+           column-gap: var(--e5); }
+  .nutri-dalt  { grid-area: dalt; }
+  .nutri-apats { grid-area: apats; }
+  .nutri-tanca { grid-area: tanca; }
+  .capcalera-nutri { padding: var(--e3) var(--e5) 0; }
+  .segments { max-width: 420px; }
 
   .nav {
     position: sticky; top: 0; bottom: auto;

@@ -243,7 +243,17 @@ var Jefe = (function () {
       // I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar l'última
       // vista convertia qualsevol pantalla sense sortida en una trampa que ni
       // reinstal·lant l'app es desfeia, perquè la cau sobreviu a la instal·lació.
-      App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+      //
+      // L'única excepció és una destinació demanada explícitament a l'adreça,
+      // que és com arriben les notificacions: tocar «falten les cremades» ha
+      // de dur a Nutrició i no a la conversa. Es consumeix i prou: no es desa.
+      var demanada = String(location.hash || '').replace(/^#/, '');
+      if (demanada && App.vistes[demanada]) {
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        App.ves(demanada);
+      } else {
+        App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+      }
 
       window.addEventListener('popstate', function (ev) {
         var id = (ev.state && ev.state.vista) || 'conversa';
