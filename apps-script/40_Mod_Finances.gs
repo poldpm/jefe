@@ -154,6 +154,9 @@ function MODUL_FINANCES() {
       categories:     function ()  { return Finances.categories(); },
       suggeriments:   function (p) { return Finances.suggeriments(p.text); },
       reclassifica:   function ()  { return Finances.reclassifica(); },
+      perRevisar:     function ()  { return Finances.perRevisar(); },
+      decideix:       function (p) { return Finances.decideixComerc(p.clau, p.categoria); },
+      decideixUn:     function (p) { return Finances.decideixMoviment(p.id, p.categoria); },
       importa:        function (p) { return Finances.importa(p.dades, p.simulacio); },
       estatBanc:      function ()  { return FinancesBanc.estat(); },
       sincronitzaBanc: function () { return FinancesBanc.sincronitza(); }
@@ -795,6 +798,94 @@ var Finances = (function () {
       .slice(0, 12);
   }
 
+  // ------------------------------------------------------ safata de revisió
+
+  /**
+   * El que queda per decidir, AGRUPAT PER COMERÇ.
+   *
+   * Aquesta agrupació és tota la safata. Amb els moviments un a un, dotze
+   * compres a l'estanc són dotze preguntes idèntiques; agrupades, és una.
+   * El que fa costa amunt revisar no és el nombre de moviments, és el nombre
+   * de decisions.
+   *
+   * Les etiquetes genèriques van a part i sense agrupar: allà cada moviment
+   * SÍ que és una decisió diferent, per molt que el text es repeteixi.
+   */
+  function perRevisar() {
+    var cats = indexCategories_();
+    var grups = {}, solts = [];
+
+    moviments_(function (f) {
+      var altres = f.categoria === 'c_altd' || f.categoria === 'i_alti';
+      return altres || String(f.revisat).toUpperCase() === 'NO';
+    }).forEach(function (f) {
+      var clau = clauMemoria_(f.descripcio, f.tipus);
+      var imp = num_(f['import']);
+
+      if (!clau || esGenerica_(clau)) {
+        solts.push({
+          id: f.id, data: f.data, tipus: f.tipus, import: imp,
+          descripcio: f.descripcio, categoria: f.categoria,
+          categoriaNom: (cats[f.categoria] || {}).nom || f.categoria
+        });
+        return;
+      }
+
+      if (!grups[clau]) {
+        grups[clau] = { clau: clau, mostra: f.descripcio, tipus: f.tipus,
+                        moviments: 0, total: 0, primera: f.data, ultima: f.data };
+      }
+      var g = grups[clau];
+      g.moviments++;
+      g.total += imp;
+      if (String(f.data) < String(g.primera)) g.primera = f.data;
+      if (String(f.data) > String(g.ultima)) { g.ultima = f.data; g.mostra = f.descripcio; }
+    });
+
+    var llista = Object.keys(grups).map(function (k) { return grups[k]; })
+      .sort(function (a, b) { return b.moviments - a.moviments || b.total - a.total; });
+
+    solts.sort(function (a, b) { return String(b.data).localeCompare(String(a.data)); });
+
+    return {
+      comercos: llista,
+      solts: solts,
+      totalMoviments: llista.reduce(function (s, g) { return s + g.moviments; }, 0) + solts.length,
+      categories: categories()
+    };
+  }
+
+  /**
+   * Una decisió, tots els moviments d'aquell comerç.
+   * I s'apren: és l'última vegada que se'n pregunta.
+   */
+  function decideixComerc(clau, categoria) {
+    if (!clau || !categoria) throw new Error('Falta el comerç o la categoria.');
+
+    var tocats = 0, mostra = '', metode = '', tipus = clau.indexOf('i|') === 0 ? 'i' : 'd';
+
+    moviments_(function (f) {
+      var altres = f.categoria === 'c_altd' || f.categoria === 'i_alti';
+      if (!altres && String(f.revisat).toUpperCase() === 'SI') return false;
+      return clauMemoria_(f.descripcio, f.tipus) === clau;
+    }).forEach(function (f) {
+      Dades.actualitza('Moviments', f.id, { categoria: categoria, revisat: 'SI' });
+      if (!mostra) { mostra = f.descripcio; metode = f.metode; }
+      tocats++;
+    });
+
+    if (mostra) recorda(mostra, categoria, metode, tipus);
+    return { tocats: tocats, apres: !!mostra };
+  }
+
+  /** Un moviment sol, dels que no es poden aprendre. No toca la memòria. */
+  function decideixMoviment(id, categoria) {
+    if (!id || !categoria) throw new Error('Falta el moviment o la categoria.');
+    var r = Dades.actualitza('Moviments', id, { categoria: categoria, revisat: 'SI' });
+    if (!r) throw new Error('Aquest moviment no existeix.');
+    return { fet: true };
+  }
+
   // -------------------------------------------------------------------- IA
 
   function consultaIA(a) {
@@ -911,6 +1002,9 @@ var Finances = (function () {
     clauComerc: clauComerc_,
     clauMemoria: clauMemoria_,
     reclassifica: reclassifica,
+    perRevisar: perRevisar,
+    decideixComerc: decideixComerc,
+    decideixMoviment: decideixMoviment,
     categories: categories,
     suggeriments: suggeriments,
     consultaIA: consultaIA,

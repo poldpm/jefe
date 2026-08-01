@@ -580,6 +580,21 @@ h2 { font-size: 1.0625rem; }
 .mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
              font-size: .875rem; }
 
+/* Safata de revisió. Una fila per DECISIÓ, no per moviment: dotze compres a
+   l'estanc són una sola targeta. En triar, la fila s'apaga i se'n va, i el que
+   queda és el que et falta. */
+.revisar { display: flex; flex-direction: column; gap: var(--e3); }
+.rev-fila { border: 1px solid var(--neatline); padding: var(--e3);
+            transition: opacity .25s ease, transform .25s var(--sortida); }
+.rev-fila[data-fent="1"] { opacity: .5; }
+.rev-fila[data-fet="1"] { opacity: 0; transform: translateX(24px); }
+.rev-cap { display: flex; align-items: baseline; gap: var(--e2); margin-bottom: 2px; }
+.rev-cap b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rev-cap span { white-space: nowrap; }
+.rev-fila select { width: 100%; min-height: var(--toc); margin-top: var(--e3);
+                   padding: 0 var(--e2); font: inherit; background: var(--paper);
+                   color: var(--ink); border: 1px solid var(--neatline); border-radius: var(--r); }
+
 /* Despesa o ingrés: la primera decisió, i la que canvia les categories. */
 .tipus-tria { display: flex; border: 1px solid var(--neatline); margin-bottom: var(--e4); }
 .tipus-tria button { flex: 1; min-height: 44px; background: none; border: 0;

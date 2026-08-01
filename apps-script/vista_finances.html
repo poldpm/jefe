@@ -112,8 +112,8 @@ App.registraVista('finances', {
           : '') +
 
         (d.perRevisar
-          ? '<p class="menut" style="color:var(--avis)">' + d.perRevisar +
-            ' moviments del banc encara per revisar.</p>'
+          ? '<button class="btn btn-secundari" data-revisar="1" style="width:100%;margin-top:var(--e3)">' +
+            d.perRevisar + ' per classificar</button>'
           : '') +
 
         '<button class="btn btn-primari" data-apunta="1" style="width:100%;margin-top:var(--e4)">' +
@@ -298,6 +298,125 @@ App.registraVista('finances', {
       lligaCapcalera();
     }
 
+    // ------------------------------------------------------ safata de revisió
+
+    /* AGRUPADA PER COMERÇ, i això és tota la idea.
+       Dotze compres a l'estanc són una sola decisió, no dotze. El que fa
+       costa amunt revisar no és el nombre de moviments: és el nombre de
+       vegades que t'han de preguntar. Un cop decidit, s'apren i no torna. */
+    function pintaRevisar(d) {
+      var cats = d.categories || [];
+
+      function triador(valor, dades) {
+        return '<select ' + dades + '>' +
+          '<option value="">Tria…</option>' +
+          cats.filter(function (c) { return c.mena === valor; }).map(function (c) {
+            return '<option value="' + esc(c.id) + '">' +
+                   esc((c.emoji ? c.emoji + ' ' : '') + c.nom) + '</option>';
+          }).join('') +
+        '</select>';
+      }
+
+      arrel.innerHTML = capcalera(false) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="tres-xifres">' +
+              xifra('Comerços', d.comercos.length, '') +
+              xifra('Solts', d.solts.length, '') +
+              xifra('Moviments', d.totalMoviments, '') +
+            '</div>' +
+            '<p class="menut">Cada comerç és una sola decisió: es queda apresa i ' +
+              'no te\'n tornaré a preguntar mai més.</p>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' +
+            (d.comercos.length
+              ? '<p class="marge">Comerços</p>' +
+                '<div class="revisar">' +
+                  d.comercos.map(function (g) {
+                    return '<div class="rev-fila" data-clau="' + esc(g.clau) + '">' +
+                      '<div class="rev-cap">' +
+                        '<b>' + esc(g.mostra) + '</b>' +
+                        '<span class="num menut">' + g.moviments + ' · ' + eur(g.total) + '</span>' +
+                      '</div>' +
+                      '<div class="menut">' + esc(fmt.relativa(g.primera)) +
+                        (g.primera !== g.ultima ? ' → ' + esc(fmt.relativa(g.ultima)) : '') +
+                        ' · ' + (g.tipus === 'i' ? 'ingrés' : 'despesa') + '</div>' +
+                      triador(g.tipus, 'data-tria-grup') +
+                    '</div>';
+                  }).join('') +
+                '</div>'
+              : '<p class="menut">Cap comerç pendent. Ben fet.</p>') +
+
+            (d.solts.length
+              ? '<p class="marge" style="margin-top:var(--e5)">D\'un en un</p>' +
+                '<p class="menut">Aquests no porten el nom del comerç: el banc hi ha ' +
+                  'posat una etiqueta genèrica. Cada un és una compra diferent, i per ' +
+                  'això no s\'aprenen mai.</p>' +
+                '<div class="revisar">' +
+                  d.solts.map(function (m) {
+                    return '<div class="rev-fila" data-mov="' + esc(m.id) + '">' +
+                      '<div class="rev-cap">' +
+                        '<b>' + esc(m.descripcio) + '</b>' +
+                        '<span class="num menut">' + eur(m.import) + '</span>' +
+                      '</div>' +
+                      '<div class="menut">' + esc(fmt.relativa(m.data)) + ' · ' +
+                        (m.tipus === 'i' ? 'ingrés' : 'despesa') + '</div>' +
+                      triador(m.tipus, 'data-tria-mov') +
+                    '</div>';
+                  }).join('') +
+                '</div>'
+              : '') +
+          '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+
+      /* En triar, s'aplica i la fila se'n va. Sense botó de desar: afegir un
+         segon toc a cada decisió és tornar a posar la fricció que treiem. */
+      arrel.querySelectorAll('[data-tria-grup]').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          if (!sel.value) return;
+          var fila = sel.closest('.rev-fila');
+          fila.dataset.fent = '1'; sel.disabled = true;
+          crida('finances', 'decideix', { clau: fila.dataset.clau, categoria: sel.value })
+            .then(function (r) {
+              fila.dataset.fet = '1';
+              App.brindis(r.tocats + (r.tocats === 1 ? ' moviment classificat' : ' moviments classificats'));
+              setTimeout(function () { fila.remove(); comprovaBuit(); }, 260);
+            })
+            .catch(function (err) {
+              fila.dataset.fent = '0'; sel.disabled = false;
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+
+      arrel.querySelectorAll('[data-tria-mov]').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          if (!sel.value) return;
+          var fila = sel.closest('.rev-fila');
+          fila.dataset.fent = '1'; sel.disabled = true;
+          crida('finances', 'decideixUn', { id: fila.dataset.mov, categoria: sel.value })
+            .then(function () {
+              fila.dataset.fet = '1';
+              setTimeout(function () { fila.remove(); comprovaBuit(); }, 260);
+            })
+            .catch(function (err) {
+              fila.dataset.fent = '0'; sel.disabled = false;
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+
+      function comprovaBuit() {
+        if (!arrel.querySelector('.rev-fila')) {
+          App.brindis('Safata buida');
+          App.ves('finances', { mes: mes, periode: 'mes' });
+        }
+      }
+    }
+
     // -------------------------------------------------------------- accions
 
     function lligaCapcalera() {
@@ -325,6 +444,11 @@ App.registraVista('finances', {
 
       arrel.querySelectorAll('[data-apunta]').forEach(function (b) {
         b.addEventListener('click', function () { obreApunt(null); });
+      });
+
+      var brev = arrel.querySelector('[data-revisar]');
+      if (brev) brev.addEventListener('click', function () {
+        App.ves('finances', { mes: mes, periode: 'revisar' });
       });
 
       var baj = arrel.querySelector('[data-ajustos]');
@@ -581,7 +705,9 @@ App.registraVista('finances', {
     // --------------------------------------------------------------- càrrega
 
     function carrega() {
-      var accio = periode === 'mesos' ? 'mesos' : periode === 'estad' ? 'estadistiques' : 'mes';
+      var accio = periode === 'mesos' ? 'mesos'
+                : periode === 'estad' ? 'estadistiques'
+                : periode === 'revisar' ? 'perRevisar' : 'mes';
       var params_ = periode === 'mesos' ? { quants: 12 } : { mes: mes };
 
       Promise.all([
@@ -591,7 +717,8 @@ App.registraVista('finances', {
       ]).then(function (r) {
         cats = r[1]; sugg = r[2];
         if (!mes && r[0].mes) mes = r[0].mes;
-        if (periode === 'mesos') pintaMesos(r[0]);
+        if (periode === 'revisar') pintaRevisar(r[0]);
+        else if (periode === 'mesos') pintaMesos(r[0]);
         else if (periode === 'estad') pintaEstad(r[0]);
         else pintaMes(r[0]);
       }).catch(function (err) {
