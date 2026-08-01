@@ -78,19 +78,31 @@ Apunta-te-la un moment: la necessitaràs dues vegades.
 
 ## 4. Digues-ho a JEFE
 
-Torna a l'editor de JEFE (el del teu compte personal) i executa:
+Torna a l'editor de **JEFE** (el del teu compte personal, la finestra normal).
 
-```javascript
-connectaPontEscola('https://script.google.com/macros/s/AKfy...../exec', 'la-teva-clau')
-```
+> **L'editor no deixa passar dades a una funció** quan la fas anar amb el botó
+> d'executar. Per això els dos valors es posen a mà; és igual de ràpid.
 
-I després:
+1. A la barra de l'esquerra, l'**engranatge** ⚙ (*Configuració del projecte*)
+2. Baixa fins a **Propietats de l'script**
+3. **Afegeix una propietat**, i posa-hi:
 
-```javascript
-provaPontEscola()
-```
+   | Propietat | Valor |
+   |---|---|
+   | `CAL_PONT_URL` | l'adreça que has copiat, la que acaba en `/exec` |
 
-Ha de contestar dient amb quin compte parla i quins calendaris hi pot escriure.
+4. **Afegeix una propietat** una altra vegada:
+
+   | Propietat | Valor |
+   |---|---|
+   | `CAL_PONT_CLAU` | la clau del pas 1 |
+
+5. **Desa les propietats de l'script**
+6. Torna a l'**Editor** (la icona `<>` de l'esquerra), tria `provaPontEscola`
+   al desplegable de dalt i prem **Executa**
+
+Ha de contestar dient amb quin compte parla i quins calendaris hi pot
+escriure. Si hi falta alguna cosa, t'ho dirà.
 
 ---
 

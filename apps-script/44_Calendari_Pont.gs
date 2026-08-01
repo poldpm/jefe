@@ -114,21 +114,22 @@ var CalendariPont = (function () {
 
 
 /**
- * CONNECTAR EL PONT. S'executa una vegada, des de l'editor.
+ * CONNECTAR EL PONT, si pots passar-li els valors.
  *
- * Els dos valors van a Script Properties i no al full de càlcul: la clau és
- * el que impedeix que ningú altre escrigui al calendari de l'escola, i al
- * full hi entra qualsevol amb qui el comparteixis.
+ * L'editor d'Apps Script NO deixa passar arguments a una funció des del botó
+ * d'executar: només la crida buida. Per això el camí documentat és posar els
+ * dos valors a mà a Propietats de l'script i executar `provaPontEscola()`,
+ * que ja ho comprova tot. Aquesta funció hi és per si els pots enganxar.
  */
 function connectaPontEscola(url, clau) {
   if (!url || !clau) {
-    return 'Falten dades.\n\n' +
-           'Executa-ho així, amb els valors que et doni l\'script de l\'escola:\n' +
-           '  connectaPontEscola(\'https://script.google.com/macros/s/AKfy.../exec\', \'la-clau\')\n\n' +
-           'Si no pots passar-hi arguments des de l\'editor, posa\'ls a mà a\n' +
-           'Configuració del projecte → Propietats de l\'script:\n' +
-           '  ' + PROP_PONT_URL + '  →  l\'adreça acabada en /exec\n' +
-           '  ' + PROP_PONT_CLAU + ' →  la clau';
+    return 'Aquesta funció necessita dos valors, i des del botó d\'executar no\n' +
+           'se li poden donar. Fes-ho així:\n\n' +
+           '  Configuració del projecte (l\'engranatge de l\'esquerra)\n' +
+           '  → Propietats de l\'script → Afegeix una propietat, dues vegades:\n\n' +
+           '     ' + PROP_PONT_URL + '   →  l\'adreça acabada en /exec\n' +
+           '     ' + PROP_PONT_CLAU + '  →  la clau\n\n' +
+           '  I després executa provaPontEscola().';
   }
 
   var u = String(url).trim();
@@ -147,17 +148,39 @@ function connectaPontEscola(url, clau) {
 }
 
 
-/** Comprova el pont i diu què s'hi pot fer. No escriu res enlloc. */
+/**
+ * Comprova el pont i diu què s'hi pot fer. No escriu res enlloc.
+ * És l'única funció que has d'executar: comprova també que els valors que
+ * has posat a mà tinguin la pinta bona.
+ */
 function provaPontEscola() {
   var l = ['=== EL PONT AMB EL COMPTE DE L\'ESCOLA ==='];
   function a(t) { l.push(t); Logger.log(t); }
 
   var c = CalendariPont.config();
   if (!c) {
-    a('No hi ha cap pont configurat.');
+    var p = PropertiesService.getScriptProperties();
+    var teUrl = !!p.getProperty(PROP_PONT_URL);
+    var teClau = !!p.getProperty(PROP_PONT_CLAU);
+
+    a('Encara no hi ha pont.');
     a('');
-    a('Vegeu docs/04-calendari-escola.md, i després:');
-    a('  connectaPontEscola(\'https://.../exec\', \'la-clau\')');
+    a('  ' + PROP_PONT_URL + '   ' + (teUrl ? 'posada' : 'FALTA'));
+    a('  ' + PROP_PONT_CLAU + '  ' + (teClau ? 'posada' : 'FALTA'));
+    a('');
+    a('Es posen a: engranatge de l\'esquerra (Configuració del projecte)');
+    a('→ baixa fins a «Propietats de l\'script» → «Afegeix una propietat».');
+    a('');
+    a('Tot el pas a pas és a docs/04-calendari-escola.md');
+    return l.join('\n');
+  }
+
+  if (c.url.slice(-5) !== '/exec') {
+    a('L\'adreça no acaba en /exec i per tant no funcionarà.');
+    a('  Ara hi diu: ' + c.url);
+    a('');
+    a('La bona és la que et dona el quadre blau en desplegar, i acaba en /exec.');
+    a('La que acaba en /dev és la de proves i només funciona per a tu.');
     return l.join('\n');
   }
 
