@@ -146,15 +146,6 @@
 .ona i:nth-child(4) { height: 100%; animation-delay: .45s; }
 @keyframes ona { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 
-.pistes { display: flex; gap: var(--e2); overflow-x: auto; padding-bottom: var(--e3); scrollbar-width: none;
-          max-width: 62ch; margin: 0 auto; }
-.pistes::-webkit-scrollbar { display: none; }
-.pistes:empty { display: none; }
-.pistes button { flex: none; min-height: 44px; padding: 0 var(--e3); white-space: nowrap;
-                 border: 1px solid var(--linia); background: transparent; color: var(--apagat);
-                 font-family: var(--mono); font-size: .6875rem; letter-spacing: .04em; }
-.pistes button:active { color: var(--cian); border-color: var(--cian); }
-
 /* --------------------------------------------------------------- les ordres
 
    Dues maneres de manar, i totes dues a l'abast del polze. La veu és la
@@ -259,7 +250,6 @@ App.registraVista('conversa', {
             '<span class="oida-text" id="oida-text">escoltant…</span>' +
             '<button class="oida-clau" id="b-clau" aria-pressed="false">paraula clau: OFF</button>' +
           '</div>' +
-          '<div class="pistes" id="pistes"></div>' +
         '</div>' +
 
         '<div class="jefe-ordre">' +
@@ -384,14 +374,6 @@ App.registraVista('conversa', {
               el.innerHTML = '<p style="margin:0;color:var(--alerta)">' + esc(err.message) + '</p>';
             });
         });
-      });
-    }
-
-    function pintaPistes(llista) {
-      var s = arrel.querySelector('#pistes');
-      s.innerHTML = (llista || []).map(function (t) { return '<button>' + esc(t) + '</button>'; }).join('');
-      s.querySelectorAll('button').forEach(function (b) {
-        b.addEventListener('click', function () { camp.value = b.textContent; envia(); });
       });
     }
 
@@ -751,8 +733,7 @@ App.registraVista('conversa', {
       var nav = arrel.querySelector('#moduls');
       if (!nav) return;
       var llista = (App.moduls && App.moduls.length) ? App.moduls : (Cau.get('moduls', []) || []);
-      var items = llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; })
-        .concat([{ id: 'inici', nom: 'Inici', icona: 'inici' }]);
+      var items = llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
 
       nav.innerHTML = items.map(function (m) {
         return '<a href="#" data-ves="' + esc(m.id) + '">' +
@@ -857,7 +838,6 @@ App.registraVista('conversa', {
     crida('conversa', 'estat', {}).then(function (e) {
       estatIA = e;
       posaEstat(e.disponible ? 'repos' : 'apagat', e.disponible ? 'a punt' : 'sense clau');
-      pintaPistes(e.suggeriments);
       if (!e.disponible) { avisApagat(e.motiu); return; }
 
       /* Si l'escolta estava engegada, es torna a engegar sola en obrir.
