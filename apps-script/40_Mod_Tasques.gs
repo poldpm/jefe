@@ -122,6 +122,58 @@ function MODUL_TASQUES() {
         return 'Apuntar «' + (a.text || '?') + '»' + (a.venc_el ? ' per al ' + a.venc_el : '');
       },
       executa: function (a) { return Tasques.apuntaPerNom(a); }
+    }, {
+      nom: 'completa_tasca',
+      descripcio: 'Marca una tasca com a feta. S\'identifica pel text, encara que no sigui ' +
+                  'exacte. NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Part del text de la tasca' },
+          desfes: { type: 'boolean', description: 'true per tornar-la a pendent' }
+        },
+        required: ['text']
+      },
+      etiqueta: function (a) {
+        return (a.desfes ? 'Tornar a pendent' : 'Marcar com a feta') + ' «' + (a.text || '?') + '»';
+      },
+      executa: function (a) { return Tasques.completaPerNom(a); }
+    }, {
+      nom: 'classifica_tasca',
+      descripcio: 'Posa context, data límit o prioritat a una tasca que ja existeix. ' +
+                  'Serveix per treure coses de la safata. NO s\'executa directament.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          text:      { type: 'string', description: 'Part del text de la tasca' },
+          context:   { type: 'string', description: 'docencia, rural o personal' },
+          venc_el:   { type: 'string', description: 'Data límit AAAA-MM-DD' },
+          prioritat: { type: 'boolean', description: 'true per marcar-la prioritària' }
+        },
+        required: ['text']
+      },
+      etiqueta: function (a) {
+        var q = [];
+        if (a.context) q.push('context ' + a.context);
+        if (a.venc_el) q.push('per al ' + a.venc_el);
+        if (a.prioritat) q.push('prioritària');
+        return 'Posar «' + (a.text || '?') + '» com a ' + (q.join(', ') || 'per fer');
+      },
+      executa: function (a) { return Tasques.classificaPerNom(a); }
+    }, {
+      nom: 'treu_tasca',
+      descripcio: 'Treu una tasca de la llista. NO s\'executa directament: genera una ' +
+                  'proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: { text: { type: 'string', description: 'Part del text de la tasca' } },
+        required: ['text']
+      },
+      etiqueta: function (a) { return 'TREURE la tasca «' + (a.text || '?') + '»'; },
+      executa: function (a) { return Tasques.treuPerNom(a); }
     }],
 
     vista: 'vista_tasques'
@@ -338,8 +390,81 @@ var Tasques = (function () {
     };
   }
 
+  /**
+   * TROBAR UNA TASCA PEL QUE EN DIUS, NO PEL SEU IDENTIFICADOR.
+   *
+   * En Pol diu «la de l'informe», no «tsk_ln4k2x_a7f». Però una coincidència
+   * a mitges és pitjor que cap: si dues tasques encaixen, NO se'n tria una a
+   * l'atzar. Es retornen totes dues i que ho pregunti. Completar la tasca
+   * equivocada perquè el nom s'assemblava és exactament la mena d'error que
+   * et fa deixar de confiar en l'assistent.
+   */
+  function troba_(text, inclouFetes) {
+    var q = String(text || '').trim().toLowerCase();
+    if (!q) throw new Error('No has dit quina tasca.');
+
+    var avui = Utils.avui();
+    var totes = vives_(function (f) {
+      return inclouFetes || f.estat !== 'feta';
+    }).map(function (f) { return ambDades_(f, avui); });
+
+    var exactes = totes.filter(function (t) { return t.text.toLowerCase() === q; });
+    var candidats = exactes.length ? exactes
+      : totes.filter(function (t) { return t.text.toLowerCase().indexOf(q) !== -1; });
+
+    if (!candidats.length) {
+      throw new Error('No trobo cap tasca que digui «' + text + '».');
+    }
+    if (candidats.length > 1) {
+      throw new Error('N\'hi ha ' + candidats.length + ' que hi encaixen: ' +
+        candidats.slice(0, 5).map(function (t) { return '«' + t.text + '»'; }).join(', ') +
+        '. Digues quina exactament.');
+    }
+    return candidats[0];
+  }
+
+  function completaPerNom(a) {
+    var t = troba_(a.text, !!a.desfes);
+    completa(t.id, !!a.desfes);
+    return { fet: !a.desfes, tasca: t.text };
+  }
+
+  function classificaPerNom(a) {
+    var t = troba_(a.text, false);
+    var canvis = {};
+
+    var ctx = String(a.context || '').toLowerCase();
+    if (ctx) {
+      if (!CONTEXTOS.filter(function (c) { return c.clau === ctx; }).length) {
+        throw new Error('«' + a.context + '» no és cap context. Són: docencia, rural o personal.');
+      }
+      canvis.context = ctx;
+    }
+    if (a.venc_el) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(a.venc_el))) {
+        throw new Error('La data ha de ser AAAA-MM-DD.');
+      }
+      canvis.venc_el = a.venc_el;
+    }
+    if (a.prioritat !== undefined) canvis.prioritat = a.prioritat ? 'alta' : '';
+    if (!Object.keys(canvis).length) throw new Error('No has dit què li vols posar.');
+
+    var r = edita(t.id, canvis);
+    return { tasca: r.text, context: r.context || null, vencEl: r.venc_el || null,
+             prioritaria: r.prioritat === 'alta' };
+  }
+
+  function treuPerNom(a) {
+    var t = troba_(a.text, true);
+    treu(t.id);
+    return { tret: true, tasca: t.text };
+  }
+
   return {
     CONTEXTOS: CONTEXTOS,
+    completaPerNom: completaPerNom,
+    classificaPerNom: classificaPerNom,
+    treuPerNom: treuPerNom,
     pantalla: pantalla,
     compte: compte,
     captura: captura,

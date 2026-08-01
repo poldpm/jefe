@@ -269,6 +269,80 @@ function MODUL_FINANCES() {
                (a.data ? ' del ' + a.data : ' d\'avui');
       },
       executa: function (a) { return Finances.apuntaPerNom(a); }
+    }, {
+      nom: 'classifica_moviment',
+      descripcio: 'Canvia la categoria d\'un moviment que ja hi és, o de TOTS els d\'un mateix ' +
+                  'comerç alhora. Serveix per buidar la safata del que ha entrat del banc. ' +
+                  'NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          descripcio: { type: 'string', description: 'Part de la descripció del moviment o del comerç' },
+          categoria:  { type: 'string', description: 'Nom de la categoria on ha d\'anar' },
+          tots:       { type: 'boolean', description: 'true per aplicar-ho a tots els d\'aquell comerç i recordar-ho' }
+        },
+        required: ['descripcio', 'categoria']
+      },
+      etiqueta: function (a) {
+        return (a.tots ? 'Posar TOTS els de «' : 'Posar «') + (a.descripcio || '?') +
+               '» a ' + (a.categoria || '?');
+      },
+      executa: function (a) { return Finances.classificaPerNom(a); }
+    }, {
+      nom: 'posa_pressupost',
+      descripcio: 'Posa o treu el límit mensual de despesa d\'una categoria. ' +
+                  'NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          categoria: { type: 'string', description: 'Nom de la categoria' },
+          limit:     { type: 'number', description: 'Límit en euros. Zero el treu.' }
+        },
+        required: ['categoria', 'limit']
+      },
+      etiqueta: function (a) {
+        return Number(a.limit) > 0
+          ? 'Límit de ' + Finances.eur(a.limit) + ' al mes per a ' + (a.categoria || '?')
+          : 'Treure el límit de ' + (a.categoria || '?');
+      },
+      executa: function (a) { return Finances.pressupostPerNom(a); }
+    }, {
+      nom: 'anota_patrimoni',
+      descripcio: 'Anota quant val avui un actiu del patrimoni (Trade Republic, borsa, criptos…). ' +
+                  'NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          actiu: { type: 'string', description: 'Nom de l\'actiu' },
+          valor: { type: 'number', description: 'Quant val ara, en euros' }
+        },
+        required: ['actiu', 'valor']
+      },
+      etiqueta: function (a) {
+        return 'Anotar ' + Finances.eur(a.valor || 0) + ' a «' + (a.actiu || '?') + '»';
+      },
+      executa: function (a) { return Finances.patrimoniPerNom(a); }
+    }, {
+      nom: 'treu_moviment',
+      descripcio: 'Treu un moviment dels comptes. NO s\'executa directament: genera una ' +
+                  'proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          descripcio: { type: 'string', description: 'Part de la descripció del moviment' },
+          data:       { type: 'string', description: 'Data AAAA-MM-DD, per si n\'hi ha més d\'un' }
+        },
+        required: ['descripcio']
+      },
+      etiqueta: function (a) {
+        return 'TREURE el moviment «' + (a.descripcio || '?') + '»' +
+               (a.data ? ' del ' + a.data : '');
+      },
+      executa: function (a) { return Finances.treuPerNom(a); }
     }],
 
     vista: 'vista_finances'
@@ -1256,6 +1330,126 @@ var Finances = (function () {
     };
   }
 
+  // ------------------------------------------------- eines de la conversa
+
+  /**
+   * Trobar el que en Pol anomena pel nom, no per l'identificador.
+   * Si n'hi ha més d'un i no ha dit la data, NO se'n tria cap: es retornen
+   * els candidats. Treure el moviment equivocat perquè el text s'assemblava
+   * és un error que no veuria fins d'aquí setmanes.
+   */
+  function trobaMoviment_(descripcio, data) {
+    var q = String(descripcio || '').trim().toLowerCase();
+    if (!q) throw new Error('No has dit quin moviment.');
+
+    var files = moviments_(function (f) {
+      if (data && String(f.data) !== String(data)) return false;
+      return String(f.descripcio).toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (!files.length) {
+      throw new Error('No trobo cap moviment que digui «' + descripcio + '»' +
+                      (data ? ' del ' + data : '') + '.');
+    }
+    if (files.length > 1) {
+      throw new Error('N\'hi ha ' + files.length + ' que hi encaixen: ' +
+        files.slice(0, 5).map(function (f) {
+          return f.data + ' ' + f.descripcio + ' ' + eur(num_(f['import']));
+        }).join('; ') + '. Digues-me la data.');
+    }
+    return files[0];
+  }
+
+  function classificaPerNom(a) {
+    var cat = categoriaPerNom_(a.categoria);
+    if (!cat) {
+      throw new Error('No tinc cap categoria que es digui «' + a.categoria + '». Són: ' +
+        categories().map(function (c) { return c.nom; }).join(', ') + '.');
+    }
+
+    /* Tots els d'un comerç alhora: és el cas normal quan buides la safata, i
+       de passada s'apren perquè no ho hagis de tornar a dir mai. */
+    if (a.tots) {
+      var q = String(a.descripcio || '').trim().toLowerCase();
+      if (!q) throw new Error('No has dit quin comerç.');
+      var files = moviments_(function (f) {
+        return String(f.descripcio).toLowerCase().indexOf(q) !== -1 && f.tipus === cat.mena;
+      });
+      if (!files.length) throw new Error('No trobo cap moviment de «' + a.descripcio + '».');
+
+      files.forEach(function (f) {
+        Dades.actualitza('Moviments', f.id, { categoria: cat.id, revisat: 'SI' });
+      });
+      recorda(files[0].descripcio, cat.id, files[0].metode, cat.mena);
+      return { canviats: files.length, categoria: cat.nom, apres: true };
+    }
+
+    var m = trobaMoviment_(a.descripcio, a.data);
+    if (m.tipus !== cat.mena) {
+      throw new Error('«' + cat.nom + '» és una categoria de ' +
+        (cat.mena === 'i' ? 'ingressos' : 'despeses') + ' i això és ' +
+        (m.tipus === 'i' ? 'un ingrés' : 'una despesa') + '.');
+    }
+    edita(m.id, { categoria: cat.id, revisat: true });
+    return { canviats: 1, moviment: m.descripcio, categoria: cat.nom, apres: true };
+  }
+
+  function pressupostPerNom(a) {
+    var cat = categoriaPerNom_(a.categoria, 'd');
+    if (!cat) {
+      throw new Error('No tinc cap categoria de despeses que es digui «' + a.categoria + '».');
+    }
+    var l = num_(a.limit);
+    desaPressupost(cat.id, l);
+
+    // Es diu quant hi porta gastat aquest mes: un límit sense saber on ets no
+    // és una decisió informada.
+    var m = mes(mesActual());
+    var gastat = 0;
+    m.perCategoria.forEach(function (c) { if (c.id === cat.id) gastat = c.total; });
+    return { categoria: cat.nom, limit: l, gastatAquestMes: Math.round(gastat * 100) / 100,
+              tret: l <= 0 };
+  }
+
+  function patrimoniPerNom(a) {
+    var q = String(a.actiu || '').trim().toLowerCase();
+    if (!q) throw new Error('No has dit quin actiu.');
+
+    var p = patrimoni();
+    var exactes = p.actius.filter(function (x) { return x.nom.toLowerCase() === q; });
+    var cand = exactes.length ? exactes
+      : p.actius.filter(function (x) { return x.nom.toLowerCase().indexOf(q) !== -1; });
+
+    if (!cand.length) {
+      throw new Error('No tinc cap actiu que es digui «' + a.actiu + '». Tens: ' +
+        p.actius.map(function (x) { return x.nom; }).join(', ') + '.');
+    }
+    if (cand.length > 1) {
+      throw new Error('N\'hi ha ' + cand.length + ': ' +
+        cand.map(function (x) { return x.nom; }).join(', ') + '. Digues quin.');
+    }
+    if (cand[0].automatic) {
+      throw new Error('«' + cand[0].nom + '» el porta el banc i s\'actualitza sol. ' +
+                      'No cal anotar-hi res.');
+    }
+
+    var v = parseFloat(String(a.valor).replace(',', '.'));
+    if (!isFinite(v)) throw new Error('Aquest valor no és un número.');
+    anotaValor(cand[0].id, v);
+
+    var abans = cand[0].valor;
+    return {
+      anotat: true, actiu: cand[0].nom, valor: v,
+      anterior: abans, diferencia: abans === null ? null : Math.round((v - abans) * 100) / 100
+    };
+  }
+
+  function treuPerNom(a) {
+    var m = trobaMoviment_(a.descripcio, a.data);
+    treu(m.id);
+    return { tret: true, moviment: m.descripcio, import: num_(m['import']), data: m.data };
+  }
+
   // ------------------------------------------------------------- categories
 
   /**
@@ -1387,6 +1581,10 @@ var Finances = (function () {
     suggeriments: suggeriments,
     consultaIA: consultaIA,
     apuntaPerNom: apuntaPerNom,
+    classificaPerNom: classificaPerNom,
+    pressupostPerNom: pressupostPerNom,
+    patrimoniPerNom: patrimoniPerNom,
+    treuPerNom: treuPerNom,
     sembraCategories: sembraCategories,
     importa: function (dades, simulacio) { return FinancesImport.importa(dades, simulacio); }
   };

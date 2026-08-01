@@ -163,6 +163,41 @@ function MODUL_NUTRICIO() {
                (a.apat ? ' al ' + a.apat : '') + (a.data ? ' del ' + a.data : ' d\'avui');
       },
       executa: function (a) { return Nutricio.registraPerNom(a); }
+    }, {
+      nom: 'registra_cremades',
+      descripcio: 'Anota les calories cremades del dia, les que dona el rellotge. És el que ' +
+                  'tanca el dia i permet calcular el balanç. NO s\'executa directament.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          kcal: { type: 'number', description: 'Calories cremades en total aquell dia' },
+          data: { type: 'string', description: 'Data AAAA-MM-DD. Si s\'omet, avui.' }
+        },
+        required: ['kcal']
+      },
+      etiqueta: function (a) {
+        return 'Anotar ' + Math.round(a.kcal || 0) + ' kcal cremades' +
+               (a.data ? ' el ' + a.data : ' avui');
+      },
+      executa: function (a) { return Nutricio.cremadesPerNom(a); }
+    }, {
+      nom: 'treu_ingesta',
+      descripcio: 'Treu un aliment que has apuntat. S\'identifica pel nom. ' +
+                  'NO s\'executa directament: genera una proposta a confirmar.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          aliment: { type: 'string', description: 'Nom de l\'aliment apuntat' },
+          data:    { type: 'string', description: 'Data AAAA-MM-DD. Si s\'omet, avui.' }
+        },
+        required: ['aliment']
+      },
+      etiqueta: function (a) {
+        return 'TREURE «' + (a.aliment || '?') + '»' + (a.data ? ' del ' + a.data : ' d\'avui');
+      },
+      executa: function (a) { return Nutricio.treuPerNom(a); }
     }],
 
     vista: 'vista_nutricio'
@@ -553,6 +588,45 @@ var Nutricio = (function () {
     };
   }
 
+  function cremadesPerNom(a) {
+    var k = num_(a.kcal);
+    if (k <= 0) throw new Error('Les calories cremades han de ser més grans que zero.');
+    var data = a.data || Utils.avui();
+    desaActivitat(data, k);
+
+    // Es retorna el balanç perquè pugui dir-te com ha quedat el dia sense
+    // haver de fer una segona consulta.
+    var d = dia(data);
+    return {
+      anotat: true, data: data, cremades: k,
+      ingerides: Math.round(d.totals.ingerides),
+      balanc: d.net === null ? null : Math.round(d.net),
+      verdicte: d.verdicte.text
+    };
+  }
+
+  /** Un aliment concret d'un dia. Si n'hi ha dos que encaixen, no se'n tria cap. */
+  function treuPerNom(a) {
+    var data = a.data || Utils.avui();
+    var q = String(a.aliment || '').trim().toLowerCase();
+    if (!q) throw new Error('No has dit quin aliment.');
+
+    var files = ingestes_(function (f) { return String(f.data) === String(data); });
+    var exactes = files.filter(function (f) { return String(f.nom).toLowerCase() === q; });
+    var cand = exactes.length ? exactes
+      : files.filter(function (f) { return String(f.nom).toLowerCase().indexOf(q) !== -1; });
+
+    if (!cand.length) throw new Error('El ' + data + ' no hi ha cap «' + a.aliment + '» apuntat.');
+    if (cand.length > 1) {
+      throw new Error('N\'hi ha ' + cand.length + ' que hi encaixen: ' +
+        cand.map(function (f) { return f.nom + ' (' + num_(f.grams) + ' g)'; }).join(', ') +
+        '. Digues quin exactament.');
+    }
+
+    treu(cand[0].id);
+    return { tret: true, aliment: cand[0].nom, grams: num_(cand[0].grams), data: data };
+  }
+
   // -------------------------------------------------------- migració FitFat
 
   /**
@@ -688,6 +762,8 @@ var Nutricio = (function () {
     desaAjustos: desaAjustos,
     consultaIA: consultaIA,
     registraPerNom: registraPerNom,
+    cremadesPerNom: cremadesPerNom,
+    treuPerNom: treuPerNom,
     importaFitFat: importaFitFat
   };
 })();
