@@ -1233,6 +1233,26 @@ var Jefe = (function () {
       if (tema === 'auto') { tema = 'fosc'; Cau.set('tema', tema); }
       App.aplicaTema(tema);
 
+      /* ELS VIGILANTS ES REGISTREN SEMPRE, i abans de res.
+         Abans, si encara no hi havia clau d'accés, aquesta funció sortia aquí
+         mateix per demanar-la. Amb la sortida se n'anava tot el que ve
+         després: el botó d'enrere del mòbil, la cua del que s'ha d'enviar
+         quan torni la cobertura, i el detectar que has recuperat la xarxa.
+         I un cop posaves la clau ja no es tornava a arrencar, o sigui que
+         l'app es quedava coixa la resta de la sessió sense dir-ho.
+
+         Registrar-los no costa res ni depèn de tenir servidor. El que depèn
+         del servidor és què s'ensenya, i això va més avall. */
+      window.addEventListener('popstate', function (ev) {
+        var id = (ev.state && ev.state.vista) || 'conversa';
+        App.ves(App.vistes[id] ? id : 'conversa', null, true);
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) Cua.envia();
+      });
+      window.addEventListener('online', function () { App.enLinia(true); Cua.envia(); });
+      window.addEventListener('offline', function () { App.enLinia(false); });
+
       // Servida des de fora i encara sense servidor: primer connectar.
       if (!dinsAppsScript() && !Servidor.config()) {
         App.ves('conversa');
@@ -1256,17 +1276,7 @@ var Jefe = (function () {
         App.ves(App.vistes.conversa ? 'conversa' : 'inici');
       }
 
-      window.addEventListener('popstate', function (ev) {
-        var id = (ev.state && ev.state.vista) || 'conversa';
-        App.ves(App.vistes[id] ? id : 'conversa', null, true);
-      });
-
       Cua.envia();
-      document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) Cua.envia();
-      });
-      window.addEventListener('online', function () { App.enLinia(true); Cua.envia(); });
-      window.addEventListener('offline', function () { App.enLinia(false); });
 
       // Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
       crida('nucli', 'inici', {}).then(function (d) {
