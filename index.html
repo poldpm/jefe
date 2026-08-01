@@ -4612,6 +4612,9 @@ App.registraVista('finances', {
               (r.recurrents ? ' · ' + r.recurrents + ' recurrents' : '') +
               (r.pressupostos ? ' · ' + r.pressupostos + ' pressupostos' : '') +
               (r.jaHiEren ? ' · ' + r.jaHiEren + ' que ja hi eren i no tornaré a posar' : '') + '</p>' +
+            (r.comercos
+              ? '<p class="menut">I em quedaré la categoria de <b>' + r.comercos + ' comerços</b> ' +
+                'que ja havies classificat. D\'aquests no te\'n tornaré a preguntar mai més.</p>' : '') +
             (r.senseCategoria
               ? '<p class="menut">' + r.senseCategoria + ' moviments venen sense categoria clara. ' +
                 'Entren igual i els podràs canviar des d\'aquí.</p>' : '') +

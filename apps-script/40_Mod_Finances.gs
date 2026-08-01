@@ -92,6 +92,25 @@ function MODUL_FINANCES() {
         ]
       },
       {
+        /* LA MEMÒRIA DE COMERÇOS.
+           «SPAR RIPOLL» és Alimentació la primera vegada i totes les
+           següents. Sense això, l'app pregunta un cop per moviment: amb les
+           dades reals d'en Pol serien 316 preguntes per a 133 comerços,
+           i el 58 % de les vegades ja sabíem la resposta. La conseqüència
+           real no és que sigui pesat: és que deixes de revisar. */
+        nom: 'FinancesMemoria',
+        columnes: [
+          { nom: 'id',              tipus: 'text' },
+          { nom: 'clau',            tipus: 'text' },   // descripció normalitzada
+          { nom: 'mostra',          tipus: 'text' },   // com s'escriu de debò
+          { nom: 'categoria',       tipus: 'text' },
+          { nom: 'metode',          tipus: 'text' },
+          { nom: 'cops',            tipus: 'num'  },
+          { nom: 'creat_el',        tipus: 'iso'  },
+          { nom: 'actualitzat_el',  tipus: 'iso'  }
+        ]
+      },
+      {
         nom: 'Pressupostos',
         columnes: [
           { nom: 'id',              tipus: 'text' },
@@ -134,6 +153,7 @@ function MODUL_FINANCES() {
       treu:           function (p) { return Finances.treu(p.id); },
       categories:     function ()  { return Finances.categories(); },
       suggeriments:   function (p) { return Finances.suggeriments(p.text); },
+      reclassifica:   function ()  { return Finances.reclassifica(); },
       importa:        function (p) { return Finances.importa(p.dades, p.simulacio); }
     },
 
@@ -463,6 +483,80 @@ var Finances = (function () {
     };
   }
 
+  // --------------------------------------------------------- memòria de comerços
+
+  /**
+   * La clau amb què es recorda un comerç.
+   *
+   * El banc retalla els noms a uns 17 caràcters i hi afegeix números de
+   * targeta i referències que canvien a cada compra. Es normalitza a
+   * majúscules sense accents, sense números llargs i sense espais dobles,
+   * perquè «MERCADONA 4412» i «MERCADONA  4419» siguin el mateix comerç.
+   */
+  function clauComerc_(descripcio) {
+    return String(descripcio || '')
+      .toUpperCase()
+      .replace(/[ÀÁÂÄ]/g, 'A').replace(/[ÈÉÊË]/g, 'E').replace(/[ÌÍÎÏ]/g, 'I')
+      .replace(/[ÒÓÔÖ]/g, 'O').replace(/[ÙÚÛÜ]/g, 'U').replace(/Ç/g, 'C')
+      .replace(/\d{3,}/g, ' ')          // referències i números de targeta
+      .replace(/[^A-Z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function memoria_() {
+    var m = {};
+    try {
+      Dades.llegeix('FinancesMemoria').forEach(function (f) {
+        if (f.clau) m[String(f.clau)] = f;
+      });
+    } catch (err) { /* encara no existeix el full */ }
+    return m;
+  }
+
+  /**
+   * La clau porta el tipus al davant.
+   *
+   * El mateix comerç pot sortir com a despesa i com a ingrés —una compra i la
+   * seva devolució—, i llavors no són la mateixa cosa: heretar la categoria
+   * de la compra faria que un retorn es comptés com si haguessis tornat a
+   * gastar. Passa a les dades reals d'en Pol amb «RUTA DEL FERRO».
+   */
+  function clauMemoria_(descripcio, tipus) {
+    var c = clauComerc_(descripcio);
+    return c ? (tipus === 'i' ? 'i' : 'd') + '|' + c : '';
+  }
+
+  /** Què sé d'aquest comerç? Null si és el primer cop que el veig. */
+  function recordat(descripcio, tipus) {
+    var clau = clauMemoria_(descripcio, tipus);
+    if (!clau) return null;
+    var f = null;
+    try { f = Dades.un('FinancesMemoria', { clau: clau }); } catch (err) { return null; }
+    if (!f) return null;
+    return { categoria: f.categoria, metode: f.metode, cops: Number(f.cops) || 0 };
+  }
+
+  /**
+   * Apren-ho. Es crida quan en Pol apunta o corregeix un moviment: el que
+   * decideix ell mana sempre sobre el que endevini cap regla.
+   */
+  function recorda(descripcio, categoria, metode, tipus) {
+    var clau = clauMemoria_(descripcio, tipus);
+    if (!clau || !categoria) return null;
+
+    var existent = null;
+    try { existent = Dades.un('FinancesMemoria', { clau: clau }); } catch (err) { return null; }
+
+    return Dades.desa('FinancesMemoria', {
+      clau: clau,
+      mostra: String(descripcio || '').trim(),
+      categoria: categoria,
+      metode: metode || (existent ? existent.metode : ''),
+      cops: (existent ? Number(existent.cops) || 0 : 0) + 1
+    }, ['clau'], 'mem');
+  }
+
   // ------------------------------------------------------------- escriptura
 
   function afegeix(p) {
@@ -474,12 +568,33 @@ var Finances = (function () {
 
     var tipus = p.tipus === 'i' ? 'i' : 'd';
     var metode = METODES.indexOf(p.metode) !== -1 ? p.metode : 'targeta';
+    var categoria = p.categoria || '';
+    var revisat = p.origen === 'banc' ? 'NO' : 'SI';
 
-    return Dades.insereix('Moviments', {
+    /* SI JA SÉ QUÈ ÉS AQUEST COMERÇ, NO HO PREGUNTO.
+       Un moviment del banc que arriba sense categoria clara, o amb una que
+       les regles no han sabut endevinar, agafa la que li vas donar tu l'últim
+       cop i entra ja revisat. Preguntar cada mes pel mateix supermercat és el
+       camí més curt cap a deixar de revisar res. */
+    if (p.origen === 'banc') {
+      var sabut = recordat(desc, tipus);
+      if (sabut && sabut.categoria) {
+        var incert = !categoria || categoria === 'c_altd' || categoria === 'i_alti';
+        if (incert || sabut.cops >= 2) {
+          categoria = sabut.categoria;
+          if (sabut.metode) metode = sabut.metode;
+          revisat = 'SI';
+        }
+      }
+    }
+
+    if (!categoria) categoria = tipus === 'i' ? 'i_alti' : 'c_altd';
+
+    var fila = Dades.insereix('Moviments', {
       data: p.data || Utils.avui(),
       tipus: tipus,
       'import': imp,
-      categoria: p.categoria || (tipus === 'i' ? 'i_alti' : 'c_altd'),
+      categoria: categoria,
       descripcio: desc,
       metode: metode,
       origen: p.origen || 'manual',
@@ -487,8 +602,15 @@ var Finances = (function () {
       pendent: p.pendent ? 'SI' : 'NO',
       nota: p.nota || '',
       // El que apuntes tu ja està revisat per definició: l'has escrit tu.
-      revisat: p.origen === 'banc' ? 'NO' : 'SI'
+      revisat: revisat
     }, 'mov');
+
+    // El que decideixes tu s'apren. El que endevina el banc, no: si no,
+    // un error de les regles es tornaria permanent tot sol.
+    if (p.origen !== 'banc' && categoria !== 'c_altd' && categoria !== 'i_alti') {
+      recorda(desc, categoria, metode, tipus);
+    }
+    return fila;
   }
 
   function edita(id, p) {
@@ -502,7 +624,42 @@ var Finances = (function () {
 
     var r = Dades.actualitza('Moviments', id, canvis);
     if (!r) throw new Error('Aquest moviment no existeix.');
+
+    /* Corregir una categoria és la manera més clara de dir «això va aquí».
+       S'apren, i el mateix comerç ja no tornarà a preguntar mai més. */
+    if (canvis.categoria && canvis.categoria !== 'c_altd' && canvis.categoria !== 'i_alti') {
+      recorda(r.descripcio, canvis.categoria, r.metode, r.tipus);
+    }
     return r;
+  }
+
+  /**
+   * Aplica el que ja saps als moviments que van quedar a «Altres».
+   * No toca res del que tu hagis posat a mà: només els que segueixen sense
+   * classificar. Es pot executar tantes vegades com vulguis.
+   */
+  function reclassifica() {
+    var mem = memoria_();
+    var canviats = 0, sensesaber = {};
+
+    moviments_(function (f) {
+      return f.categoria === 'c_altd' || f.categoria === 'i_alti';
+    }).forEach(function (f) {
+      var clau = clauMemoria_(f.descripcio, f.tipus);
+      var m = mem[clau];
+      if (m && m.categoria) {
+        Dades.actualitza('Moviments', f.id, { categoria: m.categoria, revisat: 'SI' });
+        canviats++;
+      } else if (clau) {
+        sensesaber[clau] = (sensesaber[clau] || 0) + 1;
+      }
+    });
+
+    var pendents = Object.keys(sensesaber).map(function (k) {
+      return { comerc: k, moviments: sensesaber[k] };
+    }).sort(function (a, b) { return b.moviments - a.moviments; });
+
+    return { canviats: canviats, comerçosPerDecidir: pendents.length, pendents: pendents.slice(0, 40) };
   }
 
   /** No esborra la fila: la marca. L'històric és intocable. */
@@ -659,6 +816,11 @@ var Finances = (function () {
     afegeix: afegeix,
     edita: edita,
     treu: treu,
+    recordat: recordat,
+    recorda: recorda,
+    clauComerc: clauComerc_,
+    clauMemoria: clauMemoria_,
+    reclassifica: reclassifica,
     categories: categories,
     suggeriments: suggeriments,
     consultaIA: consultaIA,

@@ -41,7 +41,7 @@ var FinancesImport = (function () {
     var informe = {
       simulacio: !!simulacio,
       categories: 0, moviments: 0, recurrents: 0, pressupostos: 0,
-      actius: 0, valorsPatrimoni: 0, ajustos: false,
+      actius: 0, valorsPatrimoni: 0, comercos: 0, ajustos: false,
       jaHiEren: 0, senseCategoria: 0, avisos: []
     };
 
@@ -169,6 +169,45 @@ var FinancesImport = (function () {
       });
     });
 
+    /* ---- la memòria de comerços, a partir del que ja tenies classificat.
+       Aquest és el pas que fa que la migració valgui la pena: quatre mesos
+       de decisions teves passen a ser coneixement. Sense això, el primer
+       extracte del banc et tornaria a preguntar per comerços que ja havies
+       classificat cent vegades. Es mira l'històric SENCER, no només el que
+       s'importa ara, perquè el que ja hi hagués aquí també compta. */
+    var jaMemoria = {};
+    try {
+      Dades.llegeix('FinancesMemoria').forEach(function (f) { jaMemoria[String(f.clau)] = true; });
+    } catch (err) {
+      informe.avisos.push('Falta el full «FinancesMemoria». Executa configuraJefe().');
+      return informe;
+    }
+
+    var apres = {};
+    (s.tx || []).forEach(function (t) {
+      var cat = String(t.cat || '');
+      if (!cat || cat === 'c_altd' || cat === 'i_alti') return;
+      var clau = Finances.clauMemoria(t.desc, t.type);
+      if (!clau) return;
+      var d = data_(t.date) || '';
+      // Mana la decisió MÉS RECENT: si vas canviar d'opinió sobre un comerç,
+      // el que val és l'última vegada, no la primera.
+      if (!apres[clau] || d > apres[clau].data) {
+        apres[clau] = { clau: clau, mostra: String(t.desc || '').trim(),
+                        categoria: cat, metode: String(t.method || ''), data: d, cops: 0 };
+      }
+      apres[clau].cops++;
+    });
+
+    var novaMem = Object.keys(apres).filter(function (k) { return !jaMemoria[k]; })
+      .map(function (k) {
+        var a = apres[k];
+        return { id: 'mem_' + k.slice(0, 40).replace(/ /g, '_'),
+                 clau: a.clau, mostra: a.mostra, categoria: a.categoria,
+                 metode: a.metode, cops: a.cops };
+      });
+    informe.comercos = novaMem.length;
+
     informe.categories = novesCat.length;
     informe.moviments = nousMov.length;
     informe.recurrents = nousRec.length;
@@ -194,6 +233,7 @@ var FinancesImport = (function () {
     if (nousPres.length)  Dades.insereixMoltes('Pressupostos', nousPres, 'pres');
     if (nousAct.length)   Dades.insereixMoltes('Patrimoni', nousAct, 'act');
     if (nousVal.length)   Dades.insereixMoltes('PatrimoniHistoric', nousVal, 'val');
+    if (novaMem.length)   Dades.insereixMoltes('FinancesMemoria', novaMem, 'mem');
     for (var k in canvis) Config.set(k, canvis[k]);
 
     Log.info('finances.importa', 'Importació des de l\'app antiga', informe);
