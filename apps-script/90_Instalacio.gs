@@ -848,6 +848,112 @@ function reclassificaFinances() {
  * El cost de la CRIDA (anar i tornar a Apps Script) no surt aquí perquè no es
  * pot mesurar des de dins: són 1,2–1,6 s i és de la plataforma.
  */
+/**
+ * PER QUÈ NO M'HAS AVISAT DE LES CALORIES CREMADES?
+ *
+ * Un avís que no arriba té quatre motius possibles i des de fora es veuen
+ * tots igual: silenci. Aquesta funció els separa en ordre, i el primer que
+ * falli és el que ho explica.
+ *
+ *   1. El trigger no està instal·lat  → executa instalaTriggers()
+ *   2. El trigger encara no ha saltat → són les 23:20, espera
+ *   3. Ha saltat i ha decidit callar  → el dia ja estava tancat, o buit
+ *   4. Ha volgut avisar i no ha pogut → Firebase o el dispositiu
+ *
+ * No envia res. Per provar l'avís de debò hi ha `provaTancament()`.
+ */
+function perQueNoMHasAvisat() {
+  var l = ['=== L\'AVÍS DE LES CALORIES CREMADES ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var tz = Config.zonaHoraria();
+  var ara = new Date();
+  a('Ara mateix ................. ' + Utilities.formatDate(ara, tz, 'yyyy-MM-dd HH:mm') + ' (' + tz + ')');
+  a('');
+
+  // ---- 1. Hi és, el trigger?
+  var trobat = null;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'triggerTancamentNutricio') trobat = t;
+  });
+  if (!trobat) {
+    a('1. El trigger .............. NO HI ÉS');
+    a('');
+    a('→ Aquest és el motiu. Executa instalaTriggers() i ja està.');
+    a('   Els triggers no es posen sols quan es puja codi nou: s\'han de');
+    a('   tornar a instal·lar cada cop que se n\'afegeix un.');
+    return l.join('\n');
+  }
+  a('1. El trigger .............. instal·lat, per a les 23:45');
+
+  // ---- 2. Ha tingut temps de saltar?
+  var hora = Number(Utilities.formatDate(ara, tz, 'H'));
+  var minut = Number(Utilities.formatDate(ara, tz, 'm'));
+  var passat = (hora > 23) || (hora === 23 && minut >= 45) || (hora < 12);
+  a('2. Ja hauria d\'haver saltat? ' + (passat ? 'sí' : 'NO — encara no són les 23:45'));
+
+  // ---- 3. Què n'hi ha, al registre?
+  var avui = Utilities.formatDate(ara, tz, 'yyyy-MM-dd');
+  var rastre = Log.ultimes(300).filter(function (f) {
+    return String(f.origen).indexOf('trigger.tancament') === 0;
+  });
+  a('3. Vegades que ha saltat ... ' + rastre.length + ' (de les últimes 300 línies del registre)');
+  rastre.slice(0, 4).forEach(function (f) {
+    a('     ' + String(f.marca_temps).slice(0, 16).replace('T', ' ') + '  ' + f.nivell + '  ' + f.missatge);
+  });
+  if (!rastre.length) {
+    a('     Cap. O no ha saltat mai, o el registre ja ha rotat.');
+  }
+
+  // ---- 4. Avui, avisaria?
+  a('');
+  var d = Nutricio.dia(avui);
+  a('4. Com està el dia d\'avui:');
+  a('     Ingerides ............. ' + Math.round(d.totals.ingerides) + ' kcal');
+  a('     Cremades .............. ' + (d.teCremades ? Math.round(d.cremades) : 'sense introduir'));
+
+  var motiu = d.teCremades ? 'el dia ja està tancat: no toca avisar'
+            : !d.totals.ingerides ? 'no has apuntat res avui, i d\'un dia buit no s\'avisa'
+            : null;
+  a('     Avisaria? ............. ' + (motiu ? 'NO — ' + motiu : 'SÍ'));
+
+  // ---- 5. I podria arribar-te?
+  a('');
+  if (!Notifica.disponible()) {
+    a('5. Firebase ................ NO — ' + Notifica.motiu());
+  } else {
+    var quants = 0;
+    try { quants = Notifica.dispositius().length; } catch (e) {}
+    a('5. Firebase ................ correcte');
+    a('   Aparells registrats ..... ' + quants +
+      (quants ? '' : '  ← sense cap aparell no hi ha on enviar-ho'));
+  }
+
+  a('');
+  a('COM ES LLEGEIX');
+  a('El primer que surti malament és el motiu; la resta ja no importa.');
+  a('Si tot surt bé i l\'avís no arriba, executa provaTancament(): fa exactament');
+  a('el que fa el trigger, ara mateix, i el registre en dirà el resultat.');
+  return l.join('\n');
+}
+
+/**
+ * Fa ara mateix el que fa el trigger de les 23:45, amb les regles i tot.
+ * Serveix per no haver d'esperar-se a la nit per saber si funciona.
+ */
+function provaTancament() {
+  triggerTancamentNutricio();
+  var ultima = Log.ultimes(20).filter(function (f) {
+    return String(f.origen).indexOf('trigger.tancament') === 0;
+  })[0];
+  var t = ultima
+    ? 'Ha fet: ' + ultima.nivell + ' · ' + ultima.missatge + ' ' + (ultima.dades || '')
+    : 'No ha deixat res al registre. Mira el registre d\'execució d\'Apps Script.';
+  Logger.log(t);
+  return t;
+}
+
+
 function diagnosticVelocitat() {
   var l = ['=== ON SE\'N VA EL TEMPS ==='];
   function a(t) { l.push(t); Logger.log(t); }
