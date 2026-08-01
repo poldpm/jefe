@@ -822,6 +822,11 @@ h2 { font-size: 1.0625rem; }
 .cat-exclou { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
               margin-bottom: var(--e2); font-size: .875rem; cursor: pointer; }
 .cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
+
+/* El color de la marca, el del mapa. Sense això, la casella marcada surt del
+   verd blau que el navegador porta de sèrie —que no és de cap dels dos temes
+   d'aquí— i la buida, en fosc, queda com un quadre negre sense vora. */
+input[type="checkbox"] { accent-color: var(--utm); }
 .cat-nova [data-crea-cat] { width: 100%; }
 
 /* Pressupost: la barra deixa de mesurar contra la categoria més grossa i
