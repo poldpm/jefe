@@ -1,0 +1,604 @@
+<script>
+/* JEFE — MÒDUL · Finances
+   Món: full de mapa topogràfic. Ve de l'app «finances» i parla l'idioma de JEFE.
+
+   LA DECISIÓ QUE MANA, i és la seva pròpia: apuntar una despesa ha de ser
+   instantani. Per això el botó d'apuntar és el primer que es veu i el
+   formulari s'omple sol amb el que ja has apuntat abans —la majoria de
+   compres es repeteixen, i tornar a teclejar «Mercadona · Alimentació ·
+   targeta» cada dimarts és exactament la fricció que fa abandonar l'eina.
+
+   El mes es llegeix com un terreny: els ingressos són l'altura de partida,
+   les despeses el que baixes, i el balanç la cota on acabes. */
+
+App.registraVista('finances', {
+  render: function (arrel, params) {
+
+    var mes = params.mes || null;          // AAAA-MM; null = mes en curs
+    var periode = params.periode || 'mes'; // mes | mesos | estad
+    var dades = null, cats = [], sugg = [];
+
+    var r0 = function (n) { return Math.round(Number(n) || 0); };
+    var num = function (v) {
+      var n = parseFloat(String(v === undefined || v === null ? '' : v).replace(',', '.'));
+      return isFinite(n) ? Math.abs(n) : 0;
+    };
+    function eur(n, ambSigne) {
+      var v = Math.round((Number(n) || 0) * 100) / 100;
+      var s = Math.abs(v).toFixed(2).replace('.', ',') + ' €';
+      if (!ambSigne) return (v < 0 ? '−' : '') + s;
+      return (v > 0 ? '+' : v < 0 ? '−' : '') + s;
+    }
+    function nomMes(m) {
+      var d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1);
+      var t = d.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    function mouMes(m, n) {
+      var y = Number(m.slice(0, 4)), i = Number(m.slice(5, 7)) - 1 + n;
+      var d = new Date(y, i, 1);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+    }
+
+    // ------------------------------------------------------------- capçalera
+
+    function capcalera(esActual) {
+      return '<header class="capcalera capcalera-nutri">' +
+        '<div class="capcalera-fila">' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
+            ic('esquerra', 'ic-p') + '</button>' +
+          '<button class="data-nutri" data-avui="1">' +
+            '<b>' + esc(nomMes(mes)) + '</b>' +
+            (esActual ? '<span>mes en curs</span>' : '') +
+          '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent"' +
+            (esActual ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-apunta="1" aria-label="Apunta un moviment">' +
+            ic('mes', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Ajustos">' +
+            ic('ajust', 'ic-p') + '</button>' +
+        '</div>' +
+        '<div class="segments" role="tablist">' +
+          [['mes', 'Mes'], ['mesos', 'Mesos'], ['estad', 'Estadístiques']].map(function (p) {
+            return '<button role="tab" data-periode="' + p[0] + '"' +
+                   (p[0] === periode ? ' aria-selected="true"' : '') + '>' + p[1] + '</button>';
+          }).join('') +
+        '</div>' +
+      '</header>';
+    }
+
+    // ------------------------------------------------------------ vista mes
+
+    function pintaMes(d) {
+      dades = d; mes = d.mes;
+      var esActual = d.mes === new Date().toISOString().slice(0, 7);
+
+      arrel.innerHTML = capcalera(esActual) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' + blocBalanc(d) + '</section>' +
+          '<section class="nutri-apats">' + blocMoviments(d) + '</section>' +
+          '<section class="nutri-tanca">' + blocCategories(d) + '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+      lligaMoviments();
+    }
+
+    function blocBalanc(d) {
+      var positiu = d.balanc >= 0;
+      return '<div class="fitxa" data-estat="' + (positiu ? 'deficit_assolit' : 'superavit') + '">' +
+          '<div class="xifra-gran">' + eur(d.balanc, true) + '</div>' +
+          '<p class="verdicte">' +
+            (positiu ? 'Has estalviat ' + eur(d.balanc) + ' aquest mes.'
+                     : 'Has gastat ' + eur(-d.balanc) + ' més del que has ingressat.') +
+          '</p>' +
+        '</div>' +
+
+        '<div class="tres-xifres">' +
+          xifra('Ingressos', eur(d.ingressos), '') +
+          xifra('Despeses', eur(d.despeses), '') +
+          xifra('Moviments', d.moviments.length, '') +
+        '</div>' +
+
+        (d.ritme
+          ? '<p class="menut">Portes ' + eur(d.ritme.perDia) + ' al dia. ' +
+            'Si segueixes així, el mes acabarà a <b class="num">' + eur(d.ritme.projeccio) + '</b>.</p>'
+          : '') +
+
+        (d.traspassos
+          ? '<p class="menut">' + eur(d.traspassos) + ' en traspassos, fora dels comptes.</p>'
+          : '') +
+
+        (d.perRevisar
+          ? '<p class="menut" style="color:var(--avis)">' + d.perRevisar +
+            ' moviments del banc encara per revisar.</p>'
+          : '') +
+
+        '<button class="btn btn-primari" data-apunta="1" style="width:100%;margin-top:var(--e4)">' +
+          ic('mes') + 'Apunta un moviment</button>';
+    }
+
+    function xifra(etiqueta, valor, unitat) {
+      return '<div class="xifra"><span class="marge">' + esc(etiqueta) + '</span>' +
+             '<b class="num">' + esc(String(valor)) +
+             (unitat ? '<span class="u">' + esc(unitat) + '</span>' : '') + '</b></div>';
+    }
+
+    /** Els moviments agrupats per dia, amb el subtotal del dia. */
+    function blocMoviments(d) {
+      if (!d.moviments.length) {
+        return '<p class="marge">Moviments</p>' +
+               '<p class="menut">Cap moviment aquest mes.</p>';
+      }
+
+      var perDia = {}, ordre = [];
+      d.moviments.forEach(function (m) {
+        if (!perDia[m.data]) { perDia[m.data] = []; ordre.push(m.data); }
+        perDia[m.data].push(m);
+      });
+
+      return '<p class="marge">Moviments</p>' +
+        ordre.map(function (dia) {
+          var llista = perDia[dia];
+          var subtotal = llista.reduce(function (s, m) {
+            return s + (m.tipus === 'i' ? m.import : -m.import);
+          }, 0);
+
+          return '<div class="apat">' +
+            '<div class="apat-cap">' +
+              '<h2>' + esc(fmt.relativa(dia)) + '</h2>' +
+              '<span class="num menut">' + eur(subtotal, true) + '</span>' +
+            '</div>' +
+            '<div class="apat-items">' +
+              llista.map(function (m) {
+                return '<div class="ingesta">' +
+                  '<div style="flex:1;min-width:0">' +
+                    '<div class="nm">' + esc(m.emoji ? m.emoji + ' ' : '') + esc(m.descripcio) + '</div>' +
+                    '<div class="menut">' + esc(m.categoriaNom) +
+                      (m.pendent ? ' · pendent' : '') +
+                      (!m.revisat ? ' · per revisar' : '') + '</div>' +
+                  '</div>' +
+                  '<div class="num" data-costat="' + (m.tipus === 'i' ? 'deficit' : '') + '"' +
+                    ' style="text-align:right;font-weight:700">' +
+                    (m.tipus === 'i' ? '+' : '−') + eur(m.import) +
+                  '</div>' +
+                  '<button class="btn btn-fantasma btn-icona" data-edita="' + esc(m.id) +
+                    '" aria-label="Edita">' + ic('llapis', 'ic-p') + '</button>' +
+                '</div>';
+              }).join('') +
+            '</div>' +
+          '</div>';
+        }).join('');
+    }
+
+    function blocCategories(d) {
+      if (!d.perCategoria.length) return '';
+      var max = d.perCategoria[0].total || 1;
+
+      return '<p class="marge">On van els diners</p>' +
+        '<div class="cats">' +
+          d.perCategoria.map(function (c) {
+            return '<button class="cat-fila" data-cat="' + esc(c.id) + '"' +
+              ' aria-label="' + esc(c.nom) + ': ' + eur(c.total) + '">' +
+              '<span class="cat-nom">' + esc(c.emoji ? c.emoji + ' ' : '') + esc(c.nom) + '</span>' +
+              '<span class="cat-via"><i style="width:' + (c.total / max * 100).toFixed(1) + '%"></i></span>' +
+              '<span class="cat-xifra num">' + eur(c.total) + '</span>' +
+            '</button>';
+          }).join('') +
+        '</div>';
+    }
+
+    // --------------------------------------------------------- mesos i estad
+
+    function pintaMesos(d) {
+      var max = 1;
+      d.mesos.forEach(function (m) { max = Math.max(max, m.ingressos, m.despeses); });
+
+      arrel.innerHTML = capcalera(true) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="tres-xifres">' +
+              xifra('Acumulat', eur(d.acumulat, true), '') +
+              xifra('Mesos', d.mesos.length, '') +
+              xifra('En positiu', d.mesos.filter(function (m) { return m.balanc >= 0; }).length, '') +
+            '</div>' +
+          '</section>' +
+          '<section class="nutri-apats">' +
+            '<p class="marge">Ingressos i despeses, mes a mes</p>' +
+            '<div class="mesos">' +
+              d.mesos.map(function (m) {
+                return '<button class="mes-fila" data-mes="' + esc(m.mes) + '">' +
+                  '<span class="mes-nom">' + esc(m.mes.slice(5) + '/' + m.mes.slice(2, 4)) + '</span>' +
+                  '<span class="mes-barres">' +
+                    '<i data-mena="i" style="width:' + (m.ingressos / max * 100).toFixed(1) + '%"></i>' +
+                    '<i data-mena="d" style="width:' + (m.despeses / max * 100).toFixed(1) + '%"></i>' +
+                  '</span>' +
+                  '<span class="mes-xifra num" data-costat="' + (m.balanc >= 0 ? 'deficit' : 'superavit') + '">' +
+                    eur(m.balanc, true) + '</span>' +
+                '</button>';
+              }).join('') +
+            '</div>' +
+            '<p class="menut">Toca un mes per obrir-lo.</p>' +
+          '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+      arrel.querySelectorAll('[data-mes]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.ves('finances', { mes: b.dataset.mes, periode: 'mes' });
+        });
+      });
+    }
+
+    function pintaEstad(d) {
+      mes = d.mes;
+      var maxMet = d.perMetode.length ? d.perMetode[0].total : 1;
+
+      arrel.innerHTML = capcalera(d.mes === new Date().toISOString().slice(0, 7)) +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="tres-xifres">' +
+              xifra('Despeses', eur(d.despeses), '') +
+              xifra('Mes anterior', eur(d.despesesAnterior), '') +
+              xifra('Diferència', eur(d.diferencia, true), '') +
+            '</div>' +
+          '</section>' +
+
+          '<section class="nutri-apats">' +
+            '<p class="marge">Per categoria, contra el mes passat</p>' +
+            '<div class="cats">' +
+              (d.perCategoria.length
+                ? d.perCategoria.map(function (c) {
+                    var puja = c.diferencia > 0;
+                    return '<div class="cat-fila" style="cursor:default">' +
+                      '<span class="cat-nom">' + esc(c.emoji ? c.emoji + ' ' : '') + esc(c.nom) + '</span>' +
+                      '<span class="cat-via"><i style="width:' + c.pct.toFixed(1) + '%"></i></span>' +
+                      '<span class="cat-xifra num">' + eur(c.total) +
+                        (c.anterior ? '<small data-costat="' + (puja ? 'superavit' : 'deficit') + '">' +
+                          eur(c.diferencia, true) + '</small>' : '') +
+                      '</span>' +
+                    '</div>';
+                  }).join('')
+                : '<p class="menut">Cap despesa aquest mes.</p>') +
+            '</div>' +
+
+            (d.perMetode.length
+              ? '<p class="marge" style="margin-top:var(--e5)">Com has pagat</p>' +
+                '<div class="cats">' +
+                  d.perMetode.map(function (m) {
+                    return '<div class="cat-fila" style="cursor:default">' +
+                      '<span class="cat-nom">' + esc(m.metode) + '</span>' +
+                      '<span class="cat-via"><i style="width:' +
+                        (m.total / maxMet * 100).toFixed(1) + '%"></i></span>' +
+                      '<span class="cat-xifra num">' + eur(m.total) + '</span>' +
+                    '</div>';
+                  }).join('') +
+                '</div>'
+              : '') +
+
+            (d.majors.length
+              ? '<p class="marge" style="margin-top:var(--e5)">Les cinc més grosses</p>' +
+                '<div class="apat"><div class="apat-items">' +
+                  d.majors.map(function (m) {
+                    return '<div class="ingesta">' +
+                      '<div style="flex:1;min-width:0">' +
+                        '<div class="nm">' + esc(m.descripcio) + '</div>' +
+                        '<div class="menut">' + esc(fmt.relativa(m.data)) + ' · ' + esc(m.categoriaNom) + '</div>' +
+                      '</div>' +
+                      '<div class="num" style="font-weight:700">' + eur(m.import) + '</div>' +
+                    '</div>';
+                  }).join('') +
+                '</div></div>'
+              : '') +
+          '</section>' +
+        '</div>';
+
+      lligaCapcalera();
+    }
+
+    // -------------------------------------------------------------- accions
+
+    function lligaCapcalera() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-salt]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var nou = mouMes(mes, Number(b.dataset.salt));
+          if (nou > new Date().toISOString().slice(0, 7)) return;
+          App.ves('finances', { mes: nou, periode: periode });
+        });
+      });
+
+      var ba = arrel.querySelector('[data-avui]');
+      if (ba) ba.addEventListener('click', function () {
+        App.ves('finances', { mes: null, periode: periode });
+      });
+
+      arrel.querySelectorAll('[data-periode]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.ves('finances', { mes: mes, periode: b.dataset.periode });
+        });
+      });
+
+      arrel.querySelectorAll('[data-apunta]').forEach(function (b) {
+        b.addEventListener('click', function () { obreApunt(null); });
+      });
+
+      var baj = arrel.querySelector('[data-ajustos]');
+      if (baj) baj.addEventListener('click', obreAjustos);
+    }
+
+    /**
+     * Portar-hi l'històric de l'app antiga. En dos temps: un assaig que no
+     * escriu res i diu què faria, i només després l'escriptura. Amb dades de
+     * diners, ensenyar el resultat abans de tocar-les no és una cortesia.
+     */
+    function obreAjustos() {
+      var cos = App.modal('Finances',
+        '<div class="form-ajustos">' +
+          '<p class="marge">Portar-hi les dades de l\'app antiga</p>' +
+          '<p class="menut">Tria el fitxer que exportes des de finances. Primer et diré què hi ' +
+            'trobo i què faria; no s\'escriu res fins que ho confirmis. No esborra ni sobreescriu ' +
+            'mai, i es pot repetir sense duplicar.</p>' +
+          '<input type="file" accept="application/json,.json" data-fitxer>' +
+          '<div id="fin-import"></div>' +
+        '</div>');
+
+      var fitxer = cos.querySelector('[data-fitxer]');
+      var sortida = cos.querySelector('#fin-import');
+
+      fitxer.addEventListener('change', function () {
+        var f = fitxer.files && fitxer.files[0];
+        if (!f) return;
+        sortida.innerHTML = '<p class="menut">Llegint el fitxer…</p>';
+
+        var lector = new FileReader();
+        lector.onerror = function () {
+          sortida.innerHTML = '<p class="menut" style="color:var(--avis)">No he pogut llegir el fitxer.</p>';
+        };
+        lector.onload = function () {
+          var text = String(lector.result || '');
+          crida('finances', 'importa', { dades: text, simulacio: true })
+            .then(function (r) { mostraAssaig(r, text); })
+            .catch(function (err) {
+              sortida.innerHTML = '<p class="menut" style="color:var(--avis)">' + esc(err.message) + '</p>';
+            });
+        };
+        lector.readAsText(f);
+      });
+
+      function mostraAssaig(r, text) {
+        var res = r.moviments + r.categories + r.recurrents + r.pressupostos + r.actius + r.valorsPatrimoni;
+        sortida.innerHTML =
+          '<div class="fitxa" style="margin-top:var(--e3)">' +
+            '<p class="marge">Què hi he trobat</p>' +
+            '<p>' + r.moviments + ' moviments · ' + r.categories + ' categories' +
+              (r.actius ? ' · ' + r.actius + ' actius de patrimoni amb ' + r.valorsPatrimoni + ' valors' : '') +
+              (r.recurrents ? ' · ' + r.recurrents + ' recurrents' : '') +
+              (r.pressupostos ? ' · ' + r.pressupostos + ' pressupostos' : '') +
+              (r.jaHiEren ? ' · ' + r.jaHiEren + ' que ja hi eren i no tornaré a posar' : '') + '</p>' +
+            (r.senseCategoria
+              ? '<p class="menut">' + r.senseCategoria + ' moviments venen sense categoria clara. ' +
+                'Entren igual i els podràs canviar des d\'aquí.</p>' : '') +
+            (r.avisos && r.avisos.length
+              ? '<p class="menut" style="color:var(--avis)">' + r.avisos.map(esc).join('<br>') + '</p>' : '') +
+            (res > 0
+              ? '<button class="btn btn-primari" data-confirma style="width:100%;margin-top:var(--e3)">' +
+                  'Importa-ho</button>'
+              : '<p class="menut">No hi ha res de nou per importar.</p>') +
+          '</div>';
+
+        var b = sortida.querySelector('[data-confirma]');
+        if (!b) return;
+        b.addEventListener('click', function () {
+          b.disabled = true; b.textContent = 'Important…';
+          crida('finances', 'importa', { dades: text, simulacio: false })
+            .then(function (fet) {
+              sortida.innerHTML = '<p class="menut">Importat: ' + fet.moviments + ' moviments i ' +
+                fet.categories + ' categories.</p>';
+              App.brindis('Dades de finances importades');
+              cats = []; sugg = [];
+              carrega();
+            })
+            .catch(function (err) {
+              b.disabled = false; b.textContent = 'Torna-ho a provar';
+              App.brindis(err.message, 'error');
+            });
+        });
+      }
+    }
+
+    function lligaMoviments() {
+      arrel.querySelectorAll('[data-edita]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var id = b.dataset.edita, m = null;
+          for (var i = 0; i < dades.moviments.length; i++) {
+            if (dades.moviments[i].id === id) m = dades.moviments[i];
+          }
+          if (m) obreApunt(m);
+        });
+      });
+
+      arrel.querySelectorAll('[data-cat]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.ves('finances', { mes: mes, periode: 'estad' });
+        });
+      });
+    }
+
+    // ------------------------------------------------------------- apuntar
+
+    /**
+     * El formulari d'apuntar. Si li passes un moviment, l'edita.
+     * L'import va primer i amb el teclat numèric: és l'únic camp que
+     * sempre has d'omplir, i la resta se sol endevinar sola.
+     */
+    function obreApunt(m) {
+      var editant = !!m;
+      var cos = App.modal(editant ? 'Edita el moviment' : 'Apunta un moviment',
+        '<div class="form-ajustos form-apunt">' +
+          '<div class="tipus-tria" role="group">' +
+            '<button data-tipus="d"' + (!editant || m.tipus === 'd' ? ' aria-pressed="true"' : '') + '>Despesa</button>' +
+            '<button data-tipus="i"' + (editant && m.tipus === 'i' ? ' aria-pressed="true"' : '') + '>Ingrés</button>' +
+          '</div>' +
+
+          '<label><span class="marge">Import</span>' +
+            '<input data-c="import" inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
+              (editant ? String(m.import).replace('.', ',') : '') + '"></label>' +
+
+          '<label><span class="marge">Què era</span>' +
+            '<input data-c="descripcio" autocomplete="off" placeholder="p. ex. Mercadona" value="' +
+              (editant ? esc(m.descripcio) : '') + '"></label>' +
+          '<div class="sugg" id="sugg"></div>' +
+
+          '<label><span class="marge">Categoria</span>' +
+            '<select data-c="categoria"></select></label>' +
+
+          '<label><span class="marge">Com ho has pagat</span>' +
+            '<select data-c="metode">' +
+              ['targeta', 'efectiu', 'online', 'transf', 'domic'].map(function (x) {
+                return '<option value="' + x + '"' +
+                       (editant && m.metode === x ? ' selected' : '') + '>' + x + '</option>';
+              }).join('') +
+            '</select></label>' +
+
+          '<label><span class="marge">Data</span>' +
+            '<input data-c="data" type="date" value="' +
+              (editant ? esc(m.data) : fmt.avui()) + '"></label>' +
+
+          '<button class="btn btn-primari" data-desa>' + (editant ? 'Desa' : 'Apunta') + '</button>' +
+          (editant ? '<button class="btn btn-secundari" data-treu style="margin-top:var(--e2)">Treu-lo</button>' : '') +
+        '</div>');
+
+      var tipus = editant ? m.tipus : 'd';
+      var camps = {};
+      cos.querySelectorAll('[data-c]').forEach(function (i) { camps[i.dataset.c] = i; });
+
+      function pintaCategories() {
+        var opcions = cats.filter(function (c) { return c.mena === tipus; });
+        camps.categoria.innerHTML = opcions.map(function (c) {
+          return '<option value="' + esc(c.id) + '"' +
+                 (editant && m.categoria === c.id ? ' selected' : '') + '>' +
+                 esc((c.emoji ? c.emoji + ' ' : '') + c.nom) + '</option>';
+        }).join('');
+      }
+      pintaCategories();
+
+      cos.querySelectorAll('[data-tipus]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          tipus = b.dataset.tipus;
+          cos.querySelectorAll('[data-tipus]').forEach(function (x) {
+            x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+          });
+          pintaCategories();
+        });
+      });
+
+      /* Suggeriments: el que ja has apuntat abans, amb la seva categoria i el
+         seu mètode. Un toc omple tres camps. */
+      var caixaSugg = cos.querySelector('#sugg');
+      function pintaSugg(llista) {
+        caixaSugg.innerHTML = (llista || []).slice(0, 6).map(function (s) {
+          return '<button data-s="' + esc(s.descripcio) + '">' + esc(s.descripcio) + '</button>';
+        }).join('');
+        caixaSugg.querySelectorAll('[data-s]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var t = null;
+            for (var i = 0; i < sugg.length; i++) {
+              if (sugg[i].descripcio === b.dataset.s) t = sugg[i];
+            }
+            if (!t) return;
+            camps.descripcio.value = t.descripcio;
+            if (t.tipus && t.tipus !== tipus) {
+              tipus = t.tipus;
+              cos.querySelectorAll('[data-tipus]').forEach(function (x) {
+                x.setAttribute('aria-pressed', x.dataset.tipus === tipus ? 'true' : 'false');
+              });
+              pintaCategories();
+            }
+            if (t.categoria) camps.categoria.value = t.categoria;
+            if (t.metode) camps.metode.value = t.metode;
+            caixaSugg.innerHTML = '';
+            camps['import'].focus();
+          });
+        });
+      }
+      if (!editant) pintaSugg(sugg);
+
+      camps.descripcio.addEventListener('input', function () {
+        var q = camps.descripcio.value.trim().toLowerCase();
+        if (!q) { pintaSugg(sugg); return; }
+        pintaSugg(sugg.filter(function (s) {
+          return s.descripcio.toLowerCase().indexOf(q) !== -1;
+        }));
+      });
+
+      cos.querySelector('[data-desa]').addEventListener('click', function () {
+        var imp = num(camps['import'].value);
+        if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        if (!camps.descripcio.value.trim()) {
+          App.brindis('Digues què era', 'error'); camps.descripcio.focus(); return;
+        }
+
+        var p = {
+          'import': imp,
+          tipus: tipus,
+          descripcio: camps.descripcio.value.trim(),
+          categoria: camps.categoria.value,
+          metode: camps.metode.value,
+          data: camps.data.value || fmt.avui()
+        };
+
+        var b = this;
+        b.disabled = true;
+        crida('finances', editant ? 'edita' : 'afegeix', editant ? Object.assign({ id: m.id }, p) : p)
+          .then(function () {
+            App.tancaModal();
+            App.brindis(editant ? 'Moviment desat' : 'Apuntat');
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            carrega();
+          })
+          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      var bt = cos.querySelector('[data-treu]');
+      if (bt) bt.addEventListener('click', function () {
+        bt.disabled = true;
+        crida('finances', 'treu', { id: m.id })
+          .then(function () {
+            App.tancaModal(); App.brindis('Moviment tret'); carrega();
+          })
+          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+      });
+    }
+
+    // --------------------------------------------------------------- càrrega
+
+    function carrega() {
+      var accio = periode === 'mesos' ? 'mesos' : periode === 'estad' ? 'estadistiques' : 'mes';
+      var params_ = periode === 'mesos' ? { quants: 12 } : { mes: mes };
+
+      Promise.all([
+        crida('finances', accio, params_),
+        cats.length ? Promise.resolve(cats) : crida('finances', 'categories', {}),
+        sugg.length ? Promise.resolve(sugg) : crida('finances', 'suggeriments', {})
+      ]).then(function (r) {
+        cats = r[1]; sugg = r[2];
+        if (!mes && r[0].mes) mes = r[0].mes;
+        if (periode === 'mesos') pintaMesos(r[0]);
+        else if (periode === 'estad') pintaEstad(r[0]);
+        else pintaMes(r[0]);
+      }).catch(function (err) {
+        arrel.innerHTML = Comp.error(err, true);
+      });
+    }
+
+    if (!mes) mes = new Date().toISOString().slice(0, 7);
+    arrel.innerHTML = Comp.carregant(4);
+    carrega();
+  }
+});
+</script>

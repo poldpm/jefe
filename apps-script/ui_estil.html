@@ -545,6 +545,59 @@ h2 { font-size: 1.0625rem; }
 .bal-mes-eix span { position: absolute; font-size: .625rem; color: var(--ink-suau);
                     font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
+/* ---------------------------------------------------------------- finances */
+
+/* On van els diners: una barra per categoria, ordenades de més a menys. La
+   més llarga és la que et menja el mes, i es veu sense llegir cap número. */
+.cats { display: flex; flex-direction: column; }
+.cat-fila { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto;
+            align-items: center; gap: var(--e3); min-height: 44px; width: 100%;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
+            text-align: left; }
+.cat-fila:last-child { border-bottom: 0; }
+.cat-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; }
+.cat-via { display: block; height: 8px; background: var(--roca);
+           border: 1px solid var(--neatline); }
+.cat-via i { display: block; height: 100%; background: var(--h4); }
+.cat-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+             font-size: .875rem; white-space: nowrap; }
+.cat-xifra small { display: block; font-size: .6875rem; font-weight: 400; }
+
+/* Mes a mes: ingressos a sobre, despeses a sota. Dues barres i prou. */
+.mesos { display: flex; flex-direction: column; }
+.mes-fila { display: grid; grid-template-columns: 52px minmax(0, 1fr) 92px;
+            align-items: center; gap: var(--e3); min-height: 48px; width: 100%;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
+            text-align: left; }
+.mes-fila:last-child { border-bottom: 0; }
+.mes-nom { font-size: .75rem; color: var(--ink-suau); font-variant-numeric: tabular-nums; }
+.mes-barres { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mes-barres i { display: block; height: 7px; min-width: 1px; }
+.mes-barres i[data-mena="i"] { background: var(--h1); }
+.mes-barres i[data-mena="d"] { background: var(--h5); }
+.mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+             font-size: .875rem; }
+
+/* Despesa o ingrés: la primera decisió, i la que canvia les categories. */
+.tipus-tria { display: flex; border: 1px solid var(--neatline); margin-bottom: var(--e4); }
+.tipus-tria button { flex: 1; min-height: 44px; background: none; border: 0;
+                     border-right: 1px solid var(--neatline); font: inherit;
+                     color: var(--ink-suau); cursor: pointer; }
+.tipus-tria button:last-child { border-right: 0; }
+.tipus-tria button[aria-pressed="true"] { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+/* L'import mana: és l'únic camp que sempre has d'omplir. */
+.camp-import { font-size: 1.75rem !important; font-weight: 700; text-align: center; }
+
+.sugg { display: flex; flex-wrap: wrap; gap: var(--e2); margin: 0 0 var(--e3); }
+.sugg:empty { display: none; }
+.sugg button { min-height: 40px; padding: 0 var(--e3); background: none; font: inherit;
+               font-size: .8125rem; border: 1px solid var(--neatline); color: var(--ink-suau);
+               border-radius: var(--r); cursor: pointer; }
+.sugg button:active { color: var(--ink); border-color: var(--ink); }
+
 .form-ajustos label { display: block; margin-bottom: var(--e3); }
 .form-ajustos input, .form-ajustos select { width: 100%; min-height: var(--toc);
                                             margin-top: var(--e1); padding: 0 var(--e3);
