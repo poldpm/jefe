@@ -24,12 +24,23 @@ var Dades = (function () {
     return f;
   }
 
+  /**
+   * UNA SOLA ANADA A GOOGLE SHEETS, NO TRES.
+   *
+   * Abans això feia `getLastRow()`, `getLastColumn()` i `getRange().getValues()`:
+   * tres crides, i cadascuna és un viatge a la infraestructura de Sheets amb el
+   * seu propi temps d'espera. Mesurat, llegir una pestanya BUIDA costava 480 ms
+   * —cap dada, tot espera— i les 26 categories, 348. El cost no era de les
+   * dades: era d'anar-hi tres vegades.
+   *
+   * `getDataRange()` ja sap fins on arriben les dades i les torna d'un sol
+   * viatge.
+   */
   function carrega_(nom) {
     if (memo[nom]) return memo[nom];
     var f = fulla_(nom);
-    var valors = f.getLastRow() > 0
-      ? f.getRange(1, 1, f.getLastRow(), Math.max(1, f.getLastColumn())).getValues()
-      : [[]];
+    var valors = f.getDataRange().getValues();
+    if (!valors.length) valors = [[]];
     var capcalera = (valors[0] || []).map(function (c) { return String(c).trim(); });
     memo[nom] = { fulla: f, capcalera: capcalera, files: valors.slice(1) };
     return memo[nom];
