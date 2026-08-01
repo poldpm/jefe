@@ -658,24 +658,32 @@ function provaBanc() {
   return l.join('\n');
 }
 
-/**
- * PAS 2 — el teu banc.
- *
- * Ho escriu com la crida sencera i no com una llista de noms a posta: si
- * només surt el nom al costat del país, has d'endevinar si el país també va
- * dins de les cometes. Copiant una línia sencera no hi ha res a endevinar.
- */
+/** PAS 2 — el teu banc. Copia el nom exacte a la propietat BANC_NOM. */
 function bancsDisponibles(pais) {
   var l = FinancesBanc.bancs(pais || 'ES');
-  Logger.log('Copia i executa la línia del teu banc, sencera:\n');
-  l.forEach(function (b) { Logger.log('  ' + b); });
+  var posat = PropertiesService.getScriptProperties().getProperty('BANC_NOM');
+
+  Logger.log('Copia el nom del teu banc, exactament com surt aquí:\n');
+  l.forEach(function (b) { Logger.log('  ' + b + (b === posat ? '   ← el que tens posat' : '')); });
   Logger.log('\n' + l.length + ' entitats a ' + (pais || 'ES') + '.');
+  Logger.log('');
+
+  if (posat && l.indexOf(posat) !== -1) {
+    Logger.log('BANC_NOM ja és «' + posat + '» i coincideix. Executa connectaBanc().');
+  } else if (posat) {
+    Logger.log('ATENCIÓ: BANC_NOM diu «' + posat + '», que no és cap dels de sobre.');
+    Logger.log('Corregeix-lo a Configuració del projecte → Propietats de l\'script.');
+  } else {
+    Logger.log('Ara ves a Configuració del projecte → Propietats de l\'script i crea:');
+    Logger.log('    BANC_NOM = el nom exacte del teu banc');
+    Logger.log('Després executa connectaBanc().');
+  }
   return l.length;
 }
 
 /** PAS 3 — obre l'enllaç que et doni i identifica't al teu banc. */
-function connectaBanc(nom) {
-  var url = FinancesBanc.connecta(nom);
+function connectaBanc() {
+  var url = FinancesBanc.connecta();
   Logger.log('OBRE AQUEST ENLLAÇ I IDENTIFICA\'T AL TEU BANC:\n' + url);
   Logger.log('\nQuan tornis, la connexió ja quedarà feta sola.');
   return url;

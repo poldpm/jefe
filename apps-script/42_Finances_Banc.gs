@@ -28,11 +28,14 @@ var EB_BASE = 'https://api.enablebanking.com';
 var PROP_BANC = 'FINANCES_BANC';        // estat de la connexió (conté la sessió)
 var DIES_ACCES = 90;                    // quant dura el permís del banc
 
-/* AQUÍ NO HI HA CAP VARIABLE PER OMPLIR, i és a posta.
-   Hi havia un `MEU_BANC` per escriure-hi el nom del banc, com a l'app antiga.
-   Però aquest fitxer es publica des del repositori amb `clasp push -f`: el que
-   s'escrigui a l'editor desapareix a la següent pujada, sense avisar i sense
-   deixar rastre. El nom del banc va com a argument de connectaBanc(). */
+/* EL NOM DEL BANC VA A PROPIETATS DE L'SCRIPT, no aquí.
+   Hi havia un `MEU_BANC` per escriure-hi, com a l'app antiga, però aquest
+   fitxer es publica des del repositori amb `clasp push -f` i el que s'escrigui
+   a l'editor desapareix a la següent pujada sense deixar rastre.
+   Passar-lo com a argument tampoc serveix: el botó d'executar de l'editor
+   només crida funcions sense paràmetres. Les propietats són de l'usuari, no
+   del codi, i sobreviuen a tot. */
+var PROP_BANC_NOM = 'BANC_NOM';
 
 
 var FinancesBanc = (function () {
@@ -147,18 +150,17 @@ var FinancesBanc = (function () {
 
   function bancs(pais) {
     var r = eb_('/aspsps?country=' + (pais || 'ES'), { method: 'get' });
-    // La crida sencera, a punt de copiar. El nom del banc pot dur espais,
-    // punts i comes, i endevinar què va dins de les cometes no és feina seva.
-    return (r.aspsps || []).map(function (b) {
-      return 'connectaBanc("' + String(b.name).replace(/"/g, '\\"') + '")';
-    });
+    return (r.aspsps || []).map(function (b) { return String(b.name); });
   }
 
   function connecta(nom) {
-    nom = String(nom || '').trim();
+    nom = String(nom ||
+      PropertiesService.getScriptProperties().getProperty(PROP_BANC_NOM) || '').trim();
+
     if (!nom) {
-      throw new Error('Digues quin banc, exactament com surti a bancsDisponibles(): ' +
-                      'connectaBanc("CaixaBank")');
+      throw new Error('Falta el nom del banc.\n' +
+        'Executa bancsDisponibles(), i a Configuració del projecte → Propietats de ' +
+        'l\'script crea la propietat BANC_NOM amb el nom exacte que surti.');
     }
 
     /* El nom ha de ser EXACTE. Si no ho és, l'API contesta amb un error que no
@@ -173,9 +175,9 @@ var FinancesBanc = (function () {
       });
       throw new Error('«' + nom + '» no és cap nom exacte d\'entitat.' +
         (semblants.length
-          ? ' Volies dir algun d\'aquests?\n  ' +
-            semblants.map(function (n) { return 'connectaBanc("' + n + '")'; }).join('\n  ')
-          : ' Executa bancsDisponibles() i copia la línia sencera.'));
+          ? ' Volies dir algun d\'aquests?\n  ' + semblants.join('\n  ') +
+            '\nPosa\'l a la propietat de l\'script BANC_NOM.'
+          : ' Executa bancsDisponibles() i copia\'n el nom exacte a BANC_NOM.'));
     }
 
     var fins = new Date(Date.now() + DIES_ACCES * 864e5).toISOString().replace(/\.\d+Z$/, 'Z');
