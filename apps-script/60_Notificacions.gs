@@ -53,8 +53,14 @@ var Notifica = (function () {
 
   // ------------------------------------------------------------- autenticació
 
-  function base64url_(text) {
-    return Utilities.base64EncodeWebSafe(text).replace(/=+$/, '');
+  /**
+   * Accepta text o bytes. Amb els bytes de la signatura s'ha de passar l'array
+   * TAL QUAL: convertir-lo abans a text el destrueix, perquè el text es torna
+   * a codificar en UTF-8 i tot byte per sobre de 127 en surt canviat. Com que
+   * una signatura és pràcticament aleatòria, mig JWT quedava corromput.
+   */
+  function base64url_(dades) {
+    return Utilities.base64EncodeWebSafe(dades).replace(/=+$/, '');
   }
 
   /**
@@ -84,7 +90,7 @@ var Notifica = (function () {
       capcalera + '.' + cos,
       c.private_key.replace(/\\n/g, '\n')       // si s'ha enganxat amb salts escapats
     );
-    var jwt = capcalera + '.' + cos + '.' + base64url_(Utilities.newBlob(signatura).getDataAsString('ISO-8859-1'));
+    var jwt = capcalera + '.' + cos + '.' + base64url_(signatura);
 
     var resposta = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
       method: 'post',
@@ -96,9 +102,15 @@ var Notifica = (function () {
     });
 
     if (resposta.getResponseCode() !== 200) {
+      var text = Utils.talla(resposta.getContentText(), 300);
       Log.error('notifica.testimoni', 'Google no ha donat testimoni',
-                { codi: resposta.getResponseCode(), text: Utils.talla(resposta.getContentText(), 300) });
-      throw new Error('No s\'ha pogut autenticar amb Firebase. Revisa el compte de servei.');
+                { codi: resposta.getResponseCode(), text: text });
+      // El que diu Google ha de sortir a l'error: sense això, un problema de
+      // signatura i un compte esborrat es veuen exactament igual.
+      var detall = Utils.desJson(text, {});
+      throw new Error('No s\'ha pogut autenticar amb Firebase (' +
+        resposta.getResponseCode() + '): ' +
+        (detall.error_description || detall.error || text));
     }
 
     var dades = Utils.desJson(resposta.getContentText(), {});
