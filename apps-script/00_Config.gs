@@ -14,7 +14,8 @@ var NOM_FULL_CALCUL = 'JEFE — Assistent';
 /** Claus de Script Properties. Mai al codi, mai a cap fitxer versionat. */
 var PROP_ID_FULL = 'ID_FULL';
 var PROP_CLAU_IA = 'CLAU_IA';
-var PROP_CLAU_ACCES = 'CLAU_ACCES';   // porta d'entrada des de fora d'Apps Script
+var PROP_CLAU_ACCES = 'CLAU_ACCES';
+var PROP_FIREBASE   = 'FIREBASE_COMPTE';  // compte de servei: conte clau privada   // porta d'entrada des de fora d'Apps Script
 
 /**
  * Valors per defecte del full `_Config`.
@@ -37,6 +38,11 @@ var CONFIG_DEFECTE = {
   // Triggers
   hora_resum: '22',    // franja horària del resum nocturn (0-23)
   dia_revisio: '7',    // 1 = dilluns ... 7 = diumenge
+
+  // Notificacions. Aquests dos SÓN públics: la configuració web de Firebase
+  // està pensada per anar al codi del client. El compte de servei no.
+  firebase_web: '',
+  firebase_vapid: '',
 
   // Manteniment
   max_files_registre: '5000'

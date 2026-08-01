@@ -89,6 +89,7 @@ fs.writeFileSync(path.join(DESTI, 'index.html'), html);
 fs.writeFileSync(path.join(DESTI, '.nojekyll'), '');
 
 const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(1);
-console.log('\npages/index.html  ·  ' + kb + ' kB  ·  ' + inclosos.length + ' fitxers inclosos');
+console.log('\nindex.html (arrel)  ·  ' + kb + ' kB  ·  ' + inclosos.length + ' fitxers inclosos');
 inclosos.forEach(n => console.log('   · ' + n));
-console.log('\nUna sola petició: tot va dins del fitxer, sense recursos externs.\n');
+console.log('\nUna sola petició per obrir l\'app. L\'únic recurs extern és el SDK de');
+console.log('Firebase, i només es baixa si actives les notificacions.\n');

@@ -385,3 +385,50 @@ function generaClauAcces() {
   Logger.log(text);
   return text;
 }
+
+
+/**
+ * PROVA DE NOTIFICACIONS — executa-la i mira't el mòbil.
+ *
+ * Comprova la cadena sencera: compte de servei, autenticació amb Google,
+ * dispositius registrats i enviament real. Si arriba la notificació, tot
+ * funciona; si no, el registre diu exactament on s'ha trencat.
+ */
+function provaNotificacio() {
+  var linies = ['=== PROVA DE NOTIFICACIONS ==='];
+  function afegeix(t) { linies.push(t); Logger.log(t); }
+
+  if (!Notifica.disponible()) {
+    afegeix('FALLA: ' + Notifica.motiu());
+    return linies.join('\n');
+  }
+  afegeix('1. Compte de servei ..... correcte');
+
+  var config = Utils.desJson(Config.get('firebase_web', ''), null);
+  afegeix('2. Configuració web ..... ' + (config ? 'posada' : 'FALTA a _Config → firebase_web'));
+  afegeix('   clau VAPID ........... ' + (Config.get('firebase_vapid', '') ? 'posada' : 'FALTA a _Config → firebase_vapid'));
+
+  var d = Notifica.dispositius();
+  afegeix('3. Dispositius actius ... ' + d.length);
+  d.forEach(function (x) { afegeix('   · ' + x.nom + '  (vist ' + x.vist_el + ')'); });
+
+  if (!d.length) {
+    afegeix('');
+    afegeix('No hi ha cap dispositiu. Obre JEFE al mòbil i accepta les');
+    afegeix('notificacions quan te les demani; després torna a executar això.');
+    return linies.join('\n');
+  }
+
+  var r = Notifica.envia(
+    'JEFE',
+    'Si llegeixes això, les notificacions funcionen.',
+    { etiqueta: 'prova', url: './' }
+  );
+  afegeix('4. Enviades ............. ' + r.enviades + ' de ' + d.length);
+  (r.errors || []).forEach(function (e) {
+    afegeix('   ERROR a ' + e.nom + ': codi ' + e.codi + ' — ' + e.text);
+  });
+
+  afegeix('=== FI · mira\'t el mòbil ===');
+  return linies.join('\n');
+}

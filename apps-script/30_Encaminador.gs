@@ -145,6 +145,20 @@ function apiNucli_(accio, params) {
     case 'ping':
       return { ara: Utils.ara(), versio: VERSIO_JEFE };
 
+    /* Només l'estat. La configuració web de Firebase viu a
+       firebase.config.json, que comparteixen la pàgina i el treballador de
+       servei: és pública per disseny. El compte de servei —que sí que té
+       clau privada— no surt mai d'Script Properties. */
+    case 'notificacions':
+      return {
+        disponible: Notifica.disponible(),
+        motiu: Notifica.disponible() ? null : Notifica.motiu(),
+        dispositius: Notifica.dispositius().length
+      };
+
+    case 'registraDispositiu':
+      return Notifica.registra(params.fitxa, params.nom);
+
     default:
       throw new Error('Acció de nucli desconeguda: «' + accio + '».');
   }

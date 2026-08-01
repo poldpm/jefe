@@ -740,15 +740,48 @@ App.registraVista('conversa', {
     arrel.querySelector('#b-vistes').addEventListener('click', function () {
       var llista = (App.moduls && App.moduls.length) ? App.moduls : (Cau.get('moduls', []) || []);
       var altres = llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
-      var cos = App.modal('Vistes',
+      var n = Notificacions.estat();
+      var textNotif = !n.potSerHi ? 'Aquest navegador no en pot rebre'
+                    : n.activades ? 'Actives en aquest dispositiu'
+                    : n.permis === 'denied' ? 'Denegades — cal permetre-les al navegador'
+                    : 'JEFE et pot avisar amb l\'app tancada';
+
+      var cos = App.modal('JEFE',
         '<div style="display:flex;flex-direction:column;gap:var(--e2)">' +
         altres.map(function (m) {
           return '<button class="btn btn-secundari btn-ple" data-ves="' + esc(m.id) + '">' +
                  esc(m.nom) + '</button>';
         }).join('') +
-        '<button class="btn btn-secundari btn-ple" data-ves="inici">Inici</button></div>');
+        '<button class="btn btn-secundari btn-ple" data-ves="inici">Inici</button>' +
+        '</div>' +
+
+        '<p class="marge" style="margin:var(--e5) 0 var(--e2)">Notificacions</p>' +
+        '<button class="btn btn-ple ' + (n.activades ? 'btn-secundari' : 'btn-primari') + '" ' +
+          'data-notifica="1"' + (n.activades || !n.potSerHi ? ' disabled' : '') + '>' +
+          (n.activades ? 'Ja estan actives' : 'Activa les notificacions') + '</button>' +
+        '<p class="menut" style="margin:var(--e2) 0 0" id="estat-notif">' + esc(textNotif) + '</p>');
+
       cos.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.tancaModal(); App.ves(b.dataset.ves); });
+      });
+
+      var bn = cos.querySelector('[data-notifica]');
+      if (bn && !bn.disabled) bn.addEventListener('click', function () {
+        bn.dataset.carregant = '1';
+        // El permís s'ha de demanar des d'aquest toc: si es demana sol en
+        // carregar, Chrome el denega sense preguntar i ja no hi ha marxa enrere.
+        Notificacions.activa()
+          .then(function () {
+            bn.dataset.carregant = '0'; bn.disabled = true;
+            bn.textContent = 'Ja estan actives';
+            cos.querySelector('#estat-notif').textContent =
+              'Actives. Prova-ho amb provaNotificacio() des de l\'editor d\'Apps Script.';
+            App.brindis('Notificacions actives');
+          })
+          .catch(function (err) {
+            bn.dataset.carregant = '0';
+            cos.querySelector('#estat-notif').textContent = err.message;
+          });
       });
     });
 

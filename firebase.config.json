@@ -1,0 +1,9 @@
+{
+  "_llegeix_aixo": "Aquesta configuració és PÚBLICA per disseny: Firebase l'espera al codi del client i no dona accés a res. El que NO pot sortir d'aquí és el compte de servei, que va a Script Properties. Omple els cinc valors de sota amb els de la teva consola de Firebase. Instruccions a docs/03-notificacions.md",
+
+  "apiKey": "POSA-HI-LA-TEVA",
+  "projectId": "POSA-HI-EL-TEU",
+  "messagingSenderId": "POSA-HI-EL-TEU",
+  "appId": "POSA-HI-EL-TEU",
+  "vapidKey": "POSA-HI-LA-TEVA"
+}

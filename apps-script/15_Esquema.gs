@@ -38,6 +38,19 @@ var FULLS_NUCLI = [
     ]
   },
   {
+    nom: '_Dispositius',
+    columnes: [
+      { nom: 'id', tipus: 'text' },
+      { nom: 'fitxa', tipus: 'text' },              // la fitxa d'FCM del navegador
+      { nom: 'nom', tipus: 'text' },
+      { nom: 'actiu', tipus: 'text', valors: ['SI', 'NO'] },
+      { nom: 'ultim_error', tipus: 'text' },
+      { nom: 'creat_el', tipus: 'iso' },
+      { nom: 'vist_el', tipus: 'iso' },
+      { nom: 'actualitzat_el', tipus: 'iso' }
+    ]
+  },
+  {
     nom: '_Moduls',
     columnes: [
       { nom: 'id_modul', tipus: 'text' },
