@@ -231,45 +231,61 @@ App.registraVista('nutricio', {
 
     // -------------------------------------------------------- setmana i mes
 
+    /* LA GRÀFICA DIBUIXA EL BALANÇ, i res més.
+       Abans l'alçada eren les calories ingerides i el color el balanç: dues
+       variables al mateix dibuix, i cap de les dues es podia llegir. Ara la
+       línia del mig és l'equilibri, cap amunt és dèficit i cap avall superàvit.
+       Una barra alta vol dir un dia bo, i prou.
+
+       Setmana i mes són gràfiques diferents a posta: amb set dies hi caben el
+       nom del dia i la xifra a cada fila, i amb trenta-un no. */
     function pintaPeriode(d) {
       dades = d;
-      var maxKcal = 0;
-      d.dies.forEach(function (x) { maxKcal = Math.max(maxKcal, x.ingerides, x.cremades || 0); });
-      if (!maxKcal) maxKcal = 1;
+
+      var nets = d.dies.map(function (x) { return x.net === null ? 0 : Math.abs(x.net); });
+      var escala = Math.max(600, Math.max.apply(null, nets));
+      var enDeficit = d.dies.filter(function (x) { return x.net !== null && x.net > 0; }).length;
+      var enSuperavit = d.dies.filter(function (x) { return x.net !== null && x.net < 0; }).length;
+      var teObjProt = d.objectius.proteina > 0;
 
       arrel.innerHTML = capcalera(true) +
-        '<div class="pagina">' +
-          '<div class="tres-xifres">' +
-            xifra('Ingerides / dia', r0(d.mitjanaIngerides), 'kcal') +
-            xifra('Proteïna / dia', r1(d.mitjanaProteina), 'g') +
-            xifra('Balanç / dia',
-                  d.diesAmbBalanc ? (d.mitjanaNet > 0 ? '−' : '+') + r0(Math.abs(d.mitjanaNet)) : '—',
-                  d.diesAmbBalanc ? 'kcal' : '') +
-          '</div>' +
+        '<div class="pagina nutri">' +
+          '<section class="nutri-dalt">' +
+            '<div class="tres-xifres">' +
+              xifra('Ingerides / dia', r0(d.mitjanaIngerides), 'kcal') +
+              xifra('Proteïna / dia', r1(d.mitjanaProteina), 'g') +
+              xifra('Balanç / dia',
+                    d.diesAmbBalanc ? signe(d.mitjanaNet) + r0(Math.abs(d.mitjanaNet)) : '—',
+                    d.diesAmbBalanc ? 'kcal' : '') +
+            '</div>' +
+            (teObjProt
+              ? '<div class="prot-bloc">' +
+                  '<div class="prot-cap"><span class="marge">Proteïna mitjana</span>' +
+                    '<span class="num menut">' + r1(d.mitjanaProteina) + ' / ' +
+                    r0(d.objectius.proteina) + ' g</span></div>' +
+                  '<div class="prot-barra"><i style="width:' +
+                    Math.min(d.mitjanaProteina / d.objectius.proteina * 100, 100).toFixed(1) +
+                    '%"></i></div>' +
+                '</div>'
+              : '') +
+          '</section>' +
 
-          '<p class="menut">' + d.diesApuntats + ' dies apuntats · ' +
-            d.diesAmbBalanc + ' amb balanç tancat' +
-            (d.diesAmbBalanc
-              ? ' · acumulat ' + (d.netAcumulat > 0 ? 'dèficit ' : 'superàvit ') +
-                r0(Math.abs(d.netAcumulat)) + ' kcal'
-              : '') + '</p>' +
+          '<section>' +
+            '<p class="marge">Balanç diari</p>' +
+            (d.diesApuntats === 0
+              ? '<p class="menut">Encara no hi ha res apuntat en aquest període.</p>'
+              : (periode === 'setmana' ? graficSetmana(d, escala) : graficMes(d, escala))) +
 
-          '<p class="marge" style="margin:var(--e4) 0 var(--e2)">Dia a dia</p>' +
-          '<div class="perfil">' +
-            d.dies.map(function (x, i) {
-              var h = Math.round(x.ingerides / maxKcal * 100);
-              var estat = x.net === null ? 'obert' : (x.net > 0 ? 'deficit' : 'superavit');
-              // Amb 31 dies, 31 números no hi caben i empenyen la pàgina cap
-              // a fora. Al mes se n'etiqueta un de cada cinc; a la setmana tots.
-              var etiqueta = periode === 'setmana' || i === 0 || (i + 1) % 5 === 0;
-              return '<button class="perfil-dia" data-dia="' + esc(x.data) + '" data-estat="' + estat + '"' +
-                ' aria-label="' + esc(fmt.llarga(x.data)) + ': ' + r0(x.ingerides) + ' kcal">' +
-                '<i style="height:' + Math.max(h, x.apuntat ? 4 : 0) + '%"></i>' +
-                '<span>' + (etiqueta ? fmt.diaNumero(x.data) : '') + '</span>' +
-              '</button>';
-            }).join('') +
-          '</div>' +
-          '<p class="menut">Toca un dia per obrir-lo.</p>' +
+            '<p class="menut" style="margin-top:var(--e3);border-top:1px solid var(--utm-suau);' +
+              'padding-top:var(--e3)">' +
+              d.diesApuntats + (d.diesApuntats === 1 ? ' dia apuntat' : ' dies apuntats') +
+              ' · ' + enDeficit + ' en dèficit · ' + enSuperavit + ' en superàvit' +
+              (d.diesAmbBalanc
+                ? '<br>Balanç acumulat: <b class="num">' + signe(d.netAcumulat) +
+                  r0(Math.abs(d.netAcumulat)) + ' kcal</b>'
+                : '') +
+            '</p>' +
+          '</section>' +
         '</div>';
 
       lligaCapcalera();
@@ -278,6 +294,72 @@ App.registraVista('nutricio', {
           App.ves('nutricio', { data: b.dataset.dia, periode: 'dia' });
         });
       });
+    }
+
+    /** Menys davant d'un dèficit: el balanç es llegeix com el pes que perds. */
+    function signe(n) { return n > 0 ? '−' : n < 0 ? '+' : ''; }
+
+    function nomDiaCurt(iso) {
+      var p = String(iso).split('-');
+      var dt = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12);
+      return dt.toLocaleDateString('ca-ES', { weekday: 'short', day: 'numeric' });
+    }
+
+    /** Set files: nom del dia, barra que surt del centre, i la xifra. */
+    function graficSetmana(d, escala) {
+      return '<div class="bal-setmana">' +
+        d.dies.map(function (x) {
+          if (x.net === null) {
+            return '<div class="bal-fila" data-buit="1">' +
+              '<span class="bal-nom">' + esc(nomDiaCurt(x.data)) + '</span>' +
+              '<span class="bal-via"><u></u></span>' +
+              '<span class="bal-xifra">' + (x.apuntat ? '·' : '—') + '</span></div>';
+          }
+          var deficit = x.net > 0;
+          var f = Math.min(Math.abs(x.net) / escala * 50, 50);
+          return '<button class="bal-fila" data-dia="' + esc(x.data) + '"' +
+            ' aria-label="' + esc(fmt.llarga(x.data)) + ': ' +
+              (deficit ? 'dèficit ' : 'superàvit ') + r0(Math.abs(x.net)) + ' kcal">' +
+            '<span class="bal-nom">' + esc(nomDiaCurt(x.data)) + '</span>' +
+            '<span class="bal-via"><u></u>' +
+              '<i data-costat="' + (deficit ? 'deficit' : 'superavit') + '"' +
+              ' style="left:' + (deficit ? 50 : 50 - f) + '%;width:' + f + '%"></i>' +
+            '</span>' +
+            '<span class="bal-xifra" data-costat="' + (deficit ? 'deficit' : 'superavit') + '">' +
+              signe(x.net) + r0(Math.abs(x.net)) + '</span>' +
+          '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="balanc-peu"><span>← superàvit</span><span>dèficit →</span></div>';
+    }
+
+    /** Un mes sencer: columnes que pugen o baixen d'una línia central. */
+    function graficMes(d, escala) {
+      var n = d.dies.length;
+      var barres = d.dies.map(function (x, i) {
+        if (x.net === null) return '';
+        var deficit = x.net > 0;
+        var h = Math.min(Math.abs(x.net) / escala * 48, 48);
+        var estil = 'left:' + ((i + 0.12) / n * 100).toFixed(2) + '%;' +
+                    'width:' + (0.76 / n * 100).toFixed(2) + '%;' +
+                    (deficit ? 'bottom:50%;' : 'top:50%;') + 'height:' + h.toFixed(2) + '%;';
+        return '<i data-costat="' + (deficit ? 'deficit' : 'superavit') + '" style="' + estil +
+               '" title="' + esc(fmt.llarga(x.data)) + ': ' + signe(x.net) +
+               r0(Math.abs(x.net)) + ' kcal"></i>';
+      }).join('');
+
+      // Les fites van SOTA la gràfica, no a dins. A dins tapaven les barres.
+      var fites = [1, 5, 10, 15, 20, 25, 30].filter(function (v) { return v <= n; });
+
+      return '<div class="bal-mes">' +
+          '<div class="bal-mes-caixa"><u></u>' + barres + '</div>' +
+          '<div class="bal-mes-eix">' +
+            fites.map(function (v) {
+              return '<span style="left:' + ((v - 0.5) / n * 100).toFixed(2) + '%">' + v + '</span>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="balanc-peu"><span>▲ dèficit</span><span>superàvit ▼</span></div>';
     }
 
     // -------------------------------------------------------------- accions

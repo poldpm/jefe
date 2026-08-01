@@ -510,16 +510,40 @@ h2 { font-size: 1.0625rem; }
 .apat-form [data-afegeix] { grid-column: 1 / -1; }
 .apat-form [data-desa-aliment] { grid-column: 1 / -1; }
 
-.perfil { display: flex; align-items: flex-end; gap: 1px; height: 120px;
-          border-bottom: 1.5px solid var(--neatline); overflow: hidden; }
-.perfil-dia { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end;
-              align-items: center; gap: 2px; height: 100%; min-width: 0;
-              background: none; border: 0; padding: 0; cursor: pointer; }
-.perfil-dia i { display: block; width: 100%; background: var(--h0); }
-.perfil-dia[data-estat="deficit"] i { background: var(--h1); }
-.perfil-dia[data-estat="superavit"] i { background: var(--h5); }
-.perfil-dia span { font-size: .625rem; color: var(--ink-suau);
-                   font-variant-numeric: tabular-nums; }
+/* Gràfica de balanç. La línia del mig és l'equilibri: cap a la dreta (o cap
+   amunt) hi ha el dèficit, cap a l'altra banda el superàvit. Una sola
+   variable dibuixada, que és l'única manera que es pugui llegir. */
+
+.bal-setmana { display: flex; flex-direction: column; }
+.bal-fila { display: grid; grid-template-columns: 68px minmax(0, 1fr) 62px;
+            align-items: center; gap: var(--e2); min-height: 44px; width: 100%;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.bal-fila:last-child { border-bottom: 0; }
+.bal-fila[data-buit] { cursor: default; }
+.bal-nom { font-size: .8125rem; color: var(--ink-suau); overflow: hidden;
+           text-overflow: ellipsis; white-space: nowrap; }
+.bal-via { position: relative; display: block; height: 14px; min-width: 0;
+           background: var(--roca); border: 1px solid var(--neatline); }
+.bal-via u { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1.5px;
+             background: var(--neatline); }
+.bal-via i { position: absolute; top: 0; bottom: 0; display: block; }
+.bal-xifra { font-size: .875rem; font-weight: 700; text-align: right;
+             font-variant-numeric: tabular-nums; color: var(--ink-suau); }
+
+[data-costat="deficit"] { color: var(--h1); }
+.bal-via i[data-costat="deficit"], .bal-mes-caixa i[data-costat="deficit"] { background: var(--h1); }
+[data-costat="superavit"] { color: var(--h5); }
+.bal-via i[data-costat="superavit"], .bal-mes-caixa i[data-costat="superavit"] { background: var(--h5); }
+
+.bal-mes-caixa { position: relative; height: 170px; border: 1px solid var(--neatline);
+                 background: var(--roca); }
+.bal-mes-caixa > u { position: absolute; left: 0; right: 0; top: 50%; height: 1.5px;
+                     background: var(--neatline); }
+.bal-mes-caixa i { position: absolute; display: block; }
+.bal-mes-eix { position: relative; height: 15px; margin-top: 2px; }
+.bal-mes-eix span { position: absolute; font-size: .625rem; color: var(--ink-suau);
+                    font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
 .form-ajustos label { display: block; margin-bottom: var(--e3); }
 .form-ajustos input, .form-ajustos select { width: 100%; min-height: var(--toc);
