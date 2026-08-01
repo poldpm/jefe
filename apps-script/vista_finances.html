@@ -869,7 +869,10 @@ App.registraVista('finances', {
              serviria per tancar-te el que tinguis obert. I si ha canviat però
              estàs tocant alguna cosa, s'espera que acabis. */
           if (JSON.stringify(r.dades) === previ) return;
-          if (App.interactuant()) {
+          /* Nomes te sentit ajornar si ja hi ha alguna cosa pintada: si la
+             pantalla es buida, repintar no pot destruir res i no fer-ho et deixa
+             mirant l'esquelet de carrega per sempre. */
+          if (previ !== null && App.interactuant()) {
             var quan = function () {
               document.removeEventListener('focusout', quan);
               setTimeout(function () { if (!App.interactuant()) carrega(); }, 150);
