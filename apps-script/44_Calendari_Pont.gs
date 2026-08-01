@@ -19,11 +19,15 @@
  *   No és cap drecera ni cap truc: és el mateix que fa qualsevol integració
  *   entre dos comptes. Cadascú fa servir els seus permisos.
  *
- * QUÈ NO PASSA PER AQUÍ
- *   LLEGIR. Els calendaris de l'escola compartits «només veure» ja els
- *   llegeix el compte personal sense cap pont, i llegir és el 95% del que
- *   fa la pantalla. El pont només s'utilitza quan una escriptura falla, que
- *   és exactament quan cal.
+ * QUÈ HI PASSA I QUÈ NO
+ *   Els calendaris de l'altre compte no els veu el personal de cap manera:
+ *   ni per llegir. Per tant hi passen les dues coses —llegir i escriure—,
+ *   però la lectura d'un mes sencer va en UNA sola petició, no una per
+ *   calendari.
+ *
+ *   Els calendaris DEL COMPTE PERSONAL no toquen el pont per res: es
+ *   llegeixen i s'escriuen com sempre. El pont no els afegeix ni un
+ *   mil·lisegon.
  *
  * SI EL PONT NO HI ÉS
  *   Tot funciona igual: es veuen els calendaris de l'escola i s'hi escriu
@@ -105,6 +109,9 @@ var CalendariPont = (function () {
     hiEs: hiEs,
     config: config_,
     calendaris: function () { return demana_('calendaris', {}); },
+    esdeveniments: function (desde, fins, ids) {
+      return demana_('esdeveniments', { desde: desde, fins: fins, calendaris: ids || [] });
+    },
     crea: function (p) { return demana_('crea', p); },
     edita: function (p) { return demana_('edita', p); },
     treu: function (p) { return demana_('treu', p); },

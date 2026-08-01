@@ -19,9 +19,9 @@ canviar i treure esdeveniments d'aquells calendaris—. JEFE li ho demana.
 És el mateix que fa qualsevol integració entre dos comptes. Cadascú fa servir
 els seus permisos.
 
-**Llegir no passa per aquí.** Els calendaris de l'escola compartits «només
-veure» ja els llegeix el teu compte personal, i llegir és gairebé tot el que fa
-la pantalla. Això només entra en joc quan apuntes alguna cosa.
+**Els calendaris del teu compte personal no toquen res d'això**: es llegeixen i
+s'escriuen com sempre, i el pont no els afegeix ni un mil·lisegon. Només hi
+passa el que és de l'escola.
 
 ---
 
@@ -189,6 +189,45 @@ function fes_(p) {
     case 'calendaris':
       return meus_();
 
+    /* Llegir. Cal perquè aquests calendaris el compte personal no els veu:
+       si no els envio jo, alla no hi surt res i no es poden ni triar. */
+    case 'esdeveniments': {
+      var ini = aData_(p.desde); ini.setHours(0, 0, 0, 0);
+      var fi = aData_(p.fins); fi.setHours(23, 59, 59, 999);
+      var ara = new Date();
+      var tz = Session.getScriptTimeZone();
+      var out = [];
+
+      (p.calendaris && p.calendaris.length ? p.calendaris : meus_().map(function (c) { return c.id; }))
+        .forEach(function (id) {
+          var cal;
+          try { cal = CalendarApp.getCalendarById(id); } catch (err) { return; }
+          if (!cal) return;
+
+          var nom = cal.getName(), color = cal.getColor();
+          cal.getEvents(ini, fi).forEach(function (ev) {
+            var i = ev.getStartTime(), f = ev.getEndTime();
+            var totDia = ev.isAllDayEvent();
+            out.push({
+              id: ev.getId(), calendari: id, calendariNom: nom,
+              color: ev.getColor() || color || '',
+              titol: ev.getTitle() || '(sense títol)',
+              lloc: ev.getLocation() || '',
+              nota: String(ev.getDescription() || '').slice(0, 300),
+              data: Utilities.formatDate(i, tz, 'yyyy-MM-dd'),
+              dataFi: Utilities.formatDate(new Date(f.getTime() - (totDia ? 60000 : 0)),
+                                           tz, 'yyyy-MM-dd'),
+              totElDia: totDia,
+              hora: totDia ? '' : Utilities.formatDate(i, tz, 'HH:mm'),
+              horaFi: totDia ? '' : Utilities.formatDate(f, tz, 'HH:mm'),
+              passat: f < ara,
+              minuts: totDia ? 0 : Math.round((f - i) / 60000)
+            });
+          });
+        });
+      return out;
+    }
+
     case 'crea': {
       var cal = calendari_(p.calendari);
       var opcions = {};
@@ -242,7 +281,8 @@ function meus_() {
   var principal = '';
   try { principal = CalendarApp.getDefaultCalendar().getId(); } catch (e) {}
   return CalendarApp.getAllOwnedCalendars().map(function (c) {
-    return { id: c.getId(), nom: c.getName(), principal: c.getId() === principal };
+    return { id: c.getId(), nom: c.getName(), color: c.getColor(),
+             principal: c.getId() === principal };
   });
 }
 

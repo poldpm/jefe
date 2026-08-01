@@ -21,6 +21,14 @@
  * PERMISOS
  *   Aquest mòdul fa que l'app demani accés al calendari. Cal tornar a
  *   autoritzar-la una vegada. Vegeu `preparaCalendari()` a 90_Instalacio.gs.
+ *
+ * ELS CALENDARIS D'UN ALTRE COMPTE
+ *   Els de l'escola són d'un Workspace que no deixa compartir-los cap enfora
+ *   amb permís d'escriptura. Aquest compte no els pot ni llegir ni tocar, i
+ *   per això hi ha un pont —vegeu `44_Calendari_Pont.gs`—: un script que viu
+ *   allà i que fa la feina per nosaltres. Aquí es distingeixen per la columna
+ *   `pont` del full, i tot el que hi passa —llegir i escriure— hi va per
+ *   aquell camí. Els del compte personal no el toquen mai.
  */
 function MODUL_CALENDARI() {
   return {
@@ -40,6 +48,7 @@ function MODUL_CALENDARI() {
           { nom: 'mostra',          tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'principal',       tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'meu',             tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'pont',            tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'ordre',           tipus: 'num'  },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }
@@ -227,9 +236,40 @@ var Calendari = (function () {
       }
     });
 
+    /* I ELS DE L'ALTRE COMPTE.
+       Aquests el compte personal no els veu de cap manera —no estan
+       compartits, i encara que ho estiguessin serien de només lectura—, o
+       sigui que sense demanar-los al pont no existeixen aquí: ni es podrien
+       triar per apuntar-hi, ni se'n veuria cap esdeveniment. Entren encesos:
+       si t'has pres la feina de muntar el pont, és perquè els vols. */
+    var delPont = 0;
+    if (CalendariPont.hiEs()) {
+      try {
+        CalendariPont.calendaris().forEach(function (c, n) {
+          var ja = Dades.un('Calendaris', { id: c.id });
+          if (ja) {
+            Dades.actualitza('Calendaris', c.id, {
+              nom: c.nom, color: c.color || '', pont: 'SI', meu: 'SI'
+            });
+          } else {
+            Dades.insereix('Calendaris', {
+              id: c.id, nom: c.nom, color: c.color || '',
+              mostra: 'SI', principal: 'NO', meu: 'SI', pont: 'SI',
+              ordre: 100 + n
+            });
+            delPont++;
+          }
+        });
+      } catch (err) {
+        Log.avis('calendari.sincronitza', 'El pont no ha contestat: ' + err.message);
+      }
+    }
+
     buidaCau();
-    Log.info('calendari.sincronitza', 'Calendaris llegits', { nous: nous, actualitzats: actualitzats });
-    return { nous: nous, actualitzats: actualitzats, total: tots.length };
+    Log.info('calendari.sincronitza', 'Calendaris llegits',
+             { nous: nous, actualitzats: actualitzats, delPont: delPont });
+    return { nous: nous + delPont, actualitzats: actualitzats,
+             total: tots.length + delPont, delPont: delPont };
   }
 
   /**
@@ -271,7 +311,8 @@ var Calendari = (function () {
       return { id: x.id, nom: x.nom, color: x.color || '',
                mostra: String(x.mostra).toUpperCase() === 'SI',
                principal: String(x.principal).toUpperCase() === 'SI',
-               meu: String(x.meu).toUpperCase() === 'SI' };
+               meu: String(x.meu).toUpperCase() === 'SI',
+               pont: String(x.pont).toUpperCase() === 'SI' };
     });
   }
 
@@ -345,8 +386,28 @@ var Calendari = (function () {
 
     var ara = new Date();
     var out = [];
+    var mirats = actius_();
 
-    actius_().forEach(function (c) {
+    /* ELS DE L'ALTRE COMPTE ELS DEMANEM AL PONT.
+       Aquest compte no els pot llegir de cap manera, o sigui que sense això
+       la pantalla no en veuria ni un. Van tots en UNA sola petició, no una
+       per calendari. I si el pont no contesta, la resta surt igual i queda
+       constància al registre: val més un mes sense les cites de l'escola que
+       un mes sense res. */
+    var delPont = mirats.filter(function (c) { return c.pont; });
+    if (delPont.length && CalendariPont.hiEs()) {
+      try {
+        var seus = CalendariPont.esdeveniments(desde, fins,
+          delPont.map(function (c) { return c.id; }));
+        (seus || []).forEach(function (e) { out.push(e); });
+      } catch (err) {
+        Log.avis('calendari.pont',
+                 'No he pogut llegir el calendari de l\'altre compte: ' + err.message,
+                 { desde: desde, fins: fins });
+      }
+    }
+
+    mirats.filter(function (c) { return !c.pont; }).forEach(function (c) {
       var cal;
       try { cal = CalendarApp.getCalendarById(c.id); } catch (e) { return; }
       if (!cal) return;
@@ -512,10 +573,31 @@ var Calendari = (function () {
     return d;
   }
 
+  function esDelPont_(id) {
+    if (!id) return false;
+    var c = Dades.un('Calendaris', { id: id });
+    return !!c && String(c.pont).toUpperCase() === 'SI';
+  }
+
   function crea(p) {
     var titol = String(p.titol || '').trim();
     if (!titol) throw new Error('L\'esdeveniment necessita un títol.');
     if (!Utils.esDataValida(p.data)) throw new Error('Falta el dia.');
+
+    /* Si ja sabem que és de l'altre compte, hi va directe. Provar-ho abans amb
+       el compte personal seria esperar-se a un error que ja sabem que arribarà. */
+    if (esDelPont_(p.calendari) && CalendariPont.hiEs()) {
+      var r = CalendariPont.crea({
+        calendari: p.calendari, titol: titol, data: p.data, hora: p.hora || '',
+        durada: Number(p.durada) > 0 ? Number(p.durada) : 60,
+        lloc: p.lloc || '', nota: p.nota || ''
+      });
+      buidaCau();
+      Log.info('calendari.crea', 'Creat al compte de l\'escola',
+               { titol: titol, data: p.data, calendari: r.calendari });
+      return { id: r.id, titol: titol, data: p.data, hora: p.hora || '',
+               calendari: r.calendari, perElPont: true };
+    }
 
     var cal = calendariPerEscriure_(p.calendari);
     var opcions = {};

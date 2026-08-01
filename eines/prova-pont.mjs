@@ -29,7 +29,13 @@ if (!codiPont) { console.log('No trobo el codi del pont al document.'); process.
 const events = [];
 let seq = 0;
 const fesCalendari = (id, nom) => ({
-  getId: () => id, getName: () => nom,
+  getId: () => id, getName: () => nom, getColor: () => '#a8703f',
+  getEvents: (i, f) => events.filter(e => e.cal === id).map(e => ({
+    getId: () => e.id, getTitle: () => e.t, getLocation: () => '', getDescription: () => '',
+    getColor: () => '', isAllDayEvent: () => !!e.totDia,
+    getStartTime: () => e.i || new Date('2026-09-01T09:00:00'),
+    getEndTime: () => e.f || new Date('2026-09-01T10:00:00')
+  })),
   createAllDayEvent: (t, d) => { const e = { id: 'e' + (++seq), t, cal: id, totDia: true };
     events.push(e); return { getId: () => e.id, getTitle: () => e.t }; },
   createEvent: (t, i, f) => { const e = { id: 'e' + (++seq), t, cal: id, i, f };
@@ -51,7 +57,11 @@ const servidor = {
     getAllOwnedCalendars: () => [CAL_B, CAL_A],
     getCalendarById: (id) => (id === 'claustre@escola' ? CAL_A : (id === 'principal@escola' ? CAL_B : null))
   },
-  Session: { getEffectiveUser: () => ({ getEmail: () => 'pol@escola.cat' }) },
+  Session: { getEffectiveUser: () => ({ getEmail: () => 'pol@escola.cat' }),
+             getScriptTimeZone: () => 'Europe/Madrid' },
+  Utilities: { formatDate: (d, tz, patro) => patro === 'yyyy-MM-dd'
+    ? [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-')
+    : ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) },
   ContentService: { createTextOutput: (t) => ({ setMimeType: () => t }), MimeType: { JSON: 'json' } }
 };
 vm.createContext(servidor);
@@ -85,6 +95,22 @@ cal('edita', r2.ok && events[0].t === 'Claustre extraordinari', JSON.stringify(r
 const r3 = truca({ clau: 'la-clau-de-prova', accio: 'treu', id: r1.dades.id,
                    calendari: 'claustre@escola' });
 cal('treu', r3.ok && events.length === 0, JSON.stringify(r3));
+
+// Llegir: sense això, aquests calendaris no es veurien de cap manera
+truca({ clau: 'la-clau-de-prova', accio: 'crea', calendari: 'claustre@escola',
+        titol: 'Tutoria de 3r', data: '2026-09-15', hora: '11:00', durada: 60 });
+const rl = truca({ clau: 'la-clau-de-prova', accio: 'esdeveniments',
+                   desde: '2026-09-01', fins: '2026-09-30',
+                   calendaris: ['claustre@escola'] });
+cal("llegeix els esdeveniments de l'altre compte",
+    rl.ok && rl.dades.length === 1 && rl.dades[0].titol === 'Tutoria de 3r', JSON.stringify(rl));
+cal('i venen amb tot el que la pantalla necessita',
+    rl.ok && rl.dades[0].calendariNom === 'Claustre' &&
+    rl.dades[0].hora === '11:00' && rl.dades[0].horaFi === '12:00' &&
+    rl.dades[0].minuts === 60 && rl.dades[0].data === '2026-09-15' &&
+    typeof rl.dades[0].totElDia === 'boolean' && typeof rl.dades[0].passat === 'boolean',
+    JSON.stringify(rl.dades[0]));
+events.length = 0;
 
 cal('una acció que no coneix, la rebutja sense petar',
     truca({ clau: 'la-clau-de-prova', accio: 'formata-el-disc' }).ok === false, 'ha passat');
