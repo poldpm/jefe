@@ -617,12 +617,19 @@ var Finances = (function () {
     if (p.origen === 'banc') {
       var sabut = recordat(desc, tipus);
       if (sabut && sabut.categoria) {
-        var incert = !categoria || categoria === 'c_altd' || categoria === 'i_alti';
-        if (incert || sabut.cops >= 2) {
-          categoria = sabut.categoria;
-          if (sabut.metode) metode = sabut.metode;
-          revisat = 'SI';
-        }
+        /* Si la memòria sap què és aquest comerç, s'acabà la discussió. El
+           que va decidir en Pol mana sobre el que endevini qualsevol regla,
+           i per tant no hi ha res a revisar.
+
+           Abans hi havia una condició que només se'n refiava si el comerç hi
+           constava vist dues vegades o més. Semblava prudent i era un error:
+           tres compres d'Amazon van anar a la safata amb la categoria JA
+           correcta, decidida per ell mateix. Demanar que confirmi una cosa
+           que ell mateix va decidir no és prudència, és la molèstia que
+           volíem treure. */
+        categoria = sabut.categoria;
+        if (sabut.metode) metode = sabut.metode;
+        revisat = 'SI';
       }
     }
 
@@ -678,17 +685,31 @@ var Finances = (function () {
    */
   function reclassifica() {
     var mem = memoria_();
-    var canviats = 0, sensesaber = {};
+    var reclassificats = 0, confirmats = 0, sensesaber = {};
 
+    /* Dos casos, i tots dos són «ja ho sabíem»:
+         · el moviment va quedar a Altres i la memòria sap què és
+         · el moviment ja té la categoria bona però encara consta per revisar
+       El segon existeix perquè una versió d'abans no es refiava de la memòria
+       si el comerç només hi constava un cop, i va deixar moviments correctes
+       esperant una confirmació que no calia. */
     moviments_(function (f) {
-      return f.categoria === 'c_altd' || f.categoria === 'i_alti';
+      var altres = f.categoria === 'c_altd' || f.categoria === 'i_alti';
+      return altres || String(f.revisat).toUpperCase() === 'NO';
     }).forEach(function (f) {
       var clau = clauMemoria_(f.descripcio, f.tipus);
       var m = mem[clau];
+      var altres = f.categoria === 'c_altd' || f.categoria === 'i_alti';
+
       if (m && m.categoria) {
-        Dades.actualitza('Moviments', f.id, { categoria: m.categoria, revisat: 'SI' });
-        canviats++;
-      } else if (clau) {
+        if (altres || m.categoria !== f.categoria) {
+          Dades.actualitza('Moviments', f.id, { categoria: m.categoria, revisat: 'SI' });
+          reclassificats++;
+        } else {
+          Dades.actualitza('Moviments', f.id, { revisat: 'SI' });
+          confirmats++;
+        }
+      } else if (clau && altres) {
         sensesaber[clau] = (sensesaber[clau] || 0) + 1;
       }
     });
@@ -697,7 +718,8 @@ var Finances = (function () {
       return { comerc: k, moviments: sensesaber[k] };
     }).sort(function (a, b) { return b.moviments - a.moviments; });
 
-    return { canviats: canviats, comerçosPerDecidir: pendents.length, pendents: pendents.slice(0, 40) };
+    return { reclassificats: reclassificats, confirmats: confirmats,
+             comercosPerDecidir: pendents.length, pendents: pendents.slice(0, 40) };
   }
 
   /** No esborra la fila: la marca. L'històric és intocable. */

@@ -751,6 +751,26 @@ function arreglaClauBanc() {
 
 
 /**
+ * Aplica el que ja saps als moviments que van quedar pendents.
+ * No toca res del que hagis decidit tu: només els que estan a «Altres» o els
+ * que esperen una confirmació que la memòria ja pot donar.
+ */
+function reclassificaFinances() {
+  var r = Finances.reclassifica();
+  Logger.log('Reclassificats ............ ' + r.reclassificats);
+  Logger.log('Confirmats sense canvi .... ' + r.confirmats);
+  Logger.log('Comerços per decidir ...... ' + r.comercosPerDecidir);
+  if (r.pendents.length) {
+    Logger.log('\nEls que et queden, de més a menys moviments:');
+    r.pendents.forEach(function (p) {
+      Logger.log('  ' + p.comerc + '   (' + p.moviments + ')');
+    });
+  }
+  return r.reclassificats + r.confirmats;
+}
+
+
+/**
  * DIAGNÒSTIC DE LA MEMÒRIA DE COMERÇOS.
  *
  * Per quan entren moviments del banc i cap no es reconeix. Diu si la memòria

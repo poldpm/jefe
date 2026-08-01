@@ -191,12 +191,19 @@ var FinancesImport = (function () {
       if (!clau) return;
       var d = data_(t.date) || '';
       // Mana la decisió MÉS RECENT: si vas canviar d'opinió sobre un comerç,
-      // el que val és l'última vegada, no la primera.
-      if (!apres[clau] || d > apres[clau].data) {
-        apres[clau] = { clau: clau, mostra: String(t.desc || '').trim(),
-                        categoria: cat, metode: String(t.method || ''), data: d, cops: 0 };
+      // el que val és l'última vegada, no la primera. Però el comptador es
+      // manté: abans es reiniciava a zero cada cop que apareixia una data més
+      // nova, i un comerç amb vint compres acabava dient «vist 1 cops».
+      if (!apres[clau]) {
+        apres[clau] = { clau: clau, mostra: '', categoria: '', metode: '', data: '', cops: 0 };
       }
       apres[clau].cops++;
+      if (d >= apres[clau].data) {
+        apres[clau].mostra = String(t.desc || '').trim();
+        apres[clau].categoria = cat;
+        apres[clau].metode = String(t.method || '');
+        apres[clau].data = d;
+      }
     });
 
     var novaMem = Object.keys(apres).filter(function (k) { return !jaMemoria[k]; })
