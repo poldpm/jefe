@@ -49,7 +49,12 @@ var CONFIG_DEFECTE = {
   ia_inclou_diari: 'SI',
 
   // Triggers
-  hora_resum: '22',    // franja horària del resum nocturn (0-23)
+  /* Franja horària del resum nocturn (0-23). Les onze i no les deu: el resum
+     tanca el dia, i tancar-lo a les deu vol dir que l'última hora i mitja
+     desperta no hi surt mai. Un trigger horari d'Apps Script salta en algun
+     moment dins de l'hora, no en punt: això vol dir entre les 23:00 i les
+     24:00, sempre el mateix dia. */
+  hora_resum: '23',
   dia_revisio: '7',    // 1 = dilluns ... 7 = diumenge
 
   // La configuració web de Firebase NO és aquí: viu a firebase.config.json.

@@ -6,6 +6,7 @@
  *   configuraJefe()     → crea el full de càlcul i tota l'estructura. Idempotent.
  *   instalaTriggers()   → instal·la els automatismes nocturns. Idempotent.
  *   treuTriggers()      → els desinstal·la.
+ *   resumALesOnze()     → posa el resum del dia a les 23:00 i reinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
  */
 
@@ -84,7 +85,7 @@ var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerMantenime
 function instalaTriggers() {
   treuTriggers();
 
-  var horaResum = Config.getNum('hora_resum', 22);
+  var horaResum = Config.getNum('hora_resum', 23);
   var diaRevisio = Config.getNum('dia_revisio', 7);
 
   ScriptApp.newTrigger('triggerResumDiari')
@@ -152,6 +153,27 @@ function instalaTriggers() {
 
   Log.info('instalacio', 'Triggers instal·lats', { horaResum: horaResum, diaRevisio: diaRevisio });
   return 'Triggers instal·lats: ' + TRIGGERS.join(', ');
+}
+
+/**
+ * Posa el resum del dia a les onze de la nit.
+ *
+ * L'hora viu al full `_Config`, i el que hi ha desat mana sobre el valor per
+ * defecte del codi: canviar el codi no toca el que ja tens. Això sí que ho
+ * toca, i després torna a instal·lar els automatismes perquè el trigger
+ * s'assabenti de l'hora nova —crear-lo és l'únic moment en què es mira.
+ *
+ * Es pot executar amb el botó de l'editor: no demana cap paràmetre.
+ * Si algun dia la vols a una altra hora, canvia `hora_resum` al full
+ * `_Config` i executa `instalaTriggers`.
+ */
+function resumALesOnze() {
+  var abans = Config.getNum('hora_resum', 23);
+  Config.set('hora_resum', 23);   // `set` ja buida la memòria de la configuració
+  var r = instalaTriggers();
+  var diu = 'Resum del dia: abans a les ' + abans + ':00, ara a les 23:00.\n' + r;
+  console.log(diu);
+  return diu;
 }
 
 function treuTriggers() {
