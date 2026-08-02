@@ -51,8 +51,17 @@ var Dades = (function () {
 
     /* Si canvia una dada, la fitxa que llegeix la IA deixa de valer. S'esborra
        aquí perquè aquest és l'únic lloc pel qual passen TOTES les escriptures:
-       posar-ho a cada mòdul seria confiar que ningú se n'oblidi mai. */
-    if (typeof Moduls !== 'undefined' && Moduls.invalidaContext) Moduls.invalidaContext();
+       posar-ho a cada mòdul seria confiar que ningú se n'oblidi mai.
+
+       PERÒ NOMÉS SI AQUELL FULL HI SURT. Parlar amb en JEFE escriu al full de
+       converses, i això esborrava la fitxa: cada pregunta la tornava a muntar
+       de zero i s'hi anaven tres segons. El full de converses no aporta res a
+       la fitxa —el mòdul de conversa no té `contextIA`— o sigui que llençar-la
+       era pagar per no guanyar res. Qui hi surt i qui no ho diuen els mòduls;
+       aquí no se sap ni cal saber-ho. */
+    if (typeof Moduls === 'undefined' || !Moduls.invalidaContext) return;
+    if (nom && Moduls.alimentaContext && !Moduls.alimentaContext(nom)) return;
+    Moduls.invalidaContext();
   }
 
   function esBuida_(fila) {

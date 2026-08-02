@@ -1052,5 +1052,74 @@ console.log("Patrimoni: el compte bo arxivat per error es recupera sol");
       /No trobo cap compte duplicat/.test(ctx.preparaFusio()), 'encara en troba');
 }
 
+// -------------------- parlar amb en JEFE no ha d'esborrar la fitxa que el fa rapid
+console.log("");
+console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi surt");
+{
+  const moduls = [
+    { id: 'conversa', nom: 'JEFE',
+      fulls: [{ nom: 'Converses' }] },                       // sense contextIA
+    { id: 'habits', nom: 'Habits',
+      fulls: [{ nom: 'Habits' }, { nom: 'Registres' }],
+      contextIA: function () { return 'habits'; } },
+    { id: 'calendari', nom: 'Calendari',
+      fulls: [{ nom: 'Calendaris' }],
+      contextIA: function () { return 'calendari'; } }
+  ];
+
+  let esborrades = 0;
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Log: { info() {}, avis() {}, error() {} },
+    CacheService: { getScriptCache: () => ({
+      get: () => null, put: () => {}, remove: () => { esborrades++; } }) },
+    Config: { full: () => ({ getSheetByName: () => null }) },
+    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara' },
+    SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8'), ctx);
+  // Els mòduls es descobreixen per `globalThis`: se n'hi posen tres de mentida.
+  moduls.forEach(function (m) { ctx['MODUL_' + m.id.toUpperCase()] = function () { return m; }; });
+
+  cal('el full de converses NO alimenta la fitxa',
+      ctx.Moduls.alimentaContext('Converses') === false, 'diu que sí');
+  cal('els registres d hàbits SÍ', ctx.Moduls.alimentaContext('Registres') === true, 'diu que no');
+  cal('els calendaris SÍ', ctx.Moduls.alimentaContext('Calendaris') === true, 'diu que no');
+  cal('els aparells de les notificacions NO',
+      ctx.Moduls.alimentaContext('_Dispositius') === false, 'diu que sí');
+  cal('el registre NO', ctx.Moduls.alimentaContext('_Registre') === false, 'diu que sí');
+  cal('la configuració SÍ, que allà hi ha els objectius',
+      ctx.Moduls.alimentaContext('_Config') === true, 'diu que no');
+  cal('un full que no és de ningú, sí: davant del dubte, es torna a muntar',
+      ctx.Moduls.alimentaContext('UnFullQueNoConec') === true, 'diu que no');
+
+  // I ara el camí de debò: escriure passa per Dades.invalida.
+  const dadesCtx = {
+    Utils: { nouId: () => 'x', ara: () => 'ARA' },
+    Config: { full: () => ({ getSheetByName: () => ({
+      getDataRange: () => ({ getValues: () => [['id']] }),
+      getRange: () => ({ setValues: () => {} }), getMaxRows: () => 10 }) }) },
+    LockService: null, Moduls: ctx.Moduls
+  };
+  vm.createContext(dadesCtx);
+  vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), dadesCtx);
+
+  esborrades = 0;
+  dadesCtx.Dades.invalida('Converses');
+  cal('escriure una conversa no llença la fitxa', esborrades === 0, String(esborrades));
+
+  dadesCtx.Dades.invalida('_Dispositius');
+  cal('obrir l app tampoc', esborrades === 0, String(esborrades));
+
+  dadesCtx.Dades.invalida('Registres');
+  cal('marcar un hàbit sí que la llença', esborrades === 1, String(esborrades));
+
+  dadesCtx.Dades.invalida();
+  cal('i sense dir quin full, també: no se sap què ha canviat', esborrades === 2, String(esborrades));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

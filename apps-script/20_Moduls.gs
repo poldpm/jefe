@@ -247,6 +247,35 @@ var Moduls = (function () {
     try { CacheService.getScriptCache().remove(CAU_CONTEXT); } catch (e) {}
   }
 
+  /**
+   * Aquest full pot canviar la fitxa que llegeix la IA?
+   *
+   * Sí si el declara un mòdul que aporta `contextIA`. Un full que no és de
+   * ningú —els del nucli, com la configuració— compta que sí: davant del
+   * dubte val més tornar a muntar la fitxa que respondre amb el que hi havia.
+   */
+  /* Els fulls del nucli que no expliquen res d'en Pol. S'hi escriu sovint
+     —a `_Dispositius` cada cop que obre l'app— i cap d'ells canvia una sola
+     línia de la fitxa. `_Config` no hi és a posta: allà hi ha els objectius,
+     i canviar-ne un sí que canvia el que la IA ha de saber. */
+  var FULLS_MUTS = { _Registre: 1, _RegistreArxiu: 1, _Dispositius: 1, _Moduls: 1 };
+
+  function alimentaContext(nom) {
+    if (FULLS_MUTS[nom]) return false;
+
+    var m = actius();
+    var deNingu = true;
+    for (var i = 0; i < m.length; i++) {
+      var fulls = m[i].fulls || [];
+      for (var j = 0; j < fulls.length; j++) {
+        if (fulls[j].nom !== nom) continue;
+        deNingu = false;
+        if (typeof m[i].contextIA === 'function') return true;
+      }
+    }
+    return deNingu;
+  }
+
   /** Eines que la IA pot cridar, aportades pels mòduls. */
   function einesIA() {
     var out = [];
@@ -310,6 +339,7 @@ var Moduls = (function () {
     elDia: elDia,
     contextIA: contextIA,
     invalidaContext: invalidaContext,
+    alimentaContext: alimentaContext,
     gestionaTornada: gestionaTornada,
     einesIA: einesIA,
     dreceres: dreceres,
