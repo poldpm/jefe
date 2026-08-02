@@ -47,9 +47,17 @@ const ara = new Date();
 const dosDig = (n) => ('0' + n).slice(-2);
 const MARCA = ara.getFullYear() + '-' + dosDig(ara.getMonth() + 1) + '-' + dosDig(ara.getDate()) +
               ' ' + dosDig(ara.getHours()) + ':' + dosDig(ara.getMinutes());
+/* EL COMMIT NOMÉS S'HI POSA SI DIU LA VERITAT.
+   La construcció va abans del commit, sempre: el que es marcava era el
+   commit ANTERIOR, o sigui que després de desplegar un canvi la telemetria
+   seguia ensenyant el mateix codi de sis lletres que abans. Miraves si tenies
+   la versió nova, veies el mateix, i concloïes que no havia arribat.
+   Si hi ha canvis sense desar, el que es construeix no és cap commit i no
+   se n'inventa cap: es diu que és un build de treball. */
 let commit = '';
 try {
-  commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  const brut = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+  commit = brut ? 'en curs' : execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
 } catch (e) { /* fora d'un repositori, la data ja diu prou */ }
 
 /* La mateixa marca va al fitxer que serveix Apps Script. Es genera aqui i
