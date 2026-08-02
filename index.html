@@ -820,7 +820,14 @@ h2 { font-size: 1.0625rem; }
                         background: var(--paper); color: var(--ink);
                         border: 1px solid var(--neatline); border-radius: var(--r); }
 
-.prot-bloc { margin-top: var(--e4); }
+/* L'objectiu de proteïna, en anell. La barra que hi havia deia el mateix
+   que l'anell de la pàgina del dia amb una forma diferent: dos idiomes per
+   a una sola cosa. El que falta va al costat en text, perquè no depengui de
+   saber llegir un cercle. */
+.prot-bloc { margin-top: var(--e4); display: flex; align-items: center; gap: var(--e4); }
+.prot-diu { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prot-diu .num { font-family: var(--mono); font-size: 1.125rem; font-weight: 600;
+                 letter-spacing: -.02em; }
 .prot-cap { display: flex; justify-content: space-between; align-items: baseline;
             margin-bottom: var(--e1); }
 .prot-barra { height: 8px; background: var(--roca); border: 1px solid var(--neatline); }
@@ -1752,7 +1759,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 17:58 · 6b2e3e1";</script>
+<script>window.MARCA_JEFE = "2026-08-02 18:01 · 4557c5c";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1900,7 +1907,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 17:58 · 6b2e3e1";
+window.MARCA_JEFE = "2026-08-02 18:01 · 4557c5c";
 </script>
 
 <script>
@@ -5695,16 +5702,24 @@ App.registraVista('nutricio', {
           xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
         '</div>' +
 
+        /* L'OBJECTIU DE PROTEÏNA, EN ANELL.
+           Era una barra, i l'app ja té l'anell per dir «quant en portes»: una
+           barra aquí i un anell a la pàgina del dia són dos idiomes per dir
+           exactament el mateix. El que falta va al costat, en text, perquè no
+           depengui de saber llegir un cercle. */
         (teObjProt
           ? '<div class="prot-bloc">' +
-              // La xifra de proteïna ja és just a sobre: aquí només cal dir
-              // fins on has d'arribar, no repetir-ne el nom.
-              '<div class="prot-cap"><span class="marge">Objectiu</span>' +
-                '<span class="num menut">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
+              '<div class="anell" style="--p:' + pct.toFixed(0) + '"' +
+                ' role="img" aria-label="' + r1(t.proteina) + ' de ' + r0(d.objectius.proteina) + ' g de proteïna">' +
+                '<b>' + pct.toFixed(0) + '%</b><small>proteïna</small>' +
               '</div>' +
-              '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-              (t.proteina < d.objectius.proteina
-                ? '<p class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g.</p>' : '') +
+              '<div class="prot-diu">' +
+                '<span class="marge">Objectiu</span>' +
+                '<span class="num">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
+                (t.proteina < d.objectius.proteina
+                  ? '<span class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g</span>'
+                  : '<span class="menut">Assolit</span>') +
+              '</div>' +
             '</div>'
           : '');
     }

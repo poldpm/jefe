@@ -144,16 +144,24 @@ App.registraVista('nutricio', {
           xifra('Cremades', d.teCremades ? r0(d.cremades) : '—', d.teCremades ? 'kcal' : '') +
         '</div>' +
 
+        /* L'OBJECTIU DE PROTEÏNA, EN ANELL.
+           Era una barra, i l'app ja té l'anell per dir «quant en portes»: una
+           barra aquí i un anell a la pàgina del dia són dos idiomes per dir
+           exactament el mateix. El que falta va al costat, en text, perquè no
+           depengui de saber llegir un cercle. */
         (teObjProt
           ? '<div class="prot-bloc">' +
-              // La xifra de proteïna ja és just a sobre: aquí només cal dir
-              // fins on has d'arribar, no repetir-ne el nom.
-              '<div class="prot-cap"><span class="marge">Objectiu</span>' +
-                '<span class="num menut">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
+              '<div class="anell" style="--p:' + pct.toFixed(0) + '"' +
+                ' role="img" aria-label="' + r1(t.proteina) + ' de ' + r0(d.objectius.proteina) + ' g de proteïna">' +
+                '<b>' + pct.toFixed(0) + '%</b><small>proteïna</small>' +
               '</div>' +
-              '<div class="prot-barra"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-              (t.proteina < d.objectius.proteina
-                ? '<p class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g.</p>' : '') +
+              '<div class="prot-diu">' +
+                '<span class="marge">Objectiu</span>' +
+                '<span class="num">' + r1(t.proteina) + ' / ' + r0(d.objectius.proteina) + ' g</span>' +
+                (t.proteina < d.objectius.proteina
+                  ? '<span class="menut">Falten ' + r1(d.objectius.proteina - t.proteina) + ' g</span>'
+                  : '<span class="menut">Assolit</span>') +
+              '</div>' +
             '</div>'
           : '');
     }

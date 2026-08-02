@@ -792,7 +792,14 @@ h2 { font-size: 1.0625rem; }
                         background: var(--paper); color: var(--ink);
                         border: 1px solid var(--neatline); border-radius: var(--r); }
 
-.prot-bloc { margin-top: var(--e4); }
+/* L'objectiu de proteïna, en anell. La barra que hi havia deia el mateix
+   que l'anell de la pàgina del dia amb una forma diferent: dos idiomes per
+   a una sola cosa. El que falta va al costat en text, perquè no depengui de
+   saber llegir un cercle. */
+.prot-bloc { margin-top: var(--e4); display: flex; align-items: center; gap: var(--e4); }
+.prot-diu { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prot-diu .num { font-family: var(--mono); font-size: 1.125rem; font-weight: 600;
+                 letter-spacing: -.02em; }
 .prot-cap { display: flex; justify-content: space-between; align-items: baseline;
             margin-bottom: var(--e1); }
 .prot-barra { height: 8px; background: var(--roca); border: 1px solid var(--neatline); }
