@@ -1391,3 +1391,107 @@ function fusionaPatrimoni(idVell, idBo) {
   a('Obre finances → patrimoni i mira que la línia sigui la que esperaves.');
   return l.join('\n');
 }
+
+
+/* --------------------------------------------------------------------------
+   SENSE HAVER D'ESCRIURE CAP IDENTIFICADOR
+
+   El botó d'executar de l'editor només crida funcions sense paràmetres, o
+   sigui que `fusionaPatrimoni("a", "b")` des d'allà no es pot fer. Aquestes
+   dues sí: la primera busca els duplicats i ensenya què faria, i la segona ho
+   fa. Dos passos i no un, perquè res que toqui dades no ha de passar de cop
+   pel primer botó que premis.
+   -------------------------------------------------------------------------- */
+
+var PROP_FUSIO = 'FUSIO_PATRIMONI_PREVISTA';
+
+/** Busca comptes duplicats i diu què faria. NO toca res. */
+function preparaFusio() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var actius = Dades.llegeix('Patrimoni', function (x) { return !x.esborrat_el; });
+  var hist = {};
+  Dades.llegeix('PatrimoniHistoric').forEach(function (v) {
+    var k = String(v.id_actiu);
+    if (!hist[k]) hist[k] = [];
+    hist[k].push({ data: String(v.data), valor: Number(v.valor) || 0 });
+  });
+
+  function ultim(id) {
+    var h = (hist[id] || []).sort(function (p, q) { return p.data.localeCompare(q.data); });
+    return h.length ? h[h.length - 1] : null;
+  }
+
+  /* Dos comptes són el mateix si ho diu el número de compte; i si encara no
+     el tenen apuntat, si es diuen igual —el nom el fa el banc a partir del
+     número, o sigui que dos comptes iguals es diuen igual. */
+  var grups = {};
+  actius.forEach(function (x) {
+    if (String(x.automatic).toUpperCase() !== 'SI') return;
+    var clau = x.iban ? 'n:' + x.iban : 'x:' + String(x.nom).trim().toLowerCase();
+    if (!grups[clau]) grups[clau] = [];
+    grups[clau].push(x);
+  });
+
+  var parelles = [];
+  Object.keys(grups).forEach(function (k) {
+    var g = grups[k];
+    if (g.length < 2) return;
+    // El bo és el que té el valor més recent. Els altres són els congelats.
+    g.sort(function (p, q) {
+      var up = ultim(p.id), uq = ultim(q.id);
+      return String(uq ? uq.data : '').localeCompare(String(up ? up.data : ''));
+    });
+    for (var i = 1; i < g.length; i++) parelles.push({ vell: g[i].id, bo: g[0].id });
+  });
+
+  if (!parelles.length) {
+    a('No trobo cap compte duplicat.');
+    a('');
+    a('Si en veus un que jo no veig, fes mirarPatrimoni() i digue-m\'ho:');
+    a('vol dir que els dos comptes no s\'assemblen en res que jo pugui comparar.');
+    PropertiesService.getScriptProperties().deleteProperty(PROP_FUSIO);
+    return l.join('\n');
+  }
+
+  a('HE TROBAT ' + parelles.length + (parelles.length === 1 ? ' duplicat' : ' duplicats'));
+  a('');
+  parelles.forEach(function (p) {
+    var vell = Dades.perId('Patrimoni', p.vell);
+    var bo = Dades.perId('Patrimoni', p.bo);
+    var uv = ultim(p.vell), ub = ultim(p.bo);
+    a('  Es queda:  ' + bo.nom + '  →  ' + (ub ? ub.valor + ' € del ' + ub.data : 'sense valors'));
+    a('  S\'hi ajunta: ' + vell.nom + '  →  ' + (uv ? uv.valor + ' € del ' + uv.data : 'sense valors'));
+    a('               ' + (hist[p.vell] || []).length + ' valors seus passen al que es queda');
+    a('');
+  });
+
+  PropertiesService.getScriptProperties()
+    .setProperty(PROP_FUSIO, JSON.stringify(parelles));
+
+  a('Si això és el que vols, executa ara:  fusionaAra');
+  a('Si no ho és, no executis res i digue\'m què hauria de sortir.');
+  return l.join('\n');
+}
+
+/** Fa el que ha dit `preparaFusio()`. Cal haver-la executat abans. */
+function fusionaAra() {
+  var brut = PropertiesService.getScriptProperties().getProperty(PROP_FUSIO);
+  var parelles = Utils.desJson(brut, null);
+  if (!parelles || !parelles.length) {
+    return 'Primer executa preparaFusio() i mira que el que digui sigui el que vols.';
+  }
+
+  var l = [];
+  parelles.forEach(function (p) {
+    l.push(fusionaPatrimoni(p.vell, p.bo));
+    l.push('');
+  });
+
+  PropertiesService.getScriptProperties().deleteProperty(PROP_FUSIO);
+  l.push('Fet. Obre finances → patrimoni i mira que la línia sigui la que esperaves.');
+  var text = l.join('\n');
+  Logger.log(text);
+  return text;
+}

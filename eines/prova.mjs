@@ -738,5 +738,93 @@ console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
       r.mirat === true && peticions > abans, JSON.stringify(r.mirat) + ' · ' + peticions);
 }
 
+// --------------------------- trobar el compte duplicat sol, sense escriure cap id
+console.log("");
+console.log("Patrimoni: trobar el duplicat sense haver de dir-li quin es");
+{
+  const props = {};
+  const actius = [
+    // El congelat: l'ultim valor es de fa mesos.
+    { id: 'auto_vell', nom: 'Compte ···4471', automatic: 'SI', iban: '', esborrat_el: '' },
+    // El viu.
+    { id: 'auto_ib0004471', nom: 'Compte ···4471', automatic: 'SI', iban: '', esborrat_el: '' },
+    // I un de manual, que no te res a veure amb aixo.
+    { id: 'act_tr', nom: 'Trade Republic', automatic: 'NO', iban: '', esborrat_el: '' }
+  ];
+  const hist = [
+    { id: 'v1', id_actiu: 'auto_vell', data: '2026-05-01', valor: 4100 },
+    { id: 'v2', id_actiu: 'auto_vell', data: '2026-06-01', valor: 4353 },
+    { id: 'v3', id_actiu: 'auto_ib0004471', data: '2026-08-01', valor: 4052 },
+    { id: 'v4', id_actiu: 'act_tr', data: '2026-08-01', valor: 9000 }
+  ];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} },
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { ara: () => '2026-08-02T10:00:00+02:00', avui: () => '2026-08-02',
+             desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } } },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const files = full === 'Patrimoni' ? actius : hist;
+        return typeof filtre === 'function' ? files.filter(filtre) : files.slice();
+      },
+      perId: (full, id) => (full === 'Patrimoni' ? actius : hist).filter(x => x.id === id)[0] || null,
+      desa: (full, fila) => {
+        const j = hist.findIndex(x => x.id === fila.id);
+        if (j === -1) hist.push(fila); else hist[j] = fila;
+        return fila;
+      },
+      actualitza: (full, id, canvis) => {
+        const x = actius.filter(y => y.id === id)[0];
+        if (x) Object.keys(canvis).forEach(k => { x[k] = canvis[k]; });
+        return x || null;
+      }
+    },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => (props[k] === undefined ? null : props[k]),
+      setProperty: (k, v) => { props[k] = v; },
+      deleteProperty: (k) => { delete props[k]; }
+    }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
+    SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  // Sense haver preparat res, no ha de fer res.
+  cal('sense preparar-ho abans, no toca res',
+      /Primer executa preparaFusio/.test(ctx.fusionaAra()), 'ho ha fet');
+
+  const previsio = ctx.preparaFusio();
+  cal("troba el duplicat sol", /HE TROBAT 1 duplicat/.test(previsio), previsio.slice(0, 60));
+  cal('es queda el que te el valor mes recent',
+      /Es queda:  Compte ···4471  →  4052 € del 2026-08-01/.test(previsio), previsio);
+  cal("i hi ajunta el congelat", /S'hi ajunta: Compte ···4471  →  4353 € del 2026-06-01/.test(previsio), previsio);
+  cal('el manual no hi te res a veure', previsio.indexOf('Trade Republic') === -1, previsio);
+  cal('mirar-ho NO ha tocat res', !actius.filter(x => x.esborrat_el).length, 'ha tocat alguna cosa');
+
+  ctx.fusionaAra();
+  const delBo = hist.filter(x => x.id_actiu === 'auto_ib0004471')
+                    .sort((a, b) => a.data.localeCompare(b.data));
+  cal('despres de fer-ho, la linia del bo va del maig a l agost',
+      delBo.map(x => x.data).join(' ') === '2026-05-01 2026-06-01 2026-08-01',
+      delBo.map(x => x.data).join(' '));
+  cal("i l'ultim valor segueix sent el viu", delBo[delBo.length - 1].valor === 4052,
+      String(delBo[delBo.length - 1].valor));
+  cal('el congelat queda arxivat', !!actius.filter(x => x.id === 'auto_vell')[0].esborrat_el,
+      'no l ha arxivat');
+
+  // I no s'ha de poder repetir sense tornar-ho a preparar.
+  cal('fer-ho dues vegades no torna a passar',
+      /Primer executa preparaFusio/.test(ctx.fusionaAra()), 'ho ha tornat a fer');
+
+  // I ara ja no queda cap duplicat per trobar.
+  cal('un cop fet, ja no en troba cap',
+      /No trobo cap compte duplicat/.test(ctx.preparaFusio()), 'encara en troba');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
