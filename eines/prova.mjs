@@ -1400,7 +1400,7 @@ console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tir
         return { text: 'quants cigarros he fumat avui' };
       },
       disponible: () => true, motiu: () => null,
-      consum: () => ({ avui: 3, limit: null, tocat: false, faSegons: null })
+      consum: () => ({ avui: 3, tocat: false, faSegons: null })
     },
     Habits: { definicions: () => [] },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {}, CacheService: {},

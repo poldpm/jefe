@@ -1618,3 +1618,106 @@ function desfesLaFusio() {
   a('Ara torna a fer preparaFusio() i mira bé quin es queda.');
   return l.join('\n');
 }
+
+
+/**
+ * PER QUÈ NO M'HAS ENTRAT ELS MOVIMENTS?
+ *
+ * Quan al matí has gastat i a la tarda no hi ha res a l'app, hi ha cinc coses
+ * que poden haver passat i des de fora totes es veuen igual. Aquesta funció
+ * les mira una per una i acaba ANANT AL BANC de debò, ara mateix, per si el
+ * que falla és l'automatisme i no la connexió.
+ *
+ * No escriu res que la sincronització normal no escrigués igualment.
+ */
+function queSapElBanc() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  a('EL BANC, PAS PER PAS');
+  a('');
+
+  // 1. Hi ha connexió?
+  if (typeof FinancesBanc === 'undefined') { a('El mòdul del banc no existeix.'); return l.join('\n'); }
+  var e = FinancesBanc.estat();
+  a('1. CONNEXIÓ');
+  a('   connectat ......... ' + (FinancesBanc.disponible() ? 'sí' : 'NO'));
+  a('   comptes ........... ' + ((e.accounts || []).length));
+  (e.accounts || []).forEach(function (c) {
+    a('       · ' + (c.iban ? '···' + String(c.iban).slice(-4) : String(c.uid).slice(0, 12)));
+  });
+  if (e.valid_until) {
+    var dies = Utils.diesEntre(Utils.avui(), String(e.valid_until).slice(0, 10));
+    a('   el permís caduca .. ' + String(e.valid_until).slice(0, 10) +
+      (dies !== null ? '  (' + (dies < 0 ? 'JA HA CADUCAT' : 'd\'aquí ' + dies + ' dies') + ')' : ''));
+  }
+  if (!FinancesBanc.disponible()) {
+    a('');
+    a('Sense connexió no hi ha res a fer: torna a executar connectaBanc().');
+    return l.join('\n');
+  }
+
+  // 2. Els automatismes hi són?
+  a('');
+  a('2. AUTOMATISMES');
+  var hores = [];
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'triggerBanc') hores.push(t.getUniqueId().slice(0, 6));
+  });
+  a('   triggers de banc .. ' + hores.length + (hores.length ? '' : '  ← CAP: executa instalaTriggers()'));
+  a('   n\'hi hauria d\'haver 3 (6:00, 15:00 i 20:00)');
+  if (hores.length && hores.length !== 3) {
+    a('   ← el nombre no quadra: executa instalaTriggers() i torna-hi');
+  }
+
+  // 3. Quan es va mirar per última vegada?
+  a('');
+  a('3. ÚLTIMA MIRADA');
+  var com = FinancesBanc.comEstem();
+  a('   quan .............. ' + (com.quan ? com.quan + '  (' + com.fa + ')' : 'mai'));
+  if (com.error) a('   últim error ....... ' + com.error);
+
+  // 4. Què hi ha entrat últimament?
+  a('');
+  a('4. ELS ÚLTIMS MOVIMENTS QUE VAN ENTRAR DEL BANC');
+  var delBanc = Dades.llegeix('Moviments', function (m) {
+    return !m.esborrat_el && m.origen === 'banc';
+  });
+  delBanc.sort(function (x, y) { return String(y.data).localeCompare(String(x.data)); });
+  if (!delBanc.length) a('   cap. No n\'ha entrat mai cap del banc.');
+  delBanc.slice(0, 6).forEach(function (m) {
+    a('   ' + m.data + '  ' + (m.tipus === 'i' ? '+' : '−') + m['import'] + '  ' +
+      Utils.talla(m.descripcio, 40));
+  });
+
+  // 5. I ara s'hi va, ara mateix.
+  a('');
+  a('5. HI VAIG ARA');
+  var r;
+  try {
+    r = ambBloqueig_(function () { return FinancesBanc.sincronitza(); });
+  } catch (err) {
+    a('   ha petat: ' + err.message);
+    a('');
+    a('Si diu res de quota o de 429, és el banc que no deixa mirar-hi més');
+    a('vegades avui. Si diu una altra cosa, passa-m\'ho.');
+    return l.join('\n');
+  }
+
+  a('   moviments nous .... ' + r.nous);
+  a('   ja sabuts ......... ' + r.jaSabuts);
+  a('   saldos desats ..... ' + r.saldos);
+  if (r.errors && r.errors.length) r.errors.forEach(function (x) { a('   error: ' + x); });
+
+  a('');
+  if (r.nous) {
+    a('N\'han entrat ' + r.nous + ' ara mateix. Vol dir que la connexió va bé i que');
+    a('el que fallava era l\'automatisme: mira el punt 2.');
+  } else {
+    a('El banc no en dona cap de nou. Si tu saps que n\'hi ha d\'aquest matí,');
+    a('vol dir que EL BANC encara no els ha publicat: les targetes solen trigar');
+    a('hores i de vegades fins l\'endemà. No és cosa de l\'app; ho és del banc.');
+    a('Compara les dates del punt 4 amb el que et surt a l\'app del banc.');
+  }
+  return l.join('\n');
+}

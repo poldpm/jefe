@@ -399,14 +399,12 @@ App.registraVista('conversa', {
 
       /* QUANTES PETICIONS PORTES. Google no diu quantes te'n queden —no hi ha
          manera de preguntar-ho—, o sigui que aquí hi ha el que hem gastat
-         nosaltres, que sí que ho sabem del cert, i quan ens van dir que prou.
-         Cap barra inventada: un número mesurat val més que un percentatge que
-         se l'empesca. */
+         nosaltres i quan ens van dir que prou. Cap percentatge: caldria un
+         límit escrit a mà i un tant per cent contra un denominador suposat
+         sembla una dada sense ser-ho. */
       var c = estatIA && estatIA.consum;
       if (c) {
-        dre.push('peticions avui <span class="val">' + c.avui +
-                 (c.limit ? ' / ' + c.limit : '') + '</span>');
-        if (c.limit) dre.push('queda <span class="val">' + c.percentatge + '%</span>');
+        dre.push('peticions avui <span class="val">' + c.avui + '</span>');
         if (c.faSegons !== null) {
           dre.push('últim límit <span class="val">' +
                    (c.faSegons < 90 ? 'fa ' + c.faSegons + 's'

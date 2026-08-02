@@ -65,9 +65,11 @@ var IA = (function () {
      L'únic que se sap del cert és el que hem gastat NOSALTRES, i quan ens han
      dit que prou. Doncs això és el que es compta, i el que s'ensenya.
 
-     No hi ha cap percentatge inventat. Si poses el límit del teu pla a
-     `limit_peticions_dia`, llavors sí que hi ha un tant per cent de debò; si
-     no, es veu el número i prou, que ja diu més que una barra que menteix.
+     I NO HI HA CAP PERCENTATGE. Va existir mig dia: calculava el que quedava
+     contra un límit que havia d'escriure ell a mà. En Pol el va fer fora, i
+     tenia raó: un tant per cent contra un denominador suposat sembla una dada
+     i no ho és. Val més un número petit que se sap cert que un de gran que
+     s'ha d'anar creient.
      ------------------------------------------------------------------------ */
 
   var CAU_COMPTADOR = 'ia_peticions_';   // + dia
@@ -105,8 +107,7 @@ var IA = (function () {
         PropertiesService.getScriptProperties().getProperty(PROP_ULTIM_NO), null);
     } catch (e) {}
 
-    var limit = Config.getNum('limit_peticions_dia', 0);
-    var r = { avui: avui, limit: limit || null, tocat: false, faSegons: null, esperaSegons: null };
+    var r = { avui: avui, tocat: false, faSegons: null, esperaSegons: null };
 
     if (ultim && ultim.quan) {
       var d = new Date(ultim.quan);
@@ -121,7 +122,6 @@ var IA = (function () {
         r.quota = ultim.quota || '';
       }
     }
-    if (limit) r.percentatge = Math.max(0, Math.round(100 - (avui / limit) * 100));
     return r;
   }
 
