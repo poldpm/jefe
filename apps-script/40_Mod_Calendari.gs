@@ -38,6 +38,12 @@ function MODUL_CALENDARI() {
     ordre: 5,                 // el primer: la pregunta del matí és «què tinc avui»
     versioEsquema: 1,
 
+    /* NO DESIS RES DEL QUE DIGUI. El que ensenya aquest mòdul no surt del seu
+       full: surt de Google Calendar, i pot canviar des del mòbil sense que
+       aquí s'escrigui ni una fila. Té la seva pròpia finestra de tres minuts
+       —vegeu `rang`— i qualsevol desada per sobre d'aquella mentiria. */
+    volatil: true,
+
     fulls: [
       {
         nom: 'Calendaris',

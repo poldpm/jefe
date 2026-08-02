@@ -1663,5 +1663,64 @@ console.log("Memoria de pantalles: desar sense mentir");
       String(muntades));
 }
 
+// ----------- les targetes d'inici es desen, menys les del que no surt d'un full
+console.log("");
+console.log("Inici: cada targeta desada a casa seva, i el calendari mai");
+{
+  const memoria = {};
+  const cau = {
+    get: (k) => (memoria[k] === undefined ? null : memoria[k]),
+    getAll: (ks) => { const o = {}; ks.forEach(k => { if (memoria[k] !== undefined) o[k] = memoria[k]; }); return o; },
+    put: (k, v) => { memoria[k] = v; }, putAll: (o) => { Object.keys(o).forEach(k => { memoria[k] = o[k]; }); },
+    remove: (k) => { delete memoria[k]; }, removeAll: (ks) => { ks.forEach(k => { delete memoria[k]; }); }
+  };
+
+  const comptador = { finances: 0, calendari: 0, tasques: 0 };
+  const moduls = [
+    { id: 'finances', nom: 'Finances', fulls: [{ nom: 'Moviments' }],
+      resumInici: function () { comptador.finances++; return { etiqueta: 'Balanç', valor: '400 €' }; } },
+    { id: 'tasques', nom: 'Tasques', fulls: [{ nom: 'Tasques' }],
+      resumInici: function () { comptador.tasques++; return { etiqueta: 'Per fer', valor: 3 }; } },
+    // El calendari NO surt del seu full: no s'ha de desar mai.
+    { id: 'calendari', nom: 'Calendari', volatil: true, fulls: [{ nom: 'Calendaris' }],
+      resumInici: function () { comptador.calendari++; return { etiqueta: 'El següent', valor: '17:00' }; } }
+  ];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    CacheService: { getScriptCache: () => cau },
+    Config: { full: () => ({ getSheetByName: () => null }) },
+    Utils: { avui: () => '2026-08-02', ara: () => 'ara' },
+    Dades: { llegeix: () => [] }, Esquema: {}, IA: {},
+    SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/25_Memoria.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8'), ctx);
+  moduls.forEach(function (m) { ctx['MODUL_' + m.id.toUpperCase()] = function () { return m; }; });
+
+  const t1 = ctx.Moduls.resumInici();
+  cal('la primera vegada les munta totes',
+      comptador.finances === 1 && comptador.tasques === 1 && comptador.calendari === 1,
+      JSON.stringify(comptador));
+  cal('i surten totes tres', t1.length === 3, String(t1.length));
+  cal('amb el mòdul a dins', t1[0].modul === 'finances', JSON.stringify(t1[0]));
+
+  ctx.Moduls.resumInici();
+  cal('la segona no torna a muntar les que surten del full',
+      comptador.finances === 1 && comptador.tasques === 1, JSON.stringify(comptador));
+  cal('PERO EL CALENDARI SI: el que ensenya no surt del seu full',
+      comptador.calendari === 2, String(comptador.calendari));
+
+  // I escriure a finances no ha de tocar la targeta de tasques.
+  ctx.Memoria.oblida('finances');
+  ctx.Moduls.resumInici();
+  cal('escriure a finances només torna a muntar la de finances',
+      comptador.finances === 2 && comptador.tasques === 1, JSON.stringify(comptador));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

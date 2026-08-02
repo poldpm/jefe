@@ -78,7 +78,7 @@ function netejaFullPerDefecte_(ss) {
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
-                'triggerAgendaDelDia'];
+                'triggerAgendaDelDia', 'triggerEscalfa'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -105,6 +105,13 @@ function instalaTriggers() {
   // mirar l'hora real per no equivocar-se de jornada si li passa la mitjanit.
   ScriptApp.newTrigger('triggerTancamentNutricio')
     .timeBased().atHour(23).nearMinute(45).everyDays(1).create();
+
+  /* CADA QUART D'HORA, ESCALFAR LES PANTALLES.
+     Desar-les fa que la SEGONA vegada sigui ràpida; això fa que la primera
+     també ho sigui. Val poc: si ja estan calentes, aquest automatisme són
+     quatre lectures de memòria i s'acaba en menys d'un segon. Només costa
+     quan alguna cosa ha canviat, que és justament quan val la pena. */
+  ScriptApp.newTrigger('triggerEscalfa').timeBased().everyMinutes(15).create();
 
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */
@@ -1859,4 +1866,64 @@ function provaClauBanc() {
   a('Si l\'has perduda, se\'n genera una de nova a enablebanking.com i s\'ha de');
   a('registrar allà mateix: la vella deixa de servir.');
   return l.join('\n');
+}
+
+
+/**
+ * ESCALFAR LES PANTALLES — cada quart d'hora.
+ *
+ * Desar les pantalles fa que la segona vegada que les obres sigui ràpida.
+ * Això fa que la primera també ho sigui: quan hi arribes, ja estan muntades.
+ *
+ * NO ÉS CAR. `Memoria.recorda` només munta quan no ho té: si res no ha
+ * canviat des de fa un quart d'hora, això són quatre lectures de memòria i
+ * prou. La feina només es fa quan alguna cosa s'ha escrit, que és exactament
+ * quan cal fer-la.
+ *
+ * NO FALLA MAI CAP A FORA. Escalfar és un luxe: si una pantalla peta mentre
+ * es munta, es deixa estar i el registre ho diu. El que no pot passar és que
+ * un automatisme d'aquests trenqui res.
+ */
+function triggerEscalfa() {
+  var fets = [], fallats = [];
+
+  function escalfa(nom, fn) {
+    try { fn(); fets.push(nom); }
+    catch (err) { fallats.push(nom + ': ' + err.message); }
+  }
+
+  var m = Moduls.actius();
+  for (var i = 0; i < m.length; i++) {
+    var id = m[i].id;
+    var accions = m[i].accions || {};
+
+    /* El que no surt d'un full no s'escalfa: el calendari es llegeix de Google
+       i té la seva pròpia finestra de tres minuts, o sigui que escalfar-lo
+       cada quart d'hora seria anar-hi noranta-sis vegades al dia per res —i
+       les de l'escola passen pel pont de l'altre compte. */
+    if (m[i].volatil) continue;
+
+    // Les targetes de la pantalla d'inici també, que és la primera que veus.
+    if (typeof m[i].resumInici === 'function') {
+      escalfa(id + ':targeta', (function (mod) {
+        return function () {
+          Memoria.recorda(mod.id, 'resumInici', function () { return mod.resumInici(); });
+        };
+      })(m[i]));
+    }
+
+    /* Cada mòdul s'escalfa per la porta per on hi entres tu, i amb els
+       paràmetres de sèrie: el mes en curs, el dia d'avui. La resta —un mes
+       de fa mig any, l'històric d'un hàbit— es munta quan hi vas, que és de
+       tant en tant i no val la pena tenir-ho calent sempre. */
+    if (typeof accions.pantalla === 'function') {
+      escalfa(id, (function (a) { return function () { a({}); }; })(accions.pantalla));
+    } else if (typeof accions.dia === 'function') {
+      escalfa(id, (function (a) { return function () { a({}); }; })(accions.dia));
+    }
+  }
+
+  if (fallats.length) Log.avis('escalfa', 'Alguna pantalla no s\'ha pogut escalfar', { fallats: fallats });
+  else Log.info('escalfa', 'Pantalles a punt', { quantes: fets.length });
+  return fets.join(', ');
 }

@@ -89,14 +89,27 @@ var Moduls = (function () {
     });
   }
 
-  /** Targetes de la pantalla d'inici. Un mòdul que peta no tomba la pantalla. */
+  /**
+   * Targetes de la pantalla d'inici. Un mòdul que peta no tomba la pantalla.
+   *
+   * CADA TARGETA ES DESA A CASA SEVA. Muntar-les totes vol dir obrir un full
+   * per mòdul, i això és el que costava obrir l'app. Desades una per una, la
+   * targeta de finances només es torna a muntar quan s'escriu a finances i les
+   * altres no se n'assabenten. El mòdul que es declara `volatil` no es desa
+   * mai: el que ensenya no surt del seu full i seria mentir.
+   */
   function resumInici() {
     var out = [];
     var m = actius();
     for (var i = 0; i < m.length; i++) {
       if (typeof m[i].resumInici !== 'function') continue;
       try {
-        var r = m[i].resumInici();
+        var r = m[i].volatil || typeof Memoria === 'undefined'
+          ? m[i].resumInici()
+          : Memoria.recorda(m[i].id, 'resumInici',
+              (function (mod) { return function () { return mod.resumInici(); }; })(m[i]));
+        /* Es pot tocar sense por: quan ve desat, `Memoria` en torna una còpia
+           acabada de fer, i el que hi ha guardat no porta el `modul` a dins. */
         if (r) { r.modul = m[i].id; out.push(r); }
       } catch (err) {
         Log.error('moduls.resumInici', 'Mòdul ' + m[i].id + ': ' + err.message);
