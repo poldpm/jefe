@@ -81,9 +81,24 @@ var FinancesBanc = (function () {
 
     var sense = b64url_(Utilities.newBlob(JSON.stringify(capcalera)).getBytes()) + '.' +
                 b64url_(Utilities.newBlob(JSON.stringify(cos)).getBytes());
-    var signatura = Utilities.computeRsaSha256Signature(sense, prop_('EB_PRIVATE_KEY'));
-    var token = sense + '.' + b64url_(signatura);
 
+    /* SI LA CLAU NO SERVEIX, QUE ES NOTI AQUÍ.
+       Apps Script diu «Invalid argument: key» i prou, i aquell missatge pujava
+       fins a la pantalla com si fos una resposta del banc: es va perdre una
+       tarda buscant per què el banc no publicava els moviments quan el que
+       passava és que no els arribàvem ni a demanar. */
+    var signatura;
+    try {
+      signatura = Utilities.computeRsaSha256Signature(sense, prop_('EB_PRIVATE_KEY'));
+    } catch (err) {
+      var e = new Error('No he pogut signar la petició al banc: la clau privada ' +
+                        '(EB_PRIVATE_KEY, a Propietats de l\'script) no serveix. ' +
+                        'Apps Script diu: ' + err.message + '. Executa provaClauBanc().');
+      e.clauDolenta = true;
+      throw e;
+    }
+
+    var token = sense + '.' + b64url_(signatura);
     cache.put('eb_jwt', token, 3300);
     return token;
   }

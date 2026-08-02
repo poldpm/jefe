@@ -1637,6 +1637,25 @@ function queSapElBanc() {
   a('EL BANC, PAS PER PAS');
   a('');
 
+
+  /* 0. LA CLAU. Va primer perque si no serveix, tota la resta es soroll: no
+     s'arriba ni a demanar res al banc, i des de fora sembla que el banc no
+     doni res. */
+  var potSignar = true;
+  try {
+    Utilities.computeRsaSha256Signature('prova',
+      PropertiesService.getScriptProperties().getProperty('EB_PRIVATE_KEY') || '');
+  } catch (errClau) { potSignar = false; }
+
+  a('0. LA CLAU PER SIGNAR');
+  a('   serveix ........... ' + (potSignar ? 'si' : 'NO'));
+  if (!potSignar) {
+    a('');
+    a("AQUI S'ATURA TOT. Sense poder signar no s'arriba ni a demanar res al");
+    a("banc, i el que es veu des de fora es que el banc no dona res.");
+    a("Executa provaClauBanc(): et dira que li passa i com arreglar-ho.");
+    return l.join('\n');
+  }
   // 1. Hi ha connexió?
   if (typeof FinancesBanc === 'undefined') { a('El mòdul del banc no existeix.'); return l.join('\n'); }
   var e = FinancesBanc.estat();
@@ -1710,14 +1729,112 @@ function queSapElBanc() {
   if (r.errors && r.errors.length) r.errors.forEach(function (x) { a('   error: ' + x); });
 
   a('');
-  if (r.nous) {
+  if (r.errors && r.errors.length) {
+    /* AMB ERRORS NO ES POT DIR QUE EL BANC NO EN TINGUI: no els hi hem
+       arribat a demanar. La primera versió d'això ho deia igualment, amb
+       l'error imprès dues línies més amunt, i va enviar en Pol a esperar el
+       banc quan el que fallava era la clau. */
+    a('NO ES POT DIR QUE EL BANC NO EN TINGUI: la petició ha fallat, o sigui');
+    a('que ni els hi hem demanat. Mira l\'error de sobre.');
+    a('Si parla de «key» o de signar, executa provaClauBanc().');
+  } else if (r.nous) {
     a('N\'han entrat ' + r.nous + ' ara mateix. Vol dir que la connexió va bé i que');
     a('el que fallava era l\'automatisme: mira el punt 2.');
   } else {
-    a('El banc no en dona cap de nou. Si tu saps que n\'hi ha d\'aquest matí,');
-    a('vol dir que EL BANC encara no els ha publicat: les targetes solen trigar');
-    a('hores i de vegades fins l\'endemà. No és cosa de l\'app; ho és del banc.');
+    a('La petició ha anat bé i el banc no en dona cap de nou. Si tu saps que');
+    a('n\'hi ha d\'aquest matí, vol dir que EL BANC encara no els ha publicat:');
+    a('les targetes solen trigar hores i de vegades fins l\'endemà.');
     a('Compara les dates del punt 4 amb el que et surt a l\'app del banc.');
   }
+  return l.join('\n');
+}
+
+
+/**
+ * LA CLAU PRIVADA DEL BANC, MIRADA DE PROP.
+ *
+ * Apps Script, quan una clau RSA no li serveix, diu «Invalid argument: key» i
+ * res més. Ni per què, ni quina. Aquí es mira la forma de la clau abans de
+ * fer-la servir —que és on es veuen els problemes de debò— i després es prova
+ * de signar-hi.
+ *
+ * NO ENSENYA LA CLAU. Només com és: si comença i acaba com ha de començar i
+ * acabar, si té salts de línia de veritat, i quant fa.
+ */
+function provaClauBanc() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var props = PropertiesService.getScriptProperties();
+  var clau = props.getProperty('EB_PRIVATE_KEY');
+  var app = props.getProperty('EB_APP_ID');
+
+  a('LA CLAU PRIVADA DEL BANC');
+  a('');
+
+  if (!app) a('EB_APP_ID .......... NO HI ÉS');
+  else a('EB_APP_ID .......... ' + app.slice(0, 8) + '…  (' + app.length + ' caràcters)');
+
+  if (!clau) {
+    a('EB_PRIVATE_KEY ..... NO HI ÉS');
+    a('');
+    a('Ves a Apps Script → Configuració del projecte → Propietats de l\'script');
+    a('i torna-hi a posar la clau privada que et va donar Enable Banking.');
+    return l.join('\n');
+  }
+
+  a('EB_PRIVATE_KEY ..... ' + clau.length + ' caràcters');
+  a('');
+
+  var comenca = /^-----BEGIN (RSA )?PRIVATE KEY-----/.test(clau.trim());
+  var acaba = /-----END (RSA )?PRIVATE KEY-----\s*$/.test(clau.trim());
+  var saltsDeVeritat = clau.indexOf('\n') !== -1;
+  var saltsEscrits = clau.indexOf('\n') !== -1;
+
+  a('   comença per -----BEGIN ...... ' + (comenca ? 'sí' : 'NO'));
+  a('   acaba per -----END ......... ' + (acaba ? 'sí' : 'NO'));
+  a('   té salts de línia de debò ... ' + (saltsDeVeritat ? 'sí' : 'NO'));
+  if (saltsEscrits) a('   ← porta \n ESCRITS com a dues lletres, i això no val');
+  a('');
+
+  var problemes = [];
+  if (!comenca) problemes.push('no comença per -----BEGIN PRIVATE KEY-----');
+  if (!acaba) problemes.push('no acaba per -----END PRIVATE KEY-----');
+  if (!saltsDeVeritat) problemes.push('està tota en una línia');
+  if (saltsEscrits) problemes.push('porta \n escrits en comptes de salts');
+
+  // I ara la prova de debò: signar-hi alguna cosa.
+  var signa = true, motiu = '';
+  try {
+    Utilities.computeRsaSha256Signature('prova', clau);
+  } catch (err) {
+    signa = false; motiu = err.message;
+  }
+
+  a('   SIGNA? ..................... ' + (signa ? 'SÍ' : 'NO — ' + motiu));
+  a('');
+
+  if (signa) {
+    a('La clau serveix. Si el banc segueix sense donar res, el problema és');
+    a('un altre: torna a executar queSapElBanc() i passa\'m el que digui.');
+    return l.join('\n');
+  }
+
+  a('AIXÒ ÉS EL QUE FA QUE NO ENTRIN ELS MOVIMENTS.');
+  a('');
+  if (problemes.length) {
+    a('El que li veig de mal:');
+    problemes.forEach(function (p) { a('   · ' + p); });
+    a('');
+  }
+  a('Com arreglar-ho:');
+  a('   1. Apps Script → Configuració del projecte → Propietats de l\'script');
+  a('   2. Esborra el valor de EB_PRIVATE_KEY i torna-hi a enganxar el fitxer');
+  a('      .pem sencer que et va donar Enable Banking, TAL QUAL: amb la línia');
+  a('      del BEGIN, la del END i els salts de línia de cada ratlla.');
+  a('   3. Torna a executar provaClauBanc() i mira que digui SIGNA? SÍ.');
+  a('');
+  a('Si l\'has perduda, se\'n genera una de nova a enablebanking.com i s\'ha de');
+  a('registrar allà mateix: la vella deixa de servir.');
   return l.join('\n');
 }

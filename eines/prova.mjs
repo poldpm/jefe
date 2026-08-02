@@ -1428,5 +1428,50 @@ console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tir
   cal('sense so, no crida ningu', ho, 'ho ha fet');
 }
 
+// ------------ una clau que no serveix no pot semblar que el banc no doni res
+console.log("");
+console.log("Banc: si no es pot signar, que ho digui i no acusi el banc");
+{
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp, isNaN, parseInt, parseFloat,
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { avui: () => '2026-08-02', ara: () => 'ara', talla: (t, n) => String(t).slice(0, n),
+             desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } },
+             diesEntre: () => 30 },
+    Config: { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d },
+    Utilities: {
+      base64EncodeWebSafe: () => 'x',
+      newBlob: (t) => ({ getBytes: () => t }),
+      formatDate: (d) => d.getFullYear() + '-01-01',
+      // Aixo es exactament el que fa Apps Script amb una clau que no li serveix.
+      computeRsaSha256Signature: () => { throw new Error('Invalid argument: key'); }
+    },
+    CacheService: { getScriptCache: () => ({ get: () => null, put: () => {} }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => ({ FINANCES_BANC: JSON.stringify({ connected: true, accounts: [{ uid: 'u1' }] }),
+                             EB_APP_ID: 'app', EB_PRIVATE_KEY: 'una-clau-que-no-serveix',
+                             EB_REDIRECT: 'r' })[k] || null,
+      setProperty: () => {} }) },
+    UrlFetchApp: { fetch: () => { throw new Error('no hi hauria d hagut d arribar'); } },
+    Dades: { llegeix: () => [], perId: () => null, insereix: () => null,
+             actualitza: () => null, desa: () => null },
+    Finances: { afegeix: (m) => m },
+    FinancesRegles: { descripcio: () => 'x', categoria: () => '', metode: () => '' },
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {}, ScriptApp: {},
+    Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8'), ctx);
+
+  const r = ctx.FinancesBanc.sincronitza();
+  const err = (r.errors || []).join(' ');
+
+  cal("l'error diu que es la clau, no un misteri d'Apps Script",
+      /clau privada/.test(err) && /EB_PRIVATE_KEY/.test(err), err);
+  cal('i diu on mirar-ho', /provaClauBanc/.test(err), err);
+  cal("i no s'ha arribat a demanar res al banc", r.nous === 0, String(r.nous));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
