@@ -34,6 +34,7 @@ function MODUL_CONVERSA() {
       estat:     function (p) { return Conversa.estat(p); },
       historial: function (p) { return Conversa.historial(p.id_conversa); },
       envia:     function (p) { return Conversa.envia(p.text, p.id_conversa); },
+      enviaVeu:  function (p) { return Conversa.enviaVeu(p); },
       nova:      function ()  { return Conversa.nova(); },
       confirma:  function (p) { return Conversa.confirma(p.eina, p.args); },
       elDia:     function (p) { return Conversa.elDia(p.data); }
@@ -217,6 +218,73 @@ var Conversa = (function () {
   }
 
   /**
+   * PARLAR-LI DE VEU, SENSE TRANSCRIURE PEL CAMÍ.
+   *
+   * L'àudio va sencer al model. El reconeixedor del navegador feia una
+   * primera passada en català que s'equivocava sovint —canviava paraules per
+   * altres que sonen igual— i el model havia d'endevinar a partir d'allò. Amb
+   * l'àudio, aquell pas desapareix i amb ell els seus errors.
+   *
+   * Les ordres d'acció segueixen anant: el model té les mateixes eines que
+   * quan escrius, i «obre'm la pàgina del dia» acaba a `mostra_el_dia` igual
+   * que abans. No cal cap llista de frases perquè aquí sí que hi ha algú
+   * entenent-ho.
+   *
+   * Al full s'hi desa «(parlat)»: l'àudio no es guarda enlloc.
+   */
+  function enviaVeu(p) {
+    p = p || {};
+    var dades = String(p.audio || '');
+    var mena = String(p.mime || 'audio/wav');
+
+    if (!dades) throw new Error('No m\'ha arribat cap so.');
+    // Uns 8 MB en base64. Passat d'aquí no és una pregunta, és una gravació.
+    if (dades.length > 8000000) throw new Error('Massa llarg. Digues-m\'ho més curt.');
+
+    var h = historial(p.id_conversa);
+    var id = h.id_conversa;
+    var seq = h.missatges.length;
+
+    desa_(id, seq, 'usuari', '(parlat)');
+
+    var context = h.missatges.slice(-MAX_CONTEXT).map(function (m) {
+      return { rol: m.rol, text: m.text };
+    });
+    /* Aquest missatge ja va format: el transport deixa passar tal qual
+       qualsevol missatge que porti `parts`, i aquí n'hi posem dues, el so i
+       una línia dient què és. */
+    context.push({
+      role: 'user',
+      parts: [
+        { text: 'En Pol t\'acaba de dir això de veu:' },
+        { inline_data: { mime_type: mena, data: dades } }
+      ]
+    });
+
+    var r;
+    try {
+      r = Assistent.pregunta(context);
+    } catch (err) {
+      Log.error('conversa.enviaVeu', err);
+      return { id_conversa: id, error: err.message, iaApagada: !!err.iaApagada };
+    }
+
+    desa_(id, seq + 1, 'assistent', r.text, {
+      eines: r.einesUsades, tokens: r.tokens, model: r.model
+    });
+
+    return {
+      id_conversa: id,
+      pregunta: '(parlat)',
+      resposta: r.text,
+      propostes: r.propostes,
+      eines: r.einesUsades,
+      tokens: r.tokens,
+      temps: r.temps
+    };
+  }
+
+  /**
    * Executa una proposta que has confirmat tu.
    * Aquest és l'únic camí pel qual la IA arriba a escriure a les teves dades,
    * i el dispares tu amb un botó.
@@ -277,6 +345,7 @@ var Conversa = (function () {
   return {
     estat: estat, historial: historial, envia: envia,
     nova: nova, confirma: confirma,
+    enviaVeu: enviaVeu,
     elDia: elDia, elDiaIA: elDiaIA
   };
 })();

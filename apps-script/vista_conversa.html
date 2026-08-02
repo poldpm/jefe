@@ -296,7 +296,8 @@ App.registraVista('conversa', {
     var ocupat = false, veuActiva = Cau.get('conversa.veu', false);
     var tokensSessio = 0, ultimesEines = [], estatIA = null, nucli = null, reconeixedor = null;
 
-    var potEscoltar = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    var potEscoltar = !!(window.SpeechRecognition || window.webkitSpeechRecognition ||
+                         (navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
     var potParlar = !!window.speechSynthesis;
 
     arrel.innerHTML =
@@ -604,37 +605,41 @@ App.registraVista('conversa', {
       }, 1000);
 
       crida('conversa', 'envia', { text: text, id_conversa: idConversa })
-        .then(function (r) {
-          idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
-          if (r.error) {
-            missatges.push({ rol: 'assistent', text: r.error });
-          } else {
-            ultimesEines = r.eines || [];
-            if (r.tokens) tokensSessio += (r.tokens.entrada || 0) + (r.tokens.sortida || 0);
-            missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
-                             propostes: r.propostes, temps: r.temps });
-            if (veuActiva) parla(r.resposta);
-
-            /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
-               És com «ensenya'm la pàgina del dia» acaba ensenyant-la. La
-               conversa no sap quines pantalles hi ha ni quines eines les
-               obren: només mira si l'eina ho ha demanat i hi va. Qualsevol
-               mòdul futur ho pot fer posant `obre` a la seva eina.
-
-               Va amb un respir: si canviéssim de pantalla a l'instant, no
-               arribaries a llegir el que t'acaba de dir. */
-            var ober = (r.eines || []).filter(function (e) { return e.obre; })[0];
-            if (ober) {
-              Cau.set('conversa.missatges', missatges.slice(-40));
-              setTimeout(function () {
-                if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
-              }, 900);
-            }
-          }
-          Cau.set('conversa.missatges', missatges.slice(-40));
-          acaba();
-        })
+        .then(rebResposta)
         .catch(function (err) { missatges.push({ rol: 'assistent', text: err.message }); acaba(); });
+    }
+
+    /* La resposta es tracta igual tant si li has escrit com si li has parlat:
+       una sola funció, perquè el dia que canviï una cosa canviï per als dos. */
+    function rebResposta(r) {
+      idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
+      if (r.error) {
+        missatges.push({ rol: 'assistent', text: r.error });
+      } else {
+        ultimesEines = r.eines || [];
+        if (r.tokens) tokensSessio += (r.tokens.entrada || 0) + (r.tokens.sortida || 0);
+        missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
+                         propostes: r.propostes, temps: r.temps });
+        if (veuActiva) parla(r.resposta);
+
+        /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
+           És com «ensenya'm la pàgina del dia» acaba ensenyant-la, i és també
+           el camí de les ordres dites de veu: allà no hi ha cap llista de
+           frases, hi ha algú entenent-ho. La conversa no sap quines pantalles
+           hi ha ni quines eines les obren: només mira si l'eina ho ha demanat.
+
+           Va amb un respir: si canviéssim de pantalla a l'instant, no
+           arribaries a llegir el que t'acaba de dir. */
+        var ober = (r.eines || []).filter(function (e) { return e.obre; })[0];
+        if (ober) {
+          Cau.set('conversa.missatges', missatges.slice(-40));
+          setTimeout(function () {
+            if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
+          }, 900);
+        }
+      }
+      Cau.set('conversa.missatges', missatges.slice(-40));
+      acaba();
     }
 
     function acaba() {
@@ -642,8 +647,17 @@ App.registraVista('conversa', {
       respostaFresca = true;           // acaba de dir-ho: ara sí que es veu
       clearInterval(App._cronometre);
       arrel.querySelector('#b-envia').disabled = false;
-      posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
-                estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
+
+      /* Si el micròfon segueix obert, ha de tornar a dir que escolta. Deixar-hi
+         «pensant-hi…» fa creure que encara hi és i que no serveix de res
+         tornar-li a parlar. */
+      if (continua && veu.engegat) {
+        posaEstat('escoltant', 'escoltant');
+        mostraOida('escoltant… parla quan vulguis', false);
+      } else {
+        posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
+                  estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
+      }
       pinta();
     }
 
@@ -717,6 +731,252 @@ App.registraVista('conversa', {
         if (p !== -1) return n.slice(p + CLAUS[i].length).replace(/^[\s,.:;!?]+/, '');
       }
       return null;
+    }
+
+    /* ======================================================================
+       PARLAR-LI DIRECTAMENT, SENSE TRANSCRIURE PEL CAMÍ
+
+       El reconeixedor del navegador feia una primera passada en català que
+       s'equivocava sovint: canviava paraules per altres que sonen igual i en
+       Pol ho havia de repetir vocalitzant com si parlés amb una màquina. Amb
+       l'àudio sencer aquell pas desapareix, i amb ell els seus errors.
+
+       Aquí no hi ha cap llista de frases per a les ordres d'acció: com que
+       hi ha algú entenent-ho de debò, «obre'm la pàgina del dia» arriba a
+       l'eina que l'obre igual que quan ho escrius.
+
+       COM SAP QUE HAS ACABAT DE PARLAR: mesurant el volum. Els primers tres
+       quarts de segon serveixen per prendre la mida del silenci de l'habitació
+       —no és el mateix el cotxe que la cuina— i a partir d'aquí, quan tornes a
+       baixar-hi durant un segon, la frase s'ha acabat.
+
+       ENVIA WAV DE 16 kHz i no el que doni el navegador: el que en surt de
+       sèrie a Chrome és webm, i el model no l'accepta. Setze mil mostres per
+       segon és el que fan servir tots els reconeixedors; més no serveix de res
+       i pesa el doble.
+       ====================================================================== */
+
+    var MOSTREIG = 16000;
+    var MAX_SEGONS = 15;               // passat d'aquí no és una pregunta
+    var SILENCI_MS = 1000;             // silenci que tanca la frase
+    var MIN_SEGONS = 0.35;             // menys que això és un cop de porta
+
+    var veu = {
+      flux: null, ctx: null, node: null, font: null,
+      trossos: [], gravant: false, engegat: false,
+      soroll: 0.004, mostresSoroll: 0, desDeSilenci: 0, msVeu: 0, mostresSilenci: 0
+    };
+
+    function potGravar() {
+      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
+                (window.AudioContext || window.webkitAudioContext));
+    }
+
+    function paraVeu() {
+      veu.engegat = false;
+      veu.gravant = false;
+      veu.trossos = [];
+      try { if (veu.node) veu.node.disconnect(); } catch (e) {}
+      try { if (veu.font) veu.font.disconnect(); } catch (e) {}
+      try { if (veu.ctx) veu.ctx.close(); } catch (e) {}
+      try { if (veu.flux) veu.flux.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+      veu.node = veu.font = veu.ctx = veu.flux = null;
+    }
+
+    function engegaVeu() {
+      if (veu.engegat) return;
+      mostraOida('engegant el micròfon…', false);
+
+      navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true,
+                 autoGainControl: true }
+      }).then(function (flux) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        veu.flux = flux;
+        veu.ctx = new AC();
+        veu.font = veu.ctx.createMediaStreamSource(flux);
+        /* `createScriptProcessor` està marcat d'antic, però és l'única manera
+           de llegir les mostres que funciona a tot arreu sense carregar un
+           fitxer a part, i aquí l'app ha de venir d'una sola peça. */
+        veu.node = veu.ctx.createScriptProcessor(4096, 1, 1);
+        veu.node.onaudioprocess = mossega;
+        veu.font.connect(veu.node);
+        veu.node.connect(veu.ctx.destination);
+
+        veu.engegat = true;
+        veu.gravant = false;
+        veu.trossos = [];
+        veu.soroll = 0.004; veu.mostresSoroll = 0; veu.desDeSilenci = 0;
+        veu.msVeu = 0; veu.mostresSilenci = 0;
+
+        posaEstat('escoltant', 'escoltant');
+        mostraOida('escoltant… parla quan vulguis', false);
+      }).catch(function (err) {
+        continua = false; aturaVoluntaria = true;
+        pintaMicro(); amagaOida();
+        if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) diagnosticMicro();
+        else mostraOida('No he pogut obrir el micròfon: ' + (err && err.name ? err.name : 'error'), true);
+      });
+    }
+
+    function mossega(ev) {
+      if (!veu.engegat) return;
+
+      /* Mentre pensa la resposta o mentre parla ell, no s'escolta: si no,
+         es gravaria a si mateix i es respondria sol. El que caigui aquí
+         enmig es llença, no s'acumula per enviar-ho després. */
+      if (ocupat || parlantAra) {
+        if (veu.gravant) { veu.gravant = false; veu.trossos = []; veu.desDeSilenci = 0; }
+        return;
+      }
+
+      var dades = ev.inputBuffer.getChannelData(0);
+
+      var suma = 0;
+      for (var i = 0; i < dades.length; i++) suma += dades[i] * dades[i];
+      var volum = Math.sqrt(suma / dades.length);
+
+      // Els primers instants només serveixen per saber com sona el silenci d'aquí.
+      if (veu.mostresSoroll < 8) {
+        veu.mostresSoroll++;
+        veu.soroll = Math.max(0.003, (veu.soroll * (veu.mostresSoroll - 1) + volum) / veu.mostresSoroll);
+        return;
+      }
+
+      var llindar = Math.max(veu.soroll * 2.5, 0.008);
+      var msTros = (dades.length / veu.ctx.sampleRate) * 1000;
+
+      if (volum > llindar) {
+        if (!veu.gravant) {
+          veu.gravant = true;
+          veu.trossos = [];
+          veu.msVeu = 0;
+          veu.mostresSilenci = 0;
+          mostraOida('sentint-te…', false);
+        }
+        veu.desDeSilenci = 0;
+        veu.msVeu += msTros;
+        veu.mostresSilenci = 0;
+      } else if (veu.gravant) {
+        veu.desDeSilenci += msTros;
+        veu.mostresSilenci += dades.length;
+      }
+
+      if (!veu.gravant) return;
+
+      // Una còpia: el buffer que dona el navegador es reaprofita.
+      var copia = new Float32Array(dades.length);
+      copia.set(dades);
+      veu.trossos.push(copia);
+      nucli.pols(Math.min(1, 0.3 + volum * 8));
+
+      var segons = mostresTotals() / veu.ctx.sampleRate;
+      if (veu.desDeSilenci >= SILENCI_MS || segons >= MAX_SEGONS) tancaFrase();
+    }
+
+    function mostresTotals() {
+      var n = 0;
+      for (var i = 0; i < veu.trossos.length; i++) n += veu.trossos[i].length;
+      return n;
+    }
+
+    function tancaFrase() {
+      var trossos = veu.trossos;
+      var mostres = mostresTotals();
+      var msVeu = veu.msVeu;
+      /* El silenci del final s'hi ha gravat també: se'n treu tot menys un pam,
+         que fa un terç menys de fitxer i un terç menys d'espera per pujar-lo. */
+      var sobren = Math.max(0, veu.mostresSilenci - Math.round(0.25 * (veu.ctx ? veu.ctx.sampleRate : MOSTREIG)));
+
+      veu.gravant = false;
+      veu.trossos = [];
+      veu.desDeSilenci = 0;
+      veu.msVeu = 0;
+      veu.mostresSilenci = 0;
+      if (!veu.ctx) return;
+
+      /* El mínim es mesura amb el que HAS DIT, no amb el que s'ha gravat: un
+         cop de porta dura dues dècimes però arrossega un segon de silenci
+         darrere, i comptant-ho tot semblava una frase. */
+      if (msVeu < MIN_SEGONS * 1000) { mostraOida('escoltant… parla quan vulguis', false); return; }
+
+      mostres = Math.max(0, mostres - sobren);
+      var segons = mostres / veu.ctx.sampleRate;
+      var wav = fesWav(trossos, mostres, veu.ctx.sampleRate);
+      apuntaVeu(segons, wav.length);
+      mostraOida('pensant-hi…', false);
+      enviaSo(wav, segons);
+    }
+
+    /** Les mostres, ajuntades i baixades a 16 kHz, dins d'un fitxer WAV. */
+    function fesWav(trossos, mostres, mostreigOriginal) {
+      var tot = new Float32Array(mostres), pos = 0;
+      for (var i = 0; i < trossos.length && pos < mostres; i++) {
+        var t = trossos[i];
+        if (pos + t.length > mostres) t = t.subarray(0, mostres - pos);
+        tot.set(t, pos); pos += t.length;
+      }
+
+      var rao = mostreigOriginal / MOSTREIG;
+      var quantes = Math.floor(mostres / rao);
+      var pcm = new Int16Array(quantes);
+      for (var j = 0; j < quantes; j++) {
+        var v = tot[Math.floor(j * rao)] || 0;
+        if (v > 1) v = 1; else if (v < -1) v = -1;
+        pcm[j] = v * 32767;
+      }
+
+      var cap = new DataView(new ArrayBuffer(44));
+      var mida = pcm.length * 2;
+      function txt(p, s) { for (var k = 0; k < s.length; k++) cap.setUint8(p + k, s.charCodeAt(k)); }
+      txt(0, 'RIFF');                 cap.setUint32(4, 36 + mida, true);
+      txt(8, 'WAVEfmt ');             cap.setUint32(16, 16, true);
+      cap.setUint16(20, 1, true);     cap.setUint16(22, 1, true);
+      cap.setUint32(24, MOSTREIG, true);
+      cap.setUint32(28, MOSTREIG * 2, true);
+      cap.setUint16(32, 2, true);     cap.setUint16(34, 16, true);
+      txt(36, 'data');                cap.setUint32(40, mida, true);
+
+      // A base64 a trossos: d'una tirada, `String.fromCharCode` peta amb pocs segons.
+      var bytes = new Uint8Array(44 + mida);
+      bytes.set(new Uint8Array(cap.buffer), 0);
+      bytes.set(new Uint8Array(pcm.buffer), 44);
+
+      var lletres = '';
+      for (var n = 0; n < bytes.length; n += 8192) {
+        lletres += String.fromCharCode.apply(null, bytes.subarray(n, n + 8192));
+      }
+      return btoa(lletres);
+    }
+
+    function enviaSo(base64, segons) {
+      if (ocupat) return;
+      ocupat = true;
+      arrel.querySelector('#b-envia').disabled = true;
+      missatges.push({ rol: 'usuari', text: '🎙 ' + segons.toFixed(1) + 's' });
+      respostaFresca = false;
+      pinta();
+      posaEstat('pensant', 'escoltant-te');
+
+      var t0 = Date.now();
+      clearInterval(App._cronometre);
+      App._cronometre = setInterval(function () {
+        var el = arrel.querySelector('#etiqueta-estat');
+        if (el && ocupat) el.textContent = 'consultant · ' + Math.round((Date.now() - t0) / 1000) + 's';
+      }, 1000);
+
+      crida('conversa', 'enviaVeu', { audio: base64, mime: 'audio/wav', id_conversa: idConversa })
+        .then(rebResposta)
+        .catch(function (err) { missatges.push({ rol: 'assistent', text: err.message }); acaba(); });
+    }
+
+    /* El que ha sentit, per si un dia torna a fallar: quant ha durat i quant
+       pesava. Sense text, perquè ara no n'hi ha pel camí. */
+    function apuntaVeu(segons, mida) {
+      diariOida.push({ quan: new Date(), provisional: '', tancat: true,
+                       definitiu: segons.toFixed(1) + ' s · ' + Math.round(mida / 1400) + ' kB enviats',
+                       confianca: null, alternatives: [] });
+      if (diariOida.length > 12) diariOida.shift();
     }
 
     /* EL DIARI DE L'OÏDA.
@@ -888,10 +1148,17 @@ App.registraVista('conversa', {
       catch (e) { reconeixedor = null; }
     }
 
+    /* DOS CAMINS PER PARLAR-LI, I EL BO ÉS EL PRIMER.
+       Si el navegador deixa gravar, l'àudio va sencer al model. Si no —algun
+       navegador vell, o el permís d'àudio en brut denegat—, es cau al
+       reconeixedor de Chrome, que transcriu pitjor però és millor que res. */
+    function veuDirecta() { return potGravar(); }
+
     function alternaEscolta() {
       if (continua) {
         continua = false; aturaVoluntaria = true;
-        if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
+        if (veuDirecta()) paraVeu();
+        else if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
         buffer = '';
         pintaMicro(); amagaOida();
         posaEstat('repos', 'a punt');
@@ -901,9 +1168,15 @@ App.registraVista('conversa', {
       continua = true; aturaVoluntaria = false;
       pintaMicro();
       mostraOida('engegant el micròfon…', false);
-      arrencaReconeixedor();
-      App.brindis(usaParaulaClau ? 'Escoltant. Digues «JEFE» i la pregunta.'
-                                 : 'Escoltant. Parla quan vulguis.');
+
+      if (veuDirecta()) {
+        engegaVeu();
+        App.brindis('Escoltant. Parla quan vulguis.');
+      } else {
+        arrencaReconeixedor();
+        App.brindis(usaParaulaClau ? 'Escoltant. Digues «JEFE» i la pregunta.'
+                                   : 'Escoltant. Parla quan vulguis.');
+      }
     }
 
     function pintaMicro() {
@@ -1022,6 +1295,12 @@ App.registraVista('conversa', {
     (function () {
       var bc = arrel.querySelector('#b-clau');
       if (!bc) return;
+
+      /* La paraula clau només té sentit quan hi ha text pel camí. Amb l'àudio
+         anant directe al model, aquí no hi ha res on buscar «JEFE» abans
+         d'enviar-ho, i deixar el botó seria prometre una cosa que no passa. */
+      if (veuDirecta()) { bc.hidden = true; usaParaulaClau = false; }
+
       function pintaClau() {
         bc.setAttribute('aria-pressed', usaParaulaClau ? 'true' : 'false');
         bc.textContent = 'paraula clau: ' + (usaParaulaClau ? 'ON' : 'OFF');
@@ -1126,7 +1405,7 @@ App.registraVista('conversa', {
         continua = true; aturaVoluntaria = false;
         pintaMicro();
         mostraOida('reprenent l\'escolta…', false);
-        try { arrencaReconeixedor(); }
+        try { if (veuDirecta()) engegaVeu(); else arrencaReconeixedor(); }
         catch (err) {
           continua = false; pintaMicro();
           mostraOida('toca el micròfon per reprendre l\'escolta', true);

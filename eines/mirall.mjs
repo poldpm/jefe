@@ -128,6 +128,17 @@ const MOCK = `
       if (accio === 'historial') return copia(CONV_HIST);
       if (accio === 'nova') return { id_conversa: 'cnv_nou', missatges: [] };
       if (accio === 'elDia') return DIA_PAGINA(p);
+      if (accio === 'enviaVeu') {
+        /* El mirall no pensa, però sí que diu QUÈ li ha arribat. És l'única
+           manera de comprovar que el so surt d'aquí sencer i ben format sense
+           tenir cap micròfon al davant. */
+        var b64 = p.audio || '';
+        window.__ultimSo = { mida: b64.length, mime: p.mime, cap: b64.slice(0, 64) };
+        return { id_conversa: 'cnv_mirall', pregunta: '(parlat)',
+                 resposta: 'He rebut ' + Math.round(b64.length * 0.75 / 1024) + ' kB de so.',
+                 eines: [], propostes: [], tokens: { entrada: 0, sortida: 0 },
+                 temps: { total: 1, ia: 1, context: 0, eines: 0, voltes: 1 } };
+      }
       if (accio === 'envia') throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
     }
 

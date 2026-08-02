@@ -61,7 +61,8 @@ var Dades = (function () {
        aquí no se sap ni cal saber-ho. */
     if (typeof Moduls === 'undefined' || !Moduls.invalidaContext) return;
     if (nom && Moduls.alimentaContext && !Moduls.alimentaContext(nom)) return;
-    Moduls.invalidaContext();
+    // Amb el nom del full, només cau el tros de qui el té. Sense, tot.
+    Moduls.invalidaContext(nom || null);
   }
 
   function esBuida_(fila) {

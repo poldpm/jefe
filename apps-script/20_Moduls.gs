@@ -172,47 +172,53 @@ var Moduls = (function () {
     return out;
   }
 
-  var CAU_CONTEXT = 'ia_context';
+  var CAU_CONTEXT = 'ia_context_';       // + id del mòdul
+  var VIDA_CONTEXT = 300;                // 5 min: encara que no canviï res, «avui» caduca
 
   /**
    * Fitxa compacta per a la IA: cada mòdul aporta el seu resum en text curt.
    *
-   * ES DESA A LA MEMÒRIA CAU, i és el que fa que la segona pregunta d'una
-   * conversa sigui molt més ràpida que la primera. Muntar-la vol dir obrir el
-   * full de cada mòdul: amb hàbits i nutrició ja costava més que pensar la
-   * resposta, i cada mòdul nou hi suma.
+   * ES DESA PER MÒDULS, NO SENCERA. Muntar-la vol dir obrir el full de cada
+   * mòdul, i sencera costava tres o quatre segons. Desada d'una peça, marcar
+   * un hàbit obligava a tornar a llegir també finances, nutrició i calendari
+   * —que no havien canviat— i aquells segons es pagaven a la pregunta
+   * següent. Per trossos, marcar un hàbit només fa tornar a llegir hàbits.
    *
-   * NO POT QUEDAR MAI ENDARRERIDA: si es desa qualsevol dada, la fitxa
-   * s'esborra tot seguit (ho fa `Dades.invalida`). Val més tornar-la a muntar
-   * que respondre amb el que hi havia fa un minut, perquè aquí la regla que
-   * mana és que JEFE no digui res que no sigui cert ara mateix.
+   * NO POT QUEDAR MAI ENDARRERIDA: si es desa una dada, el tros del mòdul que
+   * la té s'esborra tot seguit (ho fa `Dades.invalida`). Val més tornar-lo a
+   * muntar que respondre amb el que hi havia fa un minut, perquè aquí la
+   * regla que mana és que JEFE no digui res que no sigui cert ara mateix.
    */
   function contextIA(opcions) {
-    var cau = null;
+    var m = actius().filter(function (x) { return typeof x.contextIA === 'function'; });
+    var claus = m.map(function (x) { return CAU_CONTEXT + x.id; });
+
+    var cau = null, desats = {};
     try { cau = CacheService.getScriptCache(); } catch (e) { /* sense cau: seguim */ }
+    // Tots els trossos d'una sola anada a la memòria cau, no un per un.
+    if (cau && claus.length) { try { desats = cau.getAll(claus) || {}; } catch (e) { desats = {}; } }
 
-    if (cau) {
-      var desat = cau.get(CAU_CONTEXT);
-      if (desat !== null) return desat;
-    }
-
-    var trossos = [];
-    var m = actius();
+    var trossos = [], nous = {};
     for (var i = 0; i < m.length; i++) {
-      if (typeof m[i].contextIA !== 'function') continue;
+      var clau = CAU_CONTEXT + m[i].id;
+      if (desats[clau] !== undefined && desats[clau] !== null) {
+        if (desats[clau]) trossos.push(desats[clau]);
+        continue;
+      }
       try {
         var t = m[i].contextIA(opcions || {});
-        if (t) trossos.push(String(t));
+        t = t ? String(t) : '';
+        nous[clau] = t;
+        if (t) trossos.push(t);
       } catch (err) {
         Log.error('moduls.contextIA', 'Mòdul ' + m[i].id + ': ' + err.message);
       }
     }
 
-    var text = trossos.join('\n\n');
-    // Cinc minuts com a molt. Encara que no s'escrigui res, el dia canvia i
-    // «avui» ha de deixar de ser ahir.
-    if (cau) { try { cau.put(CAU_CONTEXT, text, 300); } catch (e) {} }
-    return text;
+    if (cau && Object.keys(nous).length) {
+      try { cau.putAll(nous, VIDA_CONTEXT); } catch (e) {}
+    }
+    return trossos.join('\n\n');
   }
 
   /**
@@ -242,9 +248,37 @@ var Moduls = (function () {
     return null;
   }
 
-  /** L'esborra. La crida `Dades.invalida` a cada escriptura. */
-  function invalidaContext() {
-    try { CacheService.getScriptCache().remove(CAU_CONTEXT); } catch (e) {}
+  /**
+   * Esborra el tros de fitxa que aquest full pot haver canviat, i només aquell.
+   * La crida `Dades.invalida` a cada escriptura. Sense nom de full, tots.
+   */
+  function invalidaContext(full) {
+    var m = actius().filter(function (x) { return typeof x.contextIA === 'function'; });
+    var fora = [];
+
+    for (var i = 0; i < m.length; i++) {
+      if (!full || teFull_(m[i], full)) fora.push(CAU_CONTEXT + m[i].id);
+    }
+    /* Un full que no és de ningú —o cap nom— pot haver canviat qualsevol cosa:
+       es tomben tots. Val més tornar-los a muntar que mentir. */
+    if (full && !fora.length && !deQui_(full)) {
+      fora = m.map(function (x) { return CAU_CONTEXT + x.id; });
+    }
+
+    if (!fora.length) return;
+    try { CacheService.getScriptCache().removeAll(fora); } catch (e) {}
+  }
+
+  function teFull_(modul, nom) {
+    var f = modul.fulls || [];
+    for (var i = 0; i < f.length; i++) if (f[i].nom === nom) return true;
+    return false;
+  }
+
+  function deQui_(nom) {
+    var m = actius();
+    for (var i = 0; i < m.length; i++) if (teFull_(m[i], nom)) return m[i];
+    return null;
   }
 
   /**
@@ -262,18 +296,9 @@ var Moduls = (function () {
 
   function alimentaContext(nom) {
     if (FULLS_MUTS[nom]) return false;
-
-    var m = actius();
-    var deNingu = true;
-    for (var i = 0; i < m.length; i++) {
-      var fulls = m[i].fulls || [];
-      for (var j = 0; j < fulls.length; j++) {
-        if (fulls[j].nom !== nom) continue;
-        deNingu = false;
-        if (typeof m[i].contextIA === 'function') return true;
-      }
-    }
-    return deNingu;
+    var seu = deQui_(nom);
+    if (!seu) return true;                                   // de ningú: davant del dubte, sí
+    return typeof seu.contextIA === 'function';
   }
 
   /** Eines que la IA pot cridar, aportades pels mòduls. */

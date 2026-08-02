@@ -1072,7 +1072,9 @@ console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi s
     Date, Math, JSON, String, Number, Object, Array,
     Log: { info() {}, avis() {}, error() {} },
     CacheService: { getScriptCache: () => ({
-      get: () => null, put: () => {}, remove: () => { esborrades++; } }) },
+      get: () => null, getAll: () => ({}), put: () => {}, putAll: () => {},
+      remove: () => { esborrades++; },
+      removeAll: (ks) => { if (ks.length) esborrades++; } }) },
     Config: { full: () => ({ getSheetByName: () => null }) },
     Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara' },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
@@ -1119,6 +1121,89 @@ console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi s
 
   dadesCtx.Dades.invalida();
   cal('i sense dir quin full, també: no se sap què ha canviat', esborrades === 2, String(esborrades));
+}
+
+// --------------- la fitxa es munta per trossos: marcar un habit no toca finances
+console.log("");
+console.log("La fitxa de la IA: per trossos, no d'una peca");
+{
+  const muntats = [];
+  const moduls = [
+    { id: 'conversa', fulls: [{ nom: 'Converses' }] },
+    { id: 'habits', fulls: [{ nom: 'Habits' }, { nom: 'Registres' }],
+      contextIA: function () { muntats.push('habits'); return 'HABITS: en falten 3'; } },
+    { id: 'finances', fulls: [{ nom: 'Moviments' }, { nom: 'Categories' }],
+      contextIA: function () { muntats.push('finances'); return 'FINANCES: 400 EUR'; } },
+    { id: 'calendari', fulls: [{ nom: 'Calendaris' }],
+      contextIA: function () { muntats.push('calendari'); return 'CALENDARI: res'; } }
+  ];
+
+  const memoria = {};
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Log: { info() {}, avis() {}, error() {} },
+    CacheService: { getScriptCache: () => ({
+      get: (k) => (memoria[k] === undefined ? null : memoria[k]),
+      getAll: (ks) => { const o = {}; ks.forEach(k => { if (memoria[k] !== undefined) o[k] = memoria[k]; }); return o; },
+      put: (k, v) => { memoria[k] = v; },
+      putAll: (o) => { Object.keys(o).forEach(k => { memoria[k] = o[k]; }); },
+      remove: (k) => { delete memoria[k]; },
+      removeAll: (ks) => { ks.forEach(k => { delete memoria[k]; }); }
+    }) },
+    Config: { full: () => ({ getSheetByName: () => null }) },
+    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara' },
+    SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8'), ctx);
+  moduls.forEach(function (m) { ctx['MODUL_' + m.id.toUpperCase()] = function () { return m; }; });
+
+  const primera = ctx.Moduls.contextIA();
+  cal('el primer cop els munta tots', muntats.sort().join(' ') === 'calendari finances habits',
+      muntats.join(' '));
+  cal('i la fitxa porta els tres', primera.indexOf('HABITS') !== -1 &&
+      primera.indexOf('FINANCES') !== -1 && primera.indexOf('CALENDARI') !== -1, primera);
+
+  muntats.length = 0;
+  ctx.Moduls.contextIA();
+  cal('el segon cop no en munta cap', muntats.length === 0, muntats.join(' '));
+
+  // AIXO ES EL QUE IMPORTA: marcar un habit no ha de tornar a llegir finances.
+  muntats.length = 0;
+  ctx.Moduls.invalidaContext('Registres');
+  const desprès = ctx.Moduls.contextIA();
+  cal('marcar un habit nomes torna a muntar habits',
+      muntats.join(' ') === 'habits', muntats.join(' ') || '(cap)');
+  cal('i la fitxa segueix sencera', desprès.indexOf('FINANCES') !== -1 &&
+      desprès.indexOf('CALENDARI') !== -1, desprès);
+
+  // Una despesa nomes toca finances.
+  muntats.length = 0;
+  ctx.Moduls.invalidaContext('Moviments');
+  ctx.Moduls.contextIA();
+  cal('apuntar una despesa nomes torna a muntar finances',
+      muntats.join(' ') === 'finances', muntats.join(' ') || '(cap)');
+
+  // Un full de ningu no se sap que ha tocat: es tomben tots.
+  muntats.length = 0;
+  ctx.Moduls.invalidaContext('_Config');
+  ctx.Moduls.contextIA();
+  cal('un full que no es de cap modul els tomba tots',
+      muntats.sort().join(' ') === 'calendari finances habits', muntats.join(' '));
+
+  // I sense dir quin full, tambe.
+  muntats.length = 0;
+  ctx.Moduls.invalidaContext();
+  ctx.Moduls.contextIA();
+  cal('i sense dir res, tambe', muntats.length === 3, String(muntats.length));
+
+  // El full de converses no ha de tombar res.
+  muntats.length = 0;
+  if (ctx.Moduls.alimentaContext('Converses')) ctx.Moduls.invalidaContext('Converses');
+  ctx.Moduls.contextIA();
+  cal('parlar segueix sense tombar res', muntats.length === 0, muntats.join(' '));
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
