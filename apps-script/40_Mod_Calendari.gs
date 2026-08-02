@@ -495,21 +495,36 @@ var Calendari = (function () {
    * després de l'últim: així totes les files tenen set caselles i el mes no
    * balla d'amplada segons en quin dia comenci.
    */
-  function mes(quin, diaTriat) {
-    quin = /^\d{4}-\d{2}$/.test(String(quin || '')) ? quin : Utils.avui().slice(0, 7);
-    var avui = Utils.avui();
-
+  /** Els dos extrems de la graella d'un mes: dilluns d'abans, diumenge de després. */
+  function marcDelMes_(quin) {
     var primer = quin + '-01';
     var ultim = Utils.aData(primer);
     ultim.setMonth(ultim.getMonth() + 1);
     ultim.setDate(0);
-    var ultimText = Utils.aText(ultim);
+    return {
+      inici: Utils.dillunsDe(primer),
+      fi: Utils.sumaDies(Utils.dillunsDe(Utils.aText(ultim)), 6)
+    };
+  }
 
-    var inici = Utils.dillunsDe(primer);
-    var fiSetmana = Utils.dillunsDe(ultimText);
-    var fi = Utils.sumaDies(fiSetmana, 6);
+  function mouMes_(quin, n) {
+    var d = new Date(Number(quin.slice(0, 4)), Number(quin.slice(5, 7)) - 1 + n, 1);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+  }
 
-    var events = rang(inici, fi);
+  function mes(quin, diaTriat, events) {
+    quin = /^\d{4}-\d{2}$/.test(String(quin || '')) ? quin : Utils.avui().slice(0, 7);
+    var avui = Utils.avui();
+
+    var marc = marcDelMes_(quin);
+    var inici = marc.inici, fi = marc.fi;
+
+    /* Els esdeveniments poden venir de fora: quan es demana un tram de mesos de
+       cop es llegeixen UNA vegada i cada mes els filtra. Llegir-los un per
+       un voldria dir un viatge a Google per mes i calendari. */
+    if (!events) events = rang(inici, fi);
+    else events = events.filter(function (e) { return e.dataFi >= inici && e.data <= fi; });
+
     var idx = perDies_(events);
 
     var caselles = Utils.rangDates(inici, fi).map(function (d) {
@@ -532,7 +547,7 @@ var Calendari = (function () {
     });
 
     var triat = Utils.esDataValida(diaTriat) ? diaTriat
-              : (quin === avui.slice(0, 7) ? avui : primer);
+              : (quin === avui.slice(0, 7) ? avui : quin + '-01');
 
     return {
       mes: quin, avui: avui, desde: inici, fins: fi,
@@ -547,10 +562,45 @@ var Calendari = (function () {
     };
   }
 
+  /**
+   * CINC MESOS D'UNA TIRADA.
+   *
+   * Aquest és l'arreglo que fa que canviar de mes deixi de costar set segons.
+   *
+   * Cada calendari és un viatge a Google, i els de l'escola un viatge a
+   * l'altre compte que allà en fa quatre més. Amb set calendaris, muntar UN
+   * mes costava el que costava, i el següent tornava a costar exactament el
+   * mateix, i el següent també.
+   *
+   * El truc és que demanar-li a Google un rang de cinc mesos costa els
+   * MATEIXOS viatges que demanar-li'n un: el que es paga és el viatge, no el
+   * que hi cap a dins. Així que es llegeix el tram sencer d'un cop i es
+   * tornen els cinc mesos muntats; el client ja els té i anar endavant i
+   * enrere no torna a demanar res fins que en surts.
+   *
+   * Per què cinc i no vint: cada mes viatja amb els seus esdeveniments, i
+   * això sí que són bytes. Cinc cobreix de sobres el que es passeja d'un cop.
+   */
+  var VOLTANT = 2;
+
   function pantalla(p) {
     p = p || {};
+    var quin = /^\d{4}-\d{2}$/.test(String(p.mes || '')) ? p.mes : Utils.avui().slice(0, 7);
+
+    var quins = [];
+    for (var n = -VOLTANT; n <= VOLTANT; n++) quins.push(mouMes_(quin, n));
+
+    var events = rang(marcDelMes_(quins[0]).inici,
+                      marcDelMes_(quins[quins.length - 1]).fi);
+
+    var mesos = {};
+    quins.forEach(function (m) {
+      mesos[m] = mes(m, m === quin ? p.data : null, events);
+    });
+
     return {
-      dades: mes(p.mes, p.data),
+      dades: mesos[quin],
+      mesos: mesos,
       calendaris: calendaris()
     };
   }

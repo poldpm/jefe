@@ -371,5 +371,76 @@ console.log("\nL'avís de les sis: només si hi ha alguna cosa");
       ctx.TRIGGERS.indexOf('triggerAgendaDelDia') !== -1, ctx.TRIGGERS.join(' '));
 }
 
+// ------------------------------------------- el calendari, i el preu de canviar de mes
+console.log("");
+console.log("Calendari: cinc mesos pel preu d'un");
+{
+  // Cada `getEvents` és un viatge a Google. Comptar-los és comptar els segons.
+  let viatges = 0;
+  const calendaris = [
+    { id: 'meu@g', nom: 'Personal', color: '', mostra: 'SI', pont: '' },
+    { id: 'casa@g', nom: 'Casa', color: '', mostra: 'SI', pont: '' },
+    { id: 'esc@e', nom: 'Tutoria', color: '', mostra: 'SI', pont: 'SI' }
+  ];
+  const fals = (iso, titol) => ({
+    getId: () => titol, getTitle: () => titol, getLocation: () => '',
+    getDescription: () => '', getColor: () => '',
+    getStartTime: () => new Date(iso + 'T10:00:00'),
+    getEndTime: () => new Date(iso + 'T11:00:00'),
+    isAllDayEvent: () => false
+  });
+  const agenda = {
+    'meu@g': [fals('2026-07-15', 'De juliol'), fals('2026-08-20', "D'agost"), fals('2026-09-10', 'De setembre')],
+    'casa@g': []
+  };
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp, isNaN, parseInt, parseFloat,
+    Log: { info() {}, avis() {}, error() {} },
+    Config: { zonaHoraria: () => 'Europe/Madrid' },
+    CacheService: { getScriptCache: () => null },
+    Utilities: {
+      formatDate: (d, tz, f) => {
+        const p2 = n => ('0' + n).slice(-2);
+        return f === 'HH:mm' ? p2(d.getHours()) + ':' + p2(d.getMinutes())
+          : d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+      }
+    },
+    CalendarApp: {
+      getCalendarById: (id) => agenda[id] ? {
+        getEvents: (a, b) => { viatges++; return agenda[id].filter(e => e.getStartTime() >= a && e.getStartTime() <= b); }
+      } : null,
+      getAllCalendars: () => [], getAllOwnedCalendars: () => [], getDefaultCalendar: () => null
+    },
+    Dades: { llegeix: () => calendaris.slice(), un: () => null, insereix: () => {}, actualitza: () => {} },
+    CalendariPont: { hiEs: () => true, esdeveniments: () => { viatges++; return []; } },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  ctx.Utils.avui = () => '2026-08-01';
+  vm.runInContext(fs.readFileSync('apps-script/40_Mod_Calendari.gs', 'utf8'), ctx);
+
+  const r = ctx.Calendari.pantalla({ mes: '2026-08' });
+
+  cal('la pantalla porta cinc mesos', Object.keys(r.mesos).sort().join(' ') === '2026-06 2026-07 2026-08 2026-09 2026-10',
+      Object.keys(r.mesos).join(' '));
+  cal('i el mes demanat és el que es pinta', r.dades.mes === '2026-08', String(r.dades.mes));
+
+  // Dos calendaris propis + una crida al pont = 3. Mes a mes en serien 15.
+  cal('els cinc mesos es llegeixen en un sol escombrat', viatges === 3, viatges + ' viatges');
+
+  const delMes = (m) => r.mesos[m].caselles.reduce((n, c) => n + (c.delMes ? c.quants : 0), 0);
+  cal('cada mes es queda els seus i prou',
+      delMes('2026-07') === 1 && delMes('2026-08') === 1 && delMes('2026-09') === 1,
+      [delMes('2026-07'), delMes('2026-08'), delMes('2026-09')].join('/'));
+
+  cal('el mes de davant ve sencer, llest per pintar sense demanar res',
+      r.mesos['2026-09'].caselles.length % 7 === 0 && r.mesos['2026-09'].caselles.length >= 28,
+      String(r.mesos['2026-09'].caselles.length));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

@@ -71,9 +71,9 @@ const MOCK = `
     if (p && p.data && p.data !== AVUI) { d.data = p.data; d.esAvui = false; }
     return d;
   };
-  var CAL         = { calendaris: ${j(D.CALENDARIS)} };
+  var CAL         = { calendaris: ${j(D.CALENDARIS)} , fets: [], trets: [] };
   var CAL_MESOS   = ${j(Object.fromEntries(
-       [-2, -1, 0, 1, 2, 3].map(n => {
+       [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6].map(n => {
          const d = new Date(Number(AVUI.slice(0,4)), Number(AVUI.slice(5,7)) - 1 + n, 1);
          const m = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
          return [m, D.calendariPantalla({ mes: m })];
@@ -245,35 +245,84 @@ const MOCK = `
         CAL.calendaris.forEach(function (c) { if (c.id === p.id) c.mostra = !!p.mostra; });
         return { id: p.id, mostra: !!p.mostra };
       }
+      /* Apuntar, canviar i treure sí que toquen les dades del mirall. Si no,
+         desar una cita ensenyava «Apuntat» i la pantalla quedava igual, i
+         llavors no es pot saber si el camí d'anada i tornada funciona. */
+      if (accio === 'crea') {
+        var nou = {
+          id: 'ev_mirall_' + (CAL.fets.length + 1),
+          calendari: p.calendari || CAL.calendaris[0].id,
+          calendariNom: (CAL.calendaris.filter(function (c) { return c.id === p.calendari; })[0] ||
+                         CAL.calendaris[0]).nom,
+          color: '', titol: p.titol || '(sense títol)', lloc: p.lloc || '', nota: p.nota || '',
+          data: p.data, dataFi: p.data, totElDia: !!p.totdia,
+          hora: p.totdia ? '' : (p.hora || '09:00'),
+          horaFi: p.totdia ? '' : (p.hora || '09:00'),
+          passat: false, minuts: p.totdia ? 0 : Number(p.durada || 60)
+        };
+        CAL.fets.push(nou);
+        return { id: nou.id };
+      }
+      if (accio === 'edita') {
+        CAL.fets.forEach(function (e) {
+          if (e.id !== p.id) return;
+          if (p.titol !== undefined) e.titol = p.titol;
+          if (p.data !== undefined) { e.data = p.data; e.dataFi = p.data; }
+          if (p.lloc !== undefined) e.lloc = p.lloc;
+        });
+        return { id: p.id };
+      }
+      if (accio === 'treu') {
+        CAL.fets = CAL.fets.filter(function (e) { return e.id !== p.id; });
+        CAL.trets.push(p.id);
+        return { id: p.id };
+      }
+
       if (accio === 'pantalla') {
         var quin = p.mes || AVUI.slice(0, 7);
-        var base = CAL_MESOS[quin];
-        if (!base) {
-          // Fora del que el mirall té preparat: mes buit, per veure com queda.
-          var buit = copia(CAL_MESOS[AVUI.slice(0, 7)]);
-          buit.dades.mes = quin; buit.dades.quants = 0;
-          buit.dades.tots = []; buit.dades.esdeveniments = [];
-          buit.dades.caselles.forEach(function (c) { c.quants = 0; c.mostra = []; });
-          return buit;
-        }
-        var r = copia(base);
-        r.calendaris = copia(CAL.calendaris);
+
         var amagats = {};
         CAL.calendaris.forEach(function (c) { if (!c.mostra) amagats[c.id] = true; });
-        r.dades.tots = r.dades.tots.filter(function (e) { return !amagats[e.calendari]; });
-        if (p.data) r.dades.diaTriat = p.data;
-        var perDia = {};
-        r.dades.tots.forEach(function (e) { (perDia[e.data] = perDia[e.data] || []).push(e); });
-        r.dades.esdeveniments = perDia[r.dades.diaTriat] || [];
-        r.dades.quants = r.dades.tots.length;
-        r.dades.caselles.forEach(function (c) {
-          var seus = perDia[c.data] || [];
-          c.quants = seus.length;
-          c.mostra = seus.slice(0, 3).map(function (e) {
-            return { color: e.color, totElDia: e.totElDia, titol: e.titol, hora: e.hora };
+
+        function munta(m) {
+          var base = CAL_MESOS[m];
+          var d;
+          if (base) {
+            d = copia(base).dades;
+          } else {
+            // Fora del que el mirall té preparat: mes buit, per veure com queda.
+            d = copia(CAL_MESOS[AVUI.slice(0, 7)]).dades;
+            d.mes = m; d.tots = []; d.diaTriat = m + '-01';
+          }
+          d.tots = d.tots
+            .filter(function (e) { return !amagats[e.calendari] && CAL.trets.indexOf(e.id) === -1; })
+            .concat(CAL.fets.filter(function (e) {
+              return !amagats[e.calendari] && e.data.slice(0, 7) === m;
+            }));
+          if (m === quin && p.data) d.diaTriat = p.data;
+
+          var perDia = {};
+          d.tots.forEach(function (e) { (perDia[e.data] = perDia[e.data] || []).push(e); });
+          d.esdeveniments = perDia[d.diaTriat] || [];
+          d.quants = d.tots.filter(function (e) { return e.data.slice(0, 7) === m; }).length;
+          d.caselles.forEach(function (c) {
+            var seus = perDia[c.data] || [];
+            c.quants = seus.length;
+            c.mostra = seus.slice(0, 3).map(function (e) {
+              return { color: e.color, totElDia: e.totElDia, titol: e.titol, hora: e.hora };
+            });
           });
+          return d;
+        }
+
+        var mesos = {};
+        [-2, -1, 0, 1, 2].forEach(function (n) {
+          var x = new Date(Number(quin.slice(0, 4)), Number(quin.slice(5, 7)) - 1 + n, 1);
+          var k = x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2);
+          mesos[k] = munta(k);
         });
-        return r;
+
+        return { dades: mesos[quin], mesos: mesos, calendaris: copia(CAL.calendaris) };
       }
       return { ok: true };
     }

@@ -15,6 +15,11 @@ App.registraVista('calendari', {
     var dia = params.data || null;
     var dades = null, cals = [];
     var previPintat = null, ajornat = null;
+    /* Els mesos que han portat les respostes. Canviar de mes cap a un
+       que ja tenim NO va al servidor: és el que fa que passi de set segons a
+       instantani. Vegeu `pantalla()` al mòdul. */
+    var mesosTinguts = {};                 // els mesos que ja tenim llegits
+    var enCami = null;                     // el mes que estem demanant ara
     /* Va AQUÍ i no dins d'obreCalendaris: qui la marca és `lligaCals`, que és
        una funció germana i no filla. Declarada allà dins, l'assignació de fora
        creava una variable global i la de dins es quedava a fals per sempre: el
@@ -47,8 +52,10 @@ App.registraVista('calendari', {
             ic('esquerra', 'ic-p') + '</button>' +
           '<button class="titol-periode" data-avui="1">' +
             '<b>' + esc(nomMes(d.mes)) + '</b>' +
-            '<span>' + d.quants + (d.quants === 1 ? ' cita' : ' cites') +
-              (esActual ? ' · en curs' : '') + '</span>' +
+            '<span>' + (d.provisional
+              ? 'carregant…'
+              : d.quants + (d.quants === 1 ? ' cita' : ' cites') +
+                (esActual ? ' · en curs' : '')) + '</span>' +
           '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent">' +
             ic('dreta', 'ic-p') + '</button>' +
@@ -128,10 +135,12 @@ App.registraVista('calendari', {
           '<p class="marge">' + esc(fmt.relativa(d.diaTriat)) + ' · ' +
             esc(fmt.llarga(d.diaTriat)) + '</p>' +
         '</div>' +
-        (l.length
-          ? '<div class="cites">' + l.map(cita).join('') + '</div>'
-          : '<p class="menut">Res apuntat aquest dia. ' +
-            '<button class="enllac" data-nou="1">Apunta-hi alguna cosa</button></p>');
+        (d.provisional
+          ? '<p class="menut">Buscant les cites d\'aquest mes…</p>'
+          : l.length
+            ? '<div class="cites">' + l.map(cita).join('') + '</div>'
+            : '<p class="menut">Res apuntat aquest dia. ' +
+              '<button class="enllac" data-nou="1">Apunta-hi alguna cosa</button></p>');
     }
 
     function cita(e) {
@@ -159,14 +168,15 @@ App.registraVista('calendari', {
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {
-          mes = mouMes(dades.mes, Number(b.dataset.salt));
-          dia = null;
-          carrega();
+          /* Des de `mes`, no des de `dades.mes`: si encara s'està carregant,
+             el que es veu és el mes d'abans i clicar dues vegades seguides
+             es menjava el segon clic. */
+          vesAlMes(mouMes(mes || dades.mes, Number(b.dataset.salt)));
         });
       });
       var ba = arrel.querySelector('[data-avui]');
       if (ba) ba.addEventListener('click', function () {
-        mes = null; dia = null; carrega();
+        vesAlMes(dades.avui.slice(0, 7));
       });
 
       /* Triar dia NO va al servidor: el mes ja porta tot el que hi ha, i
@@ -193,6 +203,62 @@ App.registraVista('calendari', {
       });
       var bj = arrel.querySelector('[data-ajustos]');
       if (bj) bj.addEventListener('click', obreCalendaris);
+    }
+
+    /**
+     * Canviar de mes.
+     *
+     * Si és un dels que ja tenim, es pinta a l'instant i prou. Només es
+     * torna a demanar quan surts del tram, i llavors en tornen cinc més
+     * al voltant del nou.
+     */
+    function pintaDelTram(quin) {
+      if (!mesosTinguts[quin]) return false;
+      dades = mesosTinguts[quin];
+      dades.diaTriat = (quin === dades.avui.slice(0, 7)) ? dades.avui : quin + '-01';
+      dades.esdeveniments = deLDia(dades.diaTriat);
+      previPintat = JSON.stringify(dades);
+      pinta(dades, false);
+      return true;
+    }
+
+    /* Un mes que encara no tenim: la graella es dibuixa a l'instant, buida, i
+       les cites hi cauen quan arriben. Quedar-se mirant el mes d'abans fins
+       que contesta el servidor fa pensar que el botó no ha anat, i llavors el
+       cliques un altre cop. */
+    function mesProvisional(quin) {
+      var avui = (dades && dades.avui) || fmt.avui();
+      var primer = new Date(Number(quin.slice(0, 4)), Number(quin.slice(5, 7)) - 1, 1);
+      var ini = new Date(primer);
+      ini.setDate(1 - ((primer.getDay() + 6) % 7));      // el dilluns d'abans
+
+      var caselles = [];
+      for (var i = 0; i < 42; i++) {
+        var x = new Date(ini);
+        x.setDate(ini.getDate() + i);
+        var iso = x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) +
+                  '-' + ('0' + x.getDate()).slice(-2);
+        caselles.push({ data: iso, dia: x.getDate(), delMes: iso.slice(0, 7) === quin,
+                        esAvui: iso === avui, quants: 0, mostra: [] });
+      }
+      // L'última fila sobra si el mes s'ha acabat abans d'arribar-hi.
+      while (caselles.length > 28 &&
+             !caselles.slice(-7).some(function (c) { return c.delMes; })) {
+        caselles = caselles.slice(0, -7);
+      }
+
+      return { mes: quin, avui: avui, caselles: caselles, quants: 0, tots: [],
+               diaTriat: quin === avui.slice(0, 7) ? avui : quin + '-01',
+               esdeveniments: [], provisional: true };
+    }
+
+    function vesAlMes(nou) {
+      mes = nou;
+      dia = null;
+      if (pintaDelTram(nou)) return;
+      previPintat = null;                 // el provisional no ha de bloquejar el bo
+      pinta(mesProvisional(nou), false);
+      carrega();
     }
 
     function lligaDia() {
@@ -323,7 +389,7 @@ App.registraVista('calendari', {
           .then(function (r) {
             App.tancaModal();
             App.brindis(nou ? 'Apuntat' : 'Desat');
-            Cau.oblida('calendari.');
+            Cau.oblida('calendari.'); mesosTinguts = {};
             aplica(r, false, true);
           })
           .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
@@ -355,7 +421,7 @@ App.registraVista('calendari', {
           escriu('calendari', 'treu', { id: e.id, calendari: e.calendari }, quePinto())
             .then(function (r) {
               App.tancaModal(); App.brindis('Treta');
-              Cau.oblida('calendari.');
+              Cau.oblida('calendari.'); mesosTinguts = {};
               aplica(r, false, true);
             })
             .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
@@ -382,7 +448,7 @@ App.registraVista('calendari', {
         function () {
           // En tancar, i només si has tocat res.
           if (!caCanviar) return;
-          Cau.oblida('calendari.');
+          Cau.oblida('calendari.'); mesosTinguts = {};
           carrega();
         });
 
@@ -470,8 +536,19 @@ App.registraVista('calendari', {
     function aplica(r, dEnCau, forca) {
       cals = r.calendaris || cals;
       var d = r.dades;
+      /* Els mesos que porta s'afegeixen als que ja tenim: passejant endavant
+         i enrere se'n va acumulant el tram, i tornar sobre els passos no ha
+         de tornar a preguntar res. */
+      if (r.mesos) Object.keys(r.mesos).forEach(function (k) { mesosTinguts[k] = r.mesos[k]; });
 
-      Cau.set(claCau(), r);
+      Cau.set('calendari.' + (d.mes || 'ara'), r);
+
+      /* SI MENTRE ESPERÀVEM JA HA CANVIAT DE MES, aquesta resposta és vella.
+         Pintar-la li mouria la pantalla sota els peus i el deixaria en un mes
+         que ja no mirava. Del que porta ens hem quedat els mesos, que si de
+         cas ja serveixen per pintar el que sí que vol. */
+      if (mes && d.mes && d.mes !== mes) { pintaDelTram(mes); return; }
+
       var nou = JSON.stringify(d);
       if (nou === previPintat) return;
 
@@ -499,13 +576,20 @@ App.registraVista('calendari', {
       var desat = Cau.get(claCau(), null);
       if (desat && desat.dades) {
         cals = desat.calendaris || cals;
+        if (desat.mesos) mesosTinguts = desat.mesos;
         try { previPintat = JSON.stringify(desat.dades); pinta(desat.dades, true); }
         catch (e) { previPintat = null; }
       }
 
+      /* Clicar tres cops seguits la fletxa no ha de fer tres peticions del
+         mateix mes. Si ja n'hi ha una de demanada per aquest mes, s'espera. */
+      if (enCami === (mes || 'ara')) return;
+      enCami = mes || 'ara';
+
       crida('calendari', 'pantalla', quePinto())
-        .then(function (r) { aplica(r); })
+        .then(function (r) { enCami = null; aplica(r); })
         .catch(function (err) {
+          enCami = null;
           if (desat) App.brindis(err.message, 'error');
           else arrel.innerHTML = Comp.error(err, true);
         });

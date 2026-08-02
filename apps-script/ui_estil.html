@@ -22,7 +22,18 @@
   --utm:        #2c6e8f;   /* quadrícula UTM */
   --utm-suau:   #b9d2df;
   --gr:         #c8332b;   /* marca de sender GR: blanc sobre vermell */
-  --gr-ple:     #c8332b;   /* el mateix, per a superfícies plenes: no s'aclareix de nit */
+  /* L'ACCIÓ NO ÉS VERMELLA.
+     El vermell d'aquesta app és la marca de sender GR: una senyal del mapa,
+     que vol dir «per aquí» i prou. Fer-hi els botons era barrejar el
+     llenguatge del full amb el de la sala de comandament, i a més el vermell
+     ple es llegeix com un avís —«compte»— quan el que diu és «endavant».
+     El cian és el color de JEFE: el del nucli que batega a la conversa. */
+  --accio:        #0b7d8c;   /* de dia va fondo: amb lletra blanca a sobre, 4,85 */
+  --sobre-accio:  #ffffff;
+  /* El vermell segueix sent el de l'error, i per a una superfície plena es
+     queda amb el to de dia als dos temes: el de nit s'aclareix per als traços
+     prims i amb lletra blanca a sobre donaria 4,03. */
+  --gr-ple:       #c8332b;
   --avis:       #8a5a00;
   --avis-fons:  #fbf0d8;
 
@@ -76,6 +87,7 @@
     --corba: #7d5836; --corba-mestra: #a8703f;
     --utm: #4e9bc0; --utm-suau: #1e3a47;
     --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
+    --accio: #4fd6e0; --sobre-accio: #04070b;
     --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
     --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
     --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
@@ -88,6 +100,7 @@
   --corba: #7d5836; --corba-mestra: #a8703f;
   --utm: #4e9bc0; --utm-suau: #1e3a47;
   --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
+    --accio: #4fd6e0; --sobre-accio: #04070b;
   --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
   --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
   --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
@@ -184,12 +197,9 @@ h2 { font-size: 1.0625rem; }
 }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-/* El vermell del botó NO és el mateix que el de la marca de sender.
-   `--gr` s'aclareix de nit perquè un traç prim es vegi sobre el paper fosc;
-   omplert amb lletra blanca a sobre, aquest mateix to dona 4,03 i el text
-   costa de llegir. El botó es queda amb el vermell de dia als dos temes:
-   5,3 sobre blanc, i sobre el paper fosc s'hi veu igual de bé. */
-.btn-primari  { background: var(--gr-ple); border-color: var(--gr-ple); color: #fff; }
+.btn-primari  { background: var(--accio); border-color: var(--accio);
+                color: var(--sobre-accio); font-weight: 600; }
+.btn-primari:active { filter: brightness(1.12); }
 .btn-secundari{ background: transparent; }
 .btn-fantasma { background: transparent; border-color: transparent; color: var(--ink-suau); }
 .btn-ple      { width: 100%; }
@@ -201,7 +211,8 @@ h2 { font-size: 1.0625rem; }
   border: 2px solid var(--ink); border-top-color: transparent; border-radius: 50%;
   animation: gira .7s linear infinite;
 }
-.btn-primari[data-carregant="1"]::after { border-color: #fff; border-top-color: transparent; }
+.btn-primari[data-carregant="1"]::after { border-color: var(--sobre-accio);
+                                          border-top-color: transparent; }
 @keyframes gira { to { transform: rotate(360deg); } }
 
 /* =========================================================================
@@ -520,7 +531,7 @@ h2 { font-size: 1.0625rem; }
 }
 .brindis[data-visible="1"] { transform: translateY(0); opacity: 1; visibility: visible;
   transition: transform .3s var(--sortida), opacity .2s linear, visibility 0s; }
-.brindis[data-to="error"] { background: var(--gr); border-color: var(--gr); color: #fff; }
+.brindis[data-to="error"] { background: var(--gr-ple); border-color: var(--gr-ple); color: #fff; }
 @media (min-width: 900px) { .brindis { bottom: var(--e4); } }
 
 .sense-xarxa { display: flex; align-items: center; justify-content: center; gap: var(--e2);
