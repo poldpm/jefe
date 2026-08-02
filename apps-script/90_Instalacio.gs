@@ -111,17 +111,19 @@ function instalaTriggers() {
   ScriptApp.newTrigger('triggerAgendaDelDia')
     .timeBased().atHour(6).nearMinute(0).everyDays(1).create();
 
-  /* EL BANC, DUES VEGADES AL DIA I NO MÉS.
+  /* EL BANC, TRES VEGADES AL DIA I CAP MÉS.
      La llei que regula això —la PSD2— limita quantes vegades al dia es pot
-     anar a mirar un compte sense que en Pol hi sigui al davant. Passar-se'n
-     vol dir que el banc digui que no i quedar-nos sense les que sí que
-     importen. Dues aquí, i la resta quan obre l'app: allà sí que hi és.
-     El matí, per tenir el d'ahir tancat; a la tarda, per assabentar-nos del
-     que hagi passat al matí sense haver d'obrir res. */
-  ScriptApp.newTrigger('triggerBanc')
-    .timeBased().atHour(6).everyDays(1).create();
-  ScriptApp.newTrigger('triggerBanc')
-    .timeBased().atHour(15).everyDays(1).create();
+     anar a mirar un compte sense que en Pol hi sigui al davant, i normalment
+     són quatre. Aquestes tres són TOTES les que hi ha: obrir l'app no en
+     gasta cap, a posta, perquè entrar-hi vuit vegades un matí se les menjaria
+     totes i a les deu ja no en quedaria ni una.
+
+     Sis: el d'ahir ja està tancat i tu encara dorms.
+     Tres: el que s'hagi mogut al matí.
+     Vuit: el dia sencer, a temps que t'ho miris abans de sopar. */
+  [6, 15, 20].forEach(function (h) {
+    ScriptApp.newTrigger('triggerBanc').timeBased().atHour(h).everyDays(1).create();
+  });
 
   // El patrimoni, el 28 al vespre: a temps de mirar-t'ho abans que acabi el mes.
   ScriptApp.newTrigger('triggerPatrimoni')
@@ -303,7 +305,10 @@ function triggerBanc() {
 
     if (typeof FinancesBanc === 'undefined' || !FinancesBanc.disponible()) return;
 
-    var r = ambBloqueig_(function () { return FinancesBanc.sincronitza(); });
+    /* Amb un límit de quatre mirades al dia, dues seguides són una de perduda.
+       Apps Script pot repetir un trigger si el primer intent no acaba net, i
+       una hora de marge separa de sobres les tres que volem de les que no. */
+    var r = ambBloqueig_(function () { return FinancesBanc.sincronitzaSiCal(60); });
     if (!r.nous) return;
 
     // Si tot ha entrat ja classificat, no hi ha res a decidir: no molestem.

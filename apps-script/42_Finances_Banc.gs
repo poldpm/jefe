@@ -437,14 +437,20 @@ var FinancesBanc = (function () {
       var idNum = num ? 'auto_ib' + num : null;
       var idVell = 'auto_' + String(compte.uid).slice(0, 12);
 
-      var actiu = idNum ? Dades.perId('Patrimoni', idNum) : null;
+      /* Un actiu arxivat no compta com a trobat. Si en Pol ha ajuntat dos
+         comptes duplicats, el vell queda arxivat: tornar-hi a escriure el
+         ressuscitaria a mitges —rebent saldos però sense sortir enlloc, que
+         és el filtre de la pantalla— i el compte bo es quedaria congelat. */
+      var viu = function (x) { return x && !x.esborrat_el ? x : null; };
+
+      var actiu = idNum ? viu(Dades.perId('Patrimoni', idNum)) : null;
       if (!actiu && num) {
         actiu = Dades.llegeix('Patrimoni', function (x) {
           return !x.esborrat_el && String(x.automatic).toUpperCase() === 'SI' &&
                  String(x.iban || '') === num;
         })[0] || null;
       }
-      if (!actiu) actiu = Dades.perId('Patrimoni', idVell);
+      if (!actiu) actiu = viu(Dades.perId('Patrimoni', idVell));
 
       var id;
       if (actiu) {

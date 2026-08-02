@@ -732,6 +732,20 @@ console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
   cal('mirat fa un moment, no s hi torna',
       r.mirat === false && peticions === abans, JSON.stringify(r) + ' · ' + peticions);
 
+  // LES MIRADES DEL DIA SÓN COMPTADES.
+  // Cap pantalla les pot gastar: només els tres automatismes i el botó de mà.
+  const dolents = [];
+  ['apps-script/vista_finances.html', 'apps-script/vista_dia.html',
+   'apps-script/vista_conversa.html', 'apps-script/40_Mod_Finances.gs'].forEach(function (f) {
+    const t = fs.readFileSync(f, 'utf8');
+    if (/refrescaBanc|sincronitzaSiCal/.test(t)) dolents.push(f);
+  });
+  cal('cap pantalla mira el banc en obrir-se', dolents.length === 0, dolents.join(' '));
+
+  const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  cal('els automatismes del banc són tres i a les 6, 15 i 20',
+      inst.indexOf('[6, 15, 20].forEach') !== -1, 'no hi són');
+
   // Si li dius que amb zero minuts n'hi ha prou, sí que hi torna.
   r = ctx.FinancesBanc.sincronitzaSiCal(0);
   cal('i si se li demana expressament, hi torna',

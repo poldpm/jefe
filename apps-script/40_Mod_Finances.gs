@@ -178,17 +178,9 @@ function MODUL_FINANCES() {
       decideixUn:     function (p) { return Finances.decideixMoviment(p.id, p.categoria); },
       importa:        function (p) { return Finances.importa(p.dades, p.simulacio); },
       estatBanc:      function ()  { return FinancesBanc.estat(); },
-      sincronitzaBanc: function () { return FinancesBanc.sincronitza(); },
-
-      /* Mirar el banc en obrir la pantalla, si fa prou estona. La pantalla ja
-         s'ha pintat quan això arriba: no es fa esperar ningú. */
-      refrescaBanc:   function (p) {
-        var r = FinancesBanc.sincronitzaSiCal(p && p.minuts);
-        r.com = FinancesBanc.comEstem();
-        // Si ha entrat res, la pantalla ha de canviar: se li torna refeta.
-        if (r.nous) r.pantalla = Finances.pantalla(p && p.pantalla ? p.pantalla : {});
-        return r;
-      }
+      /* Mirar el banc a mà. NO es crida sola en obrir cap pantalla: les
+         mirades del dia són comptades i les gasten els tres automatismes. */
+      sincronitzaBanc: function () { return FinancesBanc.sincronitza(); }
     },
 
     /* La tornada del banc després que en Pol s'hi hagi identificat. El nucli
@@ -1291,8 +1283,19 @@ var Finances = (function () {
       dades: dades,
       categories: categories(),
       // Els suggeriments només fan falta on hi ha el formulari d'apuntar.
-      suggeriments: (quin === 'mes') ? suggeriments('') : []
+      suggeriments: (quin === 'mes') ? suggeriments('') : [],
+      /* De quan és el que ve del banc. Viatja amb la pantalla i no per
+         separat: és llegir una propietat, no anar al banc, i una xifra sense
+         la seva hora no diu la veritat sencera. */
+      banc: estatDelBanc_()
     };
+  }
+
+  function estatDelBanc_() {
+    try {
+      if (typeof FinancesBanc === 'undefined') return null;
+      return FinancesBanc.comEstem();
+    } catch (e) { return null; }
   }
 
   // ------------------------------------------------------ safata de revisió

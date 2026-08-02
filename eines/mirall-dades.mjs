@@ -286,6 +286,7 @@ export function dades(AVUI, menys) {
       dades = finMes(p.mes);
     }
     return { periode: quin, dades, categories: CATEGORIES,
+             banc: { connectat: true, quan: AVUI, fa: 'fa 2 hores', error: '' },
              suggeriments: quin === 'mes'
                ? [{ descripcio: 'SUPERMERCAT DEL POBLE', categoria: 'c_alim', metode: 'targeta', tipus: 'd' }]
                : [] };

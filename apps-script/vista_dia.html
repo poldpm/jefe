@@ -93,24 +93,15 @@ App.registraVista('dia', {
         });
     }
 
-    /* EL BANC, MIRAT EN OBRIR AQUESTA PÀGINA.
-       Aquí hi surt què has gastat avui, i això només val si és d'ara. Va a
-       part de `carrega`: la pàgina es pinta amb el que tenim i, si el banc
-       porta res, es torna a demanar. El servidor decideix si toca mirar-hi o
-       si fa quatre minuts que s'ha mirat, o sigui que es pot cridar sempre.
-
-       Només per al dia d'avui: mirar el banc per veure què vas gastar dimarts
-       passat no canvia res del que ja hi ha escrit. */
-    function miraElBanc() {
-      if (data !== fmt.avui()) return;
-      crida('finances', 'refrescaBanc', {})
-        .then(function (r) { if (r && r.nous) carrega(); })
-        .catch(function () { /* que el banc digui que no no és cosa d'aquesta pàgina */ });
-    }
+    /* OBRIR AQUESTA PÀGINA NO VA A MIRAR EL BANC, I ÉS A POSTA.
+       El banc només deixa que s'hi miri unes quantes vegades al dia sense que
+       en Pol hi sigui al davant, i ell entra aquí moltes vegades un mateix
+       matí: si cada entrada en gastés una, a mig matí ja no en quedaria cap i
+       els avisos de la tarda no arribarien. S'hi mira tres cops al dia i
+       prou; el que es veu aquí porta escrit de quan és. */
 
     arrel.innerHTML = Comp.carregant(3);
     carrega();
-    miraElBanc();
   }
 });
 </script>
