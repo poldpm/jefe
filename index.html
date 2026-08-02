@@ -1780,7 +1780,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 18:53 · 45b132b";</script>
+<script>window.MARCA_JEFE = "2026-08-02 19:29 · 6ae7380";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1933,7 +1933,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 18:53 · 45b132b";
+window.MARCA_JEFE = "2026-08-02 19:29 · 6ae7380";
 </script>
 
 <script>
@@ -3511,36 +3511,49 @@ App.registraVista('inici', {
 
 /* ------------------------------------------------------------- els apartats */
 
+/* Un sol boto, centrat sota les dues ordres grans. No es una tercera rodona:
+   les rodones son per parlar-li i escriure-li, i aixo no li parla, nomes obre
+   un calaix. Per aixo pren la forma dels botons quadrats de la barra —mateix
+   fil, mateixa lletra de maquina— i no competeix amb el microfon. */
 .jefe-moduls { position: relative; z-index: 2; flex: none;
-               display: flex; justify-content: center; gap: var(--e2);
-               padding: var(--e2) var(--guia) calc(var(--e3) + env(safe-area-inset-bottom, 0px));
-               border-top: 1px solid var(--linia); }
-.jefe-moduls a { flex: 1 1 0; min-width: 0; max-width: 96px; min-height: 56px;
-                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                 gap: 5px; color: var(--apagat); text-decoration: none;
-                 transition: color .18s ease; }
+               display: flex; justify-content: center;
+               padding: var(--e2) var(--guia) calc(var(--e2) + env(safe-area-inset-bottom, 0px)); }
 
-/* La mateixa rodona que el micròfon i el llapis, però més petita: són ordres
-   del mateix sistema, no d'un altre. La jerarquia la posa la mida, no una
-   forma diferent —parlar-li segueix manant sobre anar a un apartat. */
-.jefe-moduls .rodona { width: 46px; height: 46px; border-radius: 50%; flex: none;
-                       display: flex; align-items: center; justify-content: center;
-                       border: 1px solid var(--linia); background: rgba(7,16,25,.7);
-                       transition: border-color .18s ease; }
-.jefe-moduls .rodona .ic { width: 22px; height: 22px; }
-.jefe-moduls a:active { color: var(--cian); }
-.jefe-moduls a:active .rodona { border-color: var(--cian); }
-.jefe-moduls a span { font-family: var(--mono); font-size: .5625rem; letter-spacing: .12em;
-                      text-transform: uppercase; overflow: hidden; text-overflow: ellipsis;
-                      white-space: nowrap; max-width: 100%; }
-
+.porta-apartats {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--e2);
+  height: 44px; padding: 0 var(--e4);
+  border: 1px solid var(--linia); background: rgba(7,16,25,.7); color: var(--clar);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase;
+  transition: border-color .16s var(--entra), color .16s var(--entra), transform .12s var(--entra);
+}
+.porta-apartats .ic { width: 18px; height: 18px; flex: none; color: var(--cian); }
+.porta-apartats:active { border-color: var(--cian); transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) {
+  .porta-apartats:hover { border-color: var(--cian); }
+}
+/* El tauler: dues columnes al mobil, quatre a l escriptori. Cada apartat es
+   un panell amb les seves claus de cantonada, com a la resta de l app. */
+.reixa-apartats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--e2); }
+.apartat {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--e2);
+  min-height: 88px; padding: var(--e3);
+  color: var(--ink); text-align: left;
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
+}
+.apartat-ample { grid-column: 1 / -1; flex-direction: row; align-items: center; min-height: 60px; }
+.apartat .ic { width: 22px; height: 22px; color: var(--utm); }
+.apartat span { font-size: .875rem; font-weight: 600; line-height: 1.2; }
+.apartat:active { background: var(--utm-suau); transform: scale(.98); }
+@media (hover: hover) and (pointer: fine) {
+  .apartat:hover { background: var(--utm-suau); }
+}
+@media (min-width: 560px) { .reixa-apartats { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .reixa-apartats { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 900px) {
   .hud { --guia: 56px; }
   .nucli-caixa { width: min(42vw, 62vh); }
   .jefe-centre { gap: var(--e4); }
   .ordre-bt { width: 84px; height: 84px; }
-  .jefe-moduls { gap: var(--e5); padding-bottom: var(--e4); }
-  .jefe-moduls a { max-width: 120px; }
 }
 </style>
 
@@ -3608,7 +3621,16 @@ App.registraVista('conversa', {
           '</div>' +
         '</div>' +
 
-        '<nav class="jefe-moduls" id="moduls" aria-label="Apartats"></nav>' +
+        /* UN SOL BOTO PER A TOTS ELS APARTATS.
+           La fila de sota tenia una rodona per modul, i cada modul nou n'hi
+           afegia una: amb vuit ja competien entre elles i cap no es llegia.
+           Aquesta pantalla es per parlar-li; els apartats son on vas quan no
+           vols parlar, i aixo es una decisio, no vuit. */
+        '<div class="jefe-moduls">' +
+          '<button class="porta-apartats" id="b-apartats">' +
+            ic('modul') + '<span>Apartats</span>' +
+          '</button>' +
+        '</div>' +
       '</div>';
 
     var hud = arrel.querySelector('#hud');
@@ -4608,23 +4630,63 @@ App.registraVista('conversa', {
 
     /* Els apartats, drets a la vora de sota. Surten sols del registre de
        mòduls: un mòdul nou hi apareix sense tocar aquesta vista. */
-    function pintaModuls() {
-      var nav = arrel.querySelector('#moduls');
-      if (!nav) return;
+    /* EL TAULER DELS APARTATS.
+       Es munta amb el que digui el nucli: un modul nou hi surt sol, sense
+       tocar aquesta pantalla. Es el mateix contracte que tenia la fila. */
+    function reixaApartats(items) {
+      return '<div class="reixa-apartats">' +
+        /* La pagina del dia va PRIMERA i ocupa tota l amplada: no es un modul,
+           es on va la majoria de vegades, i abans no tenia boto enlloc —nomes
+           s hi arribava per la data de l inici. */
+        '<button class="apartat viu apartat-ample" data-ves="dia">' +
+          ic('inici') + '<span>El dia</span></button>' +
+        items.map(function (m) {
+          return '<button class="apartat viu" data-ves="' + esc(m.id) + '">' +
+            ic(m.icona || 'modul') +
+            '<span>' + esc(m.nom) + '</span>' +
+          '</button>';
+        }).join('') +
+      '</div>';
+    }
+
+    function apartatsQueHiHa() {
       var llista = (App.moduls && App.moduls.length) ? App.moduls : (Cau.get('moduls', []) || []);
-      var items = llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
+      return llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
+    }
 
-      nav.innerHTML = items.map(function (m) {
-        return '<a href="#" data-ves="' + esc(m.id) + '">' +
-               '<i class="rodona">' + ic(m.icona || 'modul') + '</i>' +
-               '<span>' + esc(m.nom) + '</span></a>';
-      }).join('');
-
-      nav.querySelectorAll('[data-ves]').forEach(function (a) {
-        a.addEventListener('click', function (ev) { ev.preventDefault(); App.ves(a.dataset.ves); });
+    function endollaApartats(cos) {
+      cos.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          App.tancaModal();
+          App.ves(b.dataset.ves);
+        });
       });
     }
-    pintaModuls();
+
+    function obreApartats() {
+      var items = apartatsQueHiHa();
+      var cos = App.modal('Apartats', reixaApartats(items));
+      endollaApartats(cos);
+      if (items.length) return;
+
+      /* QUI OBRE L'APP I VE DIRECTE A PARLAR-LI no ha passat mai per l'inici,
+         i el registre de mòduls només hi arribava des d'allà: el tauler
+         s'obria amb «El dia» i res més. Es demana aquí, un sol cop, i es desa
+         al telèfon. No llegeix cap full ni gasta res: és el registre. */
+      crida('nucli', 'moduls', {}).then(function (d) {
+        App.moduls = d.moduls; Cau.set('moduls', d.moduls);
+        var ara = document.querySelector('.reixa-apartats');
+        if (!ara) return;                      // ja l'ha tancat: no facis res
+        ara.outerHTML = reixaApartats(apartatsQueHiHa());
+        endollaApartats(document.querySelector('.modal'));
+      }).catch(function () { /* es queda amb «El dia»: millor això que un error */ });
+    }
+
+    (function () {
+      var b = arrel.querySelector('#b-apartats');
+      if (b) b.addEventListener('click', obreApartats);
+    })();
+
 
     (function () {
       var bc = arrel.querySelector('#b-clau');

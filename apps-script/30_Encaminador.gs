@@ -182,6 +182,14 @@ function apiNucli_(accio, params) {
         ia: IA.estat()
       };
 
+    /* NOMÉS EL REGISTRE DE MÒDULS.
+       El tauler d'apartats de la conversa el necessita, i abans només el
+       tenia qui hagués passat per l'inici: qui obria l'app i anava directe a
+       parlar-li, obria el tauler i no hi trobava res. Això no llegeix cap
+       full ni gasta res de la quota: és el registre i prou. */
+    case 'moduls':
+      return { moduls: Moduls.perAlClient() };
+
     case 'estat':
       return estatSistema();
 

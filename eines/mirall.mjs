@@ -129,6 +129,7 @@ const MOCK = `
 
     if (modul === 'nucli') {
       if (accio === 'inici') return copia(INICI);
+      if (accio === 'moduls') return { moduls: copia(INICI).moduls };
       if (accio === 'estat') return { versio: 'mirall', configurat: true, moduls: INICI.moduls,
                                       problemesEsquema: [], triggers: [], ia: { disponible: false } };
       if (accio === 'notificacions') return { disponible: false, motiu: 'mirall', dispositius: 0 };
