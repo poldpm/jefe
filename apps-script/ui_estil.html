@@ -997,6 +997,219 @@ h2 { font-size: 1.0625rem; }
    competir amb el text. Treure'l del tot deixava una capsa buida. */
 .franja svg.relleu { opacity: .16; }
 
+/* ---------------------------------------------------------------- finances */
+
+/* On van els diners: una barra per categoria, ordenades de més a menys. La
+   més llarga és la que et menja el mes, i es veu sense llegir cap número. */
+.cats { display: flex; flex-direction: column; }
+.cat-fila { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto;
+            align-items: center; gap: var(--e3); min-height: 44px; width: 100%;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
+            text-align: left; }
+.cat-fila:last-child { border-bottom: 0; }
+.cat-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; }
+.cat-via { display: block; height: 8px; background: var(--roca);
+           border: 1px solid var(--neatline); }
+.cat-via i { display: block; height: 100%; background: var(--h4); }
+.cat-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+             font-size: .875rem; white-space: nowrap; }
+.cat-xifra small { display: block; font-size: .6875rem; font-weight: 400; }
+
+/* Mes a mes: ingressos a sobre, despeses a sota. Dues barres i prou. */
+.mesos { display: flex; flex-direction: column; }
+.mes-fila { display: grid; grid-template-columns: 52px minmax(0, 1fr) 92px;
+            align-items: center; gap: var(--e3); min-height: 48px; width: 100%;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
+            text-align: left; }
+.mes-fila:last-child { border-bottom: 0; }
+.mes-nom { font-size: .75rem; color: var(--ink-suau); font-variant-numeric: tabular-nums; }
+.mes-barres { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mes-barres i { display: block; height: 7px; min-width: 1px; }
+.mes-barres i[data-mena="i"] { background: var(--h1); }
+.mes-barres i[data-mena="d"] { background: var(--h5); }
+.mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+             font-size: .875rem; }
+
+/* Gestió de categories. Llista curta i formulari a sota: crear-ne una ha de
+   ser tan barat com adonar-te que et falta. */
+.cats-gest { max-height: 34vh; overflow-y: auto; margin-bottom: var(--e4);
+             border: 1px solid var(--utm-suau); }
+.cat-mena { margin: 0; padding: var(--e2) var(--e3); background: var(--paper2);
+            border-bottom: 1px solid var(--utm-suau);
+            letter-spacing: .1em; text-transform: uppercase; }
+.cat-gest { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+            padding: 0 var(--e2) 0 var(--e3); border-bottom: 1px solid var(--utm-suau); }
+.cat-gest:last-child { border-bottom: 0; }
+.cat-gest-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                white-space: nowrap; font-size: .9375rem; }
+
+.cat-nova-fila { display: grid; grid-template-columns: 68px minmax(0, 1fr);
+                 gap: var(--e2); margin: var(--e3) 0; }
+.cat-nova-fila input { min-width: 0; min-height: var(--toc); padding: 0 var(--e2);
+                       font: inherit; background: var(--paper); color: var(--ink);
+                       border: 1px solid var(--neatline); border-radius: var(--r); }
+.camp-emoji { text-align: center; font-size: 1.25rem; }
+.cat-exclou { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
+              margin-bottom: var(--e2); font-size: .875rem; cursor: pointer; }
+.cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
+
+/* El color de la marca, el del mapa. Sense això, la casella marcada surt del
+   verd blau que el navegador porta de sèrie —que no és de cap dels dos temes
+   d'aquí— i la buida, en fosc, queda com un quadre negre sense vora. */
+input[type="checkbox"] { accent-color: var(--utm); }
+.cat-nova [data-crea-cat] { width: 100%; }
+
+/* Pressupost: la barra deixa de mesurar contra la categoria més grossa i
+   passa a mesurar contra el teu límit. Passat el límit, es tenyeix. */
+.cat-via[data-limit] { border-color: var(--corba-mestra); }
+.cat-via i[data-passat] { background: var(--h5); }
+.cat-xifra small { display: block; font-size: .625rem; font-weight: 400;
+                   color: var(--ink-suau); }
+
+/* Recurrents: el dia mana a l'esquerra, perquè el que preguntes és «quan
+   surt», no «quant». */
+.rec-fila { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
+            align-items: center; gap: var(--e3); width: 100%; min-height: 56px;
+            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
+            padding: var(--e2) 0; text-align: left; font: inherit; color: inherit;
+            cursor: pointer; }
+.rec-fila:last-child { border-bottom: 0; }
+.rec-fila[data-apagat] { opacity: .45; }
+.rec-dia { display: flex; align-items: center; justify-content: center;
+           width: 34px; height: 34px; border: 1px solid var(--neatline);
+           font-size: .875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rec-cos { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Captura ràpida. El camp és el primer que hi ha i està sempre obert: si has
+   de prémer un botó per obrir-lo, ja has perdut la meitat del que volies
+   apuntar. */
+.camp-captura { display: block; }
+.captura-fila { display: flex; gap: var(--e2); margin-top: var(--e2); }
+.captura-fila input { flex: 1; min-width: 0; min-height: var(--toc); padding: 0 var(--e3);
+                      font: inherit; background: var(--paper); color: var(--ink);
+                      border: 1.5px solid var(--neatline); border-radius: var(--r); }
+.captura-fila .btn { flex: none; padding: 0 var(--e4); }
+
+/* La safata: el que has capturat i encara no has decidit què era. Els tres
+   contextos a un toc, perquè classificar-ho ha de costar menys que llegir-ho. */
+.safata-t { display: flex; flex-direction: column; gap: var(--e2); }
+.safata-fila { border: 1px solid var(--neatline); padding: var(--e3);
+               transition: opacity .25s ease, transform .25s var(--sortida); }
+.safata-fila[data-fet="1"] { opacity: 0; transform: translateX(20px); }
+.safata-text { margin-bottom: var(--e2); overflow-wrap: anywhere; }
+.safata-tria { display: flex; gap: var(--e2); }
+.safata-tria button { flex: 1; min-height: 44px; font: inherit; font-size: .8125rem;
+                      background: transparent; color: var(--ink-suau);
+                      border: 1px solid var(--neatline); border-radius: var(--r); }
+.safata-tria button:active { background: var(--ink); color: var(--paper); }
+.safata-tria .safata-fora { flex: none; width: 44px; color: var(--ink-suau);
+                            border-color: var(--utm-suau); }
+
+/* Acabat d'apuntar i encara no ha tornat del servidor. Es veu de seguida
+   —això és tot el sentit— però es distingeix del que ja hi és desat: sense
+   els botons de context, que encara no tenen a què apuntar. La ratlla que
+   avança per sota diu que hi ha feina en curs sense fer-ne cap escàndol. */
+.safata-fila[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
+.safata-fila[data-esperant="1"] .safata-text { margin-bottom: 0; }
+.safata-fila[data-esperant="1"]::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 40%;
+  background: var(--ink-suau); animation: esperant-va 1.1s ease-in-out infinite;
+}
+@keyframes esperant-va {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .safata-fila[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
+}
+
+/* =========================================================================
+   EL CALENDARI — la quadrícula UTM del full
+
+   La graella diu ON hi ha coses, no QUÈ hi ha: set columnes en una pantalla
+   de mòbil donen cinquanta píxels per dia i no hi cap cap títol sense
+   mentir. Un punt per cita ja respon la pregunta que fas mirant un mes
+   —quins dies tinc plens—, i el què és a sota, amb tot l'espai.
+   ========================================================================= */
+
+.mes-graella { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+               gap: 1px; background: var(--utm-suau);
+               border: 1.5px solid var(--neatline); }
+
+.mes-cap { background: var(--paper2); text-align: center; padding: var(--e1) 0;
+           font-size: .625rem; letter-spacing: .08em; text-transform: uppercase;
+           color: var(--ink-suau); }
+
+.mes-dia {
+  min-height: 52px; padding: 3px 2px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: 0; background: var(--paper); color: var(--ink); font: inherit;
+}
+.mes-dia .n { font-size: .8125rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+/* Els dies de l'altre mes hi són perquè la setmana no quedi coixa, no perquè
+   els miris: es queden apagats i no criden. */
+.mes-dia[data-fora="1"] { background: var(--paper2); }
+.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: .55; }
+.mes-dia[data-avui="1"] { outline: 1px solid var(--utm); outline-offset: -1px; }
+
+/* El dia que MIRES es marca amb el blau de la quadrícula, no amb l'ocre.
+   L'ocre d'aquesta app vol dir «fet» a tot arreu —als hàbits, al full de
+   mes—, i un dia del calendari no es fa: es mira. Fer servir la mateixa
+   tinta per a dues coses diferents és com es perd un sistema de color. */
+.mes-dia[aria-current="date"] { background: var(--utm-suau);
+                                box-shadow: inset 0 -3px 0 var(--utm); }
+/* La xifra torna a la tinta normal. Si el dia que mires és avui, el blau del
+   número quedava blau sobre blau pàl·lid: 3,57, per sota del mínim. El blau
+   ja el posen el fons i la ratlla; el número només ha de llegir-se. */
+.mes-dia[aria-current="date"] .n { font-weight: 700; color: var(--ink); }
+.mes-dia:active { background: var(--utm-suau); }
+
+.mes-dia .punts { display: flex; gap: 2px; min-height: 6px; align-items: center; }
+.mes-dia .punts i { width: 5px; height: 5px; border-radius: 50%;
+                    background: var(--corba-mestra); display: block; }
+/* El de tot el dia és una barra i no un punt: no té hora, i que es distingeixi
+   d'una cita d'un quart estalvia obrir el dia per veure què és. */
+.mes-dia .punts i[data-tot="1"] { width: 10px; border-radius: 1px; }
+
+/* Els títols dins la casella només surten quan la casella és prou gran per
+   ensenyar-los. Al mòbil, els punts; a l'escriptori, el que hi diu. */
+.cal-titols { display: none; }
+
+.dia-cap-cal { margin: var(--e5) 0 var(--e2); }
+.dia-cap-cal .marge { margin: 0; }
+
+.cites { display: flex; flex-direction: column;
+         border: 1px solid var(--neatline); }
+.cita {
+  position: relative; display: flex; align-items: flex-start; gap: var(--e3);
+  width: 100%; min-height: 56px; padding: var(--e3);
+  border: 0; border-bottom: 1px solid var(--utm-suau);
+  background: var(--paper); color: var(--ink); text-align: left; font: inherit;
+}
+.cita:last-child { border-bottom: 0; }
+.cita:active { background: var(--paper2); }
+.cita[data-passat="1"] { opacity: .55; }
+
+.cita-quan { flex: none; width: 52px; display: flex; flex-direction: column;
+             line-height: 1.2; font-variant-numeric: tabular-nums; }
+.cita-quan b { font-size: .9375rem; }
+.cita-quan span { font-size: .75rem; color: var(--ink-suau); }
+.cita-quan .tot { font-size: .6875rem; letter-spacing: .04em;
+                  text-transform: uppercase; color: var(--ink-suau); }
+.cita-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cita-titol { font-weight: 600; overflow-wrap: anywhere; }
+.cita-color { flex: none; width: 4px; align-self: stretch; border-radius: 2px; }
+
+.cal-hores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e3); }
+
+/* Un enllaç dins d'un text: no és un botó amb marc, és una paraula que fa cosa. */
+.enllac { border: 0; background: none; padding: 0; font: inherit;
+          color: var(--utm); text-decoration: underline; text-underline-offset: 3px; }
+
 /* ------------------------------------------------------ la porta del dia
    La data de la pantalla d'inici obre la pagina del dia. No es un boto nou
    —no n'hi havia d'haver cap mes a la fila de sota— sino la data que ja hi
