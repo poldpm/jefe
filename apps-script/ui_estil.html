@@ -412,8 +412,10 @@ h2 { font-size: 1.0625rem; }
    fora no arriben: `.punxo circle` no ha casat mai amb res, i per això el
    punxó sortia com una rodona negra plena. `fill` i `stroke` sí que
    s'hereten, i travessen. */
-.punxo { width: 22px; height: 22px; flex: none;
-         fill: none; stroke: currentColor; stroke-width: 1.8;
+/* Ara que la franja ja no es pinta sencera, el punxo es el que diu que
+   allo esta fet: un senyal ences. Amb el text al costat, mai el color sol. */
+.punxo { width: 20px; height: 20px; flex: none;
+         fill: none; stroke: var(--utm); stroke-width: 2;
          stroke-linecap: round; stroke-linejoin: round; }
 .franja[data-estat="fet"] .punxo { animation: pica .38s var(--sortida); }
 @keyframes pica {
@@ -518,14 +520,17 @@ h2 { font-size: 1.0625rem; }
   padding: 0 var(--e3) 0 0; border: 0; max-width: 190px; overflow: hidden;
   text-overflow: ellipsis;
 }
-.cella { height: 26px; }
+/* El full del mes: una matriu de cel·les enceses o apagades. Ences = fet.
+   La d'avui porta el fil viu i no el vermell: el vermell d'aquesta app es el
+   que va malament, i avui no va malament, avui es avui. */
+.cella { height: 24px; }
 .cella button { width: 100%; height: 100%; border: 0; background: transparent; padding: 0; display: block; }
-.cella[data-e="fet"]    { background: var(--fet); }
-.cella[data-e="nofet"]  { background: var(--paper2); }
+.cella[data-e="fet"]    { background: var(--h4); }
+.cella[data-e="nofet"]  { background: var(--h0); }
 .cella[data-e="notoca"] { background: transparent; }
 .cella[data-e="futur"]  { background: repeating-linear-gradient(45deg,
                             transparent 0 3px, var(--utm-suau) 3px 4px); }
-.cella[data-avui="1"]   { outline: 2px solid var(--gr); outline-offset: -2px; }
+.cella[data-avui="1"]   { outline: 1px solid var(--utm); outline-offset: -1px; }
 
 /* Calendari compacte del detall d'un hàbit */
 .calendari { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
