@@ -1389,6 +1389,11 @@ function fusionaPatrimoni(idVell, idBo) {
 
   Dades.actualitza('Patrimoni', idVell, { esborrat_el: Utils.ara() });
 
+  // Es deixa constància de qui s'ha arxivat, per poder-ho desfer si m'he
+  // equivocat de compte. Vegeu `desfesLaFusio()`.
+  PropertiesService.getScriptProperties().setProperty(PROP_FUSIO_FETA,
+    JSON.stringify({ vell: idVell, bo: idBo, copiats: copiats, quan: Utils.ara() }));
+
   a('  ' + copiats + ' valors copiats al bo');
   a('  ' + saltats + ' saltats perquè el bo ja tenia aquell dia');
   a('  «' + vell.nom + '» arxivat (no esborrat: treu-li la data d\'`esborrat_el` per recuperar-lo)');
@@ -1409,6 +1414,7 @@ function fusionaPatrimoni(idVell, idBo) {
    -------------------------------------------------------------------------- */
 
 var PROP_FUSIO = 'FUSIO_PATRIMONI_PREVISTA';
+var PROP_FUSIO_FETA = 'FUSIO_PATRIMONI_FETA';
 
 /** Busca comptes duplicats i diu què faria. NO toca res. */
 function preparaFusio() {
@@ -1439,17 +1445,69 @@ function preparaFusio() {
     grups[clau].push(x);
   });
 
-  var parelles = [];
+  /* QUI ÉS EL COMPTE VIU HO DIU LA CONNEXIÓ, NO JO.
+     El primer intent el triava pel valor més recent, i això falla just el dia
+     que es refà la connexió: aquell dia els DOS tenen valor, el vell del matí
+     i el nou de la tarda, i llavors el desempat era l'ordre de la llista. Va
+     arxivar el bo. La sessió del banc porta els comptes que està llegint ara
+     mateix: el que hi surt és el viu i no hi ha res a endevinar. */
+  var vius = {};
+  try {
+    var e = FinancesBanc.estat();
+    (e.accounts || []).forEach(function (c) {
+      vius['auto_' + String(c.uid).slice(0, 12)] = true;
+      var num = String(c.iban || '').replace(/\s/g, '').slice(-10);
+      if (num) vius['auto_ib' + num] = true;
+    });
+  } catch (err) { /* sense banc connectat: es decidirà com es pugui */ }
+
+  var parelles = [], dubtes = [];
   Object.keys(grups).forEach(function (k) {
     var g = grups[k];
     if (g.length < 2) return;
-    // El bo és el que té el valor més recent. Els altres són els congelats.
+
+    var elsVius = g.filter(function (x) { return vius[x.id]; });
+
+    if (elsVius.length === 1) {
+      var bo = elsVius[0];
+      g.forEach(function (x) { if (x.id !== bo.id) parelles.push({ vell: x.id, bo: bo.id, per: 'la connexió' }); });
+      return;
+    }
+
+    /* Si la connexió no en reconeix cap —o en reconeix més d'un—, es mira el
+       valor més recent. I si empaten, NO s'endevina: es pregunta. Equivocar-se
+       de compte vol dir arxivar el bo, i això ja ha passat un cop. */
     g.sort(function (p, q) {
       var up = ultim(p.id), uq = ultim(q.id);
       return String(uq ? uq.data : '').localeCompare(String(up ? up.data : ''));
     });
-    for (var i = 1; i < g.length; i++) parelles.push({ vell: g[i].id, bo: g[0].id });
+    var d0 = ultim(g[0].id), d1 = ultim(g[1].id);
+    if (elsVius.length > 1 || (d0 && d1 && d0.data === d1.data)) {
+      dubtes.push(g);
+      return;
+    }
+    for (var i = 1; i < g.length; i++) parelles.push({ vell: g[i].id, bo: g[0].id, per: 'la data' });
   });
+
+  if (dubtes.length) {
+    a('NO ME N\'ACABO DE FIAR, i per això no proposo res.');
+    a('');
+    dubtes.forEach(function (g) {
+      g.forEach(function (x) {
+        var u = ultim(x.id);
+        a('  ' + x.nom + '  (' + x.id + ')');
+        a('      ' + (u ? u.valor + ' € del ' + u.data : 'sense valors') +
+          ' · ' + (hist[x.id] || []).length + ' valors');
+      });
+      a('');
+    });
+    a('Tots dos tenen valor del mateix dia i la connexió del banc no em diu quin');
+    a('està llegint ara. Digue\'m tu quin és el bo —el del saldo que tens de debò—');
+    a('i executa:  fusionaPatrimoni("id del vell", "id del bo")');
+    a('...o digue-m\'ho a mi i t\'ho deixo preparat en un botó.');
+    PropertiesService.getScriptProperties().deleteProperty(PROP_FUSIO);
+    return l.join('\n');
+  }
 
   if (!parelles.length) {
     a('No trobo cap compte duplicat.');
@@ -1466,9 +1524,13 @@ function preparaFusio() {
     var vell = Dades.perId('Patrimoni', p.vell);
     var bo = Dades.perId('Patrimoni', p.bo);
     var uv = ultim(p.vell), ub = ultim(p.bo);
-    a('  Es queda:  ' + bo.nom + '  →  ' + (ub ? ub.valor + ' € del ' + ub.data : 'sense valors'));
-    a('  S\'hi ajunta: ' + vell.nom + '  →  ' + (uv ? uv.valor + ' € del ' + uv.data : 'sense valors'));
-    a('               ' + (hist[p.vell] || []).length + ' valors seus passen al que es queda');
+    a('  Es queda:  ' + bo.nom + '  (' + p.bo + ')');
+    a('             ' + (ub ? ub.valor + ' € del ' + ub.data : 'sense valors') +
+      ' · ' + (hist[p.bo] || []).length + ' valors');
+    a('             el trio per ' + p.per);
+    a('  S\'hi ajunta: ' + vell.nom + '  (' + p.vell + ')');
+    a('             ' + (uv ? uv.valor + ' € del ' + uv.data : 'sense valors') +
+      ' · ' + (hist[p.vell] || []).length + ' valors, que passen al que es queda');
     a('');
   });
 
@@ -1499,4 +1561,46 @@ function fusionaAra() {
   var text = l.join('\n');
   Logger.log(text);
   return text;
+}
+
+
+/**
+ * DESFÀ L'ÚLTIMA FUSIÓ.
+ *
+ * Treu l'arxivat al compte que es va apartar. Els valors que s'haguessin
+ * copiat es queden on són —aquí no s'esborra res mai— però com que el que
+ * mana és l'últim valor de cada compte, tornar a fer la fusió al dret els
+ * torna a deixar bé.
+ */
+function desfesLaFusio() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var props = PropertiesService.getScriptProperties();
+  var feta = Utils.desJson(props.getProperty(PROP_FUSIO_FETA), null);
+
+  if (!feta || !feta.vell) {
+    a('No tinc constància de cap fusió feta per mi.');
+    a('');
+    a('Si n\'hi ha una per desfer, fes mirarPatrimoni() i digue-m\'ho: al full');
+    a('es recupera treient la data de la columna `esborrat_el` de la fila.');
+    return l.join('\n');
+  }
+
+  var vell = Dades.perId('Patrimoni', feta.vell);
+  if (!vell) { a('L\'actiu ' + feta.vell + ' ja no hi és.'); return l.join('\n'); }
+
+  Dades.actualitza('Patrimoni', feta.vell, { esborrat_el: '' });
+  props.deleteProperty(PROP_FUSIO_FETA);
+  props.deleteProperty(PROP_FUSIO);
+
+  a('«' + vell.nom + '» (' + feta.vell + ') ja no està arxivat.');
+  if (feta.copiats) {
+    a('');
+    a(feta.copiats + ' valors s\'havien copiat a l\'altre compte i s\'hi queden.');
+    a('No molesten: el que mana és l\'últim valor de cada compte.');
+  }
+  a('');
+  a('Ara torna a fer preparaFusio() i mira bé quin es queda.');
+  return l.join('\n');
 }

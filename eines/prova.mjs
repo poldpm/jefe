@@ -555,7 +555,8 @@ console.log("Patrimoni: ajuntar dos comptes no ha de perdre cap valor");
       }
     },
     Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
-    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null,
+      setProperty: () => {}, deleteProperty: () => {} }) },
     ScriptApp: { getProjectTriggers: () => [] },
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
     HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
@@ -815,8 +816,10 @@ console.log("Patrimoni: trobar el duplicat sense haver de dir-li quin es");
   const previsio = ctx.preparaFusio();
   cal("troba el duplicat sol", /HE TROBAT 1 duplicat/.test(previsio), previsio.slice(0, 60));
   cal('es queda el que te el valor mes recent',
-      /Es queda:  Compte ···4471  →  4052 € del 2026-08-01/.test(previsio), previsio);
-  cal("i hi ajunta el congelat", /S'hi ajunta: Compte ···4471  →  4353 € del 2026-06-01/.test(previsio), previsio);
+      previsio.indexOf('Es queda:  Compte ···4471  (auto_ib0004471)') !== -1 &&
+      previsio.indexOf('4052 € del 2026-08-01') !== -1, previsio);
+  cal("i hi ajunta el congelat", previsio.indexOf("S'hi ajunta: Compte ···4471  (auto_vell)") !== -1 &&
+      previsio.indexOf('4353 € del 2026-06-01') !== -1, previsio);
   cal('el manual no hi te res a veure', previsio.indexOf('Trade Republic') === -1, previsio);
   cal('mirar-ho NO ha tocat res', !actius.filter(x => x.esborrat_el).length, 'ha tocat alguna cosa');
 
@@ -838,6 +841,140 @@ console.log("Patrimoni: trobar el duplicat sense haver de dir-li quin es");
   // I ara ja no queda cap duplicat per trobar.
   cal('un cop fet, ja no en troba cap',
       /No trobo cap compte duplicat/.test(ctx.preparaFusio()), 'encara en troba');
+}
+
+// ------------------- el dia que es refa la connexio, tots dos tenen valor d avui
+console.log("");
+console.log("Patrimoni: qui es el compte viu ho diu la connexio, no la data");
+{
+  const props = {};
+  // El cas de debo: el vell porta 12 valors i encara en va rebre un l'1 d'agost;
+  // el nou va neixer aquell mateix dia. Per data empaten.
+  const actius = [
+    { id: 'auto_6d32636a-4c5', nom: 'Banc', automatic: 'SI', iban: '', esborrat_el: '' },
+    { id: 'auto_02786e6a-89d', nom: 'Banc', automatic: 'SI', iban: '', esborrat_el: '' }
+  ];
+  const hist = [];
+  ['2026-07-21','2026-07-25','2026-07-30','2026-08-01'].forEach((d, n) =>
+    hist.push({ id: 'v' + n, id_actiu: 'auto_6d32636a-4c5', data: d, valor: 4353.91 }));
+  hist.push({ id: 'vn', id_actiu: 'auto_02786e6a-89d', data: '2026-08-01', valor: 4052.89 });
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} },
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { ara: () => '2026-08-02T12:00:00+02:00', avui: () => '2026-08-02',
+             desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } } },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const files = full === 'Patrimoni' ? actius : hist;
+        return typeof filtre === 'function' ? files.filter(filtre) : files.slice();
+      },
+      perId: (full, id) => (full === 'Patrimoni' ? actius : hist).filter(x => x.id === id)[0] || null,
+      desa: (full, fila) => {
+        const j = hist.findIndex(x => x.id === fila.id);
+        if (j === -1) hist.push(fila); else hist[j] = fila;
+        return fila;
+      },
+      actualitza: (full, id, canvis) => {
+        const x = actius.filter(y => y.id === id)[0];
+        if (x) Object.keys(canvis).forEach(k => { x[k] = canvis[k]; });
+        return x || null;
+      }
+    },
+    // La connexio esta llegint el compte nou: aixo es el que mana.
+    FinancesBanc: { estat: () => ({ accounts: [{ uid: '02786e6a-89d4-4c1a-9f3e-000000000000', iban: '' }] }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => (props[k] === undefined ? null : props[k]),
+      setProperty: (k, v) => { props[k] = v; },
+      deleteProperty: (k) => { delete props[k]; }
+    }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
+    SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  const previsio = ctx.preparaFusio();
+  cal('es queda el compte que la connexio esta llegint, no el de mes historic',
+      previsio.indexOf('Es queda:  Banc  (auto_02786e6a-89d)') !== -1, previsio);
+  cal('i ho diu, per que el tria', previsio.indexOf('el trio per la connexió') !== -1, previsio);
+
+  ctx.fusionaAra();
+  const viu = actius.filter(x => x.id === 'auto_02786e6a-89d')[0];
+  const apartat = actius.filter(x => x.id === 'auto_6d32636a-4c5')[0];
+  cal('el viu es queda sense arxivar', !viu.esborrat_el, 'l ha arxivat');
+  cal("i el congelat s'aparta", !!apartat.esborrat_el, 'no l ha apartat');
+
+  const seus = hist.filter(x => x.id_actiu === 'auto_02786e6a-89d')
+                   .sort((a, b) => a.data.localeCompare(b.data));
+  cal('el viu hereta la linia sencera', seus.length === 4, String(seus.length));
+  cal("i el saldo d'avui segueix sent el bo",
+      seus[seus.length - 1].valor === 4052.89, String(seus[seus.length - 1].valor));
+
+  // I si m'equivoco, s'ha de poder desfer.
+  ctx.desfesLaFusio();
+  cal('desfer-ho torna a treure l arxivat',
+      !actius.filter(x => x.id === 'auto_6d32636a-4c5')[0].esborrat_el, 'segueix arxivat');
+  cal('i sense res a desfer, no fa res',
+      /No tinc constància/.test(ctx.desfesLaFusio()), 'ha fet alguna cosa');
+}
+
+// ------------------------------------- i si no hi ha manera de saber quin es viu
+console.log("");
+console.log("Patrimoni: quan no se sap quin es el bo, es pregunta");
+{
+  const props = {};
+  const actius = [
+    { id: 'auto_a', nom: 'Banc', automatic: 'SI', iban: '', esborrat_el: '' },
+    { id: 'auto_b', nom: 'Banc', automatic: 'SI', iban: '', esborrat_el: '' }
+  ];
+  const hist = [
+    { id: 'x1', id_actiu: 'auto_a', data: '2026-08-01', valor: 4353.91 },
+    { id: 'x2', id_actiu: 'auto_b', data: '2026-08-01', valor: 4052.89 }
+  ];
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} }, Log: { info() {}, avis() {}, error() {} },
+    Utils: { ara: () => '2026-08-02T12:00:00+02:00', avui: () => '2026-08-02',
+             desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } } },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const files = full === 'Patrimoni' ? actius : hist;
+        return typeof filtre === 'function' ? files.filter(filtre) : files.slice();
+      },
+      perId: (full, id) => (full === 'Patrimoni' ? actius : hist).filter(x => x.id === id)[0] || null,
+      desa: () => null,
+      actualitza: (full, id, canvis) => {
+        const x = actius.filter(y => y.id === id)[0];
+        if (x) Object.keys(canvis).forEach(k => { x[k] = canvis[k]; });
+        return x || null;
+      }
+    },
+    // Sense connexio que ho aclareixi.
+    FinancesBanc: { estat: () => ({ accounts: [] }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => (props[k] === undefined ? null : props[k]),
+      setProperty: (k, v) => { props[k] = v; },
+      deleteProperty: (k) => { delete props[k]; }
+    }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
+    SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  const r = ctx.preparaFusio();
+  cal('amb un empat i sense connexio, no proposa res',
+      /NO ME N'ACABO DE FIAR/.test(r), r.slice(0, 80));
+  cal('i ensenya els dos amb el seu numero', r.indexOf('4353.91') !== -1 && r.indexOf('4052.89') !== -1, r);
+  cal('i no deixa res preparat per executar',
+      /Primer executa preparaFusio/.test(ctx.fusionaAra()), 'ha deixat alguna cosa preparada');
+  cal('i sobretot NO ha tocat res', !actius.filter(x => x.esborrat_el).length, 'ha arxivat alguna cosa');
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
