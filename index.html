@@ -1771,7 +1771,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 18:10 · f0fd12c";</script>
+<script>window.MARCA_JEFE = "2026-08-02 18:21 · 0a61347";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1919,7 +1919,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 18:10 · f0fd12c";
+window.MARCA_JEFE = "2026-08-02 18:21 · 0a61347";
 </script>
 
 <script>
@@ -6545,7 +6545,13 @@ App.registraVista('finances', {
       });
       cos.querySelector('[data-avui]').addEventListener('click', function () {
         App.tancaModal();
-        App.ves('finances', { mes: null, periode: periode === 'revisar' ? 'mes' : periode });
+        /* SEMPRE AL MES, I NO AL PERÍODE ON ERES.
+           Abans es conservava el període: si el premies des de «Últims 12
+           mesos», de «Patrimoni» o de «Cada mes» —que no tenen mes— no es
+           veia passar res, i des de fora això és un botó que no va. El que
+           diu l'etiqueta és «anar al mes actual», i això és el que ha de fer:
+           el mes en curs, a la vista del mes. */
+        App.ves('finances', { mes: null, periode: 'mes' });
       });
     }
 

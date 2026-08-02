@@ -259,7 +259,21 @@ const MOCK = `
     }
 
     if (modul === 'finances') {
-      if (accio === 'pantalla') return copia(FIN[p.periode || 'mes'] || FIN.mes);
+      if (accio === 'pantalla') {
+        var r = copia(FIN[p.periode || 'mes'] || FIN.mes);
+        /* EL MES QUE ES DEMANA, NO SEMPRE EL D'AVUI. La maqueta tornava
+           l'agost passés el que passés, i per això el mirall no va poder
+           ensenyar que el botó d'anar al mes actual no anava: totes les
+           respostes deien el mateix. */
+        if ((p.periode || 'mes') === 'mes' && p.mes && r.dades) {
+          r.dades.mes = p.mes;
+          if (p.mes !== AVUI.slice(0, 7)) {
+            r.dades.moviments = (r.dades.moviments || []).filter(function () { return false; });
+            r.dades.ingressos = 0; r.dades.despeses = 0; r.dades.balanc = 0;
+          }
+        }
+        return r;
+      }
       if (accio === 'categories') return copia(FIN.mes.categories);
       if (accio === 'suggeriments') return copia(FIN.mes.suggeriments);
       if (accio === 'recurrents') return copia(FIN.recurrents.dades.llista);

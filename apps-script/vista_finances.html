@@ -129,7 +129,13 @@ App.registraVista('finances', {
       });
       cos.querySelector('[data-avui]').addEventListener('click', function () {
         App.tancaModal();
-        App.ves('finances', { mes: null, periode: periode === 'revisar' ? 'mes' : periode });
+        /* SEMPRE AL MES, I NO AL PERÍODE ON ERES.
+           Abans es conservava el període: si el premies des de «Últims 12
+           mesos», de «Patrimoni» o de «Cada mes» —que no tenen mes— no es
+           veia passar res, i des de fora això és un botó que no va. El que
+           diu l'etiqueta és «anar al mes actual», i això és el que ha de fer:
+           el mes en curs, a la vista del mes. */
+        App.ves('finances', { mes: null, periode: 'mes' });
       });
     }
 
