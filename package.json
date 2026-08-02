@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "comprova": "node eines/comprova.mjs && npm run prova",
-    "puja": "node eines/comprova.mjs && node eines/prova.mjs && node eines/prova-pont.mjs && clasp push -f && node eines/desplega.mjs && node eines/construeix.mjs",
+    "puja": "node eines/comprova.mjs && node eines/prova.mjs && node eines/prova-pont.mjs && node eines/construeix.mjs && clasp push -f && node eines/desplega.mjs",
     "obre": "clasp open",
     "registre": "clasp logs",
     "construeix": "node eines/construeix.mjs",

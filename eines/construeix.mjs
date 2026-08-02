@@ -36,6 +36,33 @@ function llegeix(nom) {
   return fs.readFileSync(f, 'utf8');
 }
 
+/* LA MARCA DE LA CONSTRUCCIÓ. Va la primera perquè el fitxer que genera
+   és un dels que després es resolen amb include().
+   Apps Script no deixa preguntar amb quina versió s'està servint una pàgina,
+   i sense això no hi ha manera de saber si el que tens obert al mòbil és el
+   que s'acaba de desplegar o el d'abans-d'ahir amb la memòria del navegador
+   pel mig. Es marca aquí: el dia i l'hora exactes de la construcció, i el
+   commit d'on surt. Es veu a la telemetria, apartat SISTEMA. */
+const ara = new Date();
+const dosDig = (n) => ('0' + n).slice(-2);
+const MARCA = ara.getFullYear() + '-' + dosDig(ara.getMonth() + 1) + '-' + dosDig(ara.getDate()) +
+              ' ' + dosDig(ara.getHours()) + ':' + dosDig(ara.getMinutes());
+let commit = '';
+try {
+  commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+} catch (e) { /* fora d'un repositori, la data ja diu prou */ }
+
+/* La mateixa marca va al fitxer que serveix Apps Script. Es genera aqui i
+   no a ma perque la font de la veritat ha de ser una: la construccio. */
+const SEGELL = MARCA + (commit ? ' · ' + commit : '');
+fs.writeFileSync(path.join(ORIGEN, 'ui_marca.html'), [
+  '<script>',
+  '/* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */',
+  'window.MARCA_JEFE = ' + JSON.stringify(SEGELL) + ';',
+  '</' + 'script>',
+  ''
+].join('\n'));
+
 let html = fs.readFileSync(path.join(ORIGEN, 'ui_index.html'), 'utf8');
 
 // 1. Resol els include() de la plantilla d'Apps Script
@@ -78,25 +105,10 @@ if (restants) {
   process.exit(1);
 }
 
-/* 4. LA MARCA DE LA CONSTRUCCIÓ.
-   Apps Script no deixa preguntar amb quina versió s'està servint una pàgina,
-   i sense això no hi ha manera de saber si el que tens obert al mòbil és el
-   que s'acaba de desplegar o el d'abans-d'ahir amb la memòria del navegador
-   pel mig. Es marca aquí: el dia i l'hora exactes de la construcció, i el
-   commit d'on surt. Es veu a la telemetria, apartat SISTEMA. */
-const ara = new Date();
-const dosDig = (n) => ('0' + n).slice(-2);
-const MARCA = ara.getFullYear() + '-' + dosDig(ara.getMonth() + 1) + '-' + dosDig(ara.getDate()) +
-              ' ' + dosDig(ara.getHours()) + ':' + dosDig(ara.getMinutes());
-let commit = '';
-try {
-  commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-} catch (e) { /* fora d'un repositori, la data ja diu prou */ }
-
 html = html.replace('<body>',
   '<body>\n<!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.\n' +
   '     La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->\n' +
-  '<script>window.MARCA_JEFE = ' + JSON.stringify(MARCA + (commit ? ' · ' + commit : '')) + ';</script>');
+  '<script>window.MARCA_JEFE = ' + JSON.stringify(SEGELL) + ';</' + 'script>');
 
 fs.mkdirSync(DESTI, { recursive: true });
 fs.writeFileSync(path.join(DESTI, 'index.html'), html);
