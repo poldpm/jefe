@@ -56,6 +56,11 @@ var CONFIG_DEFECTE = {
      24:00, sempre el mateix dia. */
   hora_resum: '23',
   dia_revisio: '7',    // 1 = dilluns ... 7 = diumenge
+  /* La revisió de la setmana anava clavada a les 20:00 dins del codi, i era
+     l'únic horari que no es podia tocar sense tocar el codi. Ara és una clau
+     més, i per defecte va allà mateix que el resum del dia: tancar la
+     setmana també és una cosa de final de dia. */
+  hora_revisio: '23',
 
   // La configuració web de Firebase NO és aquí: viu a firebase.config.json.
   // Ha de ser un fitxer perquè el treballador de servei l'ha de poder llegir

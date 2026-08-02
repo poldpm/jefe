@@ -6,7 +6,7 @@
  *   configuraJefe()     → crea el full de càlcul i tota l'estructura. Idempotent.
  *   instalaTriggers()   → instal·la els automatismes nocturns. Idempotent.
  *   treuTriggers()      → els desinstal·la.
- *   resumALesOnze()     → posa el resum del dia a les 23:00 i reinstal·la.
+ *   informesALesOnze()  → posa els dos informes a les 23:00 i reinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
  */
 
@@ -87,6 +87,7 @@ function instalaTriggers() {
 
   var horaResum = Config.getNum('hora_resum', 23);
   var diaRevisio = Config.getNum('dia_revisio', 7);
+  var horaRevisio = Config.getNum('hora_revisio', 23);
 
   ScriptApp.newTrigger('triggerResumDiari')
     .timeBased().atHour(horaResum).everyDays(1).create();
@@ -95,7 +96,8 @@ function instalaTriggers() {
               ScriptApp.WeekDay.THURSDAY, ScriptApp.WeekDay.FRIDAY, ScriptApp.WeekDay.SATURDAY,
               ScriptApp.WeekDay.SUNDAY];
   ScriptApp.newTrigger('triggerRevisioSetmanal')
-    .timeBased().onWeekDay(dies[Math.min(6, Math.max(0, diaRevisio - 1))]).atHour(20).create();
+    .timeBased().onWeekDay(dies[Math.min(6, Math.max(0, diaRevisio - 1))])
+    .atHour(horaRevisio).create();
 
   ScriptApp.newTrigger('triggerManteniment')
     .timeBased().atHour(3).everyDays(1).create();
@@ -156,22 +158,25 @@ function instalaTriggers() {
 }
 
 /**
- * Posa el resum del dia a les onze de la nit.
+ * Posa els dos informes —el del dia i el de la setmana— a les onze de la nit.
  *
- * L'hora viu al full `_Config`, i el que hi ha desat mana sobre el valor per
- * defecte del codi: canviar el codi no toca el que ja tens. Això sí que ho
- * toca, i després torna a instal·lar els automatismes perquè el trigger
- * s'assabenti de l'hora nova —crear-lo és l'únic moment en què es mira.
+ * Les hores viuen al full `_Config`, i el que hi ha desat mana sobre el valor
+ * per defecte del codi: canviar el codi no toca el que ja tens. Això sí que ho
+ * toca, i després torna a instal·lar els automatismes perquè els triggers
+ * s'assabentin de l'hora nova —crear-los és l'únic moment en què la miren.
  *
  * Es pot executar amb el botó de l'editor: no demana cap paràmetre.
- * Si algun dia la vols a una altra hora, canvia `hora_resum` al full
- * `_Config` i executa `instalaTriggers`.
+ * Si algun dia les vols a una altra hora, canvia `hora_resum` o `hora_revisio`
+ * al full `_Config` i executa `instalaTriggers`.
  */
-function resumALesOnze() {
-  var abans = Config.getNum('hora_resum', 23);
-  Config.set('hora_resum', 23);   // `set` ja buida la memòria de la configuració
+function informesALesOnze() {
+  var abansDia = Config.getNum('hora_resum', 23);
+  var abansSetmana = Config.getNum('hora_revisio', 20);  // abans anava clavada a les 20
+  Config.set('hora_resum', 23);     // `set` ja buida la memòria de la configuració
+  Config.set('hora_revisio', 23);
   var r = instalaTriggers();
-  var diu = 'Resum del dia: abans a les ' + abans + ':00, ara a les 23:00.\n' + r;
+  var diu = 'Resum del dia: abans a les ' + abansDia + ':00, ara a les 23:00.\n' +
+            'Revisió de la setmana: abans a les ' + abansSetmana + ':00, ara a les 23:00.\n' + r;
   console.log(diu);
   return diu;
 }
