@@ -33,7 +33,7 @@ function MODUL_FINANCES() {
     nom: 'Finances',
     icona: 'finances',
     ordre: 30,
-    versioEsquema: 1,
+    versioEsquema: 2,     // 2: `iban` a Patrimoni, per no duplicar comptes
 
     fulls: [
       {
@@ -127,6 +127,9 @@ function MODUL_FINANCES() {
           { nom: 'nom',             tipus: 'text' },
           { nom: 'tipus',           tipus: 'text' },
           { nom: 'automatic',       tipus: 'text', valors: ['SI', 'NO'] },
+          /* El final del número de compte, dels que porta el banc. És l'única
+             cosa d'un compte que no canvia quan refàs la connexió. */
+          { nom: 'iban',            tipus: 'text' },
           { nom: 'esborrat_el',     tipus: 'iso'  },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }

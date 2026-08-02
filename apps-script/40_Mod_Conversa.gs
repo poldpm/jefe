@@ -31,7 +31,7 @@ function MODUL_CONVERSA() {
     }],
 
     accions: {
-      estat:     function ()  { return Conversa.estat(); },
+      estat:     function (p) { return Conversa.estat(p); },
       historial: function (p) { return Conversa.historial(p.id_conversa); },
       envia:     function (p) { return Conversa.envia(p.text, p.id_conversa); },
       nova:      function ()  { return Conversa.nova(); },
@@ -51,13 +51,21 @@ function MODUL_CONVERSA() {
      * No és una escriptura —ensenyar-te una cosa no canvia res— i per això no
      * passa per confirmació.
      */
+    /* I si la demana amb aquestes paraules, no cal ni preguntar-ho al model:
+       el client hi va directament. Vegeu `Moduls.dreceres`. */
+    dreceres: [{
+      vista: 'dia',
+      frases: ['pagina del dia', 'pagina d avui', 'full del dia', 'dashboard del dia',
+               'la pagina de avui', 'el dia d avui']
+    }],
+
     einesIA: [{
       nom: 'mostra_el_dia',
       descripcio: 'Ensenya a en Pol la pàgina del dia: tot el que ha de tenir en compte ' +
                   'avui —calendari, tasques, hàbits, nutrició, diari— en una sola pantalla. ' +
-                  'Fes-la servir quan demani veure el dia, el resum del dia, què té avui o ' +
-                  'què li queda. A més d\'ensenyar-la-hi, aquí tens el contingut per ' +
-                  'comentar-l\'hi de paraula.',
+                  'Fes-la servir SEMPRE que demani veure o obrir el dia, encara que la ' +
+                  'resposta ja la tinguis a la fitxa: el que vol és la pantalla. Un cop ' +
+                  'cridada, ell ja té el contingut davant dels ulls: no l\'hi repeteixis.',
       obre: 'dia',
       esquema: {
         type: 'object',
@@ -77,13 +85,26 @@ var Conversa = (function () {
 
   var MAX_CONTEXT = 12;    // torns que s'envien al model: més no millora i costa
 
-  function estat() {
-    return {
+  /**
+   * Tot el que cal per obrir la sala de comandament, en UNA anada.
+   *
+   * Abans eren dues de seguides —estat i, després, historial— i a Apps Script
+   * cada anada costa un segle llarg tant si porta molt com si porta poc. La
+   * segona esperava la primera per res: no en depenia.
+   */
+  function estat(p) {
+    p = p || {};
+    var r = {
       disponible: IA.disponible(),
       motiu: IA.motiu(),
       model: Config.get('model_bo'),
-      suggeriments: suggeriments_()
+      suggeriments: suggeriments_(),
+      dreceres: Moduls.dreceres()
     };
+    if (p.ambHistorial) {
+      try { r.historial = historial(p.id_conversa); } catch (e) { r.historial = null; }
+    }
+    return r;
   }
 
   /** Suggeriments construïts amb el que hi ha de debò, no una llista fixa. */

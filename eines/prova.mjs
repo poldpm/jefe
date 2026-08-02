@@ -442,5 +442,151 @@ console.log("Calendari: cinc mesos pel preu d'un");
       String(r.mesos['2026-09'].caselles.length));
 }
 
+// -------------------------------- el calendari no s'ha de rellegir a cada pregunta
+console.log("");
+console.log("Calendari: una finestra desada serveix per a tot el que hi cap");
+{
+  let viatges = 0;
+  const memoria = {};
+  const calendaris = [{ id: 'meu@g', nom: 'Personal', color: '', mostra: 'SI', pont: '' }];
+  const fals = (iso, titol) => ({
+    getId: () => titol, getTitle: () => titol, getLocation: () => '',
+    getDescription: () => '', getColor: () => '',
+    getStartTime: () => new Date(iso + 'T10:00:00'),
+    getEndTime: () => new Date(iso + 'T11:00:00'),
+    isAllDayEvent: () => false
+  });
+  const agenda = [fals('2026-08-01', "D'avui"), fals('2026-08-02', 'De dema'),
+                  fals('2026-09-10', 'De setembre')];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp, isNaN, parseInt, parseFloat,
+    Log: { info() {}, avis() {}, error() {} },
+    Config: { zonaHoraria: () => 'Europe/Madrid' },
+    CacheService: { getScriptCache: () => ({
+      get: (k) => (memoria[k] === undefined ? null : memoria[k]),
+      put: (k, v) => { memoria[k] = v; },
+      remove: (k) => { delete memoria[k]; }
+    }) },
+    Utilities: {
+      formatDate: (d, tz, f) => {
+        const p2 = n => ('0' + n).slice(-2);
+        return f === 'HH:mm' ? p2(d.getHours()) + ':' + p2(d.getMinutes())
+          : d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+      }
+    },
+    CalendarApp: {
+      getCalendarById: () => ({
+        getEvents: (a, b) => { viatges++; return agenda.filter(e => e.getStartTime() >= a && e.getStartTime() <= b); }
+      }),
+      getAllCalendars: () => [], getAllOwnedCalendars: () => [], getDefaultCalendar: () => null
+    },
+    Dades: { llegeix: () => calendaris.slice(), un: () => null, insereix: () => {}, actualitza: () => {} },
+    CalendariPont: { hiEs: () => false, esdeveniments: () => [] },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  ctx.Utils.avui = () => '2026-08-01';
+  vm.runInContext(fs.readFileSync('apps-script/40_Mod_Calendari.gs', 'utf8'), ctx);
+
+  // Això és el que passa a CADA pregunta a en JEFE: avui, dema, i la pagina del dia.
+  const avui = ctx.Calendari.dia('2026-08-01');
+  const primerCop = viatges;
+  const dema = ctx.Calendari.dia('2026-08-02');
+  const pagina = ctx.Calendari.dia('2026-08-01');
+
+  cal('el primer cop sí que va a Google', primerCop === 1, String(primerCop));
+  cal('i els altres dos ja no', viatges === 1, viatges + ' viatges');
+  cal("i cadascu es queda amb el SEU dia, no amb tota la finestra",
+      avui.esdeveniments.length === 1 && dema.esdeveniments.length === 1 &&
+      avui.esdeveniments[0].titol === "D'avui" && dema.esdeveniments[0].titol === 'De dema',
+      JSON.stringify([avui.esdeveniments.map(e=>e.titol), dema.esdeveniments.map(e=>e.titol)]));
+  cal('i la pagina del dia torna el mateix que la primera vegada',
+      pagina.esdeveniments.length === 1, String(pagina.esdeveniments.length));
+
+  // Comptar un rang no pot heretar el marge de la finestra.
+  const c = ctx.Calendari.compta('2026-08-01', '2026-08-31');
+  cal("comptar l'agost compta l'agost i prou", c.quants === 2, JSON.stringify(c.quants));
+
+  // Sortir de la finestra sí que costa un viatge, i llavors ja hi torna a cabre tot.
+  ctx.Calendari.dia('2027-03-15');
+  const desprésDeSaltar = viatges;
+  ctx.Calendari.dia('2027-03-16');
+  cal('sortir de la finestra costa un viatge, i el de dins ja no',
+      desprésDeSaltar === 2 && viatges === 2, desprésDeSaltar + '/' + viatges);
+}
+
+// ----------------------------------- ajuntar el compte duplicat sense perdre res
+console.log("");
+console.log("Patrimoni: ajuntar dos comptes no ha de perdre cap valor");
+{
+  const actius = [
+    { id: 'auto_vell', nom: 'Compte ···4471', tipus: 'banc', automatic: 'SI', esborrat_el: '' },
+    { id: 'auto_ib0004471', nom: 'Compte ···4471', tipus: 'banc', automatic: 'SI', esborrat_el: '' }
+  ];
+  const hist = [
+    { id: 'v1', id_actiu: 'auto_vell', data: '2026-05-01', valor: 4100 },
+    { id: 'v2', id_actiu: 'auto_vell', data: '2026-06-01', valor: 4353 },
+    { id: 'v3', id_actiu: 'auto_vell', data: '2026-07-01', valor: 4353 },
+    { id: 'v4', id_actiu: 'auto_ib0004471', data: '2026-07-01', valor: 4090 },
+    { id: 'v5', id_actiu: 'auto_ib0004471', data: '2026-08-01', valor: 4052 }
+  ];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} },
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { ara: () => '2026-08-02T10:00:00+02:00', avui: () => '2026-08-02' },
+    Dades: {
+      llegeix: (full) => (full === 'Patrimoni' ? actius : hist).slice(),
+      perId: (full, id) => (full === 'Patrimoni' ? actius : hist).filter(x => x.id === id)[0] || null,
+      desa: (full, fila) => {
+        const j = hist.findIndex(x => x.id === fila.id);
+        if (j === -1) hist.push(fila); else hist[j] = fila;
+        return fila;
+      },
+      actualitza: (full, id, canvis) => {
+        const x = actius.filter(y => y.id === id)[0];
+        if (x) Object.keys(canvis).forEach(k => { x[k] = canvis[k]; });
+        return x || null;
+      }
+    },
+    Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  // Al revés del que toca: ha de dir que no.
+  cal('sense identificadors, no fa res',
+      /Falten identificadors/.test(ctx.fusionaPatrimoni('', 'auto_vell')), 'ho ha fet');
+  cal("un id que no existeix, tampoc",
+      /No trobo/.test(ctx.fusionaPatrimoni('no_hi_es', 'auto_ib0004471')), 'ho ha fet');
+
+  ctx.fusionaPatrimoni('auto_vell', 'auto_ib0004471');
+
+  const delBo = hist.filter(x => x.id_actiu === 'auto_ib0004471')
+                    .sort((a, b) => a.data.localeCompare(b.data));
+  cal("el bo es queda tota la línia, del maig a l'agost",
+      delBo.map(x => x.data).join(' ') === '2026-05-01 2026-06-01 2026-07-01 2026-08-01',
+      delBo.map(x => x.data).join(' '));
+  cal('el dia que tots dos tenien, mana el del compte viu',
+      delBo.filter(x => x.data === '2026-07-01')[0].valor === 4090,
+      String(delBo.filter(x => x.data === '2026-07-01')[0].valor));
+  cal("l'últim valor segueix sent el bo",
+      delBo[delBo.length - 1].valor === 4052, String(delBo[delBo.length - 1].valor));
+  cal("el vell queda arxivat, no esborrat",
+      !!actius.filter(x => x.id === 'auto_vell')[0].esborrat_el, "no l'ha arxivat");
+  cal("i les seves files es queden on eren, per si de cas",
+      hist.filter(x => x.id_actiu === 'auto_vell').length === 3,
+      String(hist.filter(x => x.id_actiu === 'auto_vell').length));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

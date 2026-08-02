@@ -343,13 +343,40 @@ var FinancesBanc = (function () {
       }
       if (saldo === null || isNaN(saldo)) return;
 
-      var id = 'auto_' + String(compte.uid).slice(0, 12);
-      if (!Dades.perId('Patrimoni', id)) {
+      /* EL PROVEÏDOR CANVIA D'IDENTIFICADOR QUAN LI TORNES A DONAR PERMÍS.
+         L'actiu es deia com aquell identificador, o sigui que el dia que la
+         connexió caducava i la refeies, el compte naixia de nou al costat del
+         vell: dos comptes iguals, un de congelat amb el saldo d'aquell dia i
+         l'altre viu. El número de compte, en canvi, no canvia mai, i per això
+         és el que mana ara. Els que ja existien es reconeixen igual i se'ls hi
+         apunta el número: així no en neix cap de tercer. */
+      var num = String(compte.iban || '').replace(/\s/g, '').slice(-10);
+      var idNum = num ? 'auto_ib' + num : null;
+      var idVell = 'auto_' + String(compte.uid).slice(0, 12);
+
+      var actiu = idNum ? Dades.perId('Patrimoni', idNum) : null;
+      if (!actiu && num) {
+        actiu = Dades.llegeix('Patrimoni', function (x) {
+          return !x.esborrat_el && String(x.automatic).toUpperCase() === 'SI' &&
+                 String(x.iban || '') === num;
+        })[0] || null;
+      }
+      if (!actiu) actiu = Dades.perId('Patrimoni', idVell);
+
+      var id;
+      if (actiu) {
+        id = actiu.id;
+        if (num && String(actiu.iban || '') !== num) {
+          Dades.actualitza('Patrimoni', id, { iban: num });
+        }
+      } else {
+        id = idNum || idVell;
         Dades.insereix('Patrimoni', {
           id: id,
           nom: 'Compte' + (compte.iban ? ' ···' + String(compte.iban).slice(-4) : ''),
           tipus: 'banc',
-          automatic: 'SI'
+          automatic: 'SI',
+          iban: num
         }, 'act');
       }
 

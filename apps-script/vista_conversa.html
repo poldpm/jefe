@@ -526,9 +526,59 @@ App.registraVista('conversa', {
 
     // -------------------------------------------------------------------- enviar
 
+    /* Text a mà oberta: sense accents, sense signes, un sol espai. Així
+       «Ensenya'm la pàgina del dia» i «obre la pagina del dia» són la
+       mateixa cosa, que és com les diu una persona. */
+    function neteja(t) {
+      var s = String(t || '').toLowerCase();
+      /* Les vocals accentuades a pèl i no amb `normalize`: aquí es veu què
+         es converteix en què, i el dia que falti una lletra es veu de seguida. */
+      var amb = 'àáâäèéêëìíîïòóôöùúûüñç';
+      var sense = 'aaaaeeeeiiiioooouuuunc';
+      var out = '';
+      for (var i = 0; i < s.length; i++) {
+        var n = amb.indexOf(s.charAt(i));
+        var c = n === -1 ? s.charAt(i) : sense.charAt(n);
+        out += /[a-z0-9]/.test(c) ? c : ' ';
+      }
+      return out.replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * ALGUNES ORDRES NO SÓN PREGUNTES.
+     *
+     * «Ensenya'm la pàgina del dia» és un botó dit amb la boca. Passar-la pel
+     * model volia dir muntar la fitxa, esperar-lo, i que decidís que la
+     * resposta ja la tenia i te la recités en comptes d'obrir res. Aquí no hi
+     * ha res a pensar: s'hi va i punt, sense tocar el servidor.
+     *
+     * Les frases les posen els mòduls, no aquesta pantalla. Vegeu
+     * `Moduls.dreceres`.
+     */
+    function drecera(text) {
+      var net = neteja(text);
+      if (!net) return null;
+      var l = (estatIA && estatIA.dreceres) || [];
+      for (var i = 0; i < l.length; i++) {
+        for (var j = 0; j < l[i].frases.length; j++) {
+          if (net.indexOf(l[i].frases[j]) !== -1 && App.vistes[l[i].vista]) return l[i];
+        }
+      }
+      return null;
+    }
+
     function envia() {
       var text = camp.value.trim();
       if (!text || ocupat) return;
+
+      var d = drecera(text);
+      if (d) {
+        camp.value = ''; camp.style.height = 'auto';
+        if (App._tancaEscriptura) App._tancaEscriptura();
+        App.ves(d.vista, d.params || null);
+        return;
+      }
+
       ocupat = true; camp.value = ''; camp.style.height = 'auto';
       arrel.querySelector('#b-envia').disabled = true;
       // Enviada l'ordre, el camp se'n va i torna a manar el nucli.
@@ -971,7 +1021,8 @@ App.registraVista('conversa', {
     pinta();
     posaEstat('repos', 'connectant');
 
-    crida('conversa', 'estat', {}).then(function (e) {
+    crida('conversa', 'estat',
+          { ambHistorial: !missatges.length, id_conversa: idConversa }).then(function (e) {
       estatIA = e;
       posaEstat(e.disponible ? 'repos' : 'apagat', e.disponible ? 'a punt' : 'sense clau');
       if (!e.disponible) { avisApagat(e.motiu); return; }
@@ -991,14 +1042,13 @@ App.registraVista('conversa', {
         }
       }
 
-      if (!missatges.length) {
-        crida('conversa', 'historial', { id_conversa: idConversa }).then(function (h) {
-          if (h.missatges && h.missatges.length) {
-            idConversa = h.id_conversa; missatges = h.missatges;
-            Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', missatges.slice(-40));
-            pinta();
-          }
-        }).catch(function () {});
+      /* L'historial ve dins d'`estat`: abans era una segona anada que
+         esperava la primera sense dependre'n. Vegeu `Conversa.estat`. */
+      var h = e.historial;
+      if (h && h.missatges && h.missatges.length && !missatges.length) {
+        idConversa = h.id_conversa; missatges = h.missatges;
+        Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', missatges.slice(-40));
+        pinta();
       }
     }).catch(function (err) {
       estatIA = { disponible: false, motiu: err.message };

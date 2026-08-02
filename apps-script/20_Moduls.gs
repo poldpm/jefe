@@ -262,6 +262,31 @@ var Moduls = (function () {
     return out;
   }
 
+  /**
+   * DRECERES: ordres que NO han de passar per la IA.
+   *
+   * «Ensenya'm la pàgina del dia» no és una pregunta, és un botó dit amb la
+   * boca. Fer-la passar pel model vol dir muntar la fitxa, esperar el model,
+   * que decideixi que ja té la resposta a la fitxa i te la reciti en comptes
+   * d'obrir res: vint-i-cinc segons per acabar no obrint la pantalla.
+   *
+   * Un mòdul declara quines frases obren quina vista i el client hi va tot
+   * sol, sense tocar el servidor. El nucli no sap què vol dir cap frase: només
+   * les reparteix.
+   */
+  function dreceres() {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      var d = m[i].dreceres || [];
+      for (var j = 0; j < d.length; j++) {
+        if (!d[j] || !d[j].vista || !(d[j].frases || []).length) continue;
+        out.push({ vista: d[j].vista, frases: d[j].frases, params: d[j].params || null });
+      }
+    }
+    return out;
+  }
+
   /** Metadades per a la interfície (sense funcions, serialitzable). */
   function perAlClient() {
     return actius().map(function (m) {
@@ -287,6 +312,7 @@ var Moduls = (function () {
     invalidaContext: invalidaContext,
     gestionaTornada: gestionaTornada,
     einesIA: einesIA,
+    dreceres: dreceres,
     perAlClient: perAlClient
   };
 })();

@@ -120,7 +120,11 @@ const MOCK = `
     }
 
     if (modul === 'conversa') {
-      if (accio === 'estat') return copia(CONV_ESTAT);
+      if (accio === 'estat') {
+        var ce = copia(CONV_ESTAT);
+        if (p.ambHistorial) ce.historial = copia(CONV_HIST);
+        return ce;
+      }
       if (accio === 'historial') return copia(CONV_HIST);
       if (accio === 'nova') return { id_conversa: 'cnv_nou', missatges: [] };
       if (accio === 'elDia') return DIA_PAGINA(p);

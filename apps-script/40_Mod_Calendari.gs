@@ -385,13 +385,35 @@ var Calendari = (function () {
    */
   function rang(desde, fins) {
     var tz = Config.zonaHoraria();
-    var clau = CAU + versioCau_() + '_' + desde + '_' + fins;
 
     var cau = null;
     try { cau = CacheService.getScriptCache(); } catch (e) {}
+
+    /* UNA SOLA FINESTRA DESADA, I AMPLA.
+       Cada resposta a una pregunta demanava el seu tros exacte —avui, demà,
+       aquest mes— i com que la clau era el tros, cap d'elles servia per a la
+       següent: tres preguntes seguides sobre el mateix dia eren tres voltes
+       senceres per tots els calendaris i pel pont de l'escola.
+       Ara es llegeix sempre com a mínim un mes de marge a banda i banda i es
+       desa la finestra sencera. Qualsevol tros que hi càpiga a dins ja no
+       torna a preguntar res, i el que costa de més és transport, no viatges. */
+    var volDesde = desde, volFins = fins;      // el que ha demanat qui crida
+    var talla = function (l) {
+      return l.filter(function (e) { return e.dataFi >= volDesde && e.data <= volFins; });
+    };
+
+    var clau = CAU + versioCau_() + '_finestra';
     if (cau) {
       var desat = cau.get(clau);
-      if (desat) { try { return JSON.parse(desat); } catch (e) {} }
+      if (desat) {
+        try {
+          var f = JSON.parse(desat);
+          if (f.desde <= volDesde && f.fins >= volFins) return talla(f.events);
+        } catch (e) {}
+      }
+      // El que es demana surt de la finestra: se n'agafa una de nova, amb marge.
+      desde = mesAmunt_(desde, -1);
+      fins = mesAmunt_(fins, 1);
     }
 
     var inici = Utils.aData(desde);
@@ -464,8 +486,25 @@ var Calendari = (function () {
       return String(a.hora).localeCompare(String(b.hora));
     });
 
-    if (cau) { try { cau.put(clau, JSON.stringify(out), VIDA_CAU); } catch (e) {} }
-    return out;
+    /* La memòria cau d'Apps Script no admet més de 100 kB per clau. Si la
+       finestra no hi cap, es deixa de desar i prou: val més tornar a llegir
+       que petar. Es mira abans d'escriure perquè `put` no avisa de res. */
+    if (cau) {
+      try {
+        var paquet = JSON.stringify({ desde: desde, fins: fins, events: out });
+        if (paquet.length < 95000) cau.put(clau, paquet, VIDA_CAU);
+      } catch (e) {}
+    }
+    // Es llegeix ample, però es torna només el que t'han demanat.
+    return talla(out);
+  }
+
+  /** El mateix dia, n mesos amunt o avall. */
+  function mesAmunt_(data, n) {
+    var d = Utils.aData(data);
+    if (!d) return data;
+    d.setMonth(d.getMonth() + n);
+    return Utils.aText(d);
   }
 
   /** Un esdeveniment ocupa tots els dies que va de `data` a `dataFi`. */

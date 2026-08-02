@@ -341,7 +341,8 @@ export function dades(AVUI, menys) {
     disponible: false,
     motiu: 'El mirall no té capa d\'IA: aquí no es parla amb ningú.',
     model: 'mirall',
-    suggeriments: ['Com he anat aquest mes?', 'Quant porto gastat?', 'Què em queda per fer avui?']
+    suggeriments: ['Com he anat aquest mes?', 'Quant porto gastat?', 'Què em queda per fer avui?'],
+    dreceres: [{ vista: 'dia', frases: ['pagina del dia', 'pagina d avui', 'full del dia', 'dashboard del dia', 'la pagina de avui', 'el dia d avui'] }]
   });
 
   const conversaHistorial = () => ({

@@ -1283,3 +1283,103 @@ function diagnosticNutricio() {
     : 'El servidor NO troba res per avui: mira les dates de les files de sobre.');
   return l.join('\n');
 }
+
+
+/* ==========================================================================
+   EL MATEIX COMPTE DUES VEGADES
+
+   Quan la connexió amb el banc caduca i la refàs, el proveïdor et dona un
+   identificador nou per al mateix compte. Fins ara l'actiu es deia com aquell
+   identificador, i per això en naixia un de nou al costat del vell: el vell es
+   quedava congelat amb el saldo de l'últim dia que va funcionar.
+
+   Això ja no tornarà a passar —ara mana el número de compte, que no canvia—,
+   però el que ja ha passat s'ha d'arreglar a mà, i aquí hi ha les dues eines.
+   Cap de les dues esborra res: la primera només mira, i la segona COPIA
+   l'històric del vell al bo i després ARXIVA el vell, que és recuperable
+   traient-li la data de la columna `esborrat_el`.
+   ========================================================================== */
+
+/** Què tens al patrimoni, amb els identificadors, per saber què és què. */
+function mirarPatrimoni() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var actius = Dades.llegeix('Patrimoni');
+  var hist = {};
+  Dades.llegeix('PatrimoniHistoric').forEach(function (v) {
+    var k = String(v.id_actiu);
+    if (!hist[k]) hist[k] = [];
+    hist[k].push({ data: String(v.data), valor: Number(v.valor) || 0 });
+  });
+
+  a('PATRIMONI — ' + actius.length + ' actius');
+  a('');
+
+  actius.forEach(function (x) {
+    var h = (hist[x.id] || []).sort(function (p, q) { return p.data.localeCompare(q.data); });
+    var ultim = h.length ? h[h.length - 1] : null;
+    a((x.esborrat_el ? '[ARXIVAT] ' : '') + x.nom);
+    a('    id ................ ' + x.id);
+    a('    automàtic ......... ' + (String(x.automatic).toUpperCase() === 'SI' ? 'sí' : 'no'));
+    if (x.iban) a('    número de compte .. ···' + x.iban);
+    a('    últim valor ....... ' + (ultim ? ultim.valor + ' € del ' + ultim.data : 'cap'));
+    a('    històric .......... ' + h.length + (h.length ? ' valors, des del ' + h[0].data : ''));
+    a('');
+  });
+
+  a('Per ajuntar-ne dos:  fusionaPatrimoni("id del vell", "id del bo")');
+  a('Digues-ho al revés i et quedaràs el saldo vell: mira bé quin és quin.');
+  return l.join('\n');
+}
+
+/**
+ * Ajunta dos actius: l'històric del vell passa al bo i el vell queda arxivat.
+ *
+ * No s'esborra res. Els valors del vell es COPIEN al bo, i només els dies que
+ * el bo encara no tingui: si tots dos tenen un valor del mateix dia, mana el
+ * del bo, que és el que està viu. Les files velles es queden on són.
+ */
+function fusionaPatrimoni(idVell, idBo) {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  if (!idVell || !idBo) return 'Falten identificadors. Fes primer mirarPatrimoni().';
+  if (idVell === idBo) return 'Són el mateix. No hi ha res a ajuntar.';
+
+  var vell = Dades.perId('Patrimoni', idVell);
+  var bo = Dades.perId('Patrimoni', idBo);
+  if (!vell) return 'No trobo cap actiu amb l\'id ' + idVell;
+  if (!bo) return 'No trobo cap actiu amb l\'id ' + idBo;
+
+  var tots = Dades.llegeix('PatrimoniHistoric');
+  var delVell = tots.filter(function (v) { return String(v.id_actiu) === idVell; });
+  var jaTe = {};
+  tots.forEach(function (v) { if (String(v.id_actiu) === idBo) jaTe[String(v.data)] = true; });
+
+  a('AJUNTANT');
+  a('  vell: ' + vell.nom + '  (' + idVell + ')  · ' + delVell.length + ' valors');
+  a('  bo:   ' + bo.nom + '  (' + idBo + ')');
+  a('');
+
+  var copiats = 0, saltats = 0;
+  delVell.forEach(function (v) {
+    var data = String(v.data);
+    if (jaTe[data]) { saltats++; return; }
+    Dades.desa('PatrimoniHistoric', {
+      id: 'val_' + idBo + '_' + data,
+      id_actiu: idBo, data: data, valor: Number(v.valor) || 0
+    }, ['id'], 'val');
+    jaTe[data] = true;
+    copiats++;
+  });
+
+  Dades.actualitza('Patrimoni', idVell, { esborrat_el: Utils.ara() });
+
+  a('  ' + copiats + ' valors copiats al bo');
+  a('  ' + saltats + ' saltats perquè el bo ja tenia aquell dia');
+  a('  «' + vell.nom + '» arxivat (no esborrat: treu-li la data d\'`esborrat_el` per recuperar-lo)');
+  a('');
+  a('Obre finances → patrimoni i mira que la línia sigui la que esperaves.');
+  return l.join('\n');
+}
