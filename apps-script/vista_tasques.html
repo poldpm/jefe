@@ -290,7 +290,7 @@ App.registraVista('tasques', {
               }).join('') +
             '</select></label>' +
           '<label><span class="marge">Per quan</span>' +
-            '<input data-c="venc_el" type="date" value="' + esc(t.vencEl || '') + '"></label>' +
+            '<input data-c="venc_el" type="date" value="' + esc(t.vencEl || '') + '" autocomplete="off"></label>' +
           '<label class="cat-exclou"><input type="checkbox" data-c="prioritat"' +
             (t.prioritat === 'alta' ? ' checked' : '') + '><span>Prioritària</span></label>' +
           '<label><span class="marge">Nota</span>' +

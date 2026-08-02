@@ -287,7 +287,7 @@ App.registraVista('finances', {
             'buit per treure el límit.</p>' +
           '<label><span class="marge">Límit mensual (€)</span>' +
             '<input data-limit inputmode="decimal" class="num camp-import" value="' +
-              (actual ? String(actual).replace('.', ',') : '') + '"></label>' +
+              (actual ? String(actual).replace('.', ',') : '') + '" autocomplete="off"></label>' +
           '<button class="btn btn-primari" data-desa-limit>Desa</button>' +
         '</div>');
 
@@ -492,7 +492,7 @@ App.registraVista('finances', {
           (editant
             ? '<label><span class="marge">Quant val ara</span>' +
                 '<input data-valor inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
-                  (a.valor === null ? '' : String(a.valor).replace('.', ',')) + '"></label>' +
+                  (a.valor === null ? '' : String(a.valor).replace('.', ',')) + '" autocomplete="off"></label>' +
               '<button class="btn btn-primari" data-anota>Anota el valor d\'avui</button>' +
               (auto
                 ? '<p class="menut" style="margin-top:var(--e3)">Aquest el porta el banc i ' +
@@ -625,7 +625,7 @@ App.registraVista('finances', {
           '</div>' +
           '<label><span class="marge">Import</span>' +
             '<input data-c="import" inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
-              (editant ? String(r.import).replace('.', ',') : '') + '"></label>' +
+              (editant ? String(r.import).replace('.', ',') : '') + '" autocomplete="off"></label>' +
           '<label><span class="marge">Què és</span>' +
             '<input data-c="descripcio" autocomplete="off" placeholder="p. ex. Lloguer" value="' +
               (editant ? esc(r.descripcio) : '') + '"></label>' +
@@ -638,7 +638,7 @@ App.registraVista('finances', {
               }).join('') + '</select></label>' +
           '<label><span class="marge">Quin dia del mes</span>' +
             '<input data-c="dia" inputmode="numeric" class="num" value="' +
-              (editant ? r.dia : 1) + '"></label>' +
+              (editant ? r.dia : 1) + '" autocomplete="off"></label>' +
           /* Fins al 28 i no fins al 31: així cau tots els mesos, també el
              febrer. Un rebut del dia 31 no existiria mig any. */
           '<p class="menut">Del 1 al 28. Més enllà no existeix tots els mesos.</p>' +
@@ -874,7 +874,7 @@ App.registraVista('finances', {
               '<button data-nova-mena="i">Ingrés</button>' +
             '</div>' +
             '<div class="cat-nova-fila">' +
-              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji">' +
+              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji" autocomplete="off">' +
               '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off">' +
             '</div>' +
             '<label class="cat-exclou">' +
@@ -1065,7 +1065,7 @@ App.registraVista('finances', {
 
           '<label><span class="marge">Import</span>' +
             '<input data-c="import" inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
-              (editant ? String(m.import).replace('.', ',') : '') + '"></label>' +
+              (editant ? String(m.import).replace('.', ',') : '') + '" autocomplete="off"></label>' +
 
           '<label><span class="marge">Què era</span>' +
             '<input data-c="descripcio" autocomplete="off" placeholder="p. ex. Mercadona" value="' +
@@ -1085,7 +1085,7 @@ App.registraVista('finances', {
 
           '<label><span class="marge">Data</span>' +
             '<input data-c="data" type="date" value="' +
-              (editant ? esc(m.data) : fmt.avui()) + '"></label>' +
+              (editant ? esc(m.data) : fmt.avui()) + '" autocomplete="off"></label>' +
 
           '<button class="btn btn-primari" data-desa>' + (editant ? 'Desa' : 'Apunta') + '</button>' +
           (editant ? '<button class="btn btn-secundari" data-treu style="margin-top:var(--e2)">Treu-lo</button>' : '') +

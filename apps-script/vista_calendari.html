@@ -333,16 +333,16 @@ App.registraVista('calendari', {
             '<input data-c="titol" value="' + esc(nou ? '' : e.titol) + '" ' +
             'placeholder="Reunió, visita, sortida…" autocomplete="off"></label>' +
           '<label><span class="marge">Dia</span>' +
-            '<input data-c="data" type="date" value="' + esc(quan) + '"></label>' +
+            '<input data-c="data" type="date" value="' + esc(quan) + '" autocomplete="off"></label>' +
           '<label class="cat-exclou"><input type="checkbox" data-c="totdia"' +
             ((nou || e.totElDia) && (nou ? false : e.totElDia) ? ' checked' : '') +
             '><span>Tot el dia</span></label>' +
           '<div class="cal-hores">' +
             '<label><span class="marge">Hora</span>' +
-              '<input data-c="hora" type="time" value="' + esc(nou ? '09:00' : (e.hora || '09:00')) + '"></label>' +
+              '<input data-c="hora" type="time" value="' + esc(nou ? '09:00' : (e.hora || '09:00')) + '" autocomplete="off"></label>' +
             '<label><span class="marge">Minuts que dura</span>' +
               '<input data-c="durada" type="number" min="5" step="5" value="' +
-              esc(nou ? 60 : (e.minuts || 60)) + '"></label>' +
+              esc(nou ? 60 : (e.minuts || 60)) + '" autocomplete="off"></label>' +
           '</div>' +
           '<label><span class="marge">On</span>' +
             '<input data-c="lloc" value="' + esc(nou ? '' : (e.lloc || '')) + '" autocomplete="off"></label>' +

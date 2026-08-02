@@ -598,7 +598,11 @@ h2 { font-size: 1.0625rem; }
   -webkit-appearance: none; appearance: none;
 }
 .entrada::placeholder { color: var(--ink-suau); opacity: 1; }
-.entrada:focus { border-color: var(--utm); outline: none; }
+/* EL FOCUS NO ES POT APAGAR. Canviar el color d'una vora d'un pixel no es
+   un indicador: qui va amb teclat ha de veure on es sense endevinar-ho. La
+   vora s'encen igual, pero el ring hi es. */
+.entrada:focus { border-color: var(--utm); }
+.entrada:focus-visible { outline: 3px solid var(--utm); outline-offset: 1px; }
 
 .opcions { display: flex; flex-wrap: wrap; gap: var(--e2); }
 .opcio {
@@ -1416,7 +1420,8 @@ input[type="checkbox"] { accent-color: var(--utm); }
   background: var(--paper); color: var(--ink); line-height: 1.55;
   resize: vertical; -webkit-appearance: none; appearance: none;
 }
-#d-text:focus { border-color: var(--utm); outline: none; }
+#d-text:focus { border-color: var(--utm); }
+#d-text:focus-visible { outline: 3px solid var(--utm); outline-offset: 1px; }
 #d-text::placeholder { color: var(--ink-suau); opacity: 1; }
 
 .anim { margin-top: var(--e3); }
@@ -1574,8 +1579,12 @@ input[type="checkbox"] { accent-color: var(--utm); }
 }
 .form-ajustos input:not([type="checkbox"]) { padding: 0 var(--e3); }
 .form-ajustos textarea { line-height: 1.5; resize: vertical; }
+/* El ring de teclat, a part: apagar-lo deixava qui va amb tabulador sense
+   saber on es, i el canvi de color d'una vora d'un pixel no compta. */
+.form-ajustos input:focus-visible, .form-ajustos select:focus-visible,
+.form-ajustos textarea:focus-visible { outline: 3px solid var(--utm); outline-offset: 1px; }
 .form-ajustos input:focus, .form-ajustos select:focus, .form-ajustos textarea:focus {
-  border-color: var(--utm); outline: none;
+  border-color: var(--utm);
 }
 .form-ajustos hr { border: 0; border-top: 3px double var(--neatline); margin: var(--e4) 0; }
 

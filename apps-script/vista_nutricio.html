@@ -266,9 +266,9 @@ App.registraVista('nutricio', {
           '<button class="btn btn-secundari tria-aliment" data-guardats>' +
             ic('mes', 'ic-p') + 'Tria un aliment guardat</button>' +
           '<input data-nom placeholder="Aliment" autocomplete="off">' +
-          '<input data-grams inputmode="decimal" placeholder="grams" class="num">' +
-          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num">' +
-          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num">' +
+          '<input data-grams inputmode="decimal" placeholder="grams" class="num" autocomplete="off">' +
+          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num" autocomplete="off">' +
+          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num" autocomplete="off">' +
           '<button class="btn btn-primari" data-afegeix>Afegeix</button>' +
           '<button class="btn btn-secundari" data-desa-aliment>Desa l\'aliment</button>' +
         '</div>' +
@@ -742,7 +742,7 @@ App.registraVista('nutricio', {
     function camp(clau, etiqueta, valor) {
       return '<label><span class="marge">' + esc(etiqueta) + '</span>' +
              '<input data-c="' + clau + '" inputmode="decimal" class="num" value="' +
-             esc(valor === undefined || valor === null || valor === 0 ? '' : String(valor)) + '"></label>';
+             esc(valor === undefined || valor === null || valor === 0 ? '' : String(valor)) + '" autocomplete="off"></label>';
     }
 
     // --------------------------------------------------------------- càrrega
