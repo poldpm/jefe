@@ -891,6 +891,26 @@ h2 { font-size: 1.0625rem; }
                     font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
 
+/* ------------------------------------------------------ la porta del dia
+   La data de la pantalla d'inici obre la pagina del dia. No es un boto nou
+   —no n'hi havia d'haver cap mes a la fila de sota— sino la data que ja hi
+   era, feta tocable. Es veu que ho es per la subratllada fina, que nomes
+   s'encen quan la prems: si cridés l'atencio sempre, competiria amb les
+   targetes, que son el que has de mirar primer. */
+
+.dia-porta {
+  flex: 1; min-width: 0;
+  display: block; text-align: left;
+  background: none; border: 0; padding: 0;
+  color: inherit; font: inherit;
+  border-bottom: 1px solid transparent;
+  transition: border-color .16s var(--entra), color .16s var(--entra);
+}
+.dia-porta:active { border-bottom-color: var(--utm); color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .dia-porta:hover { border-bottom-color: var(--fil-viu); }
+}
+
 /* ------------------------------------------------------------- la safata
    Les pastilles de context. NO ESTAVEN ESTILADES: eren botons de sèrie amb
    el gris del navegador, i en fosc allò donava 4,22 de contrast amb la

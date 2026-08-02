@@ -13,10 +13,20 @@ App.registraVista('inici', {
         '<header class="capcalera"><div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa') + '</button>' +
-          '<div style="flex:1;min-width:0">' +
+          /* LA DATA OBRE LA PÀGINA DEL DIA.
+             Aquella pantalla només s'obria demanant-l'hi a JEFE, i això vol
+             dir que passava per la capa d'IA: el dia que el proveïdor diu que
+             prou —i va dir-ho—, una pantalla que només ensenya les teves
+             dades es quedava inabastable. Una porta que depèn d'un servei de
+             fora no és una porta.
+
+             No és un botó nou a la fila de sota, que era el que no volíem:
+             és la data, que ja hi era, i tocar-la per veure el dia és el que
+             sembla que hagi de passar. */
+          '<button class="dia-porta" data-ves="dia" aria-label="Obre la pàgina del dia">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
-          '</div>' +
+          '</button>' +
           '<div style="text-align:right">' +
             '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
             '<p class="marge" style="margin:4px 0 0">JEFE</p>' +

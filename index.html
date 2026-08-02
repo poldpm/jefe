@@ -919,6 +919,26 @@ h2 { font-size: 1.0625rem; }
                     font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
 
+/* ------------------------------------------------------ la porta del dia
+   La data de la pantalla d'inici obre la pagina del dia. No es un boto nou
+   —no n'hi havia d'haver cap mes a la fila de sota— sino la data que ja hi
+   era, feta tocable. Es veu que ho es per la subratllada fina, que nomes
+   s'encen quan la prems: si cridés l'atencio sempre, competiria amb les
+   targetes, que son el que has de mirar primer. */
+
+.dia-porta {
+  flex: 1; min-width: 0;
+  display: block; text-align: left;
+  background: none; border: 0; padding: 0;
+  color: inherit; font: inherit;
+  border-bottom: 1px solid transparent;
+  transition: border-color .16s var(--entra), color .16s var(--entra);
+}
+.dia-porta:active { border-bottom-color: var(--utm); color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .dia-porta:hover { border-bottom-color: var(--fil-viu); }
+}
+
 /* ------------------------------------------------------------- la safata
    Les pastilles de context. NO ESTAVEN ESTILADES: eren botons de sèrie amb
    el gris del navegador, i en fosc allò donava 4,22 de contrast amb la
@@ -1413,7 +1433,7 @@ h2 { font-size: 1.0625rem; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 17:21 · ffbf2dd";</script>
+<script>window.MARCA_JEFE = "2026-08-02 17:28 · 4e99128";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1561,7 +1581,7 @@ h2 { font-size: 1.0625rem; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 17:21 · ffbf2dd";
+window.MARCA_JEFE = "2026-08-02 17:28 · 4e99128";
 </script>
 
 <script>
@@ -2800,10 +2820,20 @@ App.registraVista('inici', {
         '<header class="capcalera"><div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa') + '</button>' +
-          '<div style="flex:1;min-width:0">' +
+          /* LA DATA OBRE LA PÀGINA DEL DIA.
+             Aquella pantalla només s'obria demanant-l'hi a JEFE, i això vol
+             dir que passava per la capa d'IA: el dia que el proveïdor diu que
+             prou —i va dir-ho—, una pantalla que només ensenya les teves
+             dades es quedava inabastable. Una porta que depèn d'un servei de
+             fora no és una porta.
+
+             No és un botó nou a la fila de sota, que era el que no volíem:
+             és la data, que ja hi era, i tocar-la per veure el dia és el que
+             sembla que hagi de passar. */
+          '<button class="dia-porta" data-ves="dia" aria-label="Obre la pàgina del dia">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
-          '</div>' +
+          '</button>' +
           '<div style="text-align:right">' +
             '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
             '<p class="marge" style="margin:4px 0 0">JEFE</p>' +
