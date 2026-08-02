@@ -1076,7 +1076,7 @@ console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi s
       remove: () => { esborrades++; },
       removeAll: (ks) => { if (ks.length) esborrades++; } }) },
     Config: { full: () => ({ getSheetByName: () => null }) },
-    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara' },
+    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara', avui: () => '2026-08-02' },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
     HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
   };
@@ -1151,7 +1151,7 @@ console.log("La fitxa de la IA: per trossos, no d'una peca");
       removeAll: (ks) => { ks.forEach(k => { delete memoria[k]; }); }
     }) },
     Config: { full: () => ({ getSheetByName: () => null }) },
-    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara' },
+    Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara', avui: () => '2026-08-02' },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
     HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
   };
@@ -1204,6 +1204,78 @@ console.log("La fitxa de la IA: per trossos, no d'una peca");
   if (ctx.Moduls.alimentaContext('Converses')) ctx.Moduls.invalidaContext('Converses');
   ctx.Moduls.contextIA();
   cal('parlar segueix sense tombar res', muntats.length === 0, muntats.join(' '));
+}
+
+// ------------------- el que s'envia a Gemini: audio, eines i que no rumii per res
+console.log("");
+console.log("Transport a Gemini: la forma de la peticio");
+{
+  let enviat = null;
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp, encodeURIComponent,
+    Log: { info() {}, avis() {}, error() {} },
+    Config: {
+      get: (k) => ({ model_bo: 'gemini-2.5-flash', model_barat: 'gemini-2.5-flash',
+                     proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null,
+      getNum: (k, d) => (k === 'pensa_tokens' ? 0 : d),
+      esSi: () => true
+    },
+    Utils: { desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } },
+             talla: (t, n) => String(t).slice(0, n), ara: () => 'ara', avui: () => '2026-08-02' },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => 'clau-de-mentida' }) },
+    UrlFetchApp: { fetch: (url, o) => {
+      enviat = { url: url, cos: JSON.parse(o.payload), capcaleres: o.headers };
+      return { getResponseCode: () => 200, getContentText: () => JSON.stringify({
+        candidates: [{ content: { parts: [{ text: 'fet' }] } }],
+        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2 } }) };
+    } },
+    CacheService: { getScriptCache: () => null },
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {},
+    Utilities: {}, ScriptApp: {}, Dades: {}, Moduls: {}, Esquema: {}
+  };
+  vm.createContext(ctx);
+  ctx.PROP_CLAU_IA = 'CLAU_IA';
+  vm.runInContext(fs.readFileSync('apps-script/50_IA.gs', 'utf8'), ctx);
+
+  ctx.IA.genera({
+    sistema: 'ets en JEFE',
+    missatges: [
+      { rol: 'usuari', text: 'hola' },
+      { role: 'user', parts: [{ text: 'aixo t ha dit de veu:' },
+                              { inline_data: { mime_type: 'audio/wav', data: 'UklGRg==' } }] }
+    ],
+    eines: [{ nom: 'mostra_el_dia', descripcio: 'obre el dia',
+              esquema: { type: 'object', properties: { data: { type: 'string' } } } }],
+    model: 'bo', maxTokens: 1200, temperatura: 0
+  });
+
+  cal('la clau va a la capcalera i mai a l url',
+      !!ctx.IA && enviat.capcaleres['x-goog-api-key'] === 'clau-de-mentida' &&
+      enviat.url.indexOf('clau-de-mentida') === -1, enviat.url);
+
+  const parts = enviat.cos.contents[1].parts;
+  cal("l'audio arriba tal qual, sense passar per cap transcripcio",
+      parts[1].inline_data.mime_type === 'audio/wav' && parts[1].inline_data.data === 'UklGRg==',
+      JSON.stringify(parts));
+  cal('i el torn de text d abans hi segueix sent',
+      enviat.cos.contents[0].parts[0].text === 'hola', JSON.stringify(enviat.cos.contents[0]));
+
+  cal("amb l'audio hi van les EINES: les ordres d'accio han de seguir anant",
+      enviat.cos.tools[0].functionDeclarations[0].name === 'mostra_el_dia',
+      JSON.stringify(enviat.cos.tools));
+
+  // AIXO ES EL QUE COSTAVA DEU SEGONS.
+  cal('no se li deixa rumiar abans de contestar',
+      enviat.cos.generationConfig.thinkingConfig.thinkingBudget === 0,
+      JSON.stringify(enviat.cos.generationConfig));
+
+  // I amb un model que no ho enten, aquest camp fa petar l'API: no s hi ha de posar.
+  enviat = null;
+  ctx.Config.get = (k) => ({ model_bo: 'gemini-1.5-pro', proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null;
+  ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'hola' }], model: 'bo' });
+  cal('a un model que no ho enten, no se li envia',
+      enviat.cos.generationConfig.thinkingConfig === undefined,
+      JSON.stringify(enviat.cos.generationConfig));
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

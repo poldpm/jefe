@@ -31,6 +31,12 @@ var CONFIG_DEFECTE = {
   model_barat: 'gemini-2.5-flash',
   model_bo: 'gemini-2.5-flash',
 
+  /* Quant se li deixa «pensar» abans de contestar, en tokens. A zero, gens:
+     la feina d'aquí és mirar una fitxa que ja ve resolta i triar una eina, i
+     rumiar-hi només afegeix segons. Puja-ho si algun dia hi ha una pregunta
+     que ho necessiti de debò. */
+  pensa_tokens: 0,
+
   // Si es posa a NO, la capa d'IA deixa d'enviar text del diari.
   // Els resums perden profunditat però tot continua funcionant.
   ia_inclou_diari: 'SI',

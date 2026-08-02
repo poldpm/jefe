@@ -89,10 +89,28 @@ var IA = (function () {
       };
       if (p.json) cos.generationConfig.responseMimeType = 'application/json';
 
+      /* PENSAR ABANS DE RESPONDRE COSTA SEGONS, I AQUÍ GAIREBÉ MAI CAL.
+         Els models 2.5 en amunt es prenen una estona per pensar si no els
+         dius el contrari. Però la feina d'aquí és mirar una fitxa que ja ve
+         resolta i, com a molt, triar una eina: no hi ha res a rumiar. Amb
+         l'àudio es notava el doble, i una pregunta de dos segons de veu en
+         costava deu de resposta.
+
+         Va per configuració i no clavat al codi: si algun dia hi ha una
+         pregunta que sí que ho necessiti, es puja `pensa_tokens` al full i
+         ja està. I només als models que ho entenen: als altres, aquest camp
+         fa que l'API contesti un error. */
+      if (/gemini-(2\.5|3|[4-9])/.test(String(p._model || ''))) {
+        cos.generationConfig.thinkingConfig = {
+          thinkingBudget: Config.getNum('pensa_tokens', 0)
+        };
+      }
+
       return cos;
     },
 
     crida: function (p, model) {
+      p._model = model;
       var resposta = UrlFetchApp.fetch(Gemini.url(model), {
         method: 'post',
         contentType: 'application/json',

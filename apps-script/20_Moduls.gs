@@ -172,8 +172,18 @@ var Moduls = (function () {
     return out;
   }
 
-  var CAU_CONTEXT = 'ia_context_';       // + id del mòdul
-  var VIDA_CONTEXT = 300;                // 5 min: encara que no canviï res, «avui» caduca
+  var CAU_CONTEXT = 'ia_context_';       // + id del mòdul + dia
+
+  /* Mitja hora, i no cinc minuts.
+     Els cinc minuts hi eren per una por concreta: que «avui» es quedés sent
+     ahir. Però ara la clau porta el dia a dins, o sigui que a mitjanit el
+     tros caduca sol i la por desapareix. La resta del temps, el que fa que
+     un tros deixi de valer és que ES DESI alguna cosa d'aquell mòdul, i això
+     ja s'atrapa al moment. Caducar cada cinc minuts era pagar tres segons per
+     res cada vegada que passaves una estona sense preguntar. */
+  var VIDA_CONTEXT = 1800;
+
+  function clauContext_(id) { return CAU_CONTEXT + id + '_' + Utils.avui(); }
 
   /**
    * Fitxa compacta per a la IA: cada mòdul aporta el seu resum en text curt.
@@ -191,7 +201,7 @@ var Moduls = (function () {
    */
   function contextIA(opcions) {
     var m = actius().filter(function (x) { return typeof x.contextIA === 'function'; });
-    var claus = m.map(function (x) { return CAU_CONTEXT + x.id; });
+    var claus = m.map(function (x) { return clauContext_(x.id); });
 
     var cau = null, desats = {};
     try { cau = CacheService.getScriptCache(); } catch (e) { /* sense cau: seguim */ }
@@ -200,7 +210,7 @@ var Moduls = (function () {
 
     var trossos = [], nous = {};
     for (var i = 0; i < m.length; i++) {
-      var clau = CAU_CONTEXT + m[i].id;
+      var clau = clauContext_(m[i].id);
       if (desats[clau] !== undefined && desats[clau] !== null) {
         if (desats[clau]) trossos.push(desats[clau]);
         continue;
@@ -257,12 +267,12 @@ var Moduls = (function () {
     var fora = [];
 
     for (var i = 0; i < m.length; i++) {
-      if (!full || teFull_(m[i], full)) fora.push(CAU_CONTEXT + m[i].id);
+      if (!full || teFull_(m[i], full)) fora.push(clauContext_(m[i].id));
     }
     /* Un full que no és de ningú —o cap nom— pot haver canviat qualsevol cosa:
        es tomben tots. Val més tornar-los a muntar que mentir. */
     if (full && !fora.length && !deQui_(full)) {
-      fora = m.map(function (x) { return CAU_CONTEXT + x.id; });
+      fora = m.map(function (x) { return clauContext_(x.id); });
     }
 
     if (!fora.length) return;
