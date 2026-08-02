@@ -35,8 +35,38 @@ function MODUL_CONVERSA() {
       historial: function (p) { return Conversa.historial(p.id_conversa); },
       envia:     function (p) { return Conversa.envia(p.text, p.id_conversa); },
       nova:      function ()  { return Conversa.nova(); },
-      confirma:  function (p) { return Conversa.confirma(p.eina, p.args); }
+      confirma:  function (p) { return Conversa.confirma(p.eina, p.args); },
+      elDia:     function (p) { return Conversa.elDia(p.data); }
     },
+
+    /**
+     * LA PÀGINA DEL DIA NO TÉ BOTÓ, I ÉS A POSTA.
+     *
+     * És una pantalla que només surt si la demanes. Un botó més a la fila de
+     * mòduls voldria dir una decisió més cada cop que obres l'app, i el que
+     * hi ha aquí no és un lloc on vagis a treballar: és una resposta a una
+     * pregunta que fas de tant en tant.
+     *
+     * `obre` és el que fa que l'eina, a més de contestar, canviï de pantalla.
+     * No és una escriptura —ensenyar-te una cosa no canvia res— i per això no
+     * passa per confirmació.
+     */
+    einesIA: [{
+      nom: 'mostra_el_dia',
+      descripcio: 'Ensenya a en Pol la pàgina del dia: tot el que ha de tenir en compte ' +
+                  'avui —calendari, tasques, hàbits, nutrició, diari— en una sola pantalla. ' +
+                  'Fes-la servir quan demani veure el dia, el resum del dia, què té avui o ' +
+                  'què li queda. A més d\'ensenyar-la-hi, aquí tens el contingut per ' +
+                  'comentar-l\'hi de paraula.',
+      obre: 'dia',
+      esquema: {
+        type: 'object',
+        properties: {
+          data: { type: 'string', description: 'Dia AAAA-MM-DD. Si s\'omet, avui.' }
+        }
+      },
+      executa: function (a) { return Conversa.elDiaIA(a); }
+    }],
 
     vista: 'vista_conversa'
   };
@@ -183,8 +213,49 @@ var Conversa = (function () {
     return { fet: true, eina: nomEina, resultat: resultat };
   }
 
+  // ------------------------------------------------------- la pàgina del dia
+
+  /**
+   * Tot el que has de tenir en compte d'un dia, preguntant-ho als mòduls.
+   *
+   * Aquest fitxer no sap que existeixen ni el calendari, ni les tasques, ni
+   * els hàbits: demana al nucli i el nucli pregunta a qui sàpiga contestar.
+   * Un mòdul que es faci d'aquí a un any hi sortirà sol si implementa `elDia`.
+   */
+  function elDia(data) {
+    data = Utils.esDataValida(data) ? data : Utils.avui();
+    var blocs = Moduls.elDia(data);
+    return {
+      data: data,
+      esAvui: data === Utils.avui(),
+      blocs: blocs,
+      quantes: blocs.reduce(function (s, b) { return s + b.coses.length; }, 0)
+    };
+  }
+
+  /**
+   * El mateix, per a la conversa. Torna `_params` perquè el client sàpiga
+   * quin dia ha d'obrir, i el contingut en text perquè JEFE en pugui parlar
+   * sense haver de fer una segona consulta.
+   */
+  function elDiaIA(a) {
+    var d = elDia(a && a.data);
+    return {
+      _params: { data: d.data },
+      files: d.quantes,
+      dia: d.data,
+      pantalla: 'oberta',
+      resum: d.blocs.map(function (b) {
+        return b.titol + ': ' + b.coses.map(function (c) {
+          return c.text + (c.menut ? ' (' + c.menut + ')' : '');
+        }).join('; ');
+      })
+    };
+  }
+
   return {
     estat: estat, historial: historial, envia: envia,
-    nova: nova, confirma: confirma
+    nova: nova, confirma: confirma,
+    elDia: elDia, elDiaIA: elDiaIA
   };
 })();

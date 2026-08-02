@@ -323,5 +323,53 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
   cal('no deixa escriure un dia que no ha arribat', hoImpedeix, 'ho ha deixat fer');
 }
 
+// ------------------------------------------------------- l'agenda de les sis
+console.log("\nL'avís de les sis: només si hi ha alguna cosa");
+{
+  let events = [];
+  const enviats = [];
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} },
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { avui: () => '2026-08-03', talla: (t, n) => String(t).slice(0, n) },
+    Calendari: { dia: () => ({ esdeveniments: events }) },
+    Notifica: { envia: (titol, cos, o) => { enviats.push({ titol, cos, o }); return { enviades: 1 }; } },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    CalendarApp: {}, SpreadsheetApp: {}, CacheService: {}, Utilities: {},
+    Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    Config: {}, Dades: {}, Esquema: {}, Moduls: {}, IA: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  ctx.triggerAgendaDelDia();
+  cal("un dia buit no envia res", enviats.length === 0, String(enviats.length));
+
+  events = [
+    { titol: 'Claustre de mestres', hora: '09:00', horaFi: '10:30', totElDia: false, lloc: 'Escola' },
+    { titol: 'Visita al veterinari', hora: '17:00', horaFi: '18:00', totElDia: false, lloc: '' },
+    { titol: 'Aniversari de la mare', hora: '', horaFi: '', totElDia: true, lloc: '' }
+  ];
+  ctx.triggerAgendaDelDia();
+  cal("amb cites, envia", enviats.length === 1, String(enviats.length));
+  cal("el títol diu l'hora i què és, no «JEFE»",
+      /^09:00 Claustre de mestres/.test(enviats[0].titol), enviats[0].titol);
+  cal("i diu quantes més n'hi ha", /i 2 més/.test(enviats[0].titol), enviats[0].titol);
+  cal("el cos les porta totes, amb el de tot el dia identificat",
+      enviats[0].cos.split('\n').length === 3 && /tot el dia · Aniversari/.test(enviats[0].cos),
+      JSON.stringify(enviats[0].cos));
+  cal("i tocar-la porta al calendari", enviats[0].o.url === './#calendari', JSON.stringify(enviats[0].o));
+
+  events = [{ titol: 'Festa major', hora: '', horaFi: '', totElDia: true, lloc: '' }];
+  enviats.length = 0;
+  ctx.triggerAgendaDelDia();
+  cal("només de tot el dia: el títol és el títol", enviats[0].titol === 'Festa major', enviats[0].titol);
+
+  cal("l'avís de les sis és a la llista de triggers",
+      ctx.TRIGGERS.indexOf('triggerAgendaDelDia') !== -1, ctx.TRIGGERS.join(' '));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

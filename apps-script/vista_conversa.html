@@ -560,6 +560,22 @@ App.registraVista('conversa', {
             missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
                              propostes: r.propostes, temps: r.temps });
             if (veuActiva) parla(r.resposta);
+
+            /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
+               És com «ensenya'm la pàgina del dia» acaba ensenyant-la. La
+               conversa no sap quines pantalles hi ha ni quines eines les
+               obren: només mira si l'eina ho ha demanat i hi va. Qualsevol
+               mòdul futur ho pot fer posant `obre` a la seva eina.
+
+               Va amb un respir: si canviéssim de pantalla a l'instant, no
+               arribaries a llegir el que t'acaba de dir. */
+            var ober = (r.eines || []).filter(function (e) { return e.obre; })[0];
+            if (ober) {
+              Cau.set('conversa.missatges', missatges.slice(-40));
+              setTimeout(function () {
+                if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
+              }, 900);
+            }
           }
           Cau.set('conversa.missatges', missatges.slice(-40));
           acaba();

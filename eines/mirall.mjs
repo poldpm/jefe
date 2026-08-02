@@ -65,6 +65,12 @@ const MOCK = `
   var CONV_ESTAT  = ${j(D.conversaEstat())};
   var CONV_HIST   = ${j(D.conversaHistorial())};
   var INICI       = ${j(D.nucliInici())};
+  var DIA_BASE    = ${j(D.elDia({}))};
+  var DIA_PAGINA  = function (p) {
+    var d = copia(DIA_BASE);
+    if (p && p.data && p.data !== AVUI) { d.data = p.data; d.esAvui = false; }
+    return d;
+  };
   var CAL         = { calendaris: ${j(D.CALENDARIS)} };
   var CAL_MESOS   = ${j(Object.fromEntries(
        [-2, -1, 0, 1, 2, 3].map(n => {
@@ -117,6 +123,7 @@ const MOCK = `
       if (accio === 'estat') return copia(CONV_ESTAT);
       if (accio === 'historial') return copia(CONV_HIST);
       if (accio === 'nova') return { id_conversa: 'cnv_nou', missatges: [] };
+      if (accio === 'elDia') return DIA_PAGINA(p);
       if (accio === 'envia') throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
     }
 

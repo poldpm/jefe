@@ -74,6 +74,37 @@ function MODUL_TASQUES() {
 
     resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
 
+    elDia: function (data) {
+      var d = Tasques.pantalla({});
+      var coses = [];
+
+      /* Les vençudes primer i dient quant fa: una tasca que arrossegues no és
+         el mateix que una que venç avui, i a la pàgina del dia és el que
+         primer has de veure. */
+      d.tasques.filter(function (t) { return t.vencuda; }).forEach(function (t) {
+        /* QUANT FA, no quin dia era. «Vencia el 2026-07-29» t'obliga a comptar
+           mentalment; «fa quatre dies» és la informació que en volies treure. */
+        var fa = Utils.diesEntre(t.vencEl, data);
+        coses.push({
+          text: t.text,
+          menut: fa <= 0 ? 'vencia avui'
+               : fa === 1 ? 'vencia ahir'
+               : 'fa ' + fa + ' dies que vencia',
+          urgent: true
+        });
+      });
+      d.tasques.filter(function (t) { return t.vencEl === data; }).forEach(function (t) {
+        coses.push({ text: t.text, menut: 'per avui' + (t.contextNom ? ' · ' + t.contextNom : '') });
+      });
+      if (d.safata.length) {
+        coses.push({ text: d.safata.length + (d.safata.length === 1 ? ' cosa a la safata'
+                                                                    : ' coses a la safata'),
+                     menut: 'sense classificar' });
+      }
+      if (!coses.length) return null;
+      return { titol: 'Tasques', urgent: true, accio: 'tasques', coses: coses };
+    },
+
     contextIA: function () {
       var d = Tasques.pantalla({});
       if (!d.tasques.length && !d.safata.length) return 'Tasques: no en té cap de pendent.';

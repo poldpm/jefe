@@ -71,6 +71,7 @@ Tot és opcional excepte `id`, `nom` i `ordre`.
 | `accions` | objecte | Funcions cridables des de la interfície. |
 | `resumInici` | funció | Una línia per a la pantalla d'inici. Ha de ser barata. |
 | `resumPeriode` | funció | `(desde, fins)` → `{titol, linies: []}`. Què ha passat entre dues dates. Ho fa servir la revisió setmanal. Retorna `null` si no hi ha res a dir. |
+| `elDia` | funció | `(data)` → `{titol, urgent, accio, coses: [{text, menut, fet, urgent}]}`. Què hi ha d'aquell dia, per ensenyar-ho. Ho fa servir la pàgina del dia. Retorna `null` si no hi ha res. |
 | `contextIA` | funció | Fitxa curta per a la conversa. **Mai el full sencer.** |
 | `einesIA` | array | Consultes que la IA pot fer per demanar-ne més dades. |
 | `vista` | text | Nom del fitxer HTML de la seva pantalla. |
@@ -248,6 +249,8 @@ App.registraVista('lectures', {
 - [ ] Les eines de la IA retornen el recompte de files, encara que sigui zero
 - [ ] Cap acció esborra res: s'arxiva
 - [ ] Si té números que valgui la pena mirar cada setmana, implementa `resumPeriode()` i sortirà sol a la revisió del diumenge
+- [ ] Si té coses que has de tenir en compte un dia concret, implementa `elDia()` i sortirà sol a la pàgina del dia
+- [ ] Si alguna eina seva ha d'obrir una pantalla en comptes de només contestar, posa-li `obre: 'nomDeLaVista'`
 - [ ] Has executat `configuraJefe()` perquè el nucli li creï els fulls
 - [ ] Si té pantalla, l'has afegida a `ui_index.html` amb `include()`
 

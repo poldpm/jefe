@@ -951,6 +951,40 @@ input[type="checkbox"] { accent-color: var(--utm); }
           color: var(--utm); text-decoration: underline; text-underline-offset: 3px; }
 
 /* =========================================================================
+   LA PÀGINA DEL DIA — el full de ruta
+
+   Tot són coses per llegir; no hi ha res per tocar. El títol de cada bloc
+   és l'únic botó, i porta a l'apartat on sí que hi ha les eines. Per això
+   les línies no tenen ni marc ni ombra: no conviden a res.
+   ========================================================================= */
+
+.dia-pagina { max-width: 720px; }
+
+.dia-bloc-r { margin-bottom: var(--e5); }
+
+.dia-titol-r {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; min-height: 44px; padding: 0; gap: var(--e2);
+  border: 0; border-bottom: 1.5px solid var(--neatline);
+  background: none; color: var(--ink-suau); font: inherit;
+  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+}
+.dia-titol-r:active { color: var(--ink); }
+.dia-bloc-r[data-urgent="1"] .dia-titol-r { color: var(--gr); border-bottom-color: var(--gr); }
+
+.dia-coses { display: flex; flex-direction: column; }
+.dia-cosa { padding: var(--e3) 0; border-bottom: 1px solid var(--utm-suau);
+            display: flex; flex-direction: column; gap: 2px; }
+.dia-cosa:last-child { border-bottom: 0; }
+.dia-text { line-height: 1.35; overflow-wrap: anywhere; }
+
+/* El que ja ha passat o ja està fet no desapareix —saber que ja ho tens fet
+   forma part del que véns a mirar— però s'aparta. */
+.dia-cosa[data-fet="1"] { opacity: .5; }
+.dia-cosa[data-urgent="1"] .dia-text { font-weight: 600; }
+.dia-cosa[data-urgent="1"] .menut { color: var(--gr); }
+
+/* =========================================================================
    EL DIARI — el quadern de camp del marge del full
 
    El que escrius tu i el que t'escriu ell van a la mateixa línia de temps,

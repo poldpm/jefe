@@ -79,6 +79,22 @@ function MODUL_CALENDARI() {
       };
     },
 
+    elDia: function (data) {
+      var d = Calendari.dia(data);
+      if (!d.esdeveniments.length) return null;
+      return {
+        titol: 'Al calendari', accio: 'calendari',
+        coses: d.esdeveniments.map(function (e) {
+          return {
+            text: e.titol,
+            menut: (e.totElDia ? 'tot el dia' : e.hora + (e.horaFi ? '–' + e.horaFi : '')) +
+                   (e.lloc ? ' · ' + e.lloc : ''),
+            fet: e.passat
+          };
+        })
+      };
+    },
+
     contextIA: function () {
       var avui = Utils.avui();
       var l = [];

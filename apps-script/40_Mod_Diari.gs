@@ -80,6 +80,16 @@ function MODUL_DIARI() {
       };
     },
 
+    elDia: function (data) {
+      var e = Diari.entrada(data);
+      return {
+        titol: 'Diari', accio: 'diari',
+        coses: [ e
+          ? { text: 'Escrit', menut: Utils.talla(e.text, 90), fet: true }
+          : { text: 'Encara no has escrit res', menut: 'una línia ja compta' } ]
+      };
+    },
+
     contextIA: function () {
       var avui = Utils.avui();
       var e = Diari.entrada(avui);

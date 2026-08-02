@@ -109,6 +109,21 @@ function MODUL_NUTRICIO() {
       };
     },
 
+    elDia: function (data) {
+      var d = Nutricio.dia(data);
+      if (!d.totals.ingerides && !d.teCremades) return null;
+
+      var coses = [{ text: Math.round(d.totals.ingerides) + ' kcal · ' +
+                           Nutricio.r1(d.totals.proteina) + ' g de proteïna',
+                     menut: d.objectius.proteina > 0
+                       ? 'objectiu ' + d.objectius.proteina + ' g' : '' }];
+      coses.push(d.teCremades
+        ? { text: d.verdicte.text, menut: 'cremades ' + Math.round(d.cremades), fet: true }
+        : { text: 'Falten les calories cremades', menut: 'sense elles no hi ha balanç',
+            urgent: true });
+      return { titol: 'Nutrició', urgent: !d.teCremades, accio: 'nutricio', coses: coses };
+    },
+
     resumPeriode: function (desde, fins) { return Nutricio.resumPeriode(desde, fins); },
 
     contextIA: function () {

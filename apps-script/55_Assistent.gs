@@ -187,8 +187,15 @@ var Assistent = (function () {
           msEines += Date.now() - tE;
         }
 
+        /* `obre` és com una eina demana que l'app ensenyi una pantalla.
+           No és cap escriptura —ensenyar-te una cosa no canvia res—, o sigui
+           que no passa per confirmació: passa pel client, que ja hi va. Ho
+           porta l'eina al seu descriptor i el nucli no sap quines pantalles
+           hi ha ni li cal saber-ho. */
         einesUsades.push({
           eina: c.nom, args: c.args || {},
+          obre: eina && eina.obre ? eina.obre : undefined,
+          obreAmb: (eina && eina.obre && resultat && resultat._params) ? resultat._params : undefined,
           files: (resultat && resultat.files !== undefined) ? resultat.files : null
         });
         resultats.push({ nom: c.nom, resultat: retalla_(resultat) });

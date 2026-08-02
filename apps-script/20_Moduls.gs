@@ -137,6 +137,41 @@ var Moduls = (function () {
     return out;
   }
 
+  /**
+   * QUÈ HI HA D'AQUEST DIA, segons cada mòdul, per ensenyar-ho.
+   *
+   * És germana de `resumPeriode` però per a un sol dia i pensada per pintar-la,
+   * no per resumir-la: cada mòdul torna les seves coses una per una, amb el
+   * text que hi ha d'anar. La fa servir la pàgina del dia.
+   *
+   * És OPCIONAL. Un mòdul que no la implementi no hi surt. Un que es faci
+   * d'aquí a un any i sí que la implementi, hi sortirà sol.
+   *
+   * Retorna [{ modul, titol, urgent, accio, coses: [{ text, menut, fet }] }].
+   */
+  function elDia(data) {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (typeof m[i].elDia !== 'function') continue;
+      try {
+        var r = m[i].elDia(data);
+        if (r && r.coses && r.coses.length) {
+          out.push({
+            modul: m[i].id,
+            titol: r.titol || m[i].nom,
+            urgent: !!r.urgent,
+            accio: r.accio || m[i].id,
+            coses: r.coses
+          });
+        }
+      } catch (err) {
+        Log.error('moduls.elDia', 'Mòdul ' + m[i].id + ': ' + err.message);
+      }
+    }
+    return out;
+  }
+
   var CAU_CONTEXT = 'ia_context';
 
   /**
@@ -247,6 +282,7 @@ var Moduls = (function () {
     sincronitzaFull: sincronitzaFull,
     resumInici: resumInici,
     resumPeriode: resumPeriode,
+    elDia: elDia,
     contextIA: contextIA,
     invalidaContext: invalidaContext,
     gestionaTornada: gestionaTornada,

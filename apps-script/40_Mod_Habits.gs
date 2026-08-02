@@ -92,6 +92,20 @@ function MODUL_HABITS() {
       };
     },
 
+    elDia: function (data) {
+      var d = Habits.dia(data);
+      var falten = d.habits.filter(function (h) { return h.exigit && !h.complert; });
+      if (!falten.length) return null;
+      return {
+        titol: 'Hàbits que et falten', accio: 'habits',
+        coses: falten.map(function (h) {
+          return { text: h.nom,
+                   menut: h.tipus === 'quantitat' ? (h.valor || 0) + ' de ' + h.objectiu
+                        : (h.ratxa > 0 ? h.ratxa + ' dies de ratxa' : '') };
+        })
+      };
+    },
+
     /* Per a la revisió setmanal. El mòdul del diari no sap què és un hàbit:
        demana al nucli què ha passat i el nucli ens ho pregunta a nosaltres. */
     resumPeriode: function (desde, fins) { return Habits.resumPeriode(desde, fins); },

@@ -441,6 +441,44 @@ export function dades(AVUI, menys) {
     };
   };
 
+  // ------------------------------------------------------------ pàgina del dia
+
+  const elDia = (p) => {
+    const data = (p && p.data) || AVUI;
+    const cites = calendariPantalla({}).dades.tots.filter(e => e.data === data);
+    const t = tasquesPantalla();
+
+    const blocs = [];
+    if (cites.length) {
+      blocs.push({ modul: 'calendari', titol: 'Al calendari', urgent: false, accio: 'calendari',
+        coses: cites.map(e => ({
+          text: e.titol,
+          menut: (e.totElDia ? 'tot el dia' : e.hora + (e.horaFi ? '–' + e.horaFi : '')) +
+                 (e.lloc ? ' · ' + e.lloc : ''),
+          fet: e.passat })) });
+    }
+    blocs.push({ modul: 'tasques', titol: 'Tasques', urgent: true, accio: 'tasques', coses: [
+      { text: 'Informe de la batuda de senglar del vessant nord',
+        menut: 'fa 4 dies que vencia', urgent: true },
+      { text: 'Corregir els controls', menut: 'per avui · Docència' },
+      { text: t.safata.length + ' coses a la safata', menut: 'sense classificar' }
+    ] });
+    blocs.push({ modul: 'habits', titol: 'Hàbits que et falten', urgent: false, accio: 'habits',
+      coses: [ { text: 'Rentar-se les dents', menut: '1 de 2' },
+               { text: 'Sortir a caminar una estona llarga', menut: '' },
+               { text: 'Idiomes', menut: '' } ] });
+    blocs.push({ modul: 'nutricio', titol: 'Nutrició', urgent: true, accio: 'nutricio', coses: [
+      { text: '1.010 kcal · 95,8 g de proteïna', menut: 'objectiu 140 g' },
+      { text: 'Falten les calories cremades', menut: 'sense elles no hi ha balanç', urgent: true }
+    ] });
+    blocs.push({ modul: 'diari', titol: 'Diari', urgent: false, accio: 'diari',
+      coses: [ { text: 'Escrit', menut: 'Matí a la zona del refugi. Molta gent per ser dimarts.',
+                 fet: true } ] });
+
+    return { data, esAvui: data === AVUI, blocs,
+             quantes: blocs.reduce((s, b) => s + b.coses.length, 0) };
+  };
+
   // ------------------------------------------------------------------ inici
 
   const nucliInici = () => ({
@@ -464,7 +502,7 @@ export function dades(AVUI, menys) {
   });
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
-           CALENDARIS, calendariPantalla,
+           CALENDARIS, calendariPantalla, elDia,
            CATEGORIES, finPantalla, tasquesPantalla, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici };
 }

@@ -979,6 +979,40 @@ input[type="checkbox"] { accent-color: var(--utm); }
           color: var(--utm); text-decoration: underline; text-underline-offset: 3px; }
 
 /* =========================================================================
+   LA PÀGINA DEL DIA — el full de ruta
+
+   Tot són coses per llegir; no hi ha res per tocar. El títol de cada bloc
+   és l'únic botó, i porta a l'apartat on sí que hi ha les eines. Per això
+   les línies no tenen ni marc ni ombra: no conviden a res.
+   ========================================================================= */
+
+.dia-pagina { max-width: 720px; }
+
+.dia-bloc-r { margin-bottom: var(--e5); }
+
+.dia-titol-r {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; min-height: 44px; padding: 0; gap: var(--e2);
+  border: 0; border-bottom: 1.5px solid var(--neatline);
+  background: none; color: var(--ink-suau); font: inherit;
+  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+}
+.dia-titol-r:active { color: var(--ink); }
+.dia-bloc-r[data-urgent="1"] .dia-titol-r { color: var(--gr); border-bottom-color: var(--gr); }
+
+.dia-coses { display: flex; flex-direction: column; }
+.dia-cosa { padding: var(--e3) 0; border-bottom: 1px solid var(--utm-suau);
+            display: flex; flex-direction: column; gap: 2px; }
+.dia-cosa:last-child { border-bottom: 0; }
+.dia-text { line-height: 1.35; overflow-wrap: anywhere; }
+
+/* El que ja ha passat o ja està fet no desapareix —saber que ja ho tens fet
+   forma part del que véns a mirar— però s'aparta. */
+.dia-cosa[data-fet="1"] { opacity: .5; }
+.dia-cosa[data-urgent="1"] .dia-text { font-weight: 600; }
+.dia-cosa[data-urgent="1"] .menut { color: var(--gr); }
+
+/* =========================================================================
    EL DIARI — el quadern de camp del marge del full
 
    El que escrius tu i el que t'escriu ell van a la mateixa línia de temps,
@@ -3340,6 +3374,22 @@ App.registraVista('conversa', {
             missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
                              propostes: r.propostes, temps: r.temps });
             if (veuActiva) parla(r.resposta);
+
+            /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
+               És com «ensenya'm la pàgina del dia» acaba ensenyant-la. La
+               conversa no sap quines pantalles hi ha ni quines eines les
+               obren: només mira si l'eina ho ha demanat i hi va. Qualsevol
+               mòdul futur ho pot fer posant `obre` a la seva eina.
+
+               Va amb un respir: si canviéssim de pantalla a l'instant, no
+               arribaries a llegir el que t'acaba de dir. */
+            var ober = (r.eines || []).filter(function (e) { return e.obre; })[0];
+            if (ober) {
+              Cau.set('conversa.missatges', missatges.slice(-40));
+              setTimeout(function () {
+                if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
+              }, 900);
+            }
           }
           Cau.set('conversa.missatges', missatges.slice(-40));
           acaba();
@@ -7934,6 +7984,107 @@ App.registraVista('calendari', {
     }
 
     arrel.innerHTML = Comp.carregant(4);
+    carrega();
+  }
+});
+</script>
+
+<script>
+/* JEFE — LA PÀGINA DEL DIA
+   Món: full de mapa topogràfic. Aquí, el full de ruta del dia.
+
+   NO ÉS UN MÒDUL I NO TÉ BOTÓ. Només s'obre si li ho demanes a JEFE
+   —«ensenya'm la pàgina del dia»—, i és a posta: un botó més a la fila de
+   sota voldria dir una decisió més cada cop que obres l'app. Això no és un
+   lloc on vagis a treballar; és la resposta a una pregunta que fas de tant
+   en tant, i que quan la fas la vols sencera i d'una ullada.
+
+   NO HI HA RES A TOCAR. Tot són coses per llegir. Si en vols fer alguna,
+   el títol de cada bloc et porta al seu apartat, que és on hi ha les eines
+   per fer-la. Repetir-les aquí seria mantenir dues vegades el mateix. */
+
+App.registraVista('dia', {
+  render: function (arrel, params) {
+
+    var data = params.data || fmt.avui();
+    var previPintat = null;
+
+    function pinta(d, dEnCau) {
+      var buit = !d.blocs.length;
+
+      arrel.innerHTML =
+        '<header class="capcalera capcalera-nutri">' +
+          '<div class="capcalera-fila">' +
+            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+              ic('conversa', 'ic-p') + '</button>' +
+            '<span class="titol-periode" style="cursor:default">' +
+              '<b>' + esc(fmt.relativa(d.data)) + '</b>' +
+              '<span>' + esc(fmt.llarga(d.data)) + '</span>' +
+            '</span>' +
+          '</div>' +
+        '</header>' +
+
+        '<div class="pagina dia-pagina">' +
+          (buit
+            ? '<div class="estat">' + ic('mapa', 'ic-g') +
+              '<h2>El dia és net</h2>' +
+              '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
+            : d.blocs.map(bloc).join('')) +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+
+      lliga();
+    }
+
+    function bloc(b) {
+      return '<section class="dia-bloc-r"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
+        '<button class="dia-titol-r" data-ves="' + esc(b.accio) + '">' +
+          '<span>' + esc(b.titol) + '</span>' +
+          ic('dreta', 'ic-p') +
+        '</button>' +
+        '<div class="dia-coses">' +
+          b.coses.map(function (c) {
+            return '<div class="dia-cosa"' + (c.fet ? ' data-fet="1"' : '') +
+                   (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<span class="dia-text">' + esc(c.text) + '</span>' +
+              (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</section>';
+    }
+
+    function lliga() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () { App.ves(b.dataset.ves); });
+      });
+    }
+
+    function carrega() {
+      var desat = Cau.get('dia.' + data, null);
+      if (desat) {
+        try { previPintat = JSON.stringify(desat); pinta(desat, true); }
+        catch (e) { previPintat = null; }
+      }
+
+      crida('conversa', 'elDia', { data: data })
+        .then(function (r) {
+          Cau.set('dia.' + data, r);
+          var nou = JSON.stringify(r);
+          if (nou === previPintat) return;
+          previPintat = nou;
+          pinta(r, false);
+        })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
+    }
+
+    arrel.innerHTML = Comp.carregant(3);
     carrega();
   }
 });

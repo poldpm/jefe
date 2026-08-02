@@ -1,0 +1,100 @@
+<script>
+/* JEFE — LA PÀGINA DEL DIA
+   Món: full de mapa topogràfic. Aquí, el full de ruta del dia.
+
+   NO ÉS UN MÒDUL I NO TÉ BOTÓ. Només s'obre si li ho demanes a JEFE
+   —«ensenya'm la pàgina del dia»—, i és a posta: un botó més a la fila de
+   sota voldria dir una decisió més cada cop que obres l'app. Això no és un
+   lloc on vagis a treballar; és la resposta a una pregunta que fas de tant
+   en tant, i que quan la fas la vols sencera i d'una ullada.
+
+   NO HI HA RES A TOCAR. Tot són coses per llegir. Si en vols fer alguna,
+   el títol de cada bloc et porta al seu apartat, que és on hi ha les eines
+   per fer-la. Repetir-les aquí seria mantenir dues vegades el mateix. */
+
+App.registraVista('dia', {
+  render: function (arrel, params) {
+
+    var data = params.data || fmt.avui();
+    var previPintat = null;
+
+    function pinta(d, dEnCau) {
+      var buit = !d.blocs.length;
+
+      arrel.innerHTML =
+        '<header class="capcalera capcalera-nutri">' +
+          '<div class="capcalera-fila">' +
+            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+              ic('conversa', 'ic-p') + '</button>' +
+            '<span class="titol-periode" style="cursor:default">' +
+              '<b>' + esc(fmt.relativa(d.data)) + '</b>' +
+              '<span>' + esc(fmt.llarga(d.data)) + '</span>' +
+            '</span>' +
+          '</div>' +
+        '</header>' +
+
+        '<div class="pagina dia-pagina">' +
+          (buit
+            ? '<div class="estat">' + ic('mapa', 'ic-g') +
+              '<h2>El dia és net</h2>' +
+              '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
+            : d.blocs.map(bloc).join('')) +
+          (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
+        '</div>';
+
+      lliga();
+    }
+
+    function bloc(b) {
+      return '<section class="dia-bloc-r"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
+        '<button class="dia-titol-r" data-ves="' + esc(b.accio) + '">' +
+          '<span>' + esc(b.titol) + '</span>' +
+          ic('dreta', 'ic-p') +
+        '</button>' +
+        '<div class="dia-coses">' +
+          b.coses.map(function (c) {
+            return '<div class="dia-cosa"' + (c.fet ? ' data-fet="1"' : '') +
+                   (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<span class="dia-text">' + esc(c.text) + '</span>' +
+              (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</section>';
+    }
+
+    function lliga() {
+      var bv = arrel.querySelector('[data-torna]');
+      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-ves]').forEach(function (b) {
+        b.addEventListener('click', function () { App.ves(b.dataset.ves); });
+      });
+    }
+
+    function carrega() {
+      var desat = Cau.get('dia.' + data, null);
+      if (desat) {
+        try { previPintat = JSON.stringify(desat); pinta(desat, true); }
+        catch (e) { previPintat = null; }
+      }
+
+      crida('conversa', 'elDia', { data: data })
+        .then(function (r) {
+          Cau.set('dia.' + data, r);
+          var nou = JSON.stringify(r);
+          if (nou === previPintat) return;
+          previPintat = nou;
+          pinta(r, false);
+        })
+        .catch(function (err) {
+          if (desat) App.brindis(err.message, 'error');
+          else arrel.innerHTML = Comp.error(err, true);
+        });
+    }
+
+    arrel.innerHTML = Comp.carregant(3);
+    carrega();
+  }
+});
+</script>

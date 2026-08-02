@@ -77,7 +77,8 @@ function netejaFullPerDefecte_(ss) {
 // ------------------------------------------------------------------ triggers
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
-                'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni'];
+                'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
+                'triggerAgendaDelDia'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -104,6 +105,11 @@ function instalaTriggers() {
   // mirar l'hora real per no equivocar-se de jornada si li passa la mitjanit.
   ScriptApp.newTrigger('triggerTancamentNutricio')
     .timeBased().atHour(23).nearMinute(45).everyDays(1).create();
+
+  /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
+     saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */
+  ScriptApp.newTrigger('triggerAgendaDelDia')
+    .timeBased().atHour(6).nearMinute(0).everyDays(1).create();
 
   // El banc, de matinada: els moviments d'ahir ja hi són i tu encara dorms.
   ScriptApp.newTrigger('triggerBanc')
@@ -161,6 +167,56 @@ function triggerRevisioSetmanal() {
     Log.error('trigger.revisio', err);
   }
 }
+
+/**
+ * L'AGENDA DEL DIA — cada matí, cap a les sis.
+ *
+ * Només el calendari: les tasques i els hàbits ja tenen els seus avisos i el
+ * seu lloc, i un avís que ho digui tot no el llegeixes, el descartes. Aquí hi
+ * ha el que no pots moure de lloc i el que et condiciona el dia.
+ *
+ * Si no hi ha res, NO S'ENVIA RES. Un avís cada matí per dir-te que no tens
+ * res és la manera més ràpida de fer que deixis de mirar-los.
+ */
+function triggerAgendaDelDia() {
+  try {
+    if (typeof Calendari === 'undefined') return;
+
+    var avui = Utils.avui();
+    var d = Calendari.dia(avui);
+    if (!d.esdeveniments.length) {
+      Log.info('trigger.agenda', 'Res al calendari, cap avís', { data: avui });
+      return;
+    }
+
+    var e = d.esdeveniments;
+    var ambHora = e.filter(function (x) { return !x.totElDia; });
+
+    /* El títol ha de servir sol des de la pantalla blocada: la primera cosa
+       de debò i a quina hora, que és el que et fa aixecar o no córrer. */
+    var titol = ambHora.length
+      ? ambHora[0].hora + ' ' + Utils.talla(ambHora[0].titol, 40)
+      : Utils.talla(e[0].titol, 48);
+    if (e.length > 1) titol += '  ·  i ' + (e.length - 1) + ' més';
+
+    var cos = e.map(function (x) {
+      return (x.totElDia ? 'tot el dia' : x.hora) + ' · ' + x.titol +
+             (x.lloc ? ' (' + x.lloc + ')' : '');
+    }).join('\n');
+
+    var r = Notifica.envia(titol, cos, { etiqueta: 'agenda-dia', url: './#calendari' });
+
+    if (r.enviades > 0) {
+      Log.info('trigger.agenda', 'Agenda enviada', { data: avui, cites: e.length });
+    } else {
+      Log.avis('trigger.agenda', 'NO s\'ha pogut enviar: ' + (r.motiu || 'cap aparell l\'ha rebut'),
+               { data: avui });
+    }
+  } catch (err) {
+    Log.error('trigger.agenda', err);
+  }
+}
+
 
 /**
  * RECORDATORI DE TANCAMENT — cada nit, cap a les 23:45.
