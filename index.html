@@ -1780,7 +1780,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 18:33 · b34a007";</script>
+<script>window.MARCA_JEFE = "2026-08-02 18:53 · 45b132b";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1865,8 +1865,13 @@ input[type="checkbox"] { accent-color: var(--utm); }
     <path d="M3 14.5l4.5-4 3.5 3 4-6 5.5 5.5"/>
     <path d="M3 17h18" stroke-dasharray="2 2.5"/>
   </symbol>
+  <!-- Estat buit: un anell obert. Era un mapa plegat, del mon d abans, i en
+       una consola un mapa no vol dir res. Es l anell que surt a tot arreu
+       pero sense tancar i sense res a dins: aqui encara no hi ha res.
+       Ple i amb creu es el punxo, que vol dir el contrari; per aixo aquest
+       va a traç partit i sense centre. -->
   <symbol id="ic-mapa" viewBox="0 0 24 24">
-    <path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/>
+    <circle cx="12" cy="12" r="8.5" stroke-dasharray="3 3.4"/>
   </symbol>
   <symbol id="ic-captura" viewBox="0 0 24 24"><path d="M13.5 3 5.5 13.5h5.2L10 21l8.2-10.7h-5z"/></symbol>
   <symbol id="ic-tasques" viewBox="0 0 24 24">
@@ -1928,7 +1933,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 18:33 · b34a007";
+window.MARCA_JEFE = "2026-08-02 18:53 · 45b132b";
 </script>
 
 <script>
@@ -3192,7 +3197,7 @@ App.registraVista('inici', {
 
       if (!targetes || !targetes.length) {
         html += '<div class="estat">' + ic('mapa', 'ic-g') +
-          '<h2>Full en blanc</h2>' +
+          '<h2>Consola en repòs</h2>' +
           '<p>Encara no hi ha res registrat. Comença pels hàbits: amb un de sol ' +
           'ja té sentit obrir això cada dia.</p>' +
           '<button class="btn btn-primari" data-ves="habits">' + ic('habits') + 'Comença</button></div>';
