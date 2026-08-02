@@ -1739,8 +1739,20 @@ function queSapElBanc() {
     a('que ni els hi hem demanat. Mira l\'error de sobre.');
     a('Si parla de «key» o de signar, executa provaClauBanc().');
   } else if (r.nous) {
-    a('N\'han entrat ' + r.nous + ' ara mateix. Vol dir que la connexió va bé i que');
-    a('el que fallava era l\'automatisme: mira el punt 2.');
+    a('N\'han entrat ' + r.nous + ' ara mateix.');
+    /* I NO S'ACUSA L'AUTOMATISME SI JA SE SAP QUÈ FALLAVA.
+       La primera versió deia sempre «el que fallava era l'automatisme», i el
+       dia que va entrar bé el que havia fallat era la clau —amb el motiu
+       imprès quatre línies més amunt, al punt 3—. Si hi ha un error apuntat,
+       el que fallava és allò i ja està arreglat. */
+    if (com.error) {
+      a('Abans fallava per això que diu el punt 3, i ara ja no: aquell problema');
+      a('està resolt. Els automatismes tornaran a anar sols a les 6, les 15 i');
+      a('les 20 sense que hagis de fer res.');
+    } else {
+      a('La connexió va bé i no hi havia cap error apuntat: si a l\'hora que');
+      a('tocava no van entrar, mira els automatismes del punt 2.');
+    }
   } else {
     a('La petició ha anat bé i el banc no en dona cap de nou. Si tu saps que');
     a('n\'hi ha d\'aquest matí, vol dir que EL BANC encara no els ha publicat:');
