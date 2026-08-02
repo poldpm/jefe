@@ -158,7 +158,23 @@ function MODUL_FINANCES() {
          Cada petició a Apps Script costa 1,2 s abans de fer res, i mig segon
          més per obrir el full. Tres crides per obrir finances volien dir
          obrir el full tres vegades i esperar la més lenta de les tres. */
-      pantalla:       function (p) { return Finances.pantalla(p); },
+      /* DESADA, MENYS EL RELLOTGE.
+         Muntar-la vol dir llegir el full de moviments sencer, i aquell full
+         només creix: eren quatre o cinc segons cada cop que obries finances.
+         Qualsevol escriptura —un moviment, una categoria, un pressupost— la
+         tomba tota sola, perquè la invalidació penja de `Dades`.
+
+         El «Banc mirat fa…» NO hi va a dins i es calcula sempre de nou: és
+         l'única cosa d'aquesta pantalla que canvia sense que s'escrigui res,
+         i desar-la voldria dir dir-te «fa 2 minuts» durant mitja hora. */
+      pantalla:       function (p) {
+        p = p || {};
+        var r = Memoria.recorda('finances',
+          'pantalla:' + (p.periode || 'mes') + ':' + (p.mes || '') + ':' + (p.quants || ''),
+          function () { return Finances.pantalla(p); });
+        r.banc = Finances.estatDelBanc();
+        return r;
+      },
       pressupost:     function (p) { return Finances.desaPressupost(p.categoria, p.limit); },
       recurrents:     function ()  { return Finances.recurrents(); },
       patrimoni:      function ()  { return Finances.patrimoni(); },
@@ -1283,11 +1299,10 @@ var Finances = (function () {
       dades: dades,
       categories: categories(),
       // Els suggeriments només fan falta on hi ha el formulari d'apuntar.
-      suggeriments: (quin === 'mes') ? suggeriments('') : [],
-      /* De quan és el que ve del banc. Viatja amb la pantalla i no per
-         separat: és llegir una propietat, no anar al banc, i una xifra sense
-         la seva hora no diu la veritat sencera. */
-      banc: estatDelBanc_()
+      suggeriments: (quin === 'mes') ? suggeriments('') : []
+      /* De quan és el que ve del banc s'enganxa a fora, a l'acció: és
+         l'única cosa d'aquesta pantalla que canvia sense que s'escrigui
+         res, i desada et diria «fa 2 minuts» durant mitja hora. */
     };
   }
 
@@ -1704,6 +1719,7 @@ var Finances = (function () {
     desaPressupost: desaPressupost,
     recurrents: recurrents,
     patrimoni: patrimoni,
+    estatDelBanc: estatDelBanc_,
     desaActiu: desaActiu,
     arxivaActiu: arxivaActiu,
     anotaValor: anotaValor,

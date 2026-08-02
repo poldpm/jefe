@@ -59,7 +59,22 @@ var Dades = (function () {
        la fitxa —el mòdul de conversa no té `contextIA`— o sigui que llençar-la
        era pagar per no guanyar res. Qui hi surt i qui no ho diuen els mòduls;
        aquí no se sap ni cal saber-ho. */
-    if (typeof Moduls === 'undefined' || !Moduls.invalidaContext) return;
+    if (typeof Moduls === 'undefined') return;
+
+    /* I TOT EL QUE HAGI MUNTAT AQUELL MÒDUL.
+       Aquest és l'únic lloc pel qual passen totes les escriptures, i per això
+       és l'únic on la invalidació no es pot oblidar. Del full se'n dedueix el
+       mòdul; si el full no és de ningú —la configuració, per exemple— no se
+       sap qui en depèn i cauen tots. */
+    if (typeof Memoria !== 'undefined' && Moduls.deQui) {
+      var seu = nom ? Moduls.deQui(nom) : null;
+      if (seu) Memoria.oblida(seu.id);
+      else Memoria.oblidaTot(Moduls.actius().map(function (m) { return m.id; }));
+      // I el que suma tots els mòduls, sempre: no se sap qui hi aportava això.
+      Memoria.oblidaComu();
+    }
+
+    if (!Moduls.invalidaContext) return;
     if (nom && Moduls.alimentaContext && !Moduls.alimentaContext(nom)) return;
     // Amb el nom del full, només cau el tros de qui el té. Sense, tot.
     Moduls.invalidaContext(nom || null);

@@ -54,7 +54,11 @@ function MODUL_TASQUES() {
     ],
 
     accions: {
-      pantalla: function (p) { return Tasques.pantalla(p); },
+      /* Desada: obrir tasques vol dir llegir el full sencer, i el full creix.
+         Qualsevol escriptura a `Tasques` la tomba tota sola; vegeu `Memoria`. */
+      pantalla: function (p) {
+        return Memoria.recorda('tasques', 'pantalla', function () { return Tasques.pantalla(p); });
+      },
       captura:  function (p) { return Tasques.captura(p.text, p.origen); },
       edita:    function (p) { return Tasques.edita(p.id, p); },
       completa: function (p) { return Tasques.completa(p.id, p.desfes); },

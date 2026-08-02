@@ -395,6 +395,7 @@ var Moduls = (function () {
     contextIA: contextIA,
     invalidaContext: invalidaContext,
     alimentaContext: alimentaContext,
+    deQui: deQui_,
     gestionaTornada: gestionaTornada,
     einesIA: einesIA,
     dreceres: dreceres,

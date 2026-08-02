@@ -1552,5 +1552,116 @@ console.log("Banc: una clau desada en una sola linia s'ha de tornar a plegar");
       ambClau(pem).FinancesBanc.clauPem() === pem, 'l ha tocada');
 }
 
+// --------- les pantalles desades: rapides, pero mai amb una dada vella
+console.log("");
+console.log("Memoria de pantalles: desar sense mentir");
+{
+  const memoria = {};
+  const cau = {
+    get: (k) => (memoria[k] === undefined ? null : memoria[k]),
+    getAll: (ks) => { const o = {}; ks.forEach(k => { if (memoria[k] !== undefined) o[k] = memoria[k]; }); return o; },
+    put: (k, v) => { memoria[k] = v; },
+    putAll: (o) => { Object.keys(o).forEach(k => { memoria[k] = o[k]; }); },
+    remove: (k) => { delete memoria[k]; },
+    removeAll: (ks) => { ks.forEach(k => { delete memoria[k]; }); }
+  };
+
+  const moduls = [
+    { id: 'tasques', fulls: [{ nom: 'Tasques' }] },
+    { id: 'finances', fulls: [{ nom: 'Moviments' }, { nom: 'Categories' }] }
+  ];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    CacheService: { getScriptCache: () => cau },
+    Config: { full: () => ({ getSheetByName: () => null }) },
+    Utils: { avui: () => '2026-08-02', ara: () => 'ara' },
+    Dades: null, Esquema: {}, IA: {}, SpreadsheetApp: {}, PropertiesService: {},
+    ScriptApp: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/25_Memoria.gs', 'utf8'), ctx);
+  moduls.forEach(function (m) { ctx['MODUL_' + m.id.toUpperCase()] = function () { return m; }; });
+
+  let muntades = 0;
+  const pantalla = (modul, nom, valor) =>
+    ctx.Memoria.recorda(modul, nom, () => { muntades++; return { v: valor }; });
+
+  // 1. La segona vegada no es torna a muntar.
+  cal('la primera vegada la munta', pantalla('tasques', 'pantalla', 1).v === 1 && muntades === 1,
+      String(muntades));
+  muntades = 0;
+  cal('la segona ja no', pantalla('tasques', 'pantalla', 1).v === 1 && muntades === 0,
+      String(muntades));
+
+  // 2. Dues pantalles diferents del mateix modul no es trepitgen.
+  muntades = 0;
+  const a = pantalla('finances', 'pantalla:mes:2026-08', 'agost');
+  const b = pantalla('finances', 'pantalla:mes:2026-07', 'juliol');
+  cal('cada pantalla te la seva clau', a.v === 'agost' && b.v === 'juliol' && muntades === 2,
+      a.v + '/' + b.v + ' · ' + muntades);
+
+  // 3. I ARA EL QUE IMPORTA: escriure ha de tombar el que sigui d'aquell modul.
+  const dadesCtx = {
+    Utils: { nouId: () => 'x', ara: () => 'ARA' },
+    Config: { full: () => ({ getSheetByName: () => ({
+      getDataRange: () => ({ getValues: () => [['id']] }),
+      getRange: () => ({ setValues: () => {} }), getMaxRows: () => 10 }) }) },
+    LockService: null, Moduls: ctx.Moduls, Memoria: ctx.Memoria
+  };
+  vm.createContext(dadesCtx);
+  vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), dadesCtx);
+
+  muntades = 0;
+  dadesCtx.Dades.invalida('Moviments');
+  pantalla('finances', 'pantalla:mes:2026-08', 'agost NOU');
+  cal('apuntar un moviment tomba la pantalla de finances', muntades === 1, String(muntades));
+  cal('i la torna a muntar amb el que hi ha ara',
+      pantalla('finances', 'pantalla:mes:2026-08', 'x').v === 'agost NOU', 'ensenya la vella');
+
+  // 4. I no ha de tombar la del vei.
+  muntades = 0;
+  pantalla('tasques', 'pantalla', 'no importa');
+  cal('i no toca la de tasques, que no ha canviat', muntades === 0, String(muntades));
+
+  // 5. Un full de ningu no se sap que ha tocat: cauen totes.
+  muntades = 0;
+  dadesCtx.Dades.invalida('_Config');
+  pantalla('tasques', 'pantalla', 'z');
+  pantalla('finances', 'pantalla:mes:2026-08', 'z');
+  cal('canviar la configuracio les tomba totes', muntades === 2, String(muntades));
+
+  // 6. I sense dir quin full, tambe.
+  muntades = 0;
+  dadesCtx.Dades.invalida();
+  pantalla('tasques', 'pantalla', 'w');
+  cal('i sense dir res, tambe', muntades === 1, String(muntades));
+
+  // 7. EL CALAIX COMU: el que suma tots els moduls cau amb qualsevol escriptura.
+  muntades = 0;
+  ctx.Memoria.recordaComu('inici', () => { muntades++; return { v: 1 }; });
+  ctx.Memoria.recordaComu('inici', () => { muntades++; return { v: 1 }; });
+  cal('el calaix comu tambe es desa', muntades === 1, String(muntades));
+
+  muntades = 0;
+  dadesCtx.Dades.invalida('Tasques');          // una escriptura d'un modul qualsevol
+  ctx.Memoria.recordaComu('inici', () => { muntades++; return { v: 2 }; });
+  cal("qualsevol escriptura tomba el comu, sigui d'on sigui", muntades === 1, String(muntades));
+
+  // I no ha de durar mitja hora: hi ha el calendari a dins, que no surt de cap full.
+  const abansPut = memoria['gen_nucli'];
+  cal('el comu te el seu calaix a part', typeof abansPut === 'string', String(abansPut));
+
+  // 8. Sense memoria cau, ha de seguir funcionant.
+  ctx.CacheService.getScriptCache = () => { throw new Error('sense cau'); };
+  muntades = 0;
+  const r = pantalla('tasques', 'pantalla', 'sense cau');
+  cal('sense memoria cau munta igual i no peta', r.v === 'sense cau' && muntades === 1,
+      String(muntades));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

@@ -168,13 +168,20 @@ function api(idModul, accio, params) {
 
 function apiNucli_(accio, params) {
   switch (accio) {
+    /* LA PRIMERA PANTALLA, DESADA.
+       Les targetes les munta cada mòdul llegint el seu full: obrir l'app
+       costava tants fulls com mòduls hi ha. Qualsevol escriptura la tomba, i
+       de totes maneres dura poc, que hi ha el calendari a dins i aquell no
+       surt de cap full. Vegeu `Memoria`. */
     case 'inici':
-      return {
-        avui: Utils.avui(),
-        moduls: Moduls.perAlClient(),
-        targetes: Moduls.resumInici(),
-        ia: IA.estat()
-      };
+      return Memoria.recordaComu('inici', function () {
+        return {
+          avui: Utils.avui(),
+          moduls: Moduls.perAlClient(),
+          targetes: Moduls.resumInici(),
+          ia: IA.estat()
+        };
+      });
 
     case 'estat':
       return estatSistema();

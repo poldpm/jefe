@@ -68,11 +68,24 @@ function MODUL_HABITS() {
     ],
 
     accions: {
-      dia: function (p) { return Habits.dia(p.data || Utils.avui()); },
-      mes: function (p) { return Habits.mes(p.fins || Utils.avui(), p.dies || 30); },
+      /* Desades: el full de registres té una fila per hàbit i dia, i llegir-lo
+         creix amb els mesos. Marcar-ne un el tomba tot sol. */
+      dia: function (p) {
+        var d = p.data || Utils.avui();
+        return Memoria.recorda('habits', 'dia:' + d, function () { return Habits.dia(d); });
+      },
+      mes: function (p) {
+        var f = p.fins || Utils.avui(), n = p.dies || 30;
+        return Memoria.recorda('habits', 'mes:' + f + ':' + n,
+                               function () { return Habits.mes(f, n); });
+      },
       marca: function (p) { return Habits.marca(p.id, p.data, p.valor); },
       llista: function () { return Habits.definicions(); },
-      historic: function (p) { return Habits.historic(p.id, p.dies || 30); },
+      historic: function (p) {
+        var n = p.dies || 30;
+        return Memoria.recorda('habits', 'historic:' + p.id + ':' + n,
+                               function () { return Habits.historic(p.id, n); });
+      },
       resum: function () { return Habits.resumTots(); },
       crea: function (p) { return Habits.crea(p); },
       edita: function (p) { return Habits.edita(p.id, p); },

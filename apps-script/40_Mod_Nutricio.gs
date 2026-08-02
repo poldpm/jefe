@@ -83,7 +83,12 @@ function MODUL_NUTRICIO() {
          Apps Script costa 1,2 s abans de fer res i mig segon més per obrir el
          full; demanar el dia, els aliments i els objectius per separat volia
          dir obrir-lo tres vegades. */
-      pantalla:       function (p) { return Nutricio.pantalla(p); },
+      /* Desada: porta el dia, la taula d'aliments i els objectius. Apuntar
+         qualsevol cosa la tomba tota sola. */
+      pantalla:       function (p) {
+        return Memoria.recorda('nutricio', 'pantalla:' + (p.periode || 'dia') + ':' + (p.data || ''),
+                               function () { return Nutricio.pantalla(p); });
+      },
       dia:            function (p) { return Nutricio.dia(p.data || Utils.avui()); },
       setmana:        function (p) { return Nutricio.periode(p.data || Utils.avui(), 'setmana'); },
       mes:            function (p) { return Nutricio.periode(p.data || Utils.avui(), 'mes'); },

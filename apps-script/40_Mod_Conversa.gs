@@ -355,13 +355,18 @@ var Conversa = (function () {
    */
   function elDia(data) {
     data = Utils.esDataValida(data) ? data : Utils.avui();
-    var blocs = Moduls.elDia(data);
-    return {
-      data: data,
-      esAvui: data === Utils.avui(),
-      blocs: blocs,
-      quantes: blocs.reduce(function (s, b) { return s + b.coses.length; }, 0)
-    };
+    /* Desada al calaix comú: aquí hi aporten tots els mòduls, i per això
+       qualsevol escriptura la tomba. Dura poc perquè hi ha el calendari, que
+       pot canviar sense que ningú escrigui res. Vegeu `Memoria`. */
+    return Memoria.recordaComu('elDia:' + data, function () {
+      var blocs = Moduls.elDia(data);
+      return {
+        data: data,
+        esAvui: data === Utils.avui(),
+        blocs: blocs,
+        quantes: blocs.reduce(function (s, b) { return s + b.coses.length; }, 0)
+      };
+    });
   }
 
   /**

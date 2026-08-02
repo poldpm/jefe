@@ -61,7 +61,10 @@ function MODUL_DIARI() {
     ],
 
     accions: {
-      pantalla:  function (p) { return Diari.pantalla(p); },
+      pantalla:  function (p) {
+        return Memoria.recorda('diari', 'pantalla:' + (p.data || ''),
+                               function () { return Diari.pantalla(p); });
+      },
       escriu:    function (p) { return Diari.escriu(p.data, p.text, p.anim, p.origen); },
       treu:      function (p) { return Diari.treu(p.id); },
       // Per si vol el resum ara i no esperar a les deu del vespre.
