@@ -1515,6 +1515,8 @@ console.log("Banc: una clau desada en una sola linia s'ha de tornar a plegar");
       Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
     };
     vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+    ctx.Utils.avui = () => '2026-08-02';
     vm.runInContext(fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8'), ctx);
     return ctx;
   }
@@ -1525,6 +1527,18 @@ console.log("Banc: una clau desada en una sola linia s'ha de tornar a plegar");
   cal('una clau en una sola linia NO serveix per signar', planaFalla, 'doncs si que serveix');
 
   const plegada = ambClau(plana).FinancesBanc.clauPem();
+
+  // I la peca compartida directament, que la fa servir tambe el JWT de les
+  // notificacions, on la clau ve d'un JSON amb els salts escrits.
+  const ctxU = { RegExp, String, Array, Math, Date, Utilities: {}, Config: {} };
+  vm.createContext(ctxU);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctxU);
+  const ambBarres = pem.split(String.fromCharCode(10)).join(String.fromCharCode(92) + 'n');
+  cal('una clau amb els salts ESCRITS tambe es desfa',
+      ctxU.Utils.plegaPem(ambBarres) === pem, 'no coincideix');
+  cal('i una que no es cap PEM es torna tal qual',
+      ctxU.Utils.plegaPem('aixo no es una clau') === 'aixo no es una clau', 'l ha tocada');
+  cal('i res, res', ctxU.Utils.plegaPem('') === '' && ctxU.Utils.plegaPem(null) === '', 'peta');
   cal('plegada, torna a tenir salts de linia', plegada.indexOf(String.fromCharCode(10)) !== -1, 'no en te');
   var ratlles = plegada.split(String.fromCharCode(10));
   cal('les ratlles del cos fan 64', ratlles[1].length === 64, String(ratlles[1].length));

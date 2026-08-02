@@ -164,6 +164,34 @@ var Utils = (function () {
     return out.replace(/\s+/g, ' ').trim();
   }
 
+  /**
+   * UNA CLAU PEM, TORNADA A PLEGAR.
+   *
+   * Els llocs on es desen les claus no sempre respecten els salts de línia.
+   * El quadre de Propietats de l'script és d'una sola línia i se'ls menja; un
+   * JSON els porta escrits com a dues lletres. En tots dos casos la clau hi és
+   * sencera i sense tocar, però `computeRsaSha256Signature` no la vol i diu
+   * «Invalid argument: key», que no explica res i fa perdre una tarda.
+   *
+   * Aquí es desfà: es prenen els \n escrits com a salts de debò, i si encara
+   * queda tot en una ratlla, s'agafa el cos i es plega de seixanta-quatre en
+   * seixanta-quatre, que és com ha d'anar un PEM. Una clau que ja ve bé no es
+   * toca. No es desa res enlloc: es plega cada cop que fa falta.
+   */
+  function plegaPem(text) {
+    var brut = String(text || '').replace(/\\n/g, '\n').trim();
+    if (brut.indexOf('\n') !== -1) return brut;
+
+    var m = brut.match(/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END [A-Z0-9 ]+-----/);
+    if (!m) return brut;
+
+    var cos = m[2].replace(/\s+/g, '');
+    var linies = [];
+    for (var i = 0; i < cos.length; i += 64) linies.push(cos.slice(i, i + 64));
+    return '-----BEGIN ' + m[1] + '-----\n' + linies.join('\n') +
+           '\n-----END ' + m[1] + '-----';
+  }
+
   /** JSON tolerant: mai llança. */
   function json(obj) {
     try { return JSON.stringify(obj); } catch (e) { return '' + obj; }
@@ -189,6 +217,7 @@ var Utils = (function () {
     talla: talla,
     faQuant: faQuant,
     aixafa: aixafa,
+    plegaPem: plegaPem,
     json: json,
     desJson: desJson
   };

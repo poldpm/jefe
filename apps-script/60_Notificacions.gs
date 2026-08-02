@@ -88,7 +88,7 @@ var Notifica = (function () {
 
     var signatura = Utilities.computeRsaSha256Signature(
       capcalera + '.' + cos,
-      c.private_key.replace(/\\n/g, '\n')       // si s'ha enganxat amb salts escapats
+      Utils.plegaPem(c.private_key)     // ve d'un JSON: porta els salts escrits
     );
     var jwt = capcalera + '.' + cos + '.' + base64url_(signatura);
 

@@ -1643,8 +1643,9 @@ function queSapElBanc() {
      doni res. */
   var potSignar = true;
   try {
-    Utilities.computeRsaSha256Signature('prova',
-      PropertiesService.getScriptProperties().getProperty('EB_PRIVATE_KEY') || '');
+    // Amb la clau TAL COM ES FARÀ SERVIR, plegada. Provar-la en cru deia que
+    // no serveix quan sí que serveix, que és mentir a l'inrevés.
+    Utilities.computeRsaSha256Signature('prova', FinancesBanc.clauPem());
   } catch (errClau) { potSignar = false; }
 
   a('0. LA CLAU PER SIGNAR');

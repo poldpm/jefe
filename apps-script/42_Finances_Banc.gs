@@ -70,36 +70,10 @@ var FinancesBanc = (function () {
     return Utilities.base64EncodeWebSafe(dades).replace(/=+$/, '');
   }
 
-  /**
-   * LA CLAU PRIVADA, TORNADA A PLEGAR.
-   *
-   * El quadre de Propietats de l'script és d'una sola línia: quan hi enganxes
-   * un fitxer .pem, els salts de línia es perden pel camí i el que queda és
-   * tot seguit. La clau hi és sencera i sense tocar —el mateix BEGIN, el
-   * mateix cos, el mateix END— però en aquell format `computeRsaSha256Signature`
-   * no la vol i diu «Invalid argument: key», que no explica res.
-   *
-   * No es pot arreglar des d'allà, doncs es fa aquí: s'agafa el cos, es treu
-   * tot l'espai en blanc i es torna a plegar de seixanta-quatre en
-   * seixanta-quatre, que és com ha d'anar un PEM. Si la clau ja ve amb salts,
-   * no se li toca res.
-   *
-   * NO ES DESA ENLLOC. Es plega cada cop que fa falta i prou: una clau privada
-   * es queda on està.
-   */
-  function clauPem_() {
-    var brut = String(prop_('EB_PRIVATE_KEY') || '').trim();
-    if (brut.indexOf('\n') !== -1) return brut;          // ja ve com toca
-
-    var m = brut.match(/-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END [A-Z0-9 ]+-----/);
-    if (!m) return brut;                                 // no té la forma d'un PEM
-
-    var cos = m[2].replace(/\s+/g, '');
-    var linies = [];
-    for (var i = 0; i < cos.length; i += 64) linies.push(cos.slice(i, i + 64));
-    return '-----BEGIN ' + m[1] + '-----\n' + linies.join('\n') +
-           '\n-----END ' + m[1] + '-----';
-  }
+  /* La clau tal com es fara servir. El quadre de Propietats de l'script es
+     d'una sola linia i es menja els salts en enganxar-hi un .pem; vegeu
+     `Utils.plegaPem`. */
+  function clauPem_() { return Utils.plegaPem(prop_('EB_PRIVATE_KEY')); }
 
   function jwt_() {
     var cache = CacheService.getScriptCache();
