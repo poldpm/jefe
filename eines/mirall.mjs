@@ -216,6 +216,8 @@ const MOCK = `
     }
 
     if (modul === 'finances') {
+      if (accio === 'refrescaBanc') return { mirat: false, motiu: 'mirat fa poc', nous: 0,
+        com: { connectat: true, quan: AVUI, fa: 'fa 6 minuts', error: '' } };
       if (accio === 'pantalla') return copia(FIN[p.periode || 'mes'] || FIN.mes);
       if (accio === 'categories') return copia(FIN.mes.categories);
       if (accio === 'suggeriments') return copia(FIN.mes.suggeriments);

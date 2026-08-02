@@ -472,6 +472,14 @@ export function dades(AVUI, menys) {
       { text: '1.010 kcal · 95,8 g de proteïna', menut: 'objectiu 140 g' },
       { text: 'Falten les calories cremades', menut: 'sense elles no hi ha balanç', urgent: true }
     ] });
+    blocs.push({ modul: 'finances', titol: 'Finances', urgent: false, accio: 'finances', coses: [
+      { text: 'Gastat 71,45 € · guanyat 1842,00 €', menut: '4 moviments' },
+      { text: 'Nòmina', menut: '+1842,00 € · Feina' },
+      { text: 'Supermercat del carrer gran', menut: '−48,20 € · Menjar' },
+      { text: 'Benzinera de la carretera', menut: '−18,90 € · Cotxe · per classificar' },
+      { text: 'Cafè', menut: '−4,35 € · Sortides' },
+      { text: 'Banc mirat fa 6 minuts', menut: '' }
+    ] });
     blocs.push({ modul: 'diari', titol: 'Diari', urgent: false, accio: 'diari',
       coses: [ { text: 'Escrit', menut: 'Matí a la zona del refugi. Molta gent per ser dimarts.',
                  fet: true } ] });

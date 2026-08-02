@@ -310,12 +310,95 @@ var FinancesBanc = (function () {
 
     var saldos = actualitzaSaldos_(e);
 
+    // De quan és el que veus. Es desa passi el que passi, encara que no hagi
+    // entrat res: el que interessa saber és quan es va MIRAR, no quan va canviar.
+    var ara = Utils.ara();
+    e = estat();
+    e.ultimaMirada = ara;
+    e.ultimError = errors.length ? Utils.talla(errors[0], 200) : '';
+    desaEstat(e);
+
     Log.info('banc.sincronitza', 'Sincronització', {
       nous: nous, jaSabuts: jaSabuts, saldos: saldos, errors: errors.length
     });
 
     return { nous: nous, jaSabuts: jaSabuts, perRevisar: nous - jaSabuts,
-             saldos: saldos, errors: errors };
+             saldos: saldos, errors: errors, quan: ara };
+  }
+
+  /* ------------------------------------------------------------------------
+     SEMPRE AL DIA, PERÒ SENSE ABUSAR-NE
+
+     El banc no ens avisa quan passa res: s'hi ha d'anar a mirar. I la llei
+     que regula això —la PSD2— limita quantes vegades al dia s'hi pot anar
+     sense que tu hi siguis al davant. O sigui que «sempre actualitzat» no vol
+     dir preguntar-ho cada minut: vol dir preguntar-ho quan obres l'app, que
+     és quan te'n serveix de res, i no tornar-hi si fa quatre minuts que s'ha
+     mirat.
+
+     Si el banc diu prou, no passa res de dolent: es queda el que hi havia i
+     la pantalla diu de quan és. Val més un número amb la seva hora que un
+     número que sembla d'ara i no ho és.
+     ------------------------------------------------------------------------ */
+
+  var MINUTS_ENTRE_MIRADES = 10;
+
+  function ultimaMirada() {
+    var e = estat();
+    return e.ultimaMirada || null;
+  }
+
+  /** Quants minuts fa que no s'hi mira. Null si no s'hi ha mirat mai. */
+  function minutsDesDeLaMirada_() {
+    var q = ultimaMirada();
+    if (!q) return null;
+    var d = new Date(q);
+    if (isNaN(d.getTime())) return null;
+    return (new Date().getTime() - d.getTime()) / 60000;
+  }
+
+  /**
+   * Mira el banc si fa prou estona que no s'hi mira. Si no cal, no fa res.
+   * No llança mai: això ho crida una pantalla en obrir-se, i que el banc
+   * estigui de mal humor no pot deixar-te sense pantalla.
+   */
+  function sincronitzaSiCal(minuts) {
+    minuts = minuts === undefined ? MINUTS_ENTRE_MIRADES : minuts;
+
+    if (!disponible()) {
+      return { mirat: false, motiu: 'sense connexió amb el banc', quan: ultimaMirada() };
+    }
+
+    var fa = minutsDesDeLaMirada_();
+    if (fa !== null && fa < minuts) {
+      return { mirat: false, motiu: 'mirat fa poc', quan: ultimaMirada(), minuts: Math.round(fa) };
+    }
+
+    try {
+      var r = sincronitza();
+      r.mirat = true;
+      return r;
+    } catch (err) {
+      /* Una negativa del banc no és una errada nostra: passa, i el que toca
+         és seguir ensenyant el que teníem dient de quan és. */
+      Log.avis('banc.mirada', 'No he pogut mirar el banc: ' + err.message);
+      var e = estat();
+      e.ultimError = Utils.talla(err.message, 200);
+      desaEstat(e);
+      return { mirat: false, motiu: 'el banc no ha contestat', error: err.message,
+               quan: ultimaMirada() };
+    }
+  }
+
+  /** De quan és el que es veu, per ensenyar-ho sense mentir. */
+  function comEstem() {
+    var e = estat();
+    return {
+      connectat: disponible(),
+      quan: e.ultimaMirada || null,
+      fa: e.ultimaMirada ? Utils.faQuant(e.ultimaMirada) : null,
+      error: e.ultimError || ''
+    };
   }
 
   /**
@@ -397,6 +480,9 @@ var FinancesBanc = (function () {
     bancs: bancs,
     connecta: connecta,
     creaSessio: creaSessio,
-    sincronitza: sincronitza
+    sincronitza: sincronitza,
+    sincronitzaSiCal: sincronitzaSiCal,
+    ultimaMirada: ultimaMirada,
+    comEstem: comEstem
   };
 })();

@@ -114,6 +114,33 @@ var Utils = (function () {
     return (esp > n * 0.6 ? tallat.slice(0, esp) : tallat) + '…';
   }
 
+  /**
+   * Quant fa, dit com ho diria una persona.
+   *
+   * «Fa 4 minuts» es llegeix; «2026-08-02T14:12:03+02:00» s'ha de desxifrar.
+   * Serveix per a tot allò que et surt a la pantalla amb una data al costat i
+   * que el que realment vols saber és si és d'ara o d'abans-d'ahir.
+   */
+  function faQuant(iso) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return 'no se sap quan';
+
+    var s = Math.round((new Date().getTime() - d.getTime()) / 1000);
+    if (s < 0) return 'ara mateix';
+    if (s < 90) return 'ara mateix';
+
+    var min = Math.round(s / 60);
+    if (min < 60) return 'fa ' + min + ' minuts';
+
+    var h = Math.round(min / 60);
+    if (h < 24) return 'fa ' + h + (h === 1 ? ' hora' : ' hores');
+
+    var dies = Math.round(h / 24);
+    if (dies === 1) return 'ahir';
+    if (dies < 30) return 'fa ' + dies + ' dies';
+    return 'fa més d\'un mes';
+  }
+
   /** JSON tolerant: mai llança. */
   function json(obj) {
     try { return JSON.stringify(obj); } catch (e) { return '' + obj; }
@@ -137,6 +164,7 @@ var Utils = (function () {
     setmanaISO: setmanaISO,
     dillunsDe: dillunsDe,
     talla: talla,
+    faQuant: faQuant,
     json: json,
     desJson: desJson
   };

@@ -111,9 +111,17 @@ function instalaTriggers() {
   ScriptApp.newTrigger('triggerAgendaDelDia')
     .timeBased().atHour(6).nearMinute(0).everyDays(1).create();
 
-  // El banc, de matinada: els moviments d'ahir ja hi són i tu encara dorms.
+  /* EL BANC, DUES VEGADES AL DIA I NO MÉS.
+     La llei que regula això —la PSD2— limita quantes vegades al dia es pot
+     anar a mirar un compte sense que en Pol hi sigui al davant. Passar-se'n
+     vol dir que el banc digui que no i quedar-nos sense les que sí que
+     importen. Dues aquí, i la resta quan obre l'app: allà sí que hi és.
+     El matí, per tenir el d'ahir tancat; a la tarda, per assabentar-nos del
+     que hagi passat al matí sense haver d'obrir res. */
   ScriptApp.newTrigger('triggerBanc')
     .timeBased().atHour(6).everyDays(1).create();
+  ScriptApp.newTrigger('triggerBanc')
+    .timeBased().atHour(15).everyDays(1).create();
 
   // El patrimoni, el 28 al vespre: a temps de mirar-t'ho abans que acabi el mes.
   ScriptApp.newTrigger('triggerPatrimoni')

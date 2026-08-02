@@ -178,7 +178,17 @@ function MODUL_FINANCES() {
       decideixUn:     function (p) { return Finances.decideixMoviment(p.id, p.categoria); },
       importa:        function (p) { return Finances.importa(p.dades, p.simulacio); },
       estatBanc:      function ()  { return FinancesBanc.estat(); },
-      sincronitzaBanc: function () { return FinancesBanc.sincronitza(); }
+      sincronitzaBanc: function () { return FinancesBanc.sincronitza(); },
+
+      /* Mirar el banc en obrir la pantalla, si fa prou estona. La pantalla ja
+         s'ha pintat quan això arriba: no es fa esperar ningú. */
+      refrescaBanc:   function (p) {
+        var r = FinancesBanc.sincronitzaSiCal(p && p.minuts);
+        r.com = FinancesBanc.comEstem();
+        // Si ha entrat res, la pantalla ha de canviar: se li torna refeta.
+        if (r.nous) r.pantalla = Finances.pantalla(p && p.pantalla ? p.pantalla : {});
+        return r;
+      }
     },
 
     /* La tornada del banc després que en Pol s'hi hagi identificat. El nucli
@@ -216,6 +226,8 @@ function MODUL_FINANCES() {
     },
 
     resumPeriode: function (desde, fins) { return Finances.resumPeriode(desde, fins); },
+
+    elDia: function (data) { return Finances.elDia(data); },
 
     contextIA: function () {
       var m = Finances.mes(Finances.mesActual());
@@ -514,6 +526,82 @@ var Finances = (function () {
     }
 
     return { titol: 'Finances', linies: linies };
+  }
+
+  /**
+   * QUÈ HA ENTRAT I QUÈ HA SORTIT AVUI, per a la pàgina del dia.
+   *
+   * Un dia no és un mes petit. Aquí no hi van percentatges ni mitjanes: van
+   * els moviments, un per un, perquè la pregunta que es fa mirant el dia és
+   * «què he gastat» i la resposta és una llista curta que es llegeix d'un cop.
+   *
+   * Els traspassos entre comptes teus queden fora, com a tot arreu: canviar
+   * diners de butxaca no és ni gastar ni guanyar.
+   *
+   * El que ve del banc pot arribar amb hores de retard —és el banc qui mana,
+   * no nosaltres—, i per això es diu de quan és l'última mirada. Val més un
+   * número amb la seva hora que un número que sembla d'ara i no ho és.
+   */
+  function elDia(data) {
+    data = Utils.esDataValida(data) ? data : Utils.avui();
+
+    var fora = exclosos_();
+    var cats = indexCategories_();
+    var files = moviments_(function (f) { return String(f.data) === data; });
+
+    var despeses = 0, ingressos = 0;
+    var compten = [];
+    files.forEach(function (f) {
+      if (fora[f.categoria]) return;                 // traspassos i similars
+      var imp = Math.abs(num_(f['import']));
+      if (f.tipus === 'i') ingressos += imp; else despeses += imp;
+      compten.push(f);
+    });
+
+    var quan = FinancesBanc_() ? FinancesBanc.ultimaMirada() : null;
+    var deQuan = quan ? { text: 'Banc mirat ' + Utils.faQuant(quan), menut: '' } : null;
+
+    if (!compten.length) {
+      return {
+        titol: 'Finances', accio: 'finances',
+        coses: [{ text: 'Res apuntat avui', menut: 'ni despeses ni ingressos' }]
+          .concat(deQuan ? [deQuan] : [])
+      };
+    }
+
+    /* Els grossos a dalt: si només en mires tres, que siguin els que mouen
+       l'agulla. Ordenats per import i no per hora, que d'hora no en tenim. */
+    compten.sort(function (a, b) {
+      return Math.abs(num_(b['import'])) - Math.abs(num_(a['import']));
+    });
+
+    var coses = [{
+      text: (despeses ? 'Gastat ' + eur(despeses) : 'Res gastat') +
+            (ingressos ? ' · guanyat ' + eur(ingressos) : ''),
+      menut: compten.length + (compten.length === 1 ? ' moviment' : ' moviments'),
+      urgent: false
+    }];
+
+    compten.slice(0, 6).forEach(function (f) {
+      var imp = Math.abs(num_(f['import']));
+      coses.push({
+        text: f.descripcio || '(sense descripció)',
+        menut: (f.tipus === 'i' ? '+' : '−') + eur(imp) +
+               ' · ' + (cats[f.categoria] ? cats[f.categoria].nom : 'sense classificar') +
+               (String(f.revisat).toUpperCase() === 'SI' ? '' : ' · per classificar')
+      });
+    });
+    if (compten.length > 6) {
+      coses.push({ text: 'i ' + (compten.length - 6) + ' més', menut: '' });
+    }
+    if (deQuan) coses.push(deQuan);
+
+    return { titol: 'Finances', accio: 'finances', coses: coses };
+  }
+
+  /** El mòdul del banc pot no existir en una instal·lació sense connectar-lo. */
+  function FinancesBanc_() {
+    return typeof FinancesBanc !== 'undefined' && FinancesBanc.disponible();
   }
 
   // --------------------------------------------------------------- el mes
@@ -1605,6 +1693,7 @@ var Finances = (function () {
     eur: eur,
     mesActual: mesActual,
     resumPeriode: resumPeriode,
+    elDia: elDia,
     mes: mes,
     mesos: mesos,
     pantalla: pantalla,

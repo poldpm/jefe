@@ -588,5 +588,155 @@ console.log("Patrimoni: ajuntar dos comptes no ha de perdre cap valor");
       String(hist.filter(x => x.id_actiu === 'auto_vell').length));
 }
 
+// ------------------------------------ el que has gastat avui, a la pagina del dia
+console.log("");
+console.log("Finances: el dia son moviments, no mitjanes");
+{
+  const AVUI = '2026-08-02';
+  const categories = [
+    { id: 'c_menjar', nom: 'Menjar', ordre: 1, exclou: '', esborrat_el: '' },
+    { id: 'c_feina', nom: 'Feina', ordre: 2, exclou: '', esborrat_el: '' },
+    { id: 'c_traspas', nom: 'Traspassos', ordre: 9, exclou: 'SI', esborrat_el: '' }
+  ];
+  const moviments = [
+    { id: 'm1', data: AVUI, tipus: 'd', 'import': 48.2, categoria: 'c_menjar',
+      descripcio: 'Supermercat', revisat: 'SI', esborrat_el: '' },
+    { id: 'm2', data: AVUI, tipus: 'i', 'import': 1842, categoria: 'c_feina',
+      descripcio: 'Nomina', revisat: 'SI', esborrat_el: '' },
+    { id: 'm3', data: AVUI, tipus: 'd', 'import': 4.35, categoria: '',
+      descripcio: 'Cafe', revisat: 'NO', esborrat_el: '' },
+    // Un traspas: canviar diners de butxaca no es ni gastar ni guanyar.
+    { id: 'm4', data: AVUI, tipus: 'd', 'import': 500, categoria: 'c_traspas',
+      descripcio: 'A l estalvi', revisat: 'SI', esborrat_el: '' },
+    // I un d ahir, que no hi pinta res.
+    { id: 'm5', data: '2026-08-01', tipus: 'd', 'import': 99, categoria: 'c_menjar',
+      descripcio: 'D ahir', revisat: 'SI', esborrat_el: '' }
+  ];
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, isFinite, parseFloat, parseInt, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    Utilities: {
+      formatDate: (d, tz, patro) => patro.indexOf('T') === -1
+        ? [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-')
+        : d.toISOString()
+    },
+    Config: { zonaHoraria: () => 'Europe/Madrid', get: () => null },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const files = full === 'Categories' ? categories : full === 'Moviments' ? moviments : [];
+        if (typeof filtre === 'function') return files.filter(filtre);
+        return files.slice();
+      },
+      un: () => null, perId: () => null, insereix: () => null,
+      actualitza: () => null, desa: () => null
+    },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
+    SpreadsheetApp: {}, CacheService: { getScriptCache: () => null }, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}, ScriptApp: {},
+    Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {},
+    FinancesRegles: {}, FinancesImport: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  ctx.Utils.avui = () => AVUI;
+  vm.runInContext(fs.readFileSync('apps-script/40_Mod_Finances.gs', 'utf8'), ctx);
+
+  const b = ctx.Finances.elDia(AVUI);
+  const linia = b.coses[0];
+
+  cal("el bloc porta el nom i on va a parar", b.titol === 'Finances' && b.accio === 'finances',
+      b.titol + '/' + b.accio);
+  cal('la primera linia son els totals del dia',
+      linia.text === 'Gastat 52,55 € · guanyat 1842,00 €', linia.text);
+  cal('el traspas no compta ni com a despesa ni com a guany',
+      linia.menut === '3 moviments', linia.menut);
+  cal("el d'ahir no hi surt",
+      b.coses.every(c => c.text.indexOf('ahir') === -1), JSON.stringify(b.coses.map(c => c.text)));
+  cal('els grossos primer', b.coses[1].text === 'Nomina' && b.coses[2].text === 'Supermercat',
+      b.coses[1].text + '/' + b.coses[2].text);
+  cal('un ingres es marca amb el signe', b.coses[1].menut.indexOf('+1842,00 €') === 0,
+      b.coses[1].menut);
+  cal("el que encara no esta classificat, ho diu",
+      b.coses[3].menut.indexOf('per classificar') !== -1, b.coses[3].menut);
+
+  // Un dia sense res no ha de dir «Gastat 0,00 €».
+  const buit = ctx.Finances.elDia('2026-07-15');
+  cal('un dia sense res ho diu i prou',
+      buit.coses.length === 1 && buit.coses[0].text === 'Res apuntat avui',
+      JSON.stringify(buit.coses));
+}
+
+// ----------------------- el banc, sempre al dia pero sense passar-se de mirades
+console.log("");
+console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
+{
+  const props = {};
+  let peticions = 0;
+  let respon = () => { throw new Error('429 Too many requests'); };
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, isFinite, parseFloat, parseInt, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    Utilities: {
+      formatDate: (d, tz, patro) => patro.indexOf('T') === -1
+        ? [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-')
+        : d.toISOString(),
+      base64EncodeWebSafe: () => 'x', computeRsaSha256Signature: () => [1],
+      newBlob: (t) => ({ getBytes: () => t })
+    },
+    Config: { zonaHoraria: () => 'Europe/Madrid', get: () => null },
+    Dades: { llegeix: () => [], un: () => null, perId: () => null,
+             insereix: () => null, actualitza: () => null, desa: () => null },
+    Finances: { afegeix: (m) => m },
+    FinancesRegles: { descripcio: () => 'x', categoria: () => '', metode: () => '' },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => (props[k] === undefined ? null : props[k]),
+      setProperty: (k, v) => { props[k] = v; }
+    }) },
+    UrlFetchApp: { fetch: () => { peticions++; return respon(); } },
+    SpreadsheetApp: {}, Session: {},
+    CacheService: { getScriptCache: () => ({ get: () => null, put: () => {}, remove: () => {} }) },
+    HtmlService: {}, LockService: {}, CalendarApp: {}, ScriptApp: {},
+    Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8'), ctx);
+
+  // Sense banc connectat, ni ho intenta.
+  let r = ctx.FinancesBanc.sincronitzaSiCal();
+  cal('sense banc connectat no va enlloc',
+      r.mirat === false && peticions === 0, JSON.stringify(r));
+
+  // Ara sí, connectat. El banc contesta que no: no pot petar.
+  props.FINANCES_BANC = JSON.stringify({ connected: true, accounts: [{ uid: 'u1' }] });
+  props.EB_APP_ID = 'a'; props.EB_PRIVATE_KEY = 'k'; props.EB_REDIRECT = 'r';
+
+  let hoIntenta = true;
+  try { r = ctx.FinancesBanc.sincronitzaSiCal(); } catch (e) { hoIntenta = false; }
+  cal("una negativa del banc no llança: la pantalla no es pot quedar sense res",
+      hoIntenta === true, 'ha llançat');
+  cal('i ho apunta, per poder-ho dir', /429/.test(ctx.FinancesBanc.comEstem().error),
+      JSON.stringify(ctx.FinancesBanc.comEstem()));
+
+  // Ara el banc contesta bé.
+  respon = () => ({ getResponseCode: () => 200, getContentText: () => '{"transactions":[],"balances":[]}' });
+  ctx.FinancesBanc.sincronitzaSiCal();
+  const quan = ctx.FinancesBanc.ultimaMirada();
+  cal("desa de quan es l'ultima mirada", !!quan, String(quan));
+
+  // I ara la part que protegeix el limit diari: no s'hi torna abans d'hora.
+  const abans = peticions;
+  r = ctx.FinancesBanc.sincronitzaSiCal();
+  cal('mirat fa un moment, no s hi torna',
+      r.mirat === false && peticions === abans, JSON.stringify(r) + ' · ' + peticions);
+
+  // Si li dius que amb zero minuts n'hi ha prou, sí que hi torna.
+  r = ctx.FinancesBanc.sincronitzaSiCal(0);
+  cal('i si se li demana expressament, hi torna',
+      r.mirat === true && peticions > abans, JSON.stringify(r.mirat) + ' · ' + peticions);
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
