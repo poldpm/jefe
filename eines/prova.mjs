@@ -1349,5 +1349,55 @@ console.log("Veu: les ordres es reconeixen despres de transcriure, sense pregunt
       ctx.Utils.aixafa("  Ensenya'm  la PÀGINA del dia!! "));
 }
 
+// -------------- si el model de transcriure no hi es, no et quedes sense veu
+console.log("");
+console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tirat");
+{
+  const crides = [];
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    Utils: { avui: () => '2026-08-02', ara: () => 'ara', nouId: () => 'cnv_1',
+             desJson: (t, d) => d, json: (o) => JSON.stringify(o), talla: (t, n) => String(t).slice(0, n),
+             aixafa: (t) => String(t).toLowerCase() },
+    Config: { get: (k) => (k === 'model_veu' ? 'un-model-que-no-hi-es' : null) },
+    Dades: { llegeix: () => [], insereix: () => null },
+    Moduls: { drecera: () => null, dreceres: () => [] },
+    Assistent: { pregunta: () => ({ text: 'resposta', propostes: [], einesUsades: [],
+                                    tokens: {}, temps: { total: 1, ia: 1, context: 0, eines: 0, voltes: 1 } }) },
+    IA: {
+      genera: (p) => {
+        crides.push(p.model);
+        if (p.model === 'un-model-que-no-hi-es') throw new Error('404 model not found');
+        return { text: 'quants cigarros he fumat avui' };
+      },
+      disponible: () => true, motiu: () => null
+    },
+    Habits: { definicions: () => [] },
+    SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {}, CacheService: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/40_Mod_Conversa.gs', 'utf8'), ctx);
+
+  const r = ctx.Conversa.enviaVeu({ audio: 'AAAA', mime: 'audio/wav' });
+  cal('ho prova amb el model de veu i despres amb el de sempre',
+      crides.join(' ').indexOf('un-model-que-no-hi-es barat') === 0, crides.join(' '));
+  cal('i contesta igual', r.resposta === 'resposta', JSON.stringify(r).slice(0, 120));
+
+  // Pero si el problema es la quota, no s'hi ha d'insistir amb l'altre model.
+  crides.length = 0;
+  ctx.IA.genera = (p) => { crides.push(p.model); var e = new Error('limit'); e.quota = true; throw e; };
+  const r2 = ctx.Conversa.enviaVeu({ audio: 'AAAA', mime: 'audio/wav' });
+  cal('amb la quota esgotada no ho torna a provar i gasta mes',
+      crides.length === 1, crides.join(' '));
+  cal('i ho diu clar', /limit/.test(r2.error || ''), JSON.stringify(r2));
+
+  // Sense audio, ni ho intenta.
+  var ho = false;
+  try { ctx.Conversa.enviaVeu({}); } catch (e) { ho = true; }
+  cal('sense so, no crida ningu', ho, 'ho ha fet');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

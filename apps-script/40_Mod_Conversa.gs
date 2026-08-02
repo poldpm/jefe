@@ -291,7 +291,7 @@ var Conversa = (function () {
    * ja hi haurà algú després per entendre-ho.
    */
   function transcriu_(dades, mena) {
-    var r = IA.genera({
+    var p = {
       sistema: 'Ets un transcriptor. En Pol parla en català. Escriu EXACTAMENT el ' +
                'que diu, amb accents i signes normals. No responguis, no comentis, ' +
                'no resumeixis i no corregeixis el que diu: només el text del que ' +
@@ -300,11 +300,28 @@ var Conversa = (function () {
         role: 'user',
         parts: [{ inline_data: { mime_type: mena, data: dades } }]
       }],
-      model: Config.get('model_veu') || 'barat',
       maxTokens: 300,
       temperatura: 0
-    });
-    return String(r.text || '').trim();
+    };
+
+    var seu = Config.get('model_veu');
+    if (seu) {
+      try {
+        p.model = seu;
+        return String(IA.genera(p).text || '').trim();
+      } catch (err) {
+        /* El model de transcriure és un de barat i triat a part, i pot no
+           existir per a aquesta clau o haver-se retirat. Si no hi és, val més
+           transcriure amb el de sempre —que gasta de la quota bona, però
+           funciona— que deixar en Pol sense poder parlar. */
+        if (err.quota) throw err;
+        Log.avis('conversa.transcriu', 'El model de veu «' + seu + '» no ha anat: ' +
+                                       err.message + '. Ho provo amb el de sempre.');
+      }
+    }
+
+    p.model = 'barat';
+    return String(IA.genera(p).text || '').trim();
   }
 
   /**
