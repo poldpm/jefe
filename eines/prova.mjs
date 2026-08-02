@@ -977,5 +977,80 @@ console.log("Patrimoni: quan no se sap quin es el bo, es pregunta");
   cal('i sobretot NO ha tocat res', !actius.filter(x => x.esborrat_el).length, 'ha arxivat alguna cosa');
 }
 
+// ------------------------- arreglar una fusio que es va equivocar de compte
+console.log("");
+console.log("Patrimoni: el compte bo arxivat per error es recupera sol");
+{
+  const props = {};
+  // L'estat en que va quedar el full: el bo (4052,89) ARXIVAT i el congelat viu.
+  const actius = [
+    { id: 'auto_6d32636a-4c5', nom: 'Banc', automatic: 'SI', iban: '', esborrat_el: '' },
+    { id: 'auto_02786e6a-89d', nom: 'Banc', automatic: 'SI', iban: '',
+      esborrat_el: '2026-08-02T12:44:00+02:00' }
+  ];
+  const hist = [];
+  ['2026-07-21','2026-07-25','2026-07-30','2026-08-01'].forEach((d, n) =>
+    hist.push({ id: 'v' + n, id_actiu: 'auto_6d32636a-4c5', data: d, valor: 4353.91 }));
+  hist.push({ id: 'vn', id_actiu: 'auto_02786e6a-89d', data: '2026-08-01', valor: 4052.89 });
+
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array,
+    Logger: { log: () => {} }, Log: { info() {}, avis() {}, error() {} },
+    Utils: { ara: () => '2026-08-02T13:00:00+02:00', avui: () => '2026-08-02',
+             desJson: (t, d) => { try { return JSON.parse(t); } catch (e) { return d; } } },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const files = full === 'Patrimoni' ? actius : hist;
+        return typeof filtre === 'function' ? files.filter(filtre) : files.slice();
+      },
+      perId: (full, id) => (full === 'Patrimoni' ? actius : hist).filter(x => x.id === id)[0] || null,
+      desa: (full, fila) => {
+        const j = hist.findIndex(x => x.id === fila.id);
+        if (j === -1) hist.push(fila); else hist[j] = fila;
+        return fila;
+      },
+      actualitza: (full, id, canvis) => {
+        const x = actius.filter(y => y.id === id)[0];
+        if (x) Object.keys(canvis).forEach(k => { x[k] = canvis[k]; });
+        return x || null;
+      }
+    },
+    FinancesBanc: { estat: () => ({ accounts: [{ uid: '02786e6a-89d4-4c1a-9f3e-000000000000', iban: '' }] }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (k) => (props[k] === undefined ? null : props[k]),
+      setProperty: (k, v) => { props[k] = v; },
+      deleteProperty: (k) => { delete props[k]; }
+    }) },
+    ScriptApp: { getProjectTriggers: () => [] },
+    Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
+    SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
+
+  const previsio = ctx.preparaFusio();
+  cal('veu el compte bo encara que estigui arxivat',
+      previsio.indexOf('Es queda:  Banc  (auto_02786e6a-89d)') !== -1, previsio);
+
+  ctx.fusionaAra();
+  const bo = actius.filter(x => x.id === 'auto_02786e6a-89d')[0];
+  const dolent = actius.filter(x => x.id === 'auto_6d32636a-4c5')[0];
+  cal("el bo deixa d'estar arxivat", !bo.esborrat_el, 'segueix arxivat');
+  cal('i el congelat passa a estar-ho', !!dolent.esborrat_el, 'no l ha apartat');
+
+  const seus = hist.filter(x => x.id_actiu === 'auto_02786e6a-89d')
+                   .sort((a, b) => a.data.localeCompare(b.data));
+  cal('el bo es queda la linia sencera, del 21 de juliol a l 1 d agost',
+      seus.map(x => x.data).join(' ') === '2026-07-21 2026-07-25 2026-07-30 2026-08-01',
+      seus.map(x => x.data).join(' '));
+  cal("i el saldo d'avui es el de debo, no el congelat",
+      seus[seus.length - 1].valor === 4052.89, String(seus[seus.length - 1].valor));
+
+  // I un cop arreglat, ja no ha de proposar res mes.
+  cal('un cop arreglat, ja no en troba cap',
+      /No trobo cap compte duplicat/.test(ctx.preparaFusio()), 'encara en troba');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

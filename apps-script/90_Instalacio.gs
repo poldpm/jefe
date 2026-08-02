@@ -1372,8 +1372,12 @@ function fusionaPatrimoni(idVell, idBo) {
 
   a('AJUNTANT');
   a('  vell: ' + vell.nom + '  (' + idVell + ')  · ' + delVell.length + ' valors');
-  a('  bo:   ' + bo.nom + '  (' + idBo + ')');
+  a('  bo:   ' + bo.nom + '  (' + idBo + ')' + (bo.esborrat_el ? '  [estava arxivat]' : ''));
   a('');
+
+  /* El que es queda no pot quedar-se arxivat. Si ho estava —perquè una fusió
+     anterior es va equivocar de compte— aquesta el torna a treure. */
+  if (bo.esborrat_el) Dades.actualitza('Patrimoni', idBo, { esborrat_el: '' });
 
   var copiats = 0, saltats = 0;
   delVell.forEach(function (v) {
@@ -1421,7 +1425,10 @@ function preparaFusio() {
   var l = [];
   function a(t) { l.push(t); Logger.log(t); }
 
-  var actius = Dades.llegeix('Patrimoni', function (x) { return !x.esborrat_el; });
+  /* Els arxivats també entren. Una fusió mal feta deixa el compte BO arxivat,
+     i si aquí no es miren, la manera d'arreglar-ho seria escriure identificadors
+     a mà, que és justament el que no ha de caldre. */
+  var actius = Dades.llegeix('Patrimoni');
   var hist = {};
   Dades.llegeix('PatrimoniHistoric').forEach(function (v) {
     var k = String(v.id_actiu);
@@ -1465,6 +1472,13 @@ function preparaFusio() {
   Object.keys(grups).forEach(function (k) {
     var g = grups[k];
     if (g.length < 2) return;
+
+    /* Un grup ja arreglat —un de sol sense arxivar i la resta apartats— no té
+       res a proposar. Sense això, cada vegada tornaria a oferir la mateixa
+       fusió que ja es va fer. */
+    var sencers = g.filter(function (x) { return !x.esborrat_el; });
+    if (sencers.length === 1 && vius[sencers[0].id]) return;
+    if (sencers.length === 1 && !Object.keys(vius).length) return;
 
     var elsVius = g.filter(function (x) { return vius[x.id]; });
 
