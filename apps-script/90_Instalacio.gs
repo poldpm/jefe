@@ -106,12 +106,26 @@ function instalaTriggers() {
   ScriptApp.newTrigger('triggerTancamentNutricio')
     .timeBased().atHour(23).nearMinute(45).everyDays(1).create();
 
-  /* CADA QUART D'HORA, ESCALFAR LES PANTALLES.
+  /* CADA CINC MINUTS, ESCALFAR LES PANTALLES.
      Desar-les fa que la SEGONA vegada sigui ràpida; això fa que la primera
-     també ho sigui. Val poc: si ja estan calentes, aquest automatisme són
-     quatre lectures de memòria i s'acaba en menys d'un segon. Només costa
-     quan alguna cosa ha canviat, que és justament quan val la pena. */
-  ScriptApp.newTrigger('triggerEscalfa').timeBased().everyMinutes(15).create();
+     també ho sigui.
+
+     PER QUÈ CINC I NO TRENTA SEGONS. Perquè no es pot: Apps Script només
+     accepta 1, 5, 10, 15 o 30 minuts, i el mínim és un minut.
+
+     PER QUÈ CINC I NO UN. Perquè més sovint no fa res més ràpid. El que hi ha
+     desat dura mitja hora, o sigui que amb cinc minuts no caduca mai igualment.
+     L'ÚNICA cosa que millora anant més sovint és l'estona que una pantalla es
+     queda freda després que n'escriguis una altra, i baixar-la de cinc minuts
+     a un costa multiplicar per cinc les execucions.
+
+     I ALLÀ HI HA UN LÍMIT QUE NO ÉS NOSTRE: aquest compte té noranta minuts al
+     dia d'automatismes, i es reparteixen entre TOTS. Cada minut serien mil
+     quatre-centes execucions diàries; passar-se vol dir que s'aturi tot —el
+     banc, l'agenda de les sis, els avisos— sense dir res. Cinc minuts són unes
+     tres-centes execucions i deixen el pot pràcticament sencer per a la resta.
+     Val més una pantalla freda de tant en tant que quedar-se sense avisos. */
+  ScriptApp.newTrigger('triggerEscalfa').timeBased().everyMinutes(5).create();
 
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */
@@ -1885,6 +1899,7 @@ function provaClauBanc() {
  * un automatisme d'aquests trenqui res.
  */
 function triggerEscalfa() {
+  var t0 = Date.now();
   var fets = [], fallats = [];
 
   function escalfa(nom, fn) {
@@ -1923,7 +1938,14 @@ function triggerEscalfa() {
     }
   }
 
-  if (fallats.length) Log.avis('escalfa', 'Alguna pantalla no s\'ha pogut escalfar', { fallats: fallats });
-  else Log.info('escalfa', 'Pantalles a punt', { quantes: fets.length });
-  return fets.join(', ');
+  /* Es deixa dit quant ha trigat. Aquest automatisme s'executa unes tres-centes
+     vegades al dia i el pot d'automatismes és de noranta minuts: si un dia
+     s'allargués, aquí es veuria abans que no pas quedant-nos sense avisos. */
+  var ms = Date.now() - t0;
+  if (fallats.length) {
+    Log.avis('escalfa', 'Alguna pantalla no s\'ha pogut escalfar', { fallats: fallats, ms: ms });
+  } else {
+    Log.info('escalfa', 'Pantalles a punt', { quantes: fets.length, ms: ms });
+  }
+  return fets.join(', ') + '  ·  ' + ms + ' ms';
 }
