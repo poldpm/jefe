@@ -1780,7 +1780,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 19:37 · eac99b9";</script>
+<script>window.MARCA_JEFE = "2026-08-02 19:50 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1933,7 +1933,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 19:37 · eac99b9";
+window.MARCA_JEFE = "2026-08-02 19:50 · en curs";
 </script>
 
 <script>
@@ -3520,14 +3520,13 @@ App.registraVista('inici', {
                padding: var(--e2) var(--guia) calc(var(--e2) + env(safe-area-inset-bottom, 0px)); }
 
 .porta-apartats {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--e2);
-  height: 44px; padding: 0 var(--e4);
-  border: 1px solid var(--linia); background: rgba(7,16,25,.7); color: var(--clar);
-  font-family: var(--mono); font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase;
-  transition: border-color .16s var(--entra), color .16s var(--entra), transform .12s var(--entra);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px;
+  border: 1px solid var(--linia); background: rgba(7,16,25,.7); color: var(--cian);
+  transition: border-color .16s var(--entra), transform .12s var(--entra);
 }
-.porta-apartats .ic { width: 18px; height: 18px; flex: none; color: var(--cian); }
-.porta-apartats:active { border-color: var(--cian); transform: scale(.97); }
+.porta-apartats .ic { width: 20px; height: 20px; }
+.porta-apartats:active { border-color: var(--cian); transform: scale(.94); }
 @media (hover: hover) and (pointer: fine) {
   .porta-apartats:hover { border-color: var(--cian); }
 }
@@ -3627,8 +3626,11 @@ App.registraVista('conversa', {
            Aquesta pantalla es per parlar-li; els apartats son on vas quan no
            vols parlar, i aixo es una decisio, no vuit. */
         '<div class="jefe-moduls">' +
-          '<button class="porta-apartats" id="b-apartats">' +
-            ic('modul') + '<span>Apartats</span>' +
+          /* Sense text: la icona sola. El nom viu a l'`aria-label`, que és
+             el que llegeix qui no la veu —treure la paraula de la pantalla
+             no vol dir treure-la de l'app. */
+          '<button class="porta-apartats" id="b-apartats" aria-label="Apartats">' +
+            ic('modul') +
           '</button>' +
         '</div>' +
       '</div>';
