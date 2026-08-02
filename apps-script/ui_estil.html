@@ -305,19 +305,10 @@ h2 { font-size: 1.0625rem; }
 .pagina { padding: var(--e4); max-width: 1280px; margin: 0 auto; }
 
 /* El marc doble del full de mapa. No és decoració: separa el mapa del marge. */
-.capcalera {
-  position: sticky; top: 0; z-index: 20;
-  background: var(--paper);
-  border-bottom: 3px double var(--neatline);
-  padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
-}
-.capcalera-fila { display: flex; align-items: center; gap: var(--e3);
-                  max-width: 1280px; margin: 0 auto; }
+
 
 /* Escala gràfica: barres alternades negre i blanc, com al peu d'un mapa. */
-.escala { display: flex; height: 6px; border: 1px solid var(--neatline); width: 96px; }
-.escala i { flex: 1; }
-.escala i:nth-child(odd) { background: var(--neatline); }
+
 
 /* ------------------------------------------------------------------ icones */
 
@@ -387,25 +378,11 @@ h2 { font-size: 1.0625rem; }
   gap: var(--e2);
 }
 
-.franja-fila { position: relative; display: flex; min-width: 0;
-               border: 1.5px solid var(--neatline); }
 
-.franja {
-  position: relative; overflow: hidden; flex: 1; min-width: 0;
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--e1);
-  min-height: 106px; padding: var(--e2) var(--e2) var(--e2) var(--e3);
-  border: 0; background: var(--paper); color: var(--ink); text-align: left;
-  transition: background-color .25s var(--sortida);
-}
 
-.franja[data-estat="fet"]    { background: var(--fet); color: var(--sobre-fet); }
-.franja[data-estat="nofet"]  { background: var(--paper2); }
-.franja[data-estat="notoca"] { background: var(--paper2); }
-.franja[data-estat="notoca"] .franja-nom { color: var(--ink-suau); font-weight: 500; }
-.franja[data-pendent="1"]::after {
-  content: ""; position: absolute; inset: 0; border: 2px dashed var(--utm);
-  pointer-events: none;
-}
+
+
+
 
 /* El nom mana i pot ocupar tres línies: «Sortir a caminar una estona llarga»
    s'ha de poder reconèixer sense obrir res. El que sobra s'ensenya amb punts
@@ -890,6 +867,88 @@ h2 { font-size: 1.0625rem; }
 .bal-mes-eix span { position: absolute; font-size: .625rem; color: var(--ink-suau);
                     font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
+
+/* ==========================================================================
+   LES PECES COMPARTIDES, PASSADES A LA CONSOLA
+
+   Aquestes tres surten a totes les pantalles, i per això valen més que
+   qualsevol arreglo d'una sola: la capçalera, les franges i l'escala.
+   ========================================================================== */
+
+/* LA CAPÇALERA. Era el marc doble d'un full de mapa. Ara és el travesser
+   d'una consola: un fil viu a sota i, per sobre, la mateixa llum que hi ha
+   al fons —així la barra no sembla enganxada a la pantalla, sembla que hi
+   estigui a dins. */
+.capcalera {
+  position: sticky; top: 0; z-index: 20;
+  background:
+    linear-gradient(180deg, var(--nucli) 0%, transparent 70%),
+    var(--paper);
+  border-bottom: 1px solid var(--fil-viu);
+  box-shadow: 0 1px 0 var(--vora-viva);
+  padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
+}
+.capcalera-fila { display: flex; align-items: center; gap: var(--e3);
+                  max-width: 1280px; margin: 0 auto; }
+
+/* L'ESCALA. Era l'escala gràfica d'un mapa —barres alternades— i ara és el
+   que sembla: un indicador de senyal. Els mateixos quatre traços, però
+   pujant, i l'últim encès. Cap etiqueta: si calgués explicar-lo no valdria
+   la pena tenir-lo. */
+.escala { display: flex; align-items: flex-end; gap: 2px; height: 14px; width: auto; border: 0; }
+.escala i { width: 3px; background: var(--corba-mestra); }
+.escala i:nth-child(1) { height: 35%; }
+.escala i:nth-child(2) { height: 58%; }
+.escala i:nth-child(3) { height: 79%; }
+.escala i:nth-child(4) { height: 100%; background: var(--utm); }
+
+/* LES FRANGES de la pantalla d'inici. Eren un tros de terreny pintat amb la
+   tinta del compliment; ara són instruments: fil, cara de panell i les claus
+   de cantonada quan la targeta et reclama.
+
+   El color segueix sent la dada —el que va bé s'encén, el que no s'apaga—,
+   però passa del fons al FIL i a la xifra. Un rectangle pintat sencer es
+   menja el text que hi ha a sobre; una vora encesa, no. */
+.franja-fila { position: relative; display: flex; min-width: 0;
+               border: 1px solid var(--neatline); background: var(--paper2); }
+
+.franja {
+  position: relative; overflow: hidden; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--e1);
+  min-height: 106px; padding: var(--e3);
+  border: 0; background: transparent; color: var(--ink); text-align: left;
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
+}
+.franja:active { transform: scale(.985); background: var(--utm-suau); }
+
+/* Al dia: el fil s'encén i la xifra també. */
+.franja-fila:has(.franja[data-estat="fet"]) { border-color: var(--fil-viu); }
+.franja[data-estat="fet"] { background: transparent; color: var(--ink); }
+.franja[data-estat="fet"] .franja-cota .n { color: var(--utm); }
+
+/* Et reclama: ambre, i les claus de cantonada. El color no hi va sol —la
+   xifra i el text també ho diuen— perquè no depengui de veure-hi bé. */
+.franja-fila:has(.franja[data-estat="pendent"]) { border-color: color-mix(in srgb, var(--avis) 45%, transparent); }
+.franja[data-estat="pendent"] .franja-cota .n { color: var(--avis); }
+.franja-fila:has(.franja[data-estat="pendent"])::before,
+.franja-fila:has(.franja[data-estat="pendent"])::after {
+  content: ""; position: absolute; width: 8px; height: 8px;
+  border: 1px solid var(--avis); pointer-events: none; z-index: 1;
+}
+.franja-fila:has(.franja[data-estat="pendent"])::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.franja-fila:has(.franja[data-estat="pendent"])::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.franja[data-estat="nofet"], .franja[data-estat="notoca"] { background: transparent; }
+.franja[data-estat="notoca"] .franja-nom { color: var(--ink-suau); font-weight: 500; }
+.franja[data-pendent="1"]::after {
+  content: ""; position: absolute; inset: 0; border: 1px dashed var(--utm);
+  pointer-events: none;
+}
+
+/* El relleu que hi havia de fons —les corbes de nivell del mapa— es queda
+   com a textura molt fluixa: dona una superfície a la targeta sense
+   competir amb el text. Treure'l del tot deixava una capsa buida. */
+.franja svg.relleu { opacity: .16; }
 
 /* ------------------------------------------------------ la porta del dia
    La data de la pantalla d'inici obre la pagina del dia. No es un boto nou
