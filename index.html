@@ -324,7 +324,18 @@ h2 { font-size: 1.0625rem; }
   color: var(--corba-mestra); font-variant-numeric: tabular-nums;
 }
 .menut { font-size: .8125rem; color: var(--ink-suau); line-height: 1.4; }
-.xifra { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* LES XIFRES PARLEN AMB UNA ALTRA VEU.
+   Una consola no escriu els imports amb la mateixa lletra que els noms: la
+   monoespaiada fa que les columnes quadrin soles i que un numero es llegeixi
+   com a instrumentacio i no com a prosa. Es on es nota mes la diferencia
+   entre una pantalla feta i una pantalla muntada. */
+.xifra {
+  font-family: var(--mono); font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.franja-cota .n { font-family: var(--mono); font-style: normal; font-weight: 600;
+                  letter-spacing: -.02em; }
+.marge, .menut { font-variant-numeric: tabular-nums; }
 /* Xifres alineades en columna: als mapes les cotes són tabulars. */
 .num { font-variant-numeric: tabular-nums; }
 
@@ -1497,7 +1508,7 @@ h2 { font-size: 1.0625rem; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 17:42 · 253acd3";</script>
+<script>window.MARCA_JEFE = "2026-08-02 17:44 · bca1ed2";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1645,7 +1656,7 @@ h2 { font-size: 1.0625rem; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 17:42 · 253acd3";
+window.MARCA_JEFE = "2026-08-02 17:44 · bca1ed2";
 </script>
 
 <script>
