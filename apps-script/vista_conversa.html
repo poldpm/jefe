@@ -329,6 +329,10 @@ App.registraVista('conversa', {
             '<span class="ona"><i></i><i></i><i></i><i></i></span>' +
             '<span class="oida-text" id="oida-text">escoltant…</span>' +
             '<button class="oida-clau" id="b-clau" aria-pressed="false">paraula clau: OFF</button>' +
+            /* Què ha sentit de debò. No és un caprici de programador: quan la
+               transcripció falla, això és l'única manera de saber si el que
+               arriba dolent és el que sent Chrome o el que en fem nosaltres. */
+            '<button class="oida-clau" id="b-oida-log">què he sentit</button>' +
           '</div>' +
         '</div>' +
 
@@ -715,36 +719,116 @@ App.registraVista('conversa', {
       return null;
     }
 
+    /* EL DIARI DE L'OÏDA.
+       Les últimes frases sentides, amb el provisional, el definitiu i com de
+       segur n'estava Chrome. Quan la transcripció surt malament no hi ha
+       manera de saber de qui és la culpa sense veure això: si el definitiu ja
+       ve dolent és el reconeixedor, i si ve bé però s'envia dolent som
+       nosaltres. Viuen només a la memòria, no es desen enlloc. */
+    var diariOida = [];
+
+    function apuntaOida(fet, ara, confianca, ev) {
+      var alt = [];
+      try {
+        var r = ev.results[ev.results.length - 1];
+        for (var i = 0; i < r.length && i < 3; i++) alt.push(r[i].transcript);
+      } catch (e) {}
+
+      var ultim = diariOida[diariOida.length - 1];
+      if (ultim && !ultim.tancat) {
+        ultim.provisional = ara || ultim.provisional;
+        ultim.definitiu = fet || ultim.definitiu;
+        if (confianca !== null) ultim.confianca = confianca;
+        ultim.alternatives = alt;
+        if (fet && !ara) ultim.tancat = true;
+        return;
+      }
+      diariOida.push({ quan: new Date(), provisional: ara, definitiu: fet,
+                       confianca: confianca, alternatives: alt, tancat: !!(fet && !ara) });
+      if (diariOida.length > 12) diariOida.shift();
+    }
+
+    function ensenyaDiariOida() {
+      if (!diariOida.length) {
+        App.brindis('Encara no he sentit res en aquesta sessió');
+        return;
+      }
+      var hh = function (d) {
+        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) +
+               ':' + ('0' + d.getSeconds()).slice(-2);
+      };
+      App.modal('Què he sentit',
+        '<div class="form-ajustos">' +
+          '<p class="menut">Idioma demanat: <code>' + esc(IDIOMA_VEU) + '</code> · ' +
+            'navegador: <code>' + esc(navigator.userAgent.slice(0, 60)) + '</code></p>' +
+          diariOida.slice().reverse().map(function (o) {
+            return '<div style="border-top:1px solid var(--linia);padding:var(--e2) 0">' +
+              '<p class="menut">' + hh(o.quan) +
+                (typeof o.confianca === 'number'
+                  ? ' · seguretat ' + Math.round(o.confianca * 100) + '%' : '') + '</p>' +
+              (o.definitiu ? '<p><b>definitiu:</b> ' + esc(o.definitiu) + '</p>' : '') +
+              (o.provisional ? '<p class="menut">provisional: ' + esc(o.provisional) + '</p>' : '') +
+              (o.alternatives.length > 1
+                ? '<p class="menut">altres: ' + esc(o.alternatives.slice(1).join(' · ')) + '</p>' : '') +
+            '</div>';
+          }).join('') +
+        '</div>');
+    }
+
+    /* Chrome demana el codi complet. Si el telèfon no té el model de català
+       instal·lat, en fa servir un altre sense dir-ho i tot surt del revés:
+       per això el diari de sobre diu quin s'ha demanat. */
+    var IDIOMA_VEU = 'ca-ES';
+
     function arrencaReconeixedor() {
       var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!Rec || reconeixedor || parlantAra) return;
 
       reconeixedor = new Rec();
-      reconeixedor.lang = 'ca-ES';
+      reconeixedor.lang = IDIOMA_VEU;
       reconeixedor.interimResults = true;
       reconeixedor.continuous = true;
-      reconeixedor.maxAlternatives = 1;
+      // Tres, per poder veure què més s'havia plantejat quan s'equivoca.
+      reconeixedor.maxAlternatives = 3;
 
       reconeixedor.onstart = function () {
         posaEstat('escoltant', 'escoltant');
         mostraOida('escoltant…', false);
       };
 
-      /* S'envia PER SILENCI, no per resultat definitiu.
-         En mode continu Chrome no marca res com a definitiu fins que la
-         sessió s'acaba, o sigui fins que apagues el micròfon. Esperar-ho
-         volia dir no enviar mai mentre parlaves. Ara compta el temps des
-         de l'última paraula sentida, sigui provisional o no. */
-      reconeixedor.onresult = function (ev) {
-        var text = '';
-        for (var i = consumitFinsA; i < ev.results.length; i++) {
-          text += ev.results[i][0].transcript;
-        }
-        text = text.trim();
-        if (!text) return;
+      /* EL QUE S'ENVIA ÉS EL DEFINITIU, NO EL PROVISIONAL.
+         Chrome dona dues coses: una transcripció provisional mentre parles,
+         que va canviant a cada síl·laba, i una de definitiva quan tanca la
+         frase. La provisional és el primer intent en brut; la definitiva
+         passa pel model de llengua i corregeix mitja frase. Enviant la
+         provisional s'estava enviant el pitjor dels dos.
 
-        mostraOida(text, false);
-        nucli.pols(Math.min(1, 0.35 + text.length / 40));
+         Es continua enviant per silenci —esperar que Chrome tanqui la sessió
+         voldria dir no enviar mai mentre parles—, però amb dues esperes: si
+         encara hi ha res provisional se li dona temps a acabar-se de decidir,
+         i si ja està tot tancat, s'envia de seguida. */
+      reconeixedor.onresult = function (ev) {
+        var fet = '', ara = '', confianca = null;
+        for (var i = consumitFinsA; i < ev.results.length; i++) {
+          var r = ev.results[i];
+          if (r.isFinal) {
+            fet += r[0].transcript;
+            if (confianca === null && typeof r[0].confidence === 'number') confianca = r[0].confidence;
+          } else {
+            ara += r[0].transcript;
+          }
+        }
+
+        var vist = (fet + ' ' + ara).trim();
+        if (!vist) return;
+
+        apuntaOida(fet, ara, confianca, ev);
+
+        mostraOida(vist + (ara ? ' …' : ''), false);
+        nucli.pols(Math.min(1, 0.35 + vist.length / 40));
+
+        // Amb res per tancar, s'envia de seguida el definitiu i prou.
+        var text = ara ? vist : fet.trim();
 
         clearTimeout(tempsBuffer);
         tempsBuffer = setTimeout(function () {
@@ -765,7 +849,10 @@ App.registraVista('conversa', {
           mostraOida('enviat: ' + Utils_talla(enviar, 50), false);
           camp.value = enviar;
           envia();
-        }, 900);   // silenci després de la darrera paraula
+        }, ara ? 1900 : 800);
+        /* Si encara hi ha res provisional, 1,9 s: és el temps que es dona a
+           Chrome per tancar la frase i corregir-la. Si ja està tot tancat,
+           0,8 s i endavant, que fer-lo esperar per res es nota. */
       };
 
       reconeixedor.onerror = function (ev) {
@@ -940,6 +1027,10 @@ App.registraVista('conversa', {
         bc.textContent = 'paraula clau: ' + (usaParaulaClau ? 'ON' : 'OFF');
       }
       pintaClau();
+
+      var bl = arrel.querySelector('#b-oida-log');
+      if (bl) bl.addEventListener('click', ensenyaDiariOida);
+
       bc.addEventListener('click', function () {
         usaParaulaClau = !usaParaulaClau;
         Cau.set('conversa.paraulaClau', usaParaulaClau);
