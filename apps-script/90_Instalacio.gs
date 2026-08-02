@@ -1800,23 +1800,32 @@ function provaClauBanc() {
   var problemes = [];
   if (!comenca) problemes.push('no comença per -----BEGIN PRIVATE KEY-----');
   if (!acaba) problemes.push('no acaba per -----END PRIVATE KEY-----');
-  if (!saltsDeVeritat) problemes.push('està tota en una línia');
   if (saltsEscrits) problemes.push('porta \n escrits en comptes de salts');
 
-  // I ara la prova de debò: signar-hi alguna cosa.
+  /* I ara la prova de debò, amb la clau TAL COM ES FARÀ SERVIR.
+     El quadre de Propietats de l'script és d'una sola línia i es menja els
+     salts en enganxar-hi un .pem: la clau se'n va plana. Abans de signar es
+     torna a plegar. Provar-la aquí sense plegar-la diria que no serveix quan
+     sí que servirà, i faria perseguir un problema que ja no hi és. */
+  var plana = !saltsDeVeritat;
   var signa = true, motiu = '';
   try {
-    Utilities.computeRsaSha256Signature('prova', clau);
+    Utilities.computeRsaSha256Signature('prova', FinancesBanc.clauPem());
   } catch (err) {
     signa = false; motiu = err.message;
   }
 
+  if (plana) {
+    a('   ← el quadre de Propietats no deixa desar salts de línia. La clau');
+    a('     es torna a plegar sola abans de signar-hi: no has de fer res.');
+    a('');
+  }
   a('   SIGNA? ..................... ' + (signa ? 'SÍ' : 'NO — ' + motiu));
   a('');
 
   if (signa) {
-    a('La clau serveix. Si el banc segueix sense donar res, el problema és');
-    a('un altre: torna a executar queSapElBanc() i passa\'m el que digui.');
+    a('La clau serveix' + (plana ? ', un cop plegada' : '') + '. Si el banc segueix sense');
+    a('donar res, el problema és un altre: executa queSapElBanc() i passa-m\'ho.');
     return l.join('\n');
   }
 

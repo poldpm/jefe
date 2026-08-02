@@ -1473,5 +1473,70 @@ console.log("Banc: si no es pot signar, que ho digui i no acusi el banc");
   cal("i no s'ha arribat a demanar res al banc", r.nous === 0, String(r.nous));
 }
 
+// ------- la clau del banc, tal com la deixa el quadre de propietats d'Apps Script
+console.log("");
+console.log("Banc: una clau desada en una sola linia s'ha de tornar a plegar");
+{
+  const crypto = await import('crypto');
+  // Una clau RSA de debo, generada aqui: no n'hi ha cap de cap altre lloc.
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).trim();
+  // I la mateixa, tal com queda quan la desa el quadre de propietats.
+  const plana = pem.split(String.fromCharCode(10)).join('');
+
+  const signaAmb = (clau) => {
+    const c = crypto.createSign('RSA-SHA256');
+    c.update('prova');
+    return c.sign(clau);
+  };
+
+  function ambClau(valor) {
+    const ctx = {
+      Date, Math, JSON, String, Number, Object, Array, RegExp,
+      Log: { info() {}, avis() {}, error() {} },
+      Utils: { avui: () => '2026-08-02', ara: () => 'ara', talla: (t, n) => String(t).slice(0, n),
+               desJson: (t, d) => d },
+      Config: { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d },
+      Utilities: {
+        base64EncodeWebSafe: () => 'x',
+        newBlob: (t) => ({ getBytes: () => t }),
+        formatDate: () => '2026-08-02',
+        computeRsaSha256Signature: (text, clau) => {
+          try { return signaAmb(clau); }
+          catch (e) { throw new Error('Invalid argument: key'); }
+        }
+      },
+      CacheService: { getScriptCache: () => ({ get: () => null, put: () => {} }) },
+      PropertiesService: { getScriptProperties: () => ({
+        getProperty: (k) => ({ EB_PRIVATE_KEY: valor, EB_APP_ID: 'app' })[k] || null,
+        setProperty: () => {} }) },
+      UrlFetchApp: {}, Dades: {}, Finances: {}, FinancesRegles: {},
+      SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {}, ScriptApp: {},
+      Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
+    };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8'), ctx);
+    return ctx;
+  }
+
+  // Primer, que la premissa sigui certa i no una idea meva.
+  let planaFalla = false;
+  try { signaAmb(plana); } catch (e) { planaFalla = true; }
+  cal('una clau en una sola linia NO serveix per signar', planaFalla, 'doncs si que serveix');
+
+  const plegada = ambClau(plana).FinancesBanc.clauPem();
+  cal('plegada, torna a tenir salts de linia', plegada.indexOf(String.fromCharCode(10)) !== -1, 'no en te');
+  var ratlles = plegada.split(String.fromCharCode(10));
+  cal('les ratlles del cos fan 64', ratlles[1].length === 64, String(ratlles[1].length));
+  cal('i queda EXACTAMENT com el fitxer original', plegada === pem, 'no coincideix');
+
+  let signa = false;
+  try { signaAmb(plegada); signa = true; } catch (e) {}
+  cal('i amb la plegada SI que es pot signar', signa, 'segueix sense poder');
+
+  cal('una clau que ja ve amb salts es queda igual',
+      ambClau(pem).FinancesBanc.clauPem() === pem, 'l ha tocada');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
