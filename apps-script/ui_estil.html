@@ -408,13 +408,19 @@ h2 { font-size: 1.0625rem; }
   justify-content: space-between; gap: var(--e1); line-height: 1;
 }
 .franja-sota { font-size: .75rem; color: var(--ink-suau); }
-.franja[data-estat="fet"] .franja-sota { color: var(--sobre-fet2); }
+/* Amb el fons ple treta, el text d'una targeta feta es el de sempre.
+   Les regles de sota suposaven una tinta saturada a sota i deixaven blanc
+   sobre clar: 1,17 de contrast, illegible. */
+/* Sobre la cara encesa, el gris de sempre es queda a 3,42. El text
+   secundari d'una targeta feta puja un escalo: la jerarquia ja la fa la
+   mida, no cal que la faci tambe un contrast que no arriba. */
+.franja[data-estat="fet"] .franja-sota { color: color-mix(in srgb, var(--ink) 82%, transparent); }
 
 /* Cota: la ratxa retolada com l'altitud d'una corba mestra. */
 .franja-cota { display: flex; align-items: baseline; gap: 2px; line-height: 1; }
 .franja-cota .n { font-size: 1.125rem; font-weight: 700; font-style: italic; }
 .franja-cota .u { font-size: .625rem; color: var(--ink-suau); }
-.franja[data-estat="fet"] .franja-cota .u { color: var(--sobre-fet2); }
+.franja[data-estat="fet"] .franja-cota .u { color: var(--ink-suau); }
 
 /* El punxó: el control picat. Únic moment animat de tota l'app.
 
@@ -444,7 +450,7 @@ h2 { font-size: 1.0625rem; }
   border: 0; background: transparent; color: var(--ink-suau); opacity: .75;
 }
 .franja-detall:active { background: var(--utm-suau); opacity: 1; }
-.franja[data-estat="fet"] ~ .franja-detall { color: var(--sobre-fet2); }
+.franja[data-estat="fet"] ~ .franja-detall { color: var(--ink-suau); }
 .franja-detall .ic { width: 17px; height: 17px; }
 
 /* El símbol de llegenda, petit i a dalt: identifica la fita d'un cop d'ull
@@ -937,9 +943,34 @@ h2 { font-size: 1.0625rem; }
 }
 .franja:active { transform: scale(.985); background: var(--utm-suau); }
 
+/* FET O NO FET, D'UNA ULLADA.
+   El primer intent va treure el fons ple i ho va deixar tot igual de fosc:
+   per saber quins hàbits quedaven s'havien de llegir un per un. La cara del
+   panell ha de canviar, no només el fil —una vora d'un píxel no s'escaneja—.
+
+   Fet = la cara s'encén. Per fer = la cara es queda fosca i el fil, apagat.
+   Tres coses ho diuen alhora i no només el color: la superfície, el punxó i
+   la barra de l'esquerra. */
+
+.franja-fila:has(.franja[data-estat="fet"]) {
+  border-color: var(--utm);
+  /* Prou encesa perquè es vegi de reüll. Al 15 % la diferència de claror amb
+     una targeta per fer era d'1,4 i s'havien de llegir una per una, que és
+     justament el que no ha de passar en aquesta pantalla. */
+  background: color-mix(in srgb, var(--utm) 30%, var(--paper2));
+  /* I la barra de l'esquerra com a vora de debò: un pseudoelement aquí xoca
+     amb el de les claus de cantonada i no sempre arriba a pintar-se. */
+  border-left: 3px solid var(--utm);
+}
+.franja[data-estat="fet"] { background: transparent; }
+
+/* Encara per fer: la cara fosca i el nom fluix. No s'apaga del tot —has de
+   poder llegir què és— però es nota que no ha passat res. */
+.franja-fila:has(.franja[data-estat="nofet"]) { border-color: var(--neatline); }
+.franja[data-estat="nofet"] .franja-sota { color: var(--ink-suau); }
+
 /* Al dia: el fil s'encén i la xifra també. */
-.franja-fila:has(.franja[data-estat="fet"]) { border-color: var(--fil-viu); }
-.franja[data-estat="fet"] { background: transparent; color: var(--ink); }
+.franja[data-estat="fet"] { color: var(--ink); }
 .franja[data-estat="fet"] .franja-cota .n { color: var(--utm); }
 
 /* Et reclama: ambre, i les claus de cantonada. El color no hi va sol —la
