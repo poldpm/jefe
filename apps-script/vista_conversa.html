@@ -455,7 +455,13 @@ App.registraVista('conversa', {
           (m.temps ? '<span title="on se n\'ha anat el temps"><b>' +
              (m.temps.total / 1000).toFixed(1) + 's</b> · ia ' + (m.temps.ia / 1000).toFixed(1) +
              ' · dades ' + ((m.temps.context + m.temps.eines) / 1000).toFixed(1) +
-             ' · ' + m.temps.voltes + (m.temps.voltes === 1 ? ' volta' : ' voltes') + '</span>' : '') +
+             ' · ' + m.temps.voltes + (m.temps.voltes === 1 ? ' volta' : ' voltes') +
+             /* Només si ha rumiat. Li demanem que no ho faci perquè costa
+                segons, i no tots els models fan cas: si un dia torna a anar
+                lent, aquí es veu de seguida si és això o és una altra cosa.
+                La xifra és de Google, no una suposició nostra. */
+             (m.temps.rumiat ? ' · <b>ha rumiat ' + m.temps.rumiat + ' tokens</b>' : '') +
+             '</span>' : '') +
         '</div>';
       }
       if (m.propostes && m.propostes.length) {

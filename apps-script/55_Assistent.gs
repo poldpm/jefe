@@ -136,7 +136,7 @@ var Assistent = (function () {
     var llistaEines = eines();
     var conversa = missatges.slice();
     var propostes = [], einesUsades = [];
-    var tEntrada = 0, tSortida = 0, model = null;
+    var tEntrada = 0, tSortida = 0, tPensats = 0, model = null;
 
     /* El context es construeix UN COP, no a cada volta.
        Dins del bucle tornava a llegir tots els fulls a cada iteració, i això
@@ -158,13 +158,14 @@ var Assistent = (function () {
 
       msIA += Date.now() - tIA;
       tEntrada += r.tokensEntrada; tSortida += r.tokensSortida; model = r.model;
+      tPensats += r.tokensPensats || 0;
 
       if (!r.crides.length) {
         return {
           text: r.text || 'No sé què respondre a això.',
           propostes: propostes, einesUsades: einesUsades,
           tokens: { entrada: tEntrada, sortida: tSortida }, model: model,
-          temps: { total: Date.now() - t0, context: msContext, ia: msIA,
+          temps: { rumiat: tPensats, total: Date.now() - t0, context: msContext, ia: msIA,
                    eines: msEines, voltes: volta + 1 }
         };
       }
@@ -223,7 +224,7 @@ var Assistent = (function () {
       text: 'He consultat les dades però no n\'he tret una resposta clara. Prova de preguntar-ho més concret.',
       propostes: propostes, einesUsades: einesUsades,
       tokens: { entrada: tEntrada, sortida: tSortida }, model: model,
-      temps: { total: Date.now() - t0, context: msContext, ia: msIA, eines: msEines, voltes: MAX_VOLTES }
+      temps: { rumiat: tPensats, total: Date.now() - t0, context: msContext, ia: msIA, eines: msEines, voltes: MAX_VOLTES }
     };
   }
 

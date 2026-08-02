@@ -1227,7 +1227,7 @@ console.log("Transport a Gemini: la forma de la peticio");
       enviat = { url: url, cos: JSON.parse(o.payload), capcaleres: o.headers };
       return { getResponseCode: () => 200, getContentText: () => JSON.stringify({
         candidates: [{ content: { parts: [{ text: 'fet' }] } }],
-        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2 } }) };
+        usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 314 } }) };
     } },
     CacheService: { getScriptCache: () => null },
     SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {},
@@ -1237,7 +1237,7 @@ console.log("Transport a Gemini: la forma de la peticio");
   ctx.PROP_CLAU_IA = 'CLAU_IA';
   vm.runInContext(fs.readFileSync('apps-script/50_IA.gs', 'utf8'), ctx);
 
-  ctx.IA.genera({
+  const r0 = ctx.IA.genera({
     sistema: 'ets en JEFE',
     missatges: [
       { rol: 'usuari', text: 'hola' },
@@ -1252,6 +1252,9 @@ console.log("Transport a Gemini: la forma de la peticio");
   cal('la clau va a la capcalera i mai a l url',
       !!ctx.IA && enviat.capcaleres['x-goog-api-key'] === 'clau-de-mentida' &&
       enviat.url.indexOf('clau-de-mentida') === -1, enviat.url);
+
+  cal('diu quant ha rumiat, amb la xifra de Google i no una suposada',
+      r0.tokensPensats === 314, JSON.stringify(r0.tokensPensats));
 
   const parts = enviat.cos.contents[1].parts;
   cal("l'audio arriba tal qual, sense passar per cap transcripcio",

@@ -206,7 +206,13 @@ var IA = (function () {
         motiuFi: cand ? cand.finishReason : null,
         contingutBrut: cand ? cand.content : null,
         tokensEntrada: us.promptTokenCount || 0,
-        tokensSortida: us.candidatesTokenCount || 0
+        tokensSortida: us.candidatesTokenCount || 0,
+        /* Quant ha rumiat abans de contestar, dit per Google i no suposat per
+           mi. Li demanem que no ho faci, però no tots els models fan cas i
+           endevinar-ho pel nom ja va sortir malament un cop. Amb aquesta
+           xifra a la pantalla, si un dia torna a anar lent es veu de seguida
+           si és això o és una altra cosa. */
+        tokensPensats: us.thoughtsTokenCount || 0
       };
     },
 
