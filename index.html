@@ -1044,10 +1044,14 @@ h2 { font-size: 1.0625rem; }
             text-align: left; }
 .cat-fila:last-child { border-bottom: 0; }
 .cat-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; }
-.cat-via { display: block; height: 8px; background: var(--roca);
+/* LES BARRES DE CATEGORIA. La via, apagada; el que hi has gastat, ences.
+   El fons era el blanc del paper i sobre la consola quedava com una taca:
+   ara es la mateixa cara fosca que tot i el que es veu es la part plena. */
+.cat-via { display: block; height: 6px; background: var(--h0);
            border: 1px solid var(--neatline); }
-.cat-via i { display: block; height: 100%; background: var(--h4); }
-.cat-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+.cat-via i { display: block; height: 100%; background: var(--utm); }
+.cat-xifra { font-family: var(--mono); font-weight: 600; letter-spacing: -.02em;
+             font-variant-numeric: tabular-nums; text-align: right;
              font-size: .875rem; white-space: nowrap; }
 .cat-xifra small { display: block; font-size: .6875rem; font-weight: 400; }
 
@@ -1062,9 +1066,12 @@ h2 { font-size: 1.0625rem; }
 .mes-nom { font-size: .75rem; color: var(--ink-suau); font-variant-numeric: tabular-nums; }
 .mes-barres { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .mes-barres i { display: block; height: 7px; min-width: 1px; }
-.mes-barres i[data-mena="i"] { background: var(--h1); }
-.mes-barres i[data-mena="d"] { background: var(--h5); }
-.mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+/* Entra i surt. Dos tons de la mateixa rampa i no dos colors diferents:
+   el verd i el vermell no es distingeixen si no els hi veus, i aqui la
+   posicio de la barra ja diu quina es quina. */
+.mes-barres i[data-mena="i"] { background: var(--h5); }
+.mes-barres i[data-mena="d"] { background: var(--h2); }
+.mes-xifra { font-family: var(--mono); letter-spacing: -.02em; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
              font-size: .875rem; }
 
 /* Gestió de categories. Llista curta i formulari a sota: crear-ne una ha de
@@ -1759,7 +1766,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 18:01 · 4557c5c";</script>
+<script>window.MARCA_JEFE = "2026-08-02 18:05 · 00ce12d";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1907,7 +1914,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 18:01 · 4557c5c";
+window.MARCA_JEFE = "2026-08-02 18:05 · 00ce12d";
 </script>
 
 <script>
