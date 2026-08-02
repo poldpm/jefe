@@ -29,76 +29,92 @@
   <style>
 /* =========================================================================
    JEFE — sistema visual
-   Món: full de mapa topogràfic 1:25.000.
+   Mon: SALA DE COMANDAMENT. Una consola de vidre fosc amb un nucli que batega.
 
-   Regla que mana sobre tota la resta: EL COLOR ÉS LA DADA.
-   La tinta hipsomètrica d'una fila surt del seu compliment, no de la decoració.
-   Compliment alt = terreny alt = ocre i roca. Compliment baix = vall = verd.
+   Regla que mana sobre tota la resta: EL COLOR ES LA DADA.
+   La intensitat d'una fila surt del seu compliment, no de la decoracio.
+   Compliment alt = energia = cian ences. Compliment baix = apagat.
+
+   TRES PECES FAN EL LLENGUATGE, i no n'hi ha d'haver cap mes:
+     · L'ANELL. Tot el que te objectiu s'ensenya com un anell que s'omple.
+     · LA CLAU DE CANTONADA. Marca on comenca i on acaba un panell.
+     · EL NUCLI. La llum que ve de dalt i la reticula del fons: el fons no es
+       un color pla, es una superficie.
+
+   ELS NOMS DELS TOKENS venen del full de mapa que hi havia abans i s'han
+   deixat estar: canviar-los volia dir tocar dos-cents llocs per no guanyar
+   res. El que ha canviat es el que valen.
    ========================================================================= */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark light;
 
-  /* --- full de mapa --- */
-  --paper:      #f4f5f2;   /* el paper del full, neutre fred: no és crema */
-  --paper2:     #eaece7;
-  --neatline:   #1b2124;   /* marc del full */
-  --ink:        #14181a;
-  --ink-suau:   #5b6469;
-  --corba:      #a8703f;   /* corba de nivell */
-  --corba-mestra:#8a5124;  /* cada cinquena, més gruixuda */
-  --utm:        #2c6e8f;   /* quadrícula UTM */
-  --utm-suau:   #b9d2df;
-  --gr:         #c8332b;   /* marca de sender GR: blanc sobre vermell */
-  /* L'ACCIÓ NO ÉS VERMELLA.
-     El vermell d'aquesta app és la marca de sender GR: una senyal del mapa,
-     que vol dir «per aquí» i prou. Fer-hi els botons era barrejar el
-     llenguatge del full amb el de la sala de comandament, i a més el vermell
-     ple es llegeix com un avís —«compte»— quan el que diu és «endavant».
-     El cian és el color de JEFE: el del nucli que batega a la conversa. */
-  --accio:        #0b7d8c;   /* de dia va fondo: amb lletra blanca a sobre, 4,85 */
-  --sobre-accio:  #ffffff;
-  /* El vermell segueix sent el de l'error, i per a una superfície plena es
-     queda amb el to de dia als dos temes: el de nit s'aclareix per als traços
-     prims i amb lletra blanca a sobre donaria 4,03. */
-  --gr-ple:       #c8332b;
+  /* --- la consola, de dia: la mateixa instrumentació sota el sol --- */
+  --paper:      #e8eef0;   /* el fons de la sala */
+  --paper2:     #f7fbfc;   /* la cara d'un panell */
+  --neatline:   #9cb6bf;   /* el fil que dibuixa els panells */
+  --ink:        #0d191e;
+  --ink-suau:   #4a656e;
+  --corba:      #bcced4;   /* estructura secundària */
+  --corba-mestra:#8faab3;
+  /* De dia va mes fondo del que sembla: a 11 px sobre el fons de la sala,
+     el to de nit donava 4,14 i les etiquetes petites no es llegien. */
+  --utm:        #0a707e;   /* la llum del sistema */
+  --utm-suau:   #cfe4e9;
+  --gr:         #c8332b;   /* el que va malament */
+  --accio:      #0a707e;
+  --sobre-accio:#ffffff;
+  --gr-ple:     #c8332b;
   --avis:       #8a5a00;
   --avis-fons:  #fbf0d8;
 
-  /* --- rampa hipsomètrica: de la vall al cim --- */
-  --h0: #dfe6da;   /* sense dades */
-  --h1: #7fa15c;   /* vall */
-  --h2: #a8b558;
-  --h3: #d3c063;
-  --h4: #dfa94b;
-  --h5: #c9803d;
-  --h6: #ab5f33;   /* cim */
-  --roca: #ece7e0;
+  /* --- el nucli: la llum i la retícula que fan que el fons no sigui pla --- */
+  --nucli:      rgba(11,125,140,.15);
+  --reixa:      rgba(11,125,140,.05);
+  --vora-viva:  rgba(11,125,140,.5);    /* claus de cantonada */
+  --fil-viu:    rgba(11,125,140,.2);    /* fil dels panells vius */
 
-  --fet:        var(--h4);   /* una casella picada és terreny alt */
-  --fet-vora:   #a8703f;
-  /* La tinta hipsomètrica és clara als DOS temes, així que el text que hi va
-     a sobre ha de ser fosc sempre. Heretar --ink en mode nit dona clar sobre
-     clar: 2,32:1, il·legible. */
-  --sobre-fet:  #14181a;
-  --sobre-fet2: #4a3316;
+  /* --- rampa d'energia: de l'apagat a l'encès --- */
+  --h0: #dce7ea;   /* sense dades */
+  --h1: #a9cad2;
+  --h2: #7ab5c1;
+  --h3: #4a9dad;
+  --h4: #1c8496;
+  --h5: #0b6b7c;
+  --h6: #054a57;   /* al màxim */
+  --roca: #ffffff;
 
-  /* Text sobre les tintes d'estat. Han de ser tokens i no valors fixats a
-     la regla: el fons canvia amb el tema, i una lletra escrita a ma es queda
-     igual fins que desapareix. */
+  --fet:        var(--h4);
+  --fet-vora:   var(--h6);
+  --sobre-fet:  #ffffff;
+  --sobre-fet2: #d5edf1;
+
   --sobre-verd:   #0f1a0c;
   --sobre-ambre:  #3a2600;
 
-  --ombra: 0 1px 0 rgba(27,33,36,.10), 0 6px 18px rgba(27,33,36,.07);
+  --ombra: 0 1px 0 rgba(11,125,140,.10), 0 8px 22px rgba(13,25,30,.10);
 
-  --r: 2px;                  /* els mapes no tenen cantonades rodones */
+  --r: 2px;                  /* una consola no té cantonades rodones */
   --toc: 48px;
-  --nav: 0px;   /* sense barra de seccions: els calc() que la resten es col·lapsen sols */
+  --nav: 0px;
 
   --e1: 4px; --e2: 8px; --e3: 12px; --e4: 16px;
   --e5: 24px; --e6: 32px; --e7: 48px;
 
+  /* Corbes fortes. Les de sèrie no tenen prou empenta i tot sembla tou; i
+     entrar amb ease-in fa que sembli lent encara que duri el mateix, perquè
+     retarda el moviment just al moment que hi estàs mirant. */
+  /* LA VEU DE LES DADES.
+     Una consola no escriu les xifres amb la mateixa lletra que els noms: les
+     hores, els imports i els percentatges van en monoespaiada perque les
+     columnes quadrin i perque es llegeixin com a instrumentacio i no com a
+     prosa. Del sistema, com la resta: una font web seria una peticio mes a
+     l'arrencada, que es el risc numero u d'aquest projecte. */
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
   --sortida: cubic-bezier(.16, 1, .3, 1);
+  --entra:   cubic-bezier(.23, 1, .32, 1);
+  --mou:     cubic-bezier(.77, 0, .175, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -106,34 +122,160 @@
 }
 :root[data-tema="fosc"] { --nit: 1; }
 
-/* Full de nit: el mateix mapa sota frontal. Les tintes pugen de lluminositat
-   perquè conservin el contrast, no s'inverteixen a l'atzar. */
+/* LA CONSOLA DE NIT, i el que mana.
+   Aquest es el tema de casa: una sala fosca amb un nucli ences. El de dia
+   existeix i esta cuidat, pero el disseny esta pensat aqui.
+   Les tintes pugen de lluminositat perque conservin el contrast; no
+   s'inverteixen a l'atzar. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="clar"]) {
-    --paper: #0e1214; --paper2: #161c1f; --neatline: #56666d;
-    --ink: #eef2f3; --ink-suau: #93a2a8;
-    --corba: #7d5836; --corba-mestra: #a8703f;
-    --utm: #4e9bc0; --utm-suau: #1e3a47;
-    --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
-    --accio: #4fd6e0; --sobre-accio: #04070b;
-    --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
-    --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+    --paper: #05080b; --paper2: #0a1116; --neatline: #14343d;
+    --ink: #d6e8ee; --ink-suau: #67848f;
+    --corba: #123039; --corba-mestra: #1a4a56;
+    --utm: #5eeaff; --utm-suau: #0e262e;
+    --gr: #ff5c47; --avis: #ffb547; --avis-fons: #241a09;
+    --accio: #5eeaff; --sobre-accio: #04070b;
+    --nucli: rgba(94,234,255,.14); --reixa: rgba(94,234,255,.04);
+    --vora-viva: rgba(94,234,255,.55); --fil-viu: rgba(94,234,255,.15);
+    --h0: #0d1a1f; --h1: #123f4a; --h2: #145d6c; --h3: #128096;
+    --h4: #17a5c1; --h5: #35cfe4; --h6: #7ff2ff; --roca: #eaf7fa;
     --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
-    --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+    --sobre-fet: #04070b; --sobre-fet2: #06202a;
+    --ombra: 0 1px 0 rgba(94,234,255,.06), 0 10px 28px rgba(0,0,0,.55);
   }
 }
 :root[data-tema="fosc"] {
-  --paper: #0e1214; --paper2: #161c1f; --neatline: #56666d;
-  --ink: #eef2f3; --ink-suau: #93a2a8;
-  --corba: #7d5836; --corba-mestra: #a8703f;
-  --utm: #4e9bc0; --utm-suau: #1e3a47;
-  --gr: #e04a41; --avis: #e0a94e; --avis-fons: #2a2113;
-    --accio: #4fd6e0; --sobre-accio: #04070b;
-  --h0: #1b2225; --h1: #3d5a30; --h2: #5d6f34; --h3: #8d7f3c;
-  --h4: #d8913f; --h5: #c0742f; --h6: #a8542a; --roca: #cfd6d8;
+  --paper: #05080b; --paper2: #0a1116; --neatline: #14343d;
+  --ink: #d6e8ee; --ink-suau: #67848f;
+  --corba: #123039; --corba-mestra: #1a4a56;
+  --utm: #5eeaff; --utm-suau: #0e262e;
+  --gr: #ff5c47; --avis: #ffb547; --avis-fons: #241a09;
+  --accio: #5eeaff; --sobre-accio: #04070b;
+  --nucli: rgba(94,234,255,.14); --reixa: rgba(94,234,255,.04);
+  --vora-viva: rgba(94,234,255,.55); --fil-viu: rgba(94,234,255,.15);
+  --h0: #0d1a1f; --h1: #123f4a; --h2: #145d6c; --h3: #128096;
+  --h4: #17a5c1; --h5: #35cfe4; --h6: #7ff2ff; --roca: #eaf7fa;
   --sobre-verd: #d6e8cd; --sobre-ambre: #f7e4bd;
-  --ombra: 0 1px 0 rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  --sobre-fet: #04070b; --sobre-fet2: #06202a;
+  --ombra: 0 1px 0 rgba(94,234,255,.06), 0 10px 28px rgba(0,0,0,.55);
 }
+
+
+/* =========================================================================
+   EL NUCLI — el fons no és un color pla
+
+   Dues capes fixes darrere de tot: una retícula molt fluixa que dona
+   superfície, i una llum que ve de dalt i cau. És el que fa que la pantalla
+   sembli una consola i no un document.
+
+   Va en un pseudoelement FIXAT i no al `background` del body: així no es
+   mou amb l'scroll —una llum que puja i baixa és un mareig— i el navegador
+   la pinta una vegada i prou en comptes de repintar-la a cada rodona.
+   ========================================================================= */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--reixa) 1px, transparent 1px) 0 0 / 100% 26px,
+    linear-gradient(90deg, var(--reixa) 1px, transparent 1px) 0 0 / 26px 100%,
+    radial-gradient(125% 78% at 50% -12%, var(--nucli) 0%, transparent 60%);
+}
+
+/* =========================================================================
+   LA CLAU DE CANTONADA
+
+   Marca on comença i on acaba un panell. Es posa a `.viu` i prou: si totes
+   les caixes en portessin, deixaria de dir res. La corba i la corba mestra
+   del full antic ara són l'estructura secundària.
+
+   Dues cantonades i no quatre: amb la de dalt a l'esquerra i la de baix a la
+   dreta ja es llegeix el rectangle sencer, i quatre és soroll.
+   ========================================================================= */
+
+.viu { position: relative; border: 1px solid var(--fil-viu); background: var(--paper2); }
+.viu::before, .viu::after {
+  content: "";
+  position: absolute;
+  width: 8px; height: 8px;
+  border: 1px solid var(--vora-viva);
+  pointer-events: none;
+}
+.viu::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.viu::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* Quan una cosa et reclama, les claus s'encenen d'ambre. El color no hi va
+   sol: la fila també ho diu amb text. */
+.viu[data-urgent="1"] { border-color: color-mix(in srgb, var(--avis) 30%, transparent); }
+.viu[data-urgent="1"]::before, .viu[data-urgent="1"]::after { border-color: var(--avis); }
+
+/* =========================================================================
+   L'ANELL
+
+   Tot el que té objectiu s'ensenya com un anell que s'omple. És l'única
+   manera d'ensenyar un objectiu en tota l'app: una barra aquí i un anell
+   allà seria tenir dos idiomes per dir el mateix.
+
+   Es fa amb `conic-gradient` i no amb SVG perquè així el pot fer servir
+   qualsevol pantalla escrivint una classe i una variable, sense haver de
+   muntar cap etiqueta.
+   ========================================================================= */
+
+.anell {
+  --p: 0;                        /* 0 a 100 */
+  --gruix: 5px;
+  position: relative;
+  width: 72px; height: 72px;
+  flex: none;
+  border-radius: 50%;
+  background:
+    conic-gradient(var(--utm) calc(var(--p) * 1%), var(--h0) 0);
+  display: grid;
+  place-content: center;
+}
+/* El forat del mig. `mask` deixaria passar el fons de la pàgina, i el que
+   volem és que es vegi la cara del panell. */
+.anell::before {
+  content: "";
+  position: absolute;
+  inset: var(--gruix);
+  border-radius: 50%;
+  background: var(--paper2);
+  border: 1px solid var(--fil-viu);
+}
+.anell > * { position: relative; }
+.anell b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 1.0625rem;
+  letter-spacing: -.02em;
+  color: var(--utm);
+  text-align: center;
+  line-height: 1;
+}
+.anell small {
+  display: block;
+  font-family: var(--mono);
+  font-size: .5rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-suau);
+  text-align: center;
+  margin-top: 3px;
+}
+.anell[data-gran="1"] { width: 96px; height: 96px; --gruix: 6px; }
+.anell[data-gran="1"] b { font-size: 1.375rem; }
+
+/* S'omple en entrar. Una vegada, en carregar, i no cada cop que passes per
+   sobre: això es veu deu vegades al dia, no cent. */
+@media (prefers-reduced-motion: no-preference) {
+  .anell { animation: omple .8s var(--entra) both; }
+  @keyframes omple { from { --p: 0; } }
+}
+@property --p { syntax: "<number>"; initial-value: 0; inherits: false; }
 
 /* ------------------------------------------------------------------ base */
 
@@ -776,252 +918,156 @@ h2 { font-size: 1.0625rem; }
 .bal-mes-eix span { position: absolute; font-size: .625rem; color: var(--ink-suau);
                     font-variant-numeric: tabular-nums; transform: translateX(-50%); }
 
-/* ---------------------------------------------------------------- finances */
 
-/* On van els diners: una barra per categoria, ordenades de més a menys. La
-   més llarga és la que et menja el mes, i es veu sense llegir cap número. */
-.cats { display: flex; flex-direction: column; }
-.cat-fila { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto;
-            align-items: center; gap: var(--e3); min-height: 44px; width: 100%;
-            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
-            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
-            text-align: left; }
-.cat-fila:last-child { border-bottom: 0; }
-.cat-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; }
-.cat-via { display: block; height: 8px; background: var(--roca);
-           border: 1px solid var(--neatline); }
-.cat-via i { display: block; height: 100%; background: var(--h4); }
-.cat-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
-             font-size: .875rem; white-space: nowrap; }
-.cat-xifra small { display: block; font-size: .6875rem; font-weight: 400; }
+/* ------------------------------------------------------------- la safata
+   Les pastilles de context. NO ESTAVEN ESTILADES: eren botons de sèrie amb
+   el gris del navegador, i en fosc allò donava 4,22 de contrast amb la
+   lletra a sobre. Es veia com el que era, un botó que ningú havia mirat.
 
-/* Mes a mes: ingressos a sobre, despeses a sota. Dues barres i prou. */
-.mesos { display: flex; flex-direction: column; }
-.mes-fila { display: grid; grid-template-columns: 52px minmax(0, 1fr) 92px;
-            align-items: center; gap: var(--e3); min-height: 48px; width: 100%;
-            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
-            padding: var(--e2) 0; cursor: pointer; font: inherit; color: inherit;
-            text-align: left; }
-.mes-fila:last-child { border-bottom: 0; }
-.mes-nom { font-size: .75rem; color: var(--ink-suau); font-variant-numeric: tabular-nums; }
-.mes-barres { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.mes-barres i { display: block; height: 7px; min-width: 1px; }
-.mes-barres i[data-mena="i"] { background: var(--h1); }
-.mes-barres i[data-mena="d"] { background: var(--h5); }
-.mes-xifra { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
-             font-size: .875rem; }
+   Ara són el que han de ser: una tria de tres o quatre coses on cap no és
+   la principal. Fil, res de farciment, i el cian només quan la prems. */
 
-/* Gestió de categories. Llista curta i formulari a sota: crear-ne una ha de
-   ser tan barat com adonar-te que et falta. */
-.cats-gest { max-height: 34vh; overflow-y: auto; margin-bottom: var(--e4);
-             border: 1px solid var(--utm-suau); }
-.cat-mena { margin: 0; padding: var(--e2) var(--e3); background: var(--paper2);
-            border-bottom: 1px solid var(--utm-suau);
-            letter-spacing: .1em; text-transform: uppercase; }
-.cat-gest { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
-            padding: 0 var(--e2) 0 var(--e3); border-bottom: 1px solid var(--utm-suau); }
-.cat-gest:last-child { border-bottom: 0; }
-.cat-gest-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-                white-space: nowrap; font-size: .9375rem; }
-
-.cat-nova-fila { display: grid; grid-template-columns: 68px minmax(0, 1fr);
-                 gap: var(--e2); margin: var(--e3) 0; }
-.cat-nova-fila input { min-width: 0; min-height: var(--toc); padding: 0 var(--e2);
-                       font: inherit; background: var(--paper); color: var(--ink);
-                       border: 1px solid var(--neatline); border-radius: var(--r); }
-.camp-emoji { text-align: center; font-size: 1.25rem; }
-.cat-exclou { display: flex; align-items: center; gap: var(--e2); min-height: 44px;
-              margin-bottom: var(--e2); font-size: .875rem; cursor: pointer; }
-.cat-exclou input { width: 20px; height: 20px; flex: none; margin: 0; }
-
-/* El color de la marca, el del mapa. Sense això, la casella marcada surt del
-   verd blau que el navegador porta de sèrie —que no és de cap dels dos temes
-   d'aquí— i la buida, en fosc, queda com un quadre negre sense vora. */
-input[type="checkbox"] { accent-color: var(--utm); }
-.cat-nova [data-crea-cat] { width: 100%; }
-
-/* Pressupost: la barra deixa de mesurar contra la categoria més grossa i
-   passa a mesurar contra el teu límit. Passat el límit, es tenyeix. */
-.cat-via[data-limit] { border-color: var(--corba-mestra); }
-.cat-via i[data-passat] { background: var(--h5); }
-.cat-xifra small { display: block; font-size: .625rem; font-weight: 400;
-                   color: var(--ink-suau); }
-
-/* Recurrents: el dia mana a l'esquerra, perquè el que preguntes és «quan
-   surt», no «quant». */
-.rec-fila { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
-            align-items: center; gap: var(--e3); width: 100%; min-height: 56px;
-            background: none; border: 0; border-bottom: 1px solid var(--utm-suau);
-            padding: var(--e2) 0; text-align: left; font: inherit; color: inherit;
-            cursor: pointer; }
-.rec-fila:last-child { border-bottom: 0; }
-.rec-fila[data-apagat] { opacity: .45; }
-.rec-dia { display: flex; align-items: center; justify-content: center;
-           width: 34px; height: 34px; border: 1px solid var(--neatline);
-           font-size: .875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.rec-cos { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-/* Captura ràpida. El camp és el primer que hi ha i està sempre obert: si has
-   de prémer un botó per obrir-lo, ja has perdut la meitat del que volies
-   apuntar. */
-.camp-captura { display: block; }
-.captura-fila { display: flex; gap: var(--e2); margin-top: var(--e2); }
-.captura-fila input { flex: 1; min-width: 0; min-height: var(--toc); padding: 0 var(--e3);
-                      font: inherit; background: var(--paper); color: var(--ink);
-                      border: 1.5px solid var(--neatline); border-radius: var(--r); }
-.captura-fila .btn { flex: none; padding: 0 var(--e4); }
-
-/* La safata: el que has capturat i encara no has decidit què era. Els tres
-   contextos a un toc, perquè classificar-ho ha de costar menys que llegir-ho. */
 .safata-t { display: flex; flex-direction: column; gap: var(--e2); }
-.safata-fila { border: 1px solid var(--neatline); padding: var(--e3);
-               transition: opacity .25s ease, transform .25s var(--sortida); }
-.safata-fila[data-fet="1"] { opacity: 0; transform: translateX(20px); }
-.safata-text { margin-bottom: var(--e2); overflow-wrap: anywhere; }
-.safata-tria { display: flex; gap: var(--e2); }
-.safata-tria button { flex: 1; min-height: 44px; font: inherit; font-size: .8125rem;
-                      background: transparent; color: var(--ink-suau);
-                      border: 1px solid var(--neatline); border-radius: var(--r); }
-.safata-tria button:active { background: var(--ink); color: var(--paper); }
-.safata-tria .safata-fora { flex: none; width: 44px; color: var(--ink-suau);
-                            border-color: var(--utm-suau); }
 
-/* Acabat d'apuntar i encara no ha tornat del servidor. Es veu de seguida
-   —això és tot el sentit— però es distingeix del que ja hi és desat: sense
-   els botons de context, que encara no tenen a què apuntar. La ratlla que
-   avança per sota diu que hi ha feina en curs sense fer-ne cap escàndol. */
-.safata-fila[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
-.safata-fila[data-esperant="1"] .safata-text { margin-bottom: 0; }
-.safata-fila[data-esperant="1"]::after {
-  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 40%;
-  background: var(--ink-suau); animation: esperant-va 1.1s ease-in-out infinite;
+.safata-fila {
+  display: flex; flex-direction: column; gap: var(--e2);
+  padding: var(--e3);
+  background: var(--paper2);
+  border: 1px solid var(--fil-viu);
 }
-@keyframes esperant-va {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(350%); }
+.safata-text { line-height: 1.35; overflow-wrap: anywhere; }
+
+.safata-tria { display: flex; flex-wrap: wrap; gap: var(--e2); }
+
+.safata-tria button {
+  min-height: 36px;
+  padding: 0 var(--e3);
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--neatline);
+  border-radius: var(--r);
+  font-family: var(--mono);
+  font-size: .6875rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  transition: border-color .16s var(--entra), color .16s var(--entra),
+              background-color .16s var(--entra), transform .12s var(--entra);
 }
-@media (prefers-reduced-motion: reduce) {
-  .safata-fila[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
+/* Prémer ha de notar-se al moment: sense això sembla que no hagi sentit res. */
+.safata-tria button:active {
+  transform: scale(.97);
+  border-color: var(--utm);
+  color: var(--utm);
+  background: var(--utm-suau);
+}
+@media (hover: hover) and (pointer: fine) {
+  .safata-tria button:hover { border-color: var(--utm); color: var(--utm); }
 }
 
-/* =========================================================================
-   EL CALENDARI — la quadrícula UTM del full
-
-   La graella diu ON hi ha coses, no QUÈ hi ha: set columnes en una pantalla
-   de mòbil donen cinquanta píxels per dia i no hi cap cap títol sense
-   mentir. Un punt per cita ja respon la pregunta que fas mirant un mes
-   —quins dies tinc plens—, i el què és a sota, amb tot l'espai.
-   ========================================================================= */
-
-.mes-graella { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
-               gap: 1px; background: var(--utm-suau);
-               border: 1.5px solid var(--neatline); }
-
-.mes-cap { background: var(--paper2); text-align: center; padding: var(--e1) 0;
-           font-size: .625rem; letter-spacing: .08em; text-transform: uppercase;
-           color: var(--ink-suau); }
-
-.mes-dia {
-  min-height: 52px; padding: 3px 2px 4px;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  border: 0; background: var(--paper); color: var(--ink); font: inherit;
+/* Treure-la de la safata és una acció diferent de classificar-la: va a la
+   dreta, sense text i amb la creu, perquè no es confongui amb les altres. */
+.safata-fora {
+  margin-left: auto;
+  min-width: 36px; min-height: 36px;
+  display: inline-grid; place-content: center;
+  background: transparent; color: var(--ink-suau);
+  border: 1px solid transparent; border-radius: var(--r);
+  transition: color .16s var(--entra), border-color .16s var(--entra);
 }
-.mes-dia .n { font-size: .8125rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
-/* Els dies de l'altre mes hi són perquè la setmana no quedi coixa, no perquè
-   els miris: es queden apagats i no criden. */
-.mes-dia[data-fora="1"] { background: var(--paper2); }
-.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: .55; }
-.mes-dia[data-avui="1"] .n { font-weight: 700; color: var(--utm); }
+.safata-fora:active { color: var(--gr); border-color: var(--gr); }
 
-/* El dia que MIRES es marca amb el blau de la quadrícula, no amb l'ocre.
-   L'ocre d'aquesta app vol dir «fet» a tot arreu —als hàbits, al full de
-   mes—, i un dia del calendari no es fa: es mira. Fer servir la mateixa
-   tinta per a dues coses diferents és com es perd un sistema de color. */
-.mes-dia[aria-current="date"] { background: var(--utm-suau);
-                                box-shadow: inset 0 -3px 0 var(--utm); }
-/* La xifra torna a la tinta normal. Si el dia que mires és avui, el blau del
-   número quedava blau sobre blau pàl·lid: 3,57, per sota del mínim. El blau
-   ja el posen el fons i la ratlla; el número només ha de llegir-se. */
-.mes-dia[aria-current="date"] .n { font-weight: 700; color: var(--ink); }
-.mes-dia:active { background: var(--utm-suau); }
+/* ------------------------------------------------------- la pàgina del dia
+   La consola sencera en una pantalla. A dalt, el nucli: un anell amb el que
+   portes fet del dia. A sota, un panell per àmbit, cadascun amb les seves
+   claus de cantonada i la seva columna de marques a l'esquerra.
 
-.mes-dia .punts { display: flex; gap: 2px; min-height: 6px; align-items: center; }
-.mes-dia .punts i { width: 5px; height: 5px; border-radius: 50%;
-                    background: var(--corba-mestra); display: block; }
-/* El de tot el dia és una barra i no un punt: no té hora, i que es distingeixi
-   d'una cita d'un quart estalvia obrir el dia per veure què és. */
-.mes-dia .punts i[data-tot="1"] { width: 10px; border-radius: 1px; }
+   LA COLUMNA DE MARQUES és el que fa que això s'escanegi en comptes de
+   llegir-se: totes les files comencen igual, amb una hora o un signe, i
+   l'ull baixa per la columna sense haver de tornar a l'esquerra cada cop. */
 
-/* Els títols dins la casella només surten quan la casella és prou gran per
-   ensenyar-los. Al mòbil, els punts; a l'escriptori, el que hi diu. */
-.cal-titols { display: none; }
+.dia-pagina { max-width: 760px; }
 
-.dia-cap-cal { margin: var(--e5) 0 var(--e2); }
-.dia-cap-cal .marge { margin: 0; }
-
-.cites { display: flex; flex-direction: column;
-         border: 1px solid var(--neatline); }
-.cita {
-  position: relative; display: flex; align-items: flex-start; gap: var(--e3);
-  width: 100%; min-height: 56px; padding: var(--e3);
-  border: 0; border-bottom: 1px solid var(--utm-suau);
-  background: var(--paper); color: var(--ink); text-align: left; font: inherit;
+/* el nucli del dia */
+.dia-nucli {
+  display: flex; align-items: center; gap: var(--e4);
+  padding: var(--e4) 0 var(--e5);
 }
-.cita:last-child { border-bottom: 0; }
-.cita:active { background: var(--paper2); }
-.cita[data-passat="1"] { opacity: .55; }
+.dia-nucli .quan .d {
+  font-size: 1.375rem; letter-spacing: -.02em; line-height: 1.05; font-weight: 600;
+}
+.dia-nucli .quan .s {
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-suau); margin-top: var(--e1);
+}
+.dia-nucli .quan .c {
+  font-size: .8125rem; color: var(--ink-suau); margin-top: var(--e2);
+}
 
-.cita-quan { flex: none; width: 52px; display: flex; flex-direction: column;
-             line-height: 1.2; font-variant-numeric: tabular-nums; }
-.cita-quan b { font-size: .9375rem; }
-.cita-quan span { font-size: .75rem; color: var(--ink-suau); }
-.cita-quan .tot { font-size: .6875rem; letter-spacing: .04em;
-                  text-transform: uppercase; color: var(--ink-suau); }
-.cita-cos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cita-titol { font-weight: 600; overflow-wrap: anywhere; }
-.cita-color { flex: none; width: 4px; align-self: stretch; border-radius: 2px; }
-
-.cal-hores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--e3); }
-
-/* Un enllaç dins d'un text: no és un botó amb marc, és una paraula que fa cosa. */
-.enllac { border: 0; background: none; padding: 0; font: inherit;
-          color: var(--utm); text-decoration: underline; text-underline-offset: 3px; }
-
-/* =========================================================================
-   LA PÀGINA DEL DIA — el full de ruta
-
-   Tot són coses per llegir; no hi ha res per tocar. El títol de cada bloc
-   és l'únic botó, i porta a l'apartat on sí que hi ha les eines. Per això
-   les línies no tenen ni marc ni ombra: no conviden a res.
-   ========================================================================= */
-
-.dia-pagina { max-width: 720px; }
-
-.dia-bloc-r { margin-bottom: var(--e5); }
+.dia-bloc-r { margin-bottom: var(--e3); padding: 0; }
 
 .dia-titol-r {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; min-height: 44px; padding: 0; gap: var(--e2);
-  border: 0; border-bottom: 1.5px solid var(--neatline);
-  background: none; color: var(--ink-suau); font: inherit;
-  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+  width: 100%; display: flex; align-items: center; gap: var(--e2);
+  background: none; border: 0; border-bottom: 1px solid var(--fil-viu);
+  padding: var(--e3) var(--e3) var(--e2);
+  font-family: var(--mono); font-size: .625rem; font-weight: 500;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--utm);
+  text-align: left; transition: background-color .16s var(--entra);
 }
-.dia-titol-r:active { color: var(--ink); }
-.dia-bloc-r[data-urgent="1"] .dia-titol-r { color: var(--gr); border-bottom-color: var(--gr); }
+.dia-titol-r .ic { margin-left: auto; width: 14px; height: 14px; opacity: .5; }
+.dia-titol-r:active { background: var(--utm-suau); }
+.dia-bloc-r[data-urgent="1"] .dia-titol-r { color: var(--avis); }
 
 .dia-coses { display: flex; flex-direction: column; }
-.dia-cosa { padding: var(--e3) 0; border-bottom: 1px solid var(--utm-suau);
-            display: flex; flex-direction: column; gap: 2px; }
-.dia-cosa:last-child { border-bottom: 0; }
-.dia-text { line-height: 1.35; overflow-wrap: anywhere; }
 
-/* El que ja ha passat o ja està fet no desapareix —saber que ja ho tens fet
-   forma part del que véns a mirar— però s'aparta. */
-.dia-cosa[data-fet="1"] { opacity: .5; }
+/* Una fila: marca · text · dada. Sempre en aquest ordre i sempre alineades. */
+.dia-cosa {
+  display: flex; align-items: baseline; gap: var(--e3);
+  padding: var(--e2) var(--e3);
+}
+.dia-cosa + .dia-cosa { border-top: 1px solid var(--utm-suau); }
+
+.dia-marca {
+  font-family: var(--mono); font-size: .6875rem; line-height: 1.5;
+  color: var(--utm); min-width: 40px; flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.dia-cosa[data-urgent="1"] .dia-marca { color: var(--avis); }
+.dia-cosa[data-fet="1"] .dia-marca { color: var(--ink-suau); }
+
+.dia-text { line-height: 1.35; overflow-wrap: anywhere; min-width: 0; }
+/* La columna de la dreta és per a dades curtes —una hora, un import, «fa 4
+   dies»— i per això no parteix. Però el diari hi posa un tros del que has
+   escrit, i allò sí que és llarg: es deixa encongir i s'acaba amb punts en
+   comptes d'empènyer la pàgina cap a fora. */
+.dia-cosa .menut { margin-left: auto; white-space: nowrap;
+                   flex: 0 1 auto; min-width: 0; max-width: 48%;
+                   overflow: hidden; text-overflow: ellipsis;
+                   font-family: var(--mono); font-size: .6875rem; }
+.dia-cosa[data-fet="1"] .dia-text { color: var(--ink-suau); }
 .dia-cosa[data-urgent="1"] .dia-text { font-weight: 600; }
-.dia-cosa[data-urgent="1"] .menut { color: var(--gr); }
+
+/* La tira d'hàbits: una barra per hàbit, alçada = com el portes.
+   Substitueix una llista de noms que no es llegia d'una ullada. */
+.dia-tira { display: flex; gap: 3px; padding: var(--e3); }
+.dia-tira i {
+  flex: 1; height: 26px; background: var(--h0); position: relative;
+  border-radius: 1px;
+}
+.dia-tira i::after {
+  content: ""; position: absolute; inset: auto 0 0 0;
+  background: var(--utm); height: var(--h, 3px);
+}
+.dia-tira i[data-buit="1"]::after { background: var(--corba-mestra); height: 2px; }
+
+@media (min-width: 900px) {
+  .dia-pagina { max-width: 980px; }
+  /* A l'escriptori els panells van de dos en dos: llegir una columna de
+     760 px al mig d'una pantalla de 1900 era desaprofitar-la sencera. */
+  .dia-graella { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e3); align-items: start; }
+  .dia-graella > * { min-width: 0; margin-bottom: 0; }
+  .dia-nucli { padding-top: var(--e5); }
+  .dia-nucli .quan .d { font-size: 1.75rem; }
+}
 
 /* =========================================================================
    EL DIARI — el quadern de camp del marge del full
@@ -1367,7 +1413,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 16:52 · 28882f2";</script>
+<script>window.MARCA_JEFE = "2026-08-02 17:21 · ffbf2dd";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1515,7 +1561,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 16:52 · 28882f2";
+window.MARCA_JEFE = "2026-08-02 17:21 · ffbf2dd";
 </script>
 
 <script>
@@ -8629,6 +8675,16 @@ App.registraVista('dia', {
     function pinta(d, dEnCau) {
       var buit = !d.blocs.length;
 
+      /* QUANT PORTES DEL DIA. No ve del servidor: surt del que ja hi ha a la
+         pantalla —les coses marcades com a fetes sobre el total—, que és
+         exactament el que estàs mirant. Inventar-se una altra xifra al
+         servidor seria tenir dues veritats del mateix. */
+      var totes = 0, fetes = 0;
+      d.blocs.forEach(function (b) {
+        b.coses.forEach(function (c) { totes++; if (c.fet) fetes++; });
+      });
+      var pct = totes ? Math.round((fetes / totes) * 100) : 0;
+
       arrel.innerHTML =
         '<header class="capcalera capcalera-nutri">' +
           '<div class="capcalera-fila">' +
@@ -8646,29 +8702,81 @@ App.registraVista('dia', {
             ? '<div class="estat">' + ic('mapa', 'ic-g') +
               '<h2>El dia és net</h2>' +
               '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
-            : d.blocs.map(bloc).join('')) +
+            : nucli(d, pct, totes, fetes) +
+              '<div class="dia-graella">' + d.blocs.map(bloc).join('') + '</div>') +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
       lliga();
     }
 
+    /* El nucli: un anell amb el que portes fet i el dia al costat. És el
+       primer que veus i l'única xifra que resumeix tota la pantalla. */
+    function nucli(d, pct, totes, fetes) {
+      return '<div class="dia-nucli">' +
+        '<div class="anell" data-gran="1" style="--p:' + pct + '"' +
+          ' role="img" aria-label="' + fetes + ' de ' + totes + ' coses fetes">' +
+          '<b>' + pct + '%</b><small>el dia</small>' +
+        '</div>' +
+        '<div class="quan">' +
+          '<div class="d">' + esc(fmt.relativa(d.data)) + '</div>' +
+          '<div class="s">' + esc(fmt.llarga(d.data)) + '</div>' +
+          '<div class="c">' + fetes + ' de ' + totes +
+            (totes === 1 ? ' cosa' : ' coses') + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
     function bloc(b) {
-      return '<section class="dia-bloc-r"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
+      /* Els hàbits s'ensenyen com una tira i no com una llista: la pregunta
+         que et fas és «quants me'n falten», i això es respon d'una ullada
+         mirant quantes barres estan baixes. Els noms els tens a l'apartat. */
+      var esHabits = b.modul === 'habits';
+
+      return '<section class="dia-bloc-r viu"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
         '<button class="dia-titol-r" data-ves="' + esc(b.accio) + '">' +
           '<span>' + esc(b.titol) + '</span>' +
+          '<span class="menut" style="margin-left:auto">' + b.coses.length + '</span>' +
           ic('dreta', 'ic-p') +
         '</button>' +
+        (esHabits ? tira(b) :
         '<div class="dia-coses">' +
           b.coses.map(function (c) {
             return '<div class="dia-cosa"' + (c.fet ? ' data-fet="1"' : '') +
                    (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<span class="dia-marca">' + esc(marca(c)) + '</span>' +
               '<span class="dia-text">' + esc(c.text) + '</span>' +
               (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
             '</div>';
           }).join('') +
-        '</div>' +
+        '</div>') +
       '</section>';
+    }
+
+    /* La marca de l'esquerra. Una hora si en té, i si no un signe que diu
+       de quina mena és la cosa. Sempre la mateixa amplada perquè la columna
+       quadri i l'ull hi pugui baixar sense tornar enrere. */
+    function marca(c) {
+      var m = String(c.menut || '');
+      var hora = m.match(/^(\d{1,2}:\d{2})/);
+      if (hora) return hora[1];
+      if (c.fet) return '✓';
+      if (c.urgent) return '!';
+      return '·';
+    }
+
+    function tira(b) {
+      return '<div class="dia-tira" role="img" aria-label="' +
+        esc(b.coses.length + ' hàbits per marcar') + '">' +
+        b.coses.map(function (c) {
+          /* «1 de 2» dona la meitat; sense xifres, la barra queda al mínim
+             perquè es vegi que l'hàbit existeix i encara no s'ha tocat. */
+          var n = String(c.menut || '').match(/(\d+)\s*de\s*(\d+)/);
+          var pct = n ? Math.round((Number(n[1]) / Number(n[2])) * 100) : 0;
+          return '<i' + (pct ? ' style="--h:' + Math.max(pct, 8) + '%"' : ' data-buit="1"') +
+                 ' title="' + esc(c.text) + '"></i>';
+        }).join('') +
+      '</div>';
     }
 
     function lliga() {

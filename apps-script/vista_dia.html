@@ -21,6 +21,16 @@ App.registraVista('dia', {
     function pinta(d, dEnCau) {
       var buit = !d.blocs.length;
 
+      /* QUANT PORTES DEL DIA. No ve del servidor: surt del que ja hi ha a la
+         pantalla —les coses marcades com a fetes sobre el total—, que és
+         exactament el que estàs mirant. Inventar-se una altra xifra al
+         servidor seria tenir dues veritats del mateix. */
+      var totes = 0, fetes = 0;
+      d.blocs.forEach(function (b) {
+        b.coses.forEach(function (c) { totes++; if (c.fet) fetes++; });
+      });
+      var pct = totes ? Math.round((fetes / totes) * 100) : 0;
+
       arrel.innerHTML =
         '<header class="capcalera capcalera-nutri">' +
           '<div class="capcalera-fila">' +
@@ -38,29 +48,81 @@ App.registraVista('dia', {
             ? '<div class="estat">' + ic('mapa', 'ic-g') +
               '<h2>El dia és net</h2>' +
               '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
-            : d.blocs.map(bloc).join('')) +
+            : nucli(d, pct, totes, fetes) +
+              '<div class="dia-graella">' + d.blocs.map(bloc).join('') + '</div>') +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
       lliga();
     }
 
+    /* El nucli: un anell amb el que portes fet i el dia al costat. És el
+       primer que veus i l'única xifra que resumeix tota la pantalla. */
+    function nucli(d, pct, totes, fetes) {
+      return '<div class="dia-nucli">' +
+        '<div class="anell" data-gran="1" style="--p:' + pct + '"' +
+          ' role="img" aria-label="' + fetes + ' de ' + totes + ' coses fetes">' +
+          '<b>' + pct + '%</b><small>el dia</small>' +
+        '</div>' +
+        '<div class="quan">' +
+          '<div class="d">' + esc(fmt.relativa(d.data)) + '</div>' +
+          '<div class="s">' + esc(fmt.llarga(d.data)) + '</div>' +
+          '<div class="c">' + fetes + ' de ' + totes +
+            (totes === 1 ? ' cosa' : ' coses') + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
     function bloc(b) {
-      return '<section class="dia-bloc-r"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
+      /* Els hàbits s'ensenyen com una tira i no com una llista: la pregunta
+         que et fas és «quants me'n falten», i això es respon d'una ullada
+         mirant quantes barres estan baixes. Els noms els tens a l'apartat. */
+      var esHabits = b.modul === 'habits';
+
+      return '<section class="dia-bloc-r viu"' + (b.urgent ? ' data-urgent="1"' : '') + '>' +
         '<button class="dia-titol-r" data-ves="' + esc(b.accio) + '">' +
           '<span>' + esc(b.titol) + '</span>' +
+          '<span class="menut" style="margin-left:auto">' + b.coses.length + '</span>' +
           ic('dreta', 'ic-p') +
         '</button>' +
+        (esHabits ? tira(b) :
         '<div class="dia-coses">' +
           b.coses.map(function (c) {
             return '<div class="dia-cosa"' + (c.fet ? ' data-fet="1"' : '') +
                    (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<span class="dia-marca">' + esc(marca(c)) + '</span>' +
               '<span class="dia-text">' + esc(c.text) + '</span>' +
               (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
             '</div>';
           }).join('') +
-        '</div>' +
+        '</div>') +
       '</section>';
+    }
+
+    /* La marca de l'esquerra. Una hora si en té, i si no un signe que diu
+       de quina mena és la cosa. Sempre la mateixa amplada perquè la columna
+       quadri i l'ull hi pugui baixar sense tornar enrere. */
+    function marca(c) {
+      var m = String(c.menut || '');
+      var hora = m.match(/^(\d{1,2}:\d{2})/);
+      if (hora) return hora[1];
+      if (c.fet) return '✓';
+      if (c.urgent) return '!';
+      return '·';
+    }
+
+    function tira(b) {
+      return '<div class="dia-tira" role="img" aria-label="' +
+        esc(b.coses.length + ' hàbits per marcar') + '">' +
+        b.coses.map(function (c) {
+          /* «1 de 2» dona la meitat; sense xifres, la barra queda al mínim
+             perquè es vegi que l'hàbit existeix i encara no s'ha tocat. */
+          var n = String(c.menut || '').match(/(\d+)\s*de\s*(\d+)/);
+          var pct = n ? Math.round((Number(n[1]) / Number(n[2])) * 100) : 0;
+          return '<i' + (pct ? ' style="--h:' + Math.max(pct, 8) + '%"' : ' data-buit="1"') +
+                 ' title="' + esc(c.text) + '"></i>';
+        }).join('') +
+      '</div>';
     }
 
     function lliga() {
