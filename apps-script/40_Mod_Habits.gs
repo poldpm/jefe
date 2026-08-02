@@ -68,6 +68,20 @@ function MODUL_HABITS() {
     ],
 
     accions: {
+      /* TOT EL QUE NECESSITA LA PANTALLA, EN UNA SOLA CRIDA.
+         La fila del dia i el full del mes són dues coses que es veuen alhora
+         i es demanaven per separat: dues anades al servidor per obrir hàbits,
+         i dues més cada cop que en marcaves un. Cada anada costa un segon i
+         mig abans de fer res, i totes dues llegeixen el MATEIX full. */
+      pantalla: function (p) {
+        p = p || {};
+        var d = p.data || Utils.avui();
+        var n = p.dies || 30;
+        return Memoria.recorda('habits', 'pantalla:' + d + ':' + n, function () {
+          return { dia: Habits.dia(d), mes: Habits.mes(d, n) };
+        });
+      },
+
       /* Desades: el full de registres té una fila per hàbit i dia, i llegir-lo
          creix amb els mesos. Marcar-ne un el tomba tot sol. */
       dia: function (p) {
@@ -79,7 +93,13 @@ function MODUL_HABITS() {
         return Memoria.recorda('habits', 'mes:' + f + ':' + n,
                                function () { return Habits.mes(f, n); });
       },
-      marca: function (p) { return Habits.marca(p.id, p.data, p.valor); },
+      /* Marcar torna el dia I el full del mes. Abans tornava el dia i el
+         client havia de demanar el mes a part: dues anades per un toc. */
+      marca: function (p) {
+        var d = Habits.marca(p.id, p.data, p.valor);
+        d.mes = Habits.mes(p.data || Utils.avui(), 30);
+        return d;
+      },
       llista: function () { return Habits.definicions(); },
       historic: function (p) {
         var n = p.dies || 30;

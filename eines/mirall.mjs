@@ -176,6 +176,14 @@ const MOCK = `
         return d;
       }
       if (accio === 'mes') return HABITS_MES;
+      if (accio === 'pantalla') {
+        var dd = copia(estatDia);
+        if (p.data && p.data !== dd.data) {
+          dd.data = p.data; dd.esAvui = false;
+          dd.habits.forEach(function (h) { h.valor = null; h.registrat = false; h.complert = false; });
+        }
+        return { dia: dd, mes: HABITS_MES };
+      }
       if (accio === 'historic') return HISTORICS[p.id] || HISTORICS.h1;
       if (accio === 'marca') {
         var h = habitPerId(p.id);
@@ -185,7 +193,7 @@ const MOCK = `
           h.registrat = true;
           h.complert = h.esComptador ? false : h.valor >= h.objectiu;
         }
-        return copia(estatDia);
+        var m = copia(estatDia); m.mes = HABITS_MES; return m;
       }
       if (accio === 'ordena') {
         var nou = [];

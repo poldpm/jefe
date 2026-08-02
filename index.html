@@ -1367,7 +1367,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-02 16:40 · adcb501";</script>
+<script>window.MARCA_JEFE = "2026-08-02 16:49 · a0c7526";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -1515,7 +1515,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-02 16:40 · adcb501";
+window.MARCA_JEFE = "2026-08-02 16:49 · a0c7526";
 </script>
 
 <script>
@@ -4797,8 +4797,11 @@ App.registraVista('habits', {
       /* Amb un tauler obert no es toca res: el que es veu a la franja ja és
          el bo, i la ratxa es posarà al dia la pròxima vegada que carregui. */
       if (App.interactuant()) return;
+      /* El mes ve amb la mateixa resposta de marcar: abans es demanava a part i
+         un toc valia dues anades al servidor. */
+      if (d.mes) { mes = d.mes; Cau.set('habits.mes', d.mes); }
       pinta(d, false);
-      carregaMes();
+      pintaMes();
     }
 
     /** Repintar UNA franja, no la pàgina. */
@@ -4814,7 +4817,7 @@ App.registraVista('habits', {
 
     function marcaDia(id, dia) {
       crida('habits', 'marca', { id: id, data: dia, valor: null })
-        .then(function () { App.brindis(fmt.relativa(dia) + ' registrat'); carrega(); carregaMes(); })
+        .then(function () { App.brindis(fmt.relativa(dia) + ' registrat'); carrega(); })
         .catch(function (err) { App.brindis(err.message, 'error'); });
     }
 
@@ -4925,7 +4928,7 @@ App.registraVista('habits', {
             if (dc > fmt.avui()) return;
             crida('habits', 'marca', { id: id, data: dc, valor: null }).then(function () {
               App.brindis(fmt.relativa(dc) + ' registrat');
-              App.tancaModal(); carrega(); carregaMes();
+              App.tancaModal(); carrega();
             }).catch(function (err) { App.brindis(err.message, 'error'); });
           });
         });
@@ -5048,7 +5051,7 @@ App.registraVista('habits', {
         boto.dataset.carregant = '1';
         crida('habits', esNou ? 'crea' : 'edita', p)
           .then(function () { App.tancaModal(); App.brindis(esNou ? 'Hàbit creat' : 'Desat');
-                              carrega(); carregaMes(); })
+                              carrega(); })
           .catch(function (err) { boto.dataset.carregant = '0'; App.brindis(err.message, 'error'); });
       });
     }
@@ -5065,7 +5068,7 @@ App.registraVista('habits', {
         cos.querySelector('[data-si]').addEventListener('click', function (ev) {
           ev.currentTarget.dataset.carregant = '1';
           crida('habits', 'arxiva', { id: h.id })
-            .then(function () { App.tancaModal(); App.brindis('Arxivat'); carrega(); carregaMes(); })
+            .then(function () { App.tancaModal(); App.brindis('Arxivat'); carrega(); })
             .catch(function (err) { App.brindis(err.message, 'error'); });
         });
       }, 220);
@@ -5101,15 +5104,23 @@ App.registraVista('habits', {
 
     // -------------------------------------------------------------- càrrega
 
+    /* UNA SOLA ANADA PER A LES DUES COSES.
+       La fila del dia i el full del mes es veuen alhora i es demanaven per
+       separat: dues anades per obrir la pantalla i dues més cada cop que en
+       marcaves un. Totes dues llegeixen el mateix full del servidor. */
     function carrega() {
-      crida('habits', 'dia', { data: data })
-        .then(function (d) {
+      crida('habits', 'pantalla', { data: data, dies: 30 })
+        .then(function (r) {
+          if (r.mes) { mes = r.mes; Cau.set('habits.mes', r.mes); }
+
+          var d = r.dia;
           /* Si mentre això arribava has tocat res, el que mana és el que has
              tocat: aquesta foto ja és vella. Es descarta i prou. */
-          if (enVol || Object.keys(espera).length) return;
+          if (enVol || Object.keys(espera).length) { pintaMes(); return; }
           Cau.set('habits.' + data, d);
-          if (App.interactuant()) { dades = d; return; }
+          if (App.interactuant()) { dades = d; pintaMes(); return; }
           pinta(d, false);
+          pintaMes();
         })
         .catch(function (err) {
           if (dades) { App.brindis('Sense connexió', 'error'); return; }
@@ -5119,11 +5130,8 @@ App.registraVista('habits', {
         });
     }
 
-    function carregaMes() {
-      crida('habits', 'mes', { dies: 30 })
-        .then(function (m) { mes = m; Cau.set('habits.mes', m); pintaMes(); })
-        .catch(function () { /* el full de mes és secundari: sense connexió, no molesta */ });
-    }
+    // Es queda pel nom: tot el que la cridava ara ja te el mes amb carrega.
+    function carregaMes() { carrega(); }
 
     if (!App._relleuLligat) {
       App._relleuLligat = true;
@@ -5142,7 +5150,6 @@ App.registraVista('habits', {
       '<div class="esquelet franja-fantasma"></div><div class="esquelet franja-fantasma"></div>' +
       '<div class="esquelet franja-fantasma"></div></div></div>';
     carrega();
-    carregaMes();
   }
 });
 </script>
