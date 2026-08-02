@@ -642,6 +642,12 @@ App.registraVista('conversa', {
       acaba();
     }
 
+    /* SI FALLA TRES VEGADES SEGUIDES, S'ATURA.
+       Amb el micròfon obert, cada frase que peta torna a escoltar i a petar:
+       et quedes mirant «escoltant · pensant · escoltant» sense saber que el
+       que passa és sempre el mateix error. Val més parar i dir-ho una vegada. */
+    var fallidesVeu = 0;
+
     function acaba() {
       ocupat = false;
       respostaFresca = true;           // acaba de dir-ho: ara sí que es veu
@@ -651,6 +657,21 @@ App.registraVista('conversa', {
       /* Si el micròfon segueix obert, ha de tornar a dir que escolta. Deixar-hi
          «pensant-hi…» fa creure que encara hi és i que no serveix de res
          tornar-li a parlar. */
+      var ultim = missatges[missatges.length - 1];
+      var haAnatMalament = ultim && ultim.rol === 'assistent' &&
+                           /^(Error|No he pogut|El servei|Has arribat)/.test(ultim.text || '');
+      if (haAnatMalament && continua && veu.engegat) fallidesVeu++;
+
+      if (fallidesVeu >= 3 && continua) {
+        continua = false; aturaVoluntaria = true;
+        paraVeu(); pintaMicro();
+        mostraOida('Ho he intentat tres vegades i sempre falla. Micròfon aturat.', true);
+        App.brindis('Micròfon aturat: mira l\'error de sobre', 'error');
+        fallidesVeu = 0;
+        pinta();
+        return;
+      }
+
       if (continua && veu.engegat) {
         posaEstat('escoltant', 'escoltant');
         mostraOida('escoltant… parla quan vulguis', false);
@@ -966,7 +987,7 @@ App.registraVista('conversa', {
       }, 1000);
 
       crida('conversa', 'enviaVeu', { audio: base64, mime: 'audio/wav', id_conversa: idConversa })
-        .then(rebResposta)
+        .then(function (r) { if (!r.error) fallidesVeu = 0; rebResposta(r); })
         .catch(function (err) { missatges.push({ rol: 'assistent', text: err.message }); acaba(); });
     }
 

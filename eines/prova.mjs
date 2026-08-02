@@ -1273,9 +1273,31 @@ console.log("Transport a Gemini: la forma de la peticio");
   enviat = null;
   ctx.Config.get = (k) => ({ model_bo: 'gemini-1.5-pro', proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null;
   ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'hola' }], model: 'bo' });
-  cal('a un model que no ho enten, no se li envia',
+  // I si el model es queixa, s'hi torna sense i se'n recorda.
+  var intents = 0;
+  ctx.UrlFetchApp.fetch = (url, o) => {
+    intents++;
+    enviat = { url: url, cos: JSON.parse(o.payload) };
+    if (enviat.cos.generationConfig.thinkingConfig) {
+      return { getResponseCode: () => 400,
+               getContentText: () => JSON.stringify({ error: { message: 'invalid argument' } }) };
+    }
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'fet' }] } }],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } }) };
+  };
+  ctx.Config.get = (k) => ({ model_bo: 'gemini-2.5-pro', proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null;
+  var r2 = ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'hola' }], model: 'bo' });
+  cal('si el model es queixa, s hi torna sense i respon igual',
+      intents === 2 && r2.text === 'fet', intents + ' intents');
+  cal('i el segon intent ja no el porta',
       enviat.cos.generationConfig.thinkingConfig === undefined,
       JSON.stringify(enviat.cos.generationConfig));
+
+  // I la seguent pregunta al mateix model ja no ho torna a provar.
+  intents = 0;
+  ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'i ara' }], model: 'bo' });
+  cal('i no ho torna a provar cada vegada', intents === 1, intents + ' intents');
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

@@ -49,6 +49,10 @@ var IA = (function () {
 
   // ---------------------------------------------------------------- Gemini
 
+  /* Models als quals ja sabem que NO se'ls pot dir que no rumiïn, après a
+     base de provar-ho. Viu mentre viu l'execució: no cal desar-ho enlloc. */
+  var SENSE_RUMIAR = {};
+
   var Gemini = {
     url: function (model) {
       return 'https://generativelanguage.googleapis.com/v1beta/models/' +
@@ -90,17 +94,21 @@ var IA = (function () {
       if (p.json) cos.generationConfig.responseMimeType = 'application/json';
 
       /* PENSAR ABANS DE RESPONDRE COSTA SEGONS, I AQUÍ GAIREBÉ MAI CAL.
-         Els models 2.5 en amunt es prenen una estona per pensar si no els
-         dius el contrari. Però la feina d'aquí és mirar una fitxa que ja ve
-         resolta i, com a molt, triar una eina: no hi ha res a rumiar. Amb
-         l'àudio es notava el doble, i una pregunta de dos segons de veu en
-         costava deu de resposta.
+         Els models nous es prenen una estona per pensar si no els dius el
+         contrari. Però la feina d'aquí és mirar una fitxa que ja ve resolta
+         i, com a molt, triar una eina: no hi ha res a rumiar. Amb l'àudio es
+         notava el doble, i una pregunta de dos segons de veu en costava deu
+         de resposta.
 
          Va per configuració i no clavat al codi: si algun dia hi ha una
-         pregunta que sí que ho necessiti, es puja `pensa_tokens` al full i
-         ja està. I només als models que ho entenen: als altres, aquest camp
-         fa que l'API contesti un error. */
-      if (/gemini-(2\.5|3|[4-9])/.test(String(p._model || ''))) {
+         pregunta que sí que ho necessiti, es puja `pensa_tokens` al full.
+
+         I NO S'ENDEVINA QUIN MODEL HO ACCEPTA. El primer intent ho endevinava
+         pel nom i li va costar un error a la cara a en Pol: n'hi ha que volen
+         un mínim i no zero. Ara es prova, i si el model es queixa, `crida`
+         ho torna a demanar sense i se'n recorda per a la resta de l'execució. */
+      var model = String(p._model || '');
+      if (model && SENSE_RUMIAR[model] !== false) {
         cos.generationConfig.thinkingConfig = {
           thinkingBudget: Config.getNum('pensa_tokens', 0)
         };
@@ -111,14 +119,34 @@ var IA = (function () {
 
     crida: function (p, model) {
       p._model = model;
-      var resposta = UrlFetchApp.fetch(Gemini.url(model), {
-        method: 'post',
-        contentType: 'application/json',
-        // La clau va a la capçalera, MAI a l'URL: els URLs acaben als registres.
-        headers: { 'x-goog-api-key': clau_() },
-        payload: JSON.stringify(Gemini.cos(p)),
-        muteHttpExceptions: true
-      });
+
+      function envia(cos) {
+        return UrlFetchApp.fetch(Gemini.url(model), {
+          method: 'post',
+          contentType: 'application/json',
+          // La clau va a la capçalera, MAI a l'URL: els URLs acaben als registres.
+          headers: { 'x-goog-api-key': clau_() },
+          payload: JSON.stringify(cos),
+          muteHttpExceptions: true
+        });
+      }
+
+      var cos = Gemini.cos(p);
+      var resposta = envia(cos);
+
+      /* SI ES QUEIXA DE COM LI HO DEMANEM, S'HI TORNA SENSE LA PART OPCIONAL.
+         L'única cosa opcional que hi posem és dir-li que no rumiï, i no tots
+         els models l'accepten igual: n'hi ha que volen un mínim i no zero.
+         Val més una resposta que triga tres segons de més que un error a la
+         cara, i el registre ho diu perquè es pugui arreglar de debò. */
+      if (resposta.getResponseCode() === 400 && cos.generationConfig.thinkingConfig) {
+        Log.avis('ia.rumiar', 'El model ' + model + ' no accepta que li diguin de no rumiar. ' +
+                              'Ho torno a demanar sense.',
+                 { resposta: Utils.talla(resposta.getContentText(), 200) });
+        delete cos.generationConfig.thinkingConfig;
+        SENSE_RUMIAR[model] = false;      // en tota aquesta execució, ja no s'hi torna
+        resposta = envia(cos);
+      }
 
       var codi = resposta.getResponseCode();
       var text = resposta.getContentText();
