@@ -100,7 +100,8 @@ var Conversa = (function () {
       motiu: IA.motiu(),
       model: Config.get('model_bo'),
       suggeriments: suggeriments_(),
-      dreceres: Moduls.dreceres()
+      dreceres: Moduls.dreceres(),
+      consum: IA.consum()
     };
     if (p.ambHistorial) {
       try { r.historial = historial(p.id_conversa); } catch (e) { r.historial = null; }
@@ -213,7 +214,8 @@ var Conversa = (function () {
       propostes: r.propostes,
       eines: r.einesUsades,
       tokens: r.tokens,
-      temps: r.temps
+      temps: r.temps,
+      consum: IA.consum()
     };
   }
 

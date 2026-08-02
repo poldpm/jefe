@@ -343,6 +343,7 @@ export function dades(AVUI, menys) {
     motiu: 'El mirall no té capa d\'IA: aquí no es parla amb ningú.',
     model: 'mirall',
     suggeriments: ['Com he anat aquest mes?', 'Quant porto gastat?', 'Què em queda per fer avui?'],
+    consum: { avui: 47, limit: 250, percentatge: 81, tocat: true, faSegons: 35, esperaSegons: 60, quota: 'GenerateRequestsPerMinutePerProjectPerModel' },
     dreceres: [{ vista: 'dia', frases: ['pagina del dia', 'pagina d avui', 'full del dia', 'dashboard del dia', 'la pagina de avui', 'el dia d avui'] }]
   });
 

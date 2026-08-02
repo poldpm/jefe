@@ -1291,11 +1291,39 @@ console.log("Transport a Gemini: la forma de la peticio");
   };
   ctx.Config.get = (k) => ({ model_bo: 'gemini-2.5-pro', proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null;
   var r2 = ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'hola' }], model: 'bo' });
-  cal('si el model es queixa, s hi torna sense i respon igual',
-      intents === 2 && r2.text === 'fet', intents + ' intents');
-  cal('i el segon intent ja no el porta',
+  cal('si no accepta el zero, baixa al minim i respon igual',
+      intents === 3 && r2.text === 'fet', intents + ' intents');
+  cal('i si ni amb el minim, es deixa corrent',
       enviat.cos.generationConfig.thinkingConfig === undefined,
       JSON.stringify(enviat.cos.generationConfig));
+
+  // EL CAS QUE IMPORTA: n'hi ha que accepten el minim encara que no el zero.
+  // Abans queien directament a «rumia el que vulguis» i alla se n'anaven els
+  // segons que preteniem estalviar.
+  intents = 0;
+  ctx.UrlFetchApp.fetch = (url, o) => {
+    intents++;
+    enviat = { url: url, cos: JSON.parse(o.payload) };
+    var t = enviat.cos.generationConfig.thinkingConfig;
+    if (t && t.thinkingBudget === 0) {
+      return { getResponseCode: () => 400,
+               getContentText: () => JSON.stringify({ error: { message: 'budget must be >= 128' } }) };
+    }
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'fet' }] } }],
+      usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } }) };
+  };
+  ctx.Config.get = (k) => ({ model_bo: 'un-altre-model', proveidor_ia: 'gemini', ia_activa: 'SI' })[k] || null;
+  ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'hola' }], model: 'bo' });
+  cal('amb un que vol un minim, s hi queda i no el deixa lliure',
+      intents === 2 && enviat.cos.generationConfig.thinkingConfig.thinkingBudget === 128,
+      intents + ' intents · ' + JSON.stringify(enviat.cos.generationConfig.thinkingConfig));
+
+  intents = 0;
+  ctx.IA.genera({ sistema: 'x', missatges: [{ rol: 'usuari', text: 'i ara' }], model: 'bo' });
+  cal('i la seguent ja va directa al minim',
+      intents === 1 && enviat.cos.generationConfig.thinkingConfig.thinkingBudget === 128,
+      intents + ' intents');
 
   // I la seguent pregunta al mateix model ja no ho torna a provar.
   intents = 0;
@@ -1371,7 +1399,8 @@ console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tir
         if (p.model === 'un-model-que-no-hi-es') throw new Error('404 model not found');
         return { text: 'quants cigarros he fumat avui' };
       },
-      disponible: () => true, motiu: () => null
+      disponible: () => true, motiu: () => null,
+      consum: () => ({ avui: 3, limit: null, tocat: false, faSegons: null })
     },
     Habits: { definicions: () => [] },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {}, CacheService: {},

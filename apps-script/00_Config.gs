@@ -43,6 +43,11 @@ var CONFIG_DEFECTE = {
      que ho necessiti de debò. */
   pensa_tokens: 0,
 
+  /* El limit de peticions al dia del teu pla, si el saps. Google no el diu
+     enlloc que es pugui preguntar, o sigui que sense aixo la telemetria
+     ensenya nomes el que has gastat. Amb aixo, tambe el tant per cent. */
+  limit_peticions_dia: 0,
+
   // Si es posa a NO, la capa d'IA deixa d'enviar text del diari.
   // Els resums perden profunditat però tot continua funcionant.
   ia_inclou_diari: 'SI',

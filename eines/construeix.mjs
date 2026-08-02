@@ -15,6 +15,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 const ORIGEN = 'apps-script';
 
@@ -77,10 +78,25 @@ if (restants) {
   process.exit(1);
 }
 
-// 4. Nota per a qui obri el fitxer generat
+/* 4. LA MARCA DE LA CONSTRUCCIÓ.
+   Apps Script no deixa preguntar amb quina versió s'està servint una pàgina,
+   i sense això no hi ha manera de saber si el que tens obert al mòbil és el
+   que s'acaba de desplegar o el d'abans-d'ahir amb la memòria del navegador
+   pel mig. Es marca aquí: el dia i l'hora exactes de la construcció, i el
+   commit d'on surt. Es veu a la telemetria, apartat SISTEMA. */
+const ara = new Date();
+const dosDig = (n) => ('0' + n).slice(-2);
+const MARCA = ara.getFullYear() + '-' + dosDig(ara.getMonth() + 1) + '-' + dosDig(ara.getDate()) +
+              ' ' + dosDig(ara.getHours()) + ':' + dosDig(ara.getMinutes());
+let commit = '';
+try {
+  commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+} catch (e) { /* fora d'un repositori, la data ja diu prou */ }
+
 html = html.replace('<body>',
   '<body>\n<!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.\n' +
-  '     La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->');
+  '     La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->\n' +
+  '<script>window.MARCA_JEFE = ' + JSON.stringify(MARCA + (commit ? ' · ' + commit : '')) + ';</script>');
 
 fs.mkdirSync(DESTI, { recursive: true });
 fs.writeFileSync(path.join(DESTI, 'index.html'), html);

@@ -49,9 +49,81 @@ var IA = (function () {
 
   // ---------------------------------------------------------------- Gemini
 
-  /* Models als quals ja sabem que NO se'ls pot dir que no rumiïn, après a
-     base de provar-ho. Viu mentre viu l'execució: no cal desar-ho enlloc. */
-  var SENSE_RUMIAR = {};
+  /* QUANT SE'L DEIXA RUMIAR, PER MODEL, APRÈS A BASE DE PROVAR-HO.
+     El valor que volem és zero —rumiar costa segons i aquí no cal—, però no
+     tots l'accepten: n'hi ha que demanen un mínim. Si es queixa del zero es
+     prova el mínim, i si també es queixa es deixa córrer i que faci el que
+     vulgui. Val més rumiar poc que rumiar sense fre, i molt més que un error
+     a la cara. Viu mentre viu l'execució: no cal desar-ho enlloc. */
+  var RUMIAR_MIN = 128;
+  var QUANT_RUMIA = {};        // model → tokens, o null si no se li pot dir res
+
+  /* ------------------------------------------------------------------------
+     QUANTES PETICIONS PORTES AVUI
+
+     Google NO diu quantes te'n queden: no hi ha cap manera de preguntar-ho.
+     L'únic que se sap del cert és el que hem gastat NOSALTRES, i quan ens han
+     dit que prou. Doncs això és el que es compta, i el que s'ensenya.
+
+     No hi ha cap percentatge inventat. Si poses el límit del teu pla a
+     `limit_peticions_dia`, llavors sí que hi ha un tant per cent de debò; si
+     no, es veu el número i prou, que ja diu més que una barra que menteix.
+     ------------------------------------------------------------------------ */
+
+  var CAU_COMPTADOR = 'ia_peticions_';   // + dia
+  var PROP_ULTIM_NO = 'IA_ULTIM_LIMIT';
+
+  function compta_(model) {
+    try {
+      var cau = CacheService.getScriptCache();
+      var clau = CAU_COMPTADOR + Utils.avui();
+      var n = Number(cau.get(clau) || 0) + 1;
+      /* Sis hores: prou per cobrir un dia de fer servir l'app, i si es perd
+         només vol dir que el número surt més baix del que toca. Cap decisió
+         depèn d'aquest comptador: només serveix per mirar-se'l. */
+      cau.put(clau, String(n), 21600);
+    } catch (e) { /* sense cau no es compta, i no passa res */ }
+  }
+
+  function apuntaLimit_(segons, quota) {
+    try {
+      PropertiesService.getScriptProperties().setProperty(PROP_ULTIM_NO,
+        JSON.stringify({ quan: Utils.ara(), segons: segons || null, quota: quota || '' }));
+    } catch (e) {}
+  }
+
+  /** Què sabem del consum. Tot mesurat, res estimat. */
+  function consum() {
+    var avui = 0;
+    try {
+      avui = Number(CacheService.getScriptCache().get(CAU_COMPTADOR + Utils.avui()) || 0);
+    } catch (e) {}
+
+    var ultim = null;
+    try {
+      ultim = Utils.desJson(
+        PropertiesService.getScriptProperties().getProperty(PROP_ULTIM_NO), null);
+    } catch (e) {}
+
+    var limit = Config.getNum('limit_peticions_dia', 0);
+    var r = { avui: avui, limit: limit || null, tocat: false, faSegons: null, esperaSegons: null };
+
+    if (ultim && ultim.quan) {
+      var d = new Date(ultim.quan);
+      if (!isNaN(d.getTime())) {
+        var fa = Math.round((new Date().getTime() - d.getTime()) / 1000);
+        r.faSegons = fa;
+        r.esperaSegons = ultim.segons || null;
+        /* «Tocat» vol dir que el límit encara pot estar actiu. Amb el temps
+           d'espera que ens va dir Google si el va dir, i si no, un minut, que
+           és el que dura el límit per minut. */
+        r.tocat = fa < (ultim.segons || 60);
+        r.quota = ultim.quota || '';
+      }
+    }
+    if (limit) r.percentatge = Math.max(0, Math.round(100 - (avui / limit) * 100));
+    return r;
+  }
 
   var Gemini = {
     url: function (model) {
@@ -108,10 +180,10 @@ var IA = (function () {
          un mínim i no zero. Ara es prova, i si el model es queixa, `crida`
          ho torna a demanar sense i se'n recorda per a la resta de l'execució. */
       var model = String(p._model || '');
-      if (model && SENSE_RUMIAR[model] !== false) {
-        cos.generationConfig.thinkingConfig = {
-          thinkingBudget: Config.getNum('pensa_tokens', 0)
-        };
+      if (model) {
+        var quant = QUANT_RUMIA[model];
+        if (quant === undefined) quant = Config.getNum('pensa_tokens', 0);
+        if (quant !== null) cos.generationConfig.thinkingConfig = { thinkingBudget: quant };
       }
 
       return cos;
@@ -121,6 +193,7 @@ var IA = (function () {
       p._model = model;
 
       function envia(cos) {
+        compta_(model);
         return UrlFetchApp.fetch(Gemini.url(model), {
           method: 'post',
           contentType: 'application/json',
@@ -134,18 +207,34 @@ var IA = (function () {
       var cos = Gemini.cos(p);
       var resposta = envia(cos);
 
-      /* SI ES QUEIXA DE COM LI HO DEMANEM, S'HI TORNA SENSE LA PART OPCIONAL.
-         L'única cosa opcional que hi posem és dir-li que no rumiï, i no tots
-         els models l'accepten igual: n'hi ha que volen un mínim i no zero.
-         Val més una resposta que triga tres segons de més que un error a la
-         cara, i el registre ho diu perquè es pugui arreglar de debò. */
+      /* SI ES QUEIXA DE QUANT EL DEIXEM RUMIAR, ES BAIXA UN ESGLAÓ.
+         Primer el mínim que en accepten la majoria; si tampoc, es deixa
+         córrer. Baixar directament a «que rumiï el que vulgui» era regalar
+         els segons que preteníem estalviar, i és el que li passava a en Pol:
+         402 tokens de rumiar en una pregunta de mirar una llista. */
       if (resposta.getResponseCode() === 400 && cos.generationConfig.thinkingConfig) {
-        Log.avis('ia.rumiar', 'El model ' + model + ' no accepta que li diguin de no rumiar. ' +
-                              'Ho torno a demanar sense.',
-                 { resposta: Utils.talla(resposta.getContentText(), 200) });
-        delete cos.generationConfig.thinkingConfig;
-        SENSE_RUMIAR[model] = false;      // en tota aquesta execució, ja no s'hi torna
+        var eren = cos.generationConfig.thinkingConfig.thinkingBudget;
+        if (eren < RUMIAR_MIN) {
+          QUANT_RUMIA[model] = RUMIAR_MIN;
+          cos.generationConfig.thinkingConfig.thinkingBudget = RUMIAR_MIN;
+          Log.avis('ia.rumiar', 'El model ' + model + ' no accepta ' + eren +
+                                ' tokens de rumiar. Ho provo amb ' + RUMIAR_MIN + '.');
+        } else {
+          QUANT_RUMIA[model] = null;
+          delete cos.generationConfig.thinkingConfig;
+          Log.avis('ia.rumiar', 'El model ' + model + ' no deixa que li diguin quant rumiar. ' +
+                                'Rumiarà el que vulgui.',
+                   { resposta: Utils.talla(resposta.getContentText(), 200) });
+        }
         resposta = envia(cos);
+
+        // Si el mínim tampoc no li va bé, l'últim recurs és no dir-li res.
+        if (resposta.getResponseCode() === 400 && cos.generationConfig.thinkingConfig) {
+          QUANT_RUMIA[model] = null;
+          delete cos.generationConfig.thinkingConfig;
+          Log.avis('ia.rumiar', 'Ni amb ' + RUMIAR_MIN + '. Rumiarà el que vulgui.');
+          resposta = envia(cos);
+        }
       }
 
       var codi = resposta.getResponseCode();
@@ -164,6 +253,7 @@ var IA = (function () {
           }
         }
         Log.avis('ia.quota', 'Límit de quota assolit', { quota: quota, espera: espera });
+        apuntaLimit_(espera ? parseInt(espera, 10) : null, quota);
 
         var segons = espera ? parseInt(espera, 10) : null;
         var e429 = new Error(
@@ -334,6 +424,7 @@ var IA = (function () {
     disponible: disponible,
     motiu: motiu,
     estat: estat,
+    consum: consum,
     genera: genera,
     missatgeEines: missatgeEines,
     models: models

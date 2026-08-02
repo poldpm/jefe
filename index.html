@@ -1367,6 +1367,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
+<script>window.MARCA_JEFE = "2026-08-02 15:51 · d4204b8";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3212,8 +3213,33 @@ App.registraVista('conversa', {
         });
       }
       var dre = ['<b>SISTEMA</b>'];
+      /* La marca de la construcció. Apps Script no deixa preguntar amb quina
+         versió s'està servint una pàgina, i sense això no hi ha manera de
+         saber si el que tens obert és el que s'acaba de desplegar o el d'abans
+         amb la memòria del navegador pel mig. */
+      if (window.MARCA_JEFE) {
+        dre.push('versió <span class="val">' + esc(window.MARCA_JEFE) + '</span>');
+      }
       dre.push('estat <span class="val">' + hud.dataset.estat + '</span>');
       if (estatIA && estatIA.model) dre.push('model <span class="val">' + esc(estatIA.model) + '</span>');
+
+      /* QUANTES PETICIONS PORTES. Google no diu quantes te'n queden —no hi ha
+         manera de preguntar-ho—, o sigui que aquí hi ha el que hem gastat
+         nosaltres, que sí que ho sabem del cert, i quan ens van dir que prou.
+         Cap barra inventada: un número mesurat val més que un percentatge que
+         se l'empesca. */
+      var c = estatIA && estatIA.consum;
+      if (c) {
+        dre.push('peticions avui <span class="val">' + c.avui +
+                 (c.limit ? ' / ' + c.limit : '') + '</span>');
+        if (c.limit) dre.push('queda <span class="val">' + c.percentatge + '%</span>');
+        if (c.faSegons !== null) {
+          dre.push('últim límit <span class="val">' +
+                   (c.faSegons < 90 ? 'fa ' + c.faSegons + 's'
+                                    : 'fa ' + Math.round(c.faSegons / 60) + ' min') + '</span>');
+        }
+      }
+
       dre.push('veu <span class="val">' + (veuActiva ? 'ON' : 'OFF') + '</span>');
       dre.push('escolta <span class="val">' + (continua ? 'CONTÍNUA' : 'OFF') + '</span>');
       dre.push('micro <span class="val">' + (potEscoltar ? 'OK' : 'NO') + '</span>');
@@ -3280,6 +3306,7 @@ App.registraVista('conversa', {
           (m.temps ? '<span title="on se n\'ha anat el temps"><b>' +
              (m.temps.total / 1000).toFixed(1) + 's</b> · ia ' + (m.temps.ia / 1000).toFixed(1) +
              ' · dades ' + ((m.temps.context + m.temps.eines) / 1000).toFixed(1) +
+             (m.temps.veu ? ' · veu ' + (m.temps.veu / 1000).toFixed(1) : '') +
              ' · ' + m.temps.voltes + (m.temps.voltes === 1 ? ' volta' : ' voltes') +
              /* Només si ha rumiat. Li demanem que no ho faci perquè costa
                 segons, i no tots els models fan cas: si un dia torna a anar
@@ -3444,6 +3471,7 @@ App.registraVista('conversa', {
        una sola funció, perquè el dia que canviï una cosa canviï per als dos. */
     function rebResposta(r) {
       idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
+      if (r.consum && estatIA) estatIA.consum = r.consum;
 
       /* Si venia de veu, ara ja sabem què has dit: la bombolla del micròfon
          es queda amb el text en comptes dels segons que durava. */
