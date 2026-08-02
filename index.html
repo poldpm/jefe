@@ -3444,6 +3444,26 @@ App.registraVista('conversa', {
        una sola funció, perquè el dia que canviï una cosa canviï per als dos. */
     function rebResposta(r) {
       idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
+
+      /* Si venia de veu, ara ja sabem què has dit: la bombolla del micròfon
+         es queda amb el text en comptes dels segons que durava. */
+      if (r.pregunta) {
+        for (var k = missatges.length - 1; k >= 0; k--) {
+          if (missatges[k].esVeu) { missatges[k].text = r.pregunta; delete missatges[k].esVeu; break; }
+        }
+      }
+
+      /* UNA ORDRE DITA DE VEU NO PASSA PEL MODEL.
+         El servidor l'ha reconeguda just després de transcriure-la i no ha
+         arribat a preguntar res: aquí només queda anar-hi. Sense el respir de
+         les eines, que aquí no hi ha cap resposta per llegir. */
+      if (r.drecera && App.vistes[r.drecera.vista]) {
+        Cau.set('conversa.missatges', missatges.slice(-40));
+        acaba();
+        App.ves(r.drecera.vista, r.drecera.params || null);
+        return;
+      }
+
       if (r.error) {
         missatges.push({ rol: 'assistent', text: r.error });
       } else {
@@ -3805,7 +3825,10 @@ App.registraVista('conversa', {
       if (ocupat) return;
       ocupat = true;
       arrel.querySelector('#b-envia').disabled = true;
-      missatges.push({ rol: 'usuari', text: '🎙 ' + segons.toFixed(1) + 's' });
+      /* La bombolla es posa buida i s'omple amb el que resulti que has dit:
+         el text arriba amb la resposta, no abans. Deixar-la sense res faria
+         semblar que no ha sentit res. */
+      missatges.push({ rol: 'usuari', text: '🎙 ' + segons.toFixed(1) + 's', esVeu: true });
       respostaFresca = false;
       pinta();
       posaEstat('pensant', 'escoltant-te');

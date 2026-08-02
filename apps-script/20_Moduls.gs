@@ -351,6 +351,26 @@ var Moduls = (function () {
     return out;
   }
 
+  /**
+   * Quina drecera diu aquest text, si en diu cap.
+   *
+   * La fa servir la veu: un cop transcrit «obre'm la pàgina del dia» ja no cal
+   * preguntar-li res a ningú, i ens estalviem la crida cara i els seus segons.
+   * El client fa el mateix amb el que escrius, i per això aquesta comparació
+   * ha de ser idèntica a la seva.
+   */
+  function drecera(text) {
+    var net = Utils.aixafa(text);
+    if (!net) return null;
+    var l = dreceres();
+    for (var i = 0; i < l.length; i++) {
+      for (var j = 0; j < l[i].frases.length; j++) {
+        if (net.indexOf(l[i].frases[j]) !== -1) return l[i];
+      }
+    }
+    return null;
+  }
+
   /** Metadades per a la interfície (sense funcions, serialitzable). */
   function perAlClient() {
     return actius().map(function (m) {
@@ -378,6 +398,7 @@ var Moduls = (function () {
     gestionaTornada: gestionaTornada,
     einesIA: einesIA,
     dreceres: dreceres,
+    drecera: drecera,
     perAlClient: perAlClient
   };
 })();

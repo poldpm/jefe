@@ -31,6 +31,12 @@ var CONFIG_DEFECTE = {
   model_barat: 'gemini-2.5-flash',
   model_bo: 'gemini-2.5-flash',
 
+  /* El model que NOMES transcriu la veu. A part a posta: els limits gratuits
+     de Gemini es compten per model, o sigui que transcriure amb un de
+     diferent no menja de la quota de les respostes. I com que la feina es
+     sentir i prou, no cal el bo. */
+  model_veu: 'gemini-2.5-flash-lite',
+
   /* Quant se li deixa «pensar» abans de contestar, en tokens. A zero, gens:
      la feina d'aquí és mirar una fitxa que ja ve resolta i triar una eina, i
      rumiar-hi només afegeix segons. Puja-ho si algun dia hi ha una pregunta

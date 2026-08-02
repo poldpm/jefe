@@ -1303,5 +1303,51 @@ console.log("Transport a Gemini: la forma de la peticio");
   cal('i no ho torna a provar cada vegada', intents === 1, intents + ' intents');
 }
 
+// ------------------- una ordre dita de veu no ha de passar pel model
+console.log("");
+console.log("Veu: les ordres es reconeixen despres de transcriure, sense preguntar");
+{
+  const moduls = [
+    { id: 'conversa', fulls: [{ nom: 'Converses' }],
+      dreceres: [{ vista: 'dia', frases: ['pagina del dia', 'pagina d avui', 'full del dia'] }] },
+    { id: 'habits', fulls: [{ nom: 'Habits' }], contextIA: function () { return 'habits'; } }
+  ];
+  const ctx = {
+    Date, Math, JSON, String, Number, Object, Array, RegExp,
+    Log: { info() {}, avis() {}, error() {} },
+    CacheService: { getScriptCache: () => null },
+    Config: { full: () => ({ getSheetByName: () => null }), zonaHoraria: () => 'Europe/Madrid' },
+    Utilities: { formatDate: () => '2026-08-02' },
+    Dades: { llegeix: () => [] }, Esquema: {}, IA: {},
+    SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8'), ctx);
+  moduls.forEach(function (m) { ctx['MODUL_' + m.id.toUpperCase()] = function () { return m; }; });
+
+  const d = (t) => { const r = ctx.Moduls.drecera(t); return r ? r.vista : null; };
+
+  cal("amb accents i apostrof, com ho diu una persona",
+      d("Ensenya'm la pàgina del dia") === 'dia', String(d("Ensenya'm la pàgina del dia")));
+  cal('sense accents, igual', d('obre la pagina del dia') === 'dia', String(d('obre la pagina del dia')));
+  cal('en majuscules, igual', d("ENSENYA LA PÀGINA D'AVUI") === 'dia',
+      String(d("ENSENYA LA PÀGINA D'AVUI")));
+  cal('amb signes pel mig, igual', d("va, ensenya-m'ho: la pàgina del dia!") === 'dia',
+      String(d("va, ensenya-m'ho: la pàgina del dia!")));
+
+  cal('una pregunta de debo NO es una ordre', d('quants cigarros he fumat avui') === null,
+      String(d('quants cigarros he fumat avui')));
+  cal('ni aquesta', d('com ha anat el dia') === null, String(d('com ha anat el dia')));
+  cal('ni res buit', d('') === null && d(null) === null, 'diu que si');
+
+  // La bessona del client ha de fer exactament el mateix.
+  cal("l'aixafat treu accents, signes i espais de mes",
+      ctx.Utils.aixafa("  Ensenya'm  la PÀGINA del dia!! ") === 'ensenya m la pagina del dia',
+      ctx.Utils.aixafa("  Ensenya'm  la PÀGINA del dia!! "));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

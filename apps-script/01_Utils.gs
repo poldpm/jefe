@@ -141,6 +141,29 @@ var Utils = (function () {
     return 'fa més d\'un mes';
   }
 
+  /**
+   * Text a mà oberta: minúscules, sense accents, sense signes, un sol espai.
+   *
+   * Serveix per comparar el que ha dit una persona amb una frase que tenim
+   * escrita. «Ensenya'm la pàgina del dia» i «obre la pagina del dia» han de
+   * ser la mateixa cosa, que és com les diu algú parlant.
+   *
+   * TÉ UNA BESSONA al client, a `vista_conversa`. Han de fer el mateix: si en
+   * toques una, toca l'altra.
+   */
+  function aixafa(text) {
+    var s = String(text || '').toLowerCase();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç';
+    var sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      var c = n === -1 ? s.charAt(i) : sense.charAt(n);
+      out += /[a-z0-9]/.test(c) ? c : ' ';
+    }
+    return out.replace(/\s+/g, ' ').trim();
+  }
+
   /** JSON tolerant: mai llança. */
   function json(obj) {
     try { return JSON.stringify(obj); } catch (e) { return '' + obj; }
@@ -165,6 +188,7 @@ var Utils = (function () {
     dillunsDe: dillunsDe,
     talla: talla,
     faQuant: faQuant,
+    aixafa: aixafa,
     json: json,
     desJson: desJson
   };

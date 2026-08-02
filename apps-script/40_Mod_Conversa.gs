@@ -218,70 +218,93 @@ var Conversa = (function () {
   }
 
   /**
-   * PARLAR-LI DE VEU, SENSE TRANSCRIURE PEL CAMÍ.
+   * PARLAR-LI DE VEU: PRIMER ES TRANSCRIU, DESPRÉS ES PENSA.
    *
-   * L'àudio va sencer al model. El reconeixedor del navegador feia una
-   * primera passada en català que s'equivocava sovint —canviava paraules per
-   * altres que sonen igual— i el model havia d'endevinar a partir d'allò. Amb
-   * l'àudio, aquell pas desapareix i amb ell els seus errors.
+   * El primer intent enviava l'àudio a la mateixa crida que ho fa tot —llegir
+   * la fitxa sencera, triar entre totes les eines, respondre— i allò costava
+   * de sis a nou segons. Ara són dues coses separades i cadascuna fa el que
+   * sap fer:
    *
-   * Les ordres d'acció segueixen anant: el model té les mateixes eines que
-   * quan escrius, i «obre'm la pàgina del dia» acaba a `mostra_el_dia` igual
-   * que abans. No cal cap llista de frases perquè aquí sí que hi ha algú
-   * entenent-ho.
+   *   1. TRANSCRIURE. Una crida petita: sense fitxa, sense eines, sortida de
+   *      deu paraules. És barata i és ràpida.
+   *   2. PENSAR. La crida de text de sempre, la que ja va a un segle i mig.
    *
-   * Al full s'hi desa «(parlat)»: l'àudio no es guarda enlloc.
+   * I això obre una porta que amb l'àudio sol no hi era: un cop hi ha TEXT, una
+   * ordre com «obre'm la pàgina del dia» es reconeix aquí mateix i la segona
+   * crida NO ES FA. Zero espera i zero quota per a les ordres, que són
+   * justament les que es diuen més sovint.
+   *
+   * VA A UN MODEL A PART. Els límits gratuïts de Gemini es compten per model,
+   * o sigui que transcriure amb un de diferent no menja de la quota de les
+   * respostes. Es tria amb `model_veu` al full.
+   *
+   * L'àudio no es guarda enlloc: el que es desa és el text.
    */
   function enviaVeu(p) {
     p = p || {};
     var dades = String(p.audio || '');
     var mena = String(p.mime || 'audio/wav');
 
-    if (!dades) throw new Error('No m\'ha arribat cap so.');
+    if (!dades) throw new Error("No m'ha arribat cap so.");
     // Uns 8 MB en base64. Passat d'aquí no és una pregunta, és una gravació.
-    if (dades.length > 8000000) throw new Error('Massa llarg. Digues-m\'ho més curt.');
+    if (dades.length > 8000000) throw new Error("Massa llarg. Digues-m'ho més curt.");
 
-    var h = historial(p.id_conversa);
-    var id = h.id_conversa;
-    var seq = h.missatges.length;
-
-    desa_(id, seq, 'usuari', '(parlat)');
-
-    var context = h.missatges.slice(-MAX_CONTEXT).map(function (m) {
-      return { rol: m.rol, text: m.text };
-    });
-    /* Aquest missatge ja va format: el transport deixa passar tal qual
-       qualsevol missatge que porti `parts`, i aquí n'hi posem dues, el so i
-       una línia dient què és. */
-    context.push({
-      role: 'user',
-      parts: [
-        { text: 'En Pol t\'acaba de dir això de veu:' },
-        { inline_data: { mime_type: mena, data: dades } }
-      ]
-    });
-
-    var r;
+    var t0 = Date.now();
+    var text;
     try {
-      r = Assistent.pregunta(context);
+      text = transcriu_(dades, mena);
     } catch (err) {
-      Log.error('conversa.enviaVeu', err);
-      return { id_conversa: id, error: err.message, iaApagada: !!err.iaApagada };
+      Log.error('conversa.transcriu', err);
+      return { id_conversa: p.id_conversa || null, error: err.message,
+               iaApagada: !!err.iaApagada };
+    }
+    var msVeu = Date.now() - t0;
+
+    if (!text) {
+      return { id_conversa: p.id_conversa || null, pregunta: '',
+               error: 'No he entès res del que has dit.' };
     }
 
-    desa_(id, seq + 1, 'assistent', r.text, {
-      eines: r.einesUsades, tokens: r.tokens, model: r.model
-    });
+    /* Una ordre d'acció no necessita que ningú hi pensi: ja se sap què vol
+       dir. Es contesta aquí i la crida cara no arriba a fer-se mai. */
+    var d = Moduls.drecera(text);
+    if (d) {
+      return {
+        id_conversa: p.id_conversa || null,
+        pregunta: text,
+        drecera: { vista: d.vista, params: d.params || null },
+        temps: { total: msVeu, veu: msVeu, ia: 0, context: 0, eines: 0, voltes: 0, rumiat: 0 }
+      };
+    }
 
-    return {
-      id_conversa: id,
-      pregunta: '(parlat)',
-      resposta: r.text,
-      propostes: r.propostes,
-      eines: r.einesUsades,
-      tokens: r.tokens,
-      temps: r.temps
-    };
+    var r = envia(text, p.id_conversa);
+    if (r.temps) { r.temps.veu = msVeu; r.temps.total += msVeu; }
+    return r;
+  }
+
+  /**
+   * L'àudio a text, i res més.
+   *
+   * Sense fitxa i sense eines a posta: com menys se li dona, més de pressa
+   * contesta, i aquí l'única feina és sentir bé. La instrucció diu que no
+   * arregli res perquè el que en Pol ha dit de debò és el que ha d'arribar:
+   * ja hi haurà algú després per entendre-ho.
+   */
+  function transcriu_(dades, mena) {
+    var r = IA.genera({
+      sistema: 'Ets un transcriptor. En Pol parla en català. Escriu EXACTAMENT el ' +
+               'que diu, amb accents i signes normals. No responguis, no comentis, ' +
+               'no resumeixis i no corregeixis el que diu: només el text del que ' +
+               'has sentit. Si no se sent res intel·ligible, contesta una ratlla buida.',
+      missatges: [{
+        role: 'user',
+        parts: [{ inline_data: { mime_type: mena, data: dades } }]
+      }],
+      model: Config.get('model_veu') || 'barat',
+      maxTokens: 300,
+      temperatura: 0
+    });
+    return String(r.text || '').trim();
   }
 
   /**

@@ -101,6 +101,22 @@ const MOCK = `
   }
   var copia = function (o) { return JSON.parse(JSON.stringify(o)); };
 
+  /* Bessona d'Utils.aixafa. Amb normalize('NFD') la a amb accent es parteix en
+     dos i queda «pa gina»: per aixo el servidor fa servir una taula, i aqui
+     tambe, que si no el mirall no prova el mateix que passa de debo. */
+  function aixafa(text) {
+    var s = String(text || '').toLowerCase();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç';
+    var sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      var c = n === -1 ? s.charAt(i) : sense.charAt(n);
+      out += /[a-z0-9]/.test(c) ? c : ' ';
+    }
+    return out.replace(/ +/g, ' ').trim();
+  }
+
   function habitPerId(id) {
     for (var i = 0; i < estatDia.habits.length; i++) {
       if (estatDia.habits[i].id === id) return estatDia.habits[i];
@@ -134,10 +150,18 @@ const MOCK = `
            tenir cap micròfon al davant. */
         var b64 = p.audio || '';
         window.__ultimSo = { mida: b64.length, mime: p.mime, cap: b64.slice(0, 64) };
-        return { id_conversa: 'cnv_mirall', pregunta: '(parlat)',
+        // El mirall fingeix que ha transcrit el que se li digui a __digues.
+        var dit = window.__digues || 'quants cigarros he fumat avui';
+        var net = aixafa(dit);   // com ho fa el servidor: taula, no normalize
+        if (net.indexOf('pagina del dia') !== -1) {
+          return { id_conversa: 'cnv_mirall', pregunta: dit,
+                   drecera: { vista: 'dia', params: null },
+                   temps: { total: 900, veu: 900, ia: 0, context: 0, eines: 0, voltes: 0, rumiat: 0 } };
+        }
+        return { id_conversa: 'cnv_mirall', pregunta: dit,
                  resposta: 'He rebut ' + Math.round(b64.length * 0.75 / 1024) + ' kB de so.',
                  eines: [], propostes: [], tokens: { entrada: 0, sortida: 0 },
-                 temps: { total: 1, ia: 1, context: 0, eines: 0, voltes: 1 } };
+                 temps: { total: 2600, veu: 900, ia: 1700, context: 0, eines: 0, voltes: 1 } };
       }
       if (accio === 'envia') throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
     }
