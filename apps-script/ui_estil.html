@@ -445,7 +445,8 @@ h2 { font-size: 1.0625rem; }
    48 px per fita se'n menjaria mitja graella. */
 .franja-detall {
   position: absolute; top: 0; right: 0; z-index: 2;
-  width: 38px; height: 38px;
+  /* 44 px: es prem amb el dit, i a sobre queda tapat per la mateixa ma. */
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   border: 0; background: transparent; color: var(--ink-suau); opacity: .75;
 }
@@ -475,9 +476,9 @@ h2 { font-size: 1.0625rem; }
    corregir el toc que t'has passat. */
 .franja-menys {
   position: absolute; right: var(--e2); bottom: var(--e2); z-index: 2;
-  width: 34px; height: 34px;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--neatline); background: var(--paper); color: var(--ink-suau);
+  border: 1px solid var(--neatline); background: var(--paper2); color: var(--ink-suau);
 }
 .franja-menys:active { background: var(--utm-suau); }
 .franja-menys[disabled] { opacity: .25; }
@@ -1264,8 +1265,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 .safata-tria { display: flex; flex-wrap: wrap; gap: var(--e2); }
 
+/* 44 px de mínim: es prem amb el dit i amb el dit a sobre no es veu res.
+   A 36 fallava la mida mínima que demanen les dues plataformes. */
 .safata-tria button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 var(--e3);
   background: transparent;
   color: var(--ink);
@@ -1293,7 +1296,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
    dreta, sense text i amb la creu, perquè no es confongui amb les altres. */
 .safata-fora {
   margin-left: auto;
-  min-width: 36px; min-height: 36px;
+  min-width: 44px; min-height: 44px;
   display: inline-grid; place-content: center;
   background: transparent; color: var(--ink-suau);
   border: 1px solid transparent; border-radius: var(--r);
@@ -1333,7 +1336,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .dia-titol-r {
   width: 100%; display: flex; align-items: center; gap: var(--e2);
   background: none; border: 0; border-bottom: 1px solid var(--fil-viu);
-  padding: var(--e3) var(--e3) var(--e2);
+  padding: var(--e3); min-height: 44px;
   font-family: var(--mono); font-size: .625rem; font-weight: 500;
   letter-spacing: .18em; text-transform: uppercase; color: var(--utm);
   text-align: left; transition: background-color .16s var(--entra);
@@ -1461,7 +1464,9 @@ input[type="checkbox"] { accent-color: var(--utm); }
    botó hi és sense demanar atenció, perquè buidar-les no és el que véns a fer. */
 .fetes-titol { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e3); }
 .fetes-titol .marge { margin: 0; }
-.btn-menut { min-height: 32px; padding: 0 var(--e2); font-size: .75rem;
+.btn-menut { /* 44 px encara que sembli petit: la mida del dit no canvia perque el
+     boto sigui secundari. El que es fa mes petit es la lletra, no l area. */
+  min-height: 44px; padding: 0 var(--e2); font-size: .75rem;
              letter-spacing: .04em; text-decoration: underline;
              text-underline-offset: 3px; }
 
