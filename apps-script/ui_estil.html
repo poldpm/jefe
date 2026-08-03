@@ -1949,8 +1949,31 @@ input[type="checkbox"] { accent-color: var(--utm); }
   .esc-vist:hover { border-color: var(--utm); }
 }
 
-/* La resposta a una pregunta que has fet tu: no és un avís rebut i no s'ha de
-   confondre amb la safata. Va a part i amb el fil de l'acció. */
-.esc-resposta { margin-top: var(--e4); border-left: 3px solid var(--accio); }
+/* L'HISTORIAL, PLEGAT. El que ja has despatxat no s'esborra mai, però tampoc
+   t'ha d'ocupar la pantalla: al cap de dues setmanes era una llista
+   inacabable de coses que ja havies llegit a la notificació. */
+.esc-vistos { margin-top: var(--e4); border-top: 1px solid var(--neatline);
+              padding-top: var(--e3); }
+.esc-obre-vistos {
+  width: 100%; min-height: 44px; padding: 0 var(--e3);
+  border: 0; background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .1em;
+  text-transform: uppercase; text-align: left;
+  transition: color .16s var(--entra);
+}
+.esc-obre-vistos:active { color: var(--utm); }
+.esc-vistos .esc-safata { margin-top: var(--e2); }
+
+/* La resposta a una pregunta teva va JUST SOTA el botó que l'ha demanada, no
+   al final de la pàgina: el que has demanat ha de sortir on estàs mirant. */
+.esc-resposta { margin-bottom: var(--e4); border-left: 3px solid var(--accio); }
+.esc-resposta header { align-items: center; }
+.esc-tanca-resposta {
+  margin-left: auto; width: 32px; height: 32px; flex: none; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+}
+.esc-tanca-resposta .ic { width: 15px; height: 15px; }
+.esc-tanca-resposta:active { color: var(--ink); }
 
 </style>

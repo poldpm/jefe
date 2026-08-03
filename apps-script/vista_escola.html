@@ -14,6 +14,12 @@ App.registraVista('escola', {
   render: function (arrel) {
 
     var d = null;
+    var veureVistos = false;   // l'historial arrenca plegat, i es queda com el deixis
+
+    /* LA RESPOSTA VIU AQUÍ I NO AL DOM.
+       Si es quedés només pintada, marcar un avís com a vist —que refà la
+       pantalla— te la faria desaparèixer just quan l'estàs llegint. */
+    var resposta = null;       // { titol, text }
 
     function quan(iso) {
       if (!iso) return '';
@@ -53,7 +59,29 @@ App.registraVista('escola', {
     }
 
     function pinta() {
-      var m = d.missatges || [];
+      var tots = d.missatges || [];
+      var nous = tots.filter(function (x) { return !x.llegit_el; });
+      var vistos = tots.filter(function (x) { return !!x.llegit_el; });
+
+      /* NOMÉS EL QUE NO HAS LLEGIT.
+         Aquesta pantalla ensenyava tot l'historial, i al cap de dues setmanes
+         això és una llista inacabable de coses que ja vas llegir a la
+         notificació quan van arribar. El que has vist ja no et reclama res: es
+         queda desat i darrere d'una línia, no ocupant la pantalla. */
+      var llista = function (fils) {
+        return fils.map(function (x) {
+          var nou = !x.llegit_el;
+          return '<article class="esc-msg' + (nou ? ' esc-nou' : '') + '" data-id="' + esc(x.id) + '">' +
+            '<header>' +
+              '<span class="esc-mena">' + esc(MENES[x.mena] || 'Avís') + '</span>' +
+              '<span class="esc-quan">' + esc(quan(x.rebut_el)) + '</span>' +
+            '</header>' +
+            '<h2>' + esc(x.titol) + '</h2>' +
+            (x.cos ? '<p>' + esc(x.cos) + '</p>' : '') +
+            (nou ? '<button class="esc-vist" data-vist="' + esc(x.id) + '">Vist</button>' : '') +
+          '</article>';
+        }).join('');
+      };
 
       arrel.innerHTML = capcalera() +
         '<div class="pagina">' +
@@ -74,26 +102,42 @@ App.registraVista('escola', {
                 'sí que arriben.</p>') +
           '</section>' +
 
-          (m.length
-            ? '<div class="esc-safata">' + m.map(function (x) {
-                var nou = !x.llegit_el;
-                return '<article class="esc-msg' + (nou ? ' esc-nou' : '') + '" data-id="' + esc(x.id) + '">' +
-                  '<header>' +
-                    '<span class="esc-mena">' + esc(MENES[x.mena] || 'Avís') + '</span>' +
-                    '<span class="esc-quan">' + esc(quan(x.rebut_el)) + '</span>' +
-                  '</header>' +
-                  '<h2>' + esc(x.titol) + '</h2>' +
-                  (x.cos ? '<p>' + esc(x.cos) + '</p>' : '') +
-                  (nou ? '<button class="esc-vist" data-vist="' + esc(x.id) + '">Vist</button>' : '') +
-                '</article>';
-              }).join('') + '</div>'
-            : '<div class="estat">' + ic('escola', 'ic-g') +
-              '<h2>Encara no hi ha res</h2>' +
-              '<p>Aquí hi arribarà el que fins ara t\'enviava el bot: correus amb ' +
-              'tasca o data, actes de primària, canvis a la carpeta de 2n i els ' +
-              'resums del matí.</p></div>') +
+          /* LA RESPOSTA, JUST SOTA EL BOTÓ QUE L'HA DEMANADA.
+             Abans anava al final de la pàgina: premies «Agenda» i la resposta
+             et sortia sota tot l'historial, on no la veies. El que has demanat
+             ha de sortir on estàs mirant. */
+          '<div id="esc-resposta">' +
+            (resposta
+              ? '<article class="esc-msg esc-resposta">' +
+                  '<header><span class="esc-mena">' + esc(resposta.titol) + '</span>' +
+                  '<button class="esc-tanca-resposta" data-tancaresp="1" aria-label="Tanca la resposta">' +
+                    ic('tancar') + '</button></header>' +
+                  '<p>' + esc(resposta.text) + '</p>' +
+                '</article>'
+              : '') +
+          '</div>' +
 
-          '<div id="esc-resposta"></div>' +
+          (nous.length
+            ? '<div class="esc-safata">' + llista(nous) + '</div>'
+            : '<div class="estat">' + ic('escola', 'ic-g') +
+              '<h2>' + (tots.length ? 'Res nou' : 'Encara no hi ha res') + '</h2>' +
+              '<p>' + (tots.length
+                ? 'Ho tens tot vist. Quan l\'escola enviï alguna cosa, t\'arribarà al telèfon i sortirà aquí.'
+                : 'Aquí hi arribarà el que fins ara t\'enviava el bot: correus amb tasca o data, ' +
+                  'actes de primària, canvis a la carpeta de 2n i els resums del matí.') +
+              '</p></div>') +
+
+          /* L'HISTORIAL, DARRERE D'UNA LÍNIA. No s'esborra res mai; només que
+             el que ja has despatxat no té per què ocupar-te la pantalla. */
+          (vistos.length
+            ? '<section class="esc-vistos">' +
+                '<button class="esc-obre-vistos" data-vistos="1" aria-expanded="' +
+                  (veureVistos ? 'true' : 'false') + '">' +
+                  (veureVistos ? 'Amaga' : 'Veure') + ' els ' + vistos.length + ' ja vistos' +
+                '</button>' +
+                (veureVistos ? '<div class="esc-safata">' + llista(vistos) + '</div>' : '') +
+              '</section>'
+            : '') +
         '</div>';
 
       lliga();
@@ -111,13 +155,25 @@ App.registraVista('escola', {
           .catch(function (err) { tot.disabled = false; App.brindis(err.message, 'error'); });
       });
 
+      var ov = arrel.querySelector('[data-vistos]');
+      if (ov) ov.addEventListener('click', function () { veureVistos = !veureVistos; pinta(); });
+
+      var tr = arrel.querySelector('[data-tancaresp]');
+      if (tr) tr.addEventListener('click', function () { resposta = null; pinta(); });
+
       arrel.querySelectorAll('[data-vist]').forEach(function (b) {
         b.addEventListener('click', function () {
-          var art = b.closest('.esc-msg');
-          /* Es treu de seguida i es desa pel darrere: marcar un avís com a vist
-             no és una cosa que hagis d'esperar-te. Si peta, torna. */
-          if (art) { art.classList.remove('esc-nou'); b.remove(); }
-          crida('escola', 'marcaLlegit', { id: b.dataset.vist })
+          /* Es marca AQUÍ i es desa pel darrere: despatxar un avís no és una
+             cosa que hagis d'esperar-te. Es toca la còpia que tenim a mà i es
+             repinta, i així desapareix de la safata a l'instant. */
+          var id = b.dataset.vist;
+          (d.missatges || []).forEach(function (x) {
+            if (x.id === id && !x.llegit_el) x.llegit_el = 'ara';
+          });
+          d.pendents = (d.missatges || []).filter(function (x) { return !x.llegit_el; }).length;
+          Cau.set('escola', d);
+          pinta();
+          crida('escola', 'marcaLlegit', { id: id })
             .catch(function (err) { App.brindis(err.message, 'error'); carrega(true); });
         });
       });
@@ -129,10 +185,8 @@ App.registraVista('escola', {
           b.disabled = true; b.textContent = 'Demanant…';
           caixa.innerHTML = '<div class="esquelet" style="height:72px"></div>';
           crida('escola', 'comanda', { quina: b.dataset.cmd }).then(function (r) {
-            caixa.innerHTML = '<article class="esc-msg esc-resposta">' +
-              '<header><span class="esc-mena">' + esc(abans) + '</span></header>' +
-              '<p>' + esc(String(r && r.text || '(sense resposta)')) + '</p></article>';
-            b.disabled = false; b.textContent = abans;
+            resposta = { titol: abans, text: String(r && r.text || '(sense resposta)') };
+            pinta();
           }).catch(function (err) {
             caixa.innerHTML = '';
             b.disabled = false; b.textContent = abans;
