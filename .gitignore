@@ -21,6 +21,13 @@ finances*.json
 dades/
 Codi_AppsScript.gs
 
+# El paquet de seguiment físic: pes, composició corporal, salut, fotos.
+# És material d'origen per muntar el mòdul, no codi, i no ha de sortir mai
+# d'aquesta màquina. La barra final hi és a posta: ignora la carpeta sencera
+# encara que algú hi afegeixi fitxers nous a dins.
+Seguiment fit/
+seguiment_data*.json
+
 # Dependències
 node_modules/
 
