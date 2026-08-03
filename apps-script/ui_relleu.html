@@ -311,24 +311,31 @@ var Relleu = (function () {
      al mateix hàbit. És preferible admetre que no ho sabem que endevinar
      malament, que és exactament el que feia el sistema d'abans. */
   var PARAULES = [
-    ['h-mobil',     ['mobil', 'movil', 'pantalla', 'telefon', 'xarxes', 'instagram', 'tiktok']],
-    ['h-dents',     ['dents', 'raspallar', 'raspall', 'fil dental']],
-    ['h-aigua',     ['aigua', 'beure', 'hidratar', 'got']],
-    ['h-llegir',    ['llegir', 'lectura', 'llibre', 'pagines']],
-    ['h-escriure',  ['escriure', 'diari', 'notes', 'apuntar', 'journal']],
-    ['h-idioma',    ['idiom', 'angles', 'ingles', 'frances', 'aleman', 'catala', 'vocabulari', 'duolingo']],
-    ['h-fumar',     ['fumar', 'cigarro', 'cigarret', 'tabac', 'vaper', 'nicotina']],
-    ['h-correr',    ['correr', 'corro', 'running', 'trail', 'curs', 'quilometres', 'km']],
+    ['h-mobil',     ['mobil', 'movil', 'pantall', 'telefon', 'xarxes', 'instagram', 'tiktok']],
+    ['h-dents',     ['dents', 'raspall', 'fil dental']],
+    ['h-dutxa',     ['dutx', 'bany']],
+    ['h-aigua',     ['aigua', 'aigues', 'beure', 'hidratar', 'got']],
+    ['h-registre',  ['control', 'nutricio', 'registrar', 'apuntar', 'pesar-me']],
+    ['h-llegir',    ['llegir', 'lectur', 'llibre', 'pagines']],
+    ['h-escriure',  ['diari', 'escriure', 'notes', 'journal']],
+    ['h-idioma',    ['idiom', 'angles', 'ingles', 'frances', 'aleman', 'vocabulari', 'duolingo']],
+    ['h-estudi',    ['productivitat', 'estudi', 'estudiar', 'formacio', 'oposicio', 'curs ', 'temari']],
+    ['h-fumar',     ['fumar', 'cigarro', 'cigarret', 'tabac', 'vaper', 'nicotin']],
+    ['h-correr',    ['cardio', 'correr', 'corro', 'running', 'trail', 'cursa', 'curses',
+                     'quilometres', 'km']],
     ['h-caminar',   ['camin', 'passejar', 'passeig', 'passos']],
-    ['h-forca',     ['forca', 'pes', 'gimnas', 'musculacio', 'entrenar', 'entreno', 'flexions', 'dominades']],
+    ['h-forca',     ['forca', 'pes', 'gimnas', 'musculacio', 'entrenar', 'entreno',
+                     'flexions', 'dominades']],
     ['h-estirar',   ['estirar', 'estirament', 'mobilitat', 'ioga', 'yoga', 'pilates']],
     ['h-calma',     ['meditar', 'meditacio', 'respirar', 'respiracio', 'calma', 'mindfulness']],
-    ['h-dormir',    ['dormir', 'son', 'llit', 'despertar', 'hores de son']],
-    ['h-suplement', ['creatina', 'proteina', 'suplement', 'vitamina', 'pastill', 'magnesi', 'omega', 'medicacio']],
-    ['h-menjar',    ['menjar', 'fruit', 'verdur', 'dieta', 'esmorzar', 'dinar', 'sopar', 'berenar', 'calories']],
-    ['h-net',       ['netejar', 'neteja', 'ordenar', 'ordre', 'casa', 'plats', 'llencols']],
-    ['h-sol',       ['sol', 'llum', 'sortir', 'aire', 'terrassa']],
-    ['h-diners',    ['estalviar', 'estalvi', 'diners', 'pressupost', 'despes']]
+    ['h-dormir',    ['dormir', 'dormid', 'son', 'llit', 'despertar', 'migdiada']],
+    ['h-suplement', ['creatin', 'protein', 'batut', 'suplement', 'vitamin', 'pastill',
+                     'magnesi', 'omega', 'medicacio']],
+    ['h-menjar',    ['menjar', 'fruit', 'verdur', 'diet', 'esmorzar', 'dinar', 'sopar',
+                     'berenar', 'calories']],
+    ['h-net',       ['netejar', 'neteja', 'ordenar', 'ordre', 'plats', 'llencols']],
+    ['h-sol',       ['sol', 'llum', 'aire', 'terrass']],
+    ['h-diners',    ['finance', 'estalvi', 'diners', 'pressupost', 'despes', 'euros']]
   ];
 
   /* Sense accents i sense signes: «Rentar-se les dents» ha de trobar «dents».
@@ -360,8 +367,11 @@ var Relleu = (function () {
         if (t.indexOf(' ' + claus[k]) !== -1) return { icona: PARAULES[i][0] };
       }
     }
-    var net = t.trim();
-    return { lletra: (net.charAt(0) || '?').toUpperCase() };
+    /* La primera LLETRA, no el primer caràcter: «+7 hores dormides» donava
+       un 7 i «-6 hores de pantalles» un 6. Un número no identifica res, i dos
+       hàbits que comencen amb xifra acabaven amb la mateixa marca. */
+    var lletres = t.replace(/[^a-z]/g, '');
+    return { lletra: (lletres.charAt(0) || '?').toUpperCase() };
   }
 
   /** El mateix, però ja dibuixat: o el símbol o la inicial. */

@@ -537,6 +537,7 @@ export function dades(AVUI, menys) {
       { id: 'nutricio', nom: 'Nutrició', icona: 'nutricio', ordre: 20, teVista: true },
       { id: 'finances', nom: 'Finances', icona: 'finances', ordre: 30, teVista: true },
       { id: 'calendari', nom: 'Calendari', icona: 'calendari', ordre: 5, teVista: true },
+      { id: 'seguiment', nom: 'Seguiment', icona: 'seguiment', ordre: 25, teVista: true },
       { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true }
     ],
     targetes: [
@@ -544,6 +545,7 @@ export function dades(AVUI, menys) {
       { modul: 'tasques', icona: 'tasques', etiqueta: 'A la safata', valor: 2, urgent: true, accio: 'tasques' },
       { modul: 'nutricio', icona: 'nutricio', etiqueta: 'Proteïna pendent', valor: '32 g', urgent: true, accio: 'nutricio' },
       { modul: 'finances', icona: 'finances', etiqueta: 'Balanç del mes', valor: '+486,20 €', urgent: false, accio: 'finances' },
+      { modul: 'seguiment', icona: 'seguiment', etiqueta: 'Control setmanal', valor: 'fa 3 d', urgent: false, accio: 'seguiment' },
       { modul: 'diari', icona: 'diari', etiqueta: 'Diari escrit', valor: '✓', urgent: false, accio: 'diari' }
     ],
     ia: { disponible: false }
