@@ -374,6 +374,20 @@ h2 { font-size: 1.0625rem; }
 .btn-primari:active { filter: brightness(1.12); }
 .btn-secundari{ background: transparent; }
 .btn-fantasma { background: transparent; border-color: transparent; color: var(--ink-suau); }
+/* LA VARIANT DE LES COSES QUE NO ES DESFAN.
+   No hi era perque fins ara no calia: arxivar un habit es reversible i tornar
+   a obrir el que has arxivat es un clic. Llencar una foto del cos d un dia
+   concret, no: aquella foto no es pot tornar a fer.
+
+   No hi va sola. Sempre amb una pregunta pel mig i amb el text dient que fa,
+   perque qui no distingeixi el vermell ho ha de poder llegir igual. */
+.btn-perill   { background: var(--gr); border-color: var(--gr);
+                /* La mateixa tinta que el boto primari, i pel mateix motiu: al
+                   full de dia el vermell es fosc i vol lletra blanca; al de nit
+                   es un vermell encès i la vol negra. Blanc fix donava 3,06:1
+                   sobre el vermell de nit, i en calen 4,5. */
+                color: var(--sobre-accio); font-weight: 600; }
+.btn-perill:active { filter: brightness(1.12); }
 .btn-ple      { width: 100%; }
 .btn-icona    { min-width: var(--toc); padding: 0; }
 
@@ -1853,6 +1867,25 @@ input[type="checkbox"] { accent-color: var(--utm); }
                 border: 1px solid var(--neatline); background: var(--paper2); }
 .seg-tira figcaption { margin-top: 3px; font-family: var(--mono); font-size: .625rem;
                        color: var(--ink-suau); text-transform: uppercase; letter-spacing: .06em; }
+/* EL BOTO DE TREURE UNA FOTO. A la cantonada i petit de veure, pero de 32
+   pixels de debo: prou per encertar-lo amb el dit i prou per no encertar-lo
+   sense voler mentre passes la tira. Sobre fosc sempre, que a sota hi ha una
+   fotografia i no es pot saber de quin color sera. */
+.seg-tira figure { position: relative; }
+.seg-treu {
+  position: absolute; top: 3px; right: 3px;
+  width: 32px; height: 32px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 0;
+  background: rgba(5, 8, 11, .74); color: #fff;
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
+}
+.seg-treu .ic { width: 15px; height: 15px; }
+.seg-treu:active { background: var(--gr); transform: scale(.92); }
+@media (hover: hover) and (pointer: fine) {
+  .seg-treu:hover { background: var(--gr); }
+}
+
 .seg-puja { display: flex; gap: var(--e2); flex-wrap: wrap; margin: var(--e2) 0; }
 .seg-puja .btn { flex: 1; min-width: 96px; cursor: pointer; }
 
@@ -1884,7 +1917,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-03 21:18 · 413da18";</script>
+<script>window.MARCA_JEFE = "2026-08-03 21:23 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2048,7 +2081,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-03 21:18 · 413da18";
+window.MARCA_JEFE = "2026-08-03 21:23 · en curs";
 </script>
 
 <script>
@@ -8252,8 +8285,18 @@ App.registraVista('seguiment', {
               if (!amb.length) return '';
               return '<div class="seg-angle"><p class="menut">' + a[1] + '</p>' +
                 '<div class="seg-tira">' + amb.map(function (c) {
-                  return '<figure><img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) +
-                    '" src="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
+                  return '<figure>' +
+                    '<img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) +
+                      '" src="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
+                    /* El boto de treure-la. Petit i a la cantonada, pero de 32
+                       pixels: prou per encertar-lo i prou per no encertar-lo
+                       sense voler mentre passes la tira amb el dit. I no fa
+                       res sense preguntar-ho: una foto del cos d un dia
+                       concret no es pot tornar a fer. */
+                    '<button class="seg-treu" data-treu="' + esc(a[0]) +
+                      '" data-dia="' + esc(c.data) + '" data-nom="' + esc(a[1]) +
+                      '" aria-label="Treu la foto ' + esc(a[1].toLowerCase() + ' del ' + curta(c.data)) +
+                      '">' + ic('tancar') + '</button>' +
                     '<figcaption>' + esc(curta(c.data)) + '</figcaption></figure>';
                 }).join('') + '</div></div>';
             }).join('')
@@ -8404,6 +8447,40 @@ App.registraVista('seguiment', {
           caixa.innerHTML = '';
           c.disabled = false; c.innerHTML = ic('conversa') + 'Què en penses?';
           App.brindis(err.message, 'error');
+        });
+      });
+
+      /* TREURE UNA FOTO: SEMPRE PREGUNTANT.
+         És l'única cosa d'aquesta pantalla que no es pot desfer tocant un altre
+         botó, i una foto del cos d'un dia concret no es pot tornar a fer. Per
+         això hi ha una pregunta pel mig i per això diu on va a parar: a la
+         paperera del Drive, on la tens trenta dies. */
+      arrel.querySelectorAll('[data-treu]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var cos = App.modal('Treure la foto?',
+            '<p>La ' + esc(b.dataset.nom.toLowerCase()) + ' del ' +
+              esc(curta(b.dataset.dia)) + '.</p>' +
+            '<p class="menut">El fitxer va a la paperera del teu Drive i el pots ' +
+              'recuperar durant trenta dies. Del control, en desapareix ara.</p>' +
+            '<div class="formulari">' +
+              '<button class="btn btn-perill" data-si="1" style="width:100%">Treu-la</button>' +
+              '<button class="btn btn-secundari" data-no="1" style="width:100%">Deixa-la</button>' +
+            '</div>');
+          cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+          cos.querySelector('[data-si]').addEventListener('click', function () {
+            var bt = cos.querySelector('[data-si]');
+            bt.disabled = true; bt.textContent = 'Traient-la…';
+            crida('seguiment', 'esborraFoto', { data: b.dataset.dia, angle: b.dataset.treu })
+              .then(function (r) {
+                App.tancaModal();
+                App.brindis(r.paperera ? 'Foto treta i llençada a la paperera' : 'Foto treta');
+                carrega(true);
+              })
+              .catch(function (err) {
+                bt.disabled = false; bt.textContent = 'Treu-la';
+                App.brindis(err.message, 'error');
+              });
+          });
         });
       });
 

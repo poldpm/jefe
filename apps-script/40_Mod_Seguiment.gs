@@ -520,17 +520,44 @@ var Seguiment = (function () {
     return { id: fitxer.getId(), angle: p.angle, data: p.data };
   }
 
-  /* NO L'ESBORRA DE DRIVE: només la desenganxa del control.
-     Cap acció d'aquest sistema esborra res teu, i una foto que has fet un cop
-     no es pot tornar a fer. Si la vols fora del tot, la treus tu de Drive. */
+  /* TREURE UNA FOTO: DESENGANXAR-LA I LLENÇAR-LA A LA PAPERERA.
+     Les dues coses juntes, i és a posta. Fer-ne només una deixa les dades
+     mentint: desenganxar-la i prou et deixa el fitxer al Drive per sempre
+     sense saber de què és, i esborrar-la del Drive i prou et deixa el full
+     guardant la referència d'una cosa que ja no hi és —i a l'app hi veuries
+     una imatge trencada.
+
+     A LA PAPERERA, NO ESBORRADA. Una foto del cos feta un dia concret no es
+     pot tornar a fer, i aquí no s'esborra res de manera definitiva. Al Drive
+     hi queda trenta dies i la pots recuperar; passat aquest temps, ho decideix
+     Google, no nosaltres.
+
+     Si el fitxer ja no hi és —perquè l'has tret tu del Drive—, no és cap
+     error: la referència es neteja igual, que és justament el que calia. */
   function esborraFoto(data, angle) {
     if (['frontal', 'perfil', 'esquena'].indexOf(angle) === -1) {
       throw new Error('L\'angle ha de ser frontal, perfil o esquena.');
     }
+
+    var files = Dades.llegeix('Seguiment', { data: data });
+    var id = files.length ? String(files[0]['foto_' + angle] || '') : '';
+
+    var paperera = false;
+    if (id) {
+      try {
+        DriveApp.getFileById(id).setTrashed(true);
+        paperera = true;
+      } catch (err) {
+        Log.avis('seguiment.foto', 'No he pogut llençar el fitxer: ' + err.message);
+      }
+    }
+
     var canvis = {};
     canvis['foto_' + angle] = '';
     Dades.desa('Seguiment', mescla_({ data: data }, canvis), ['data'], 'seg');
-    return { tret: true };
+
+    Log.info('seguiment.foto', 'Foto treta', { data: data, angle: angle, paperera: paperera });
+    return { tret: true, paperera: paperera };
   }
 
   function mescla_(a, b) {

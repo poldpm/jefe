@@ -141,6 +141,7 @@ const MOCK = `
       if (accio === 'pantalla') return copia(SEGUIMENT);
       if (accio === 'desa') { return { desat: true, data: p.data, id: 'seg_mirall' }; }
       if (accio === 'pujaFoto') return { id: 'mirall', angle: p.angle, data: p.data };
+      if (accio === 'esborraFoto') { window.__ultimEsborrat = p; return { tret: true, paperera: true }; }
       if (accio === 'comenta') return { comentari: 'Comentari inventat del mirall: aqui no hi ha cap IA.', data: p.data };
     }
 

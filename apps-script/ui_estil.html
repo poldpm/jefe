@@ -346,6 +346,20 @@ h2 { font-size: 1.0625rem; }
 .btn-primari:active { filter: brightness(1.12); }
 .btn-secundari{ background: transparent; }
 .btn-fantasma { background: transparent; border-color: transparent; color: var(--ink-suau); }
+/* LA VARIANT DE LES COSES QUE NO ES DESFAN.
+   No hi era perque fins ara no calia: arxivar un habit es reversible i tornar
+   a obrir el que has arxivat es un clic. Llencar una foto del cos d un dia
+   concret, no: aquella foto no es pot tornar a fer.
+
+   No hi va sola. Sempre amb una pregunta pel mig i amb el text dient que fa,
+   perque qui no distingeixi el vermell ho ha de poder llegir igual. */
+.btn-perill   { background: var(--gr); border-color: var(--gr);
+                /* La mateixa tinta que el boto primari, i pel mateix motiu: al
+                   full de dia el vermell es fosc i vol lletra blanca; al de nit
+                   es un vermell encès i la vol negra. Blanc fix donava 3,06:1
+                   sobre el vermell de nit, i en calen 4,5. */
+                color: var(--sobre-accio); font-weight: 600; }
+.btn-perill:active { filter: brightness(1.12); }
 .btn-ple      { width: 100%; }
 .btn-icona    { min-width: var(--toc); padding: 0; }
 
@@ -1825,6 +1839,25 @@ input[type="checkbox"] { accent-color: var(--utm); }
                 border: 1px solid var(--neatline); background: var(--paper2); }
 .seg-tira figcaption { margin-top: 3px; font-family: var(--mono); font-size: .625rem;
                        color: var(--ink-suau); text-transform: uppercase; letter-spacing: .06em; }
+/* EL BOTO DE TREURE UNA FOTO. A la cantonada i petit de veure, pero de 32
+   pixels de debo: prou per encertar-lo amb el dit i prou per no encertar-lo
+   sense voler mentre passes la tira. Sobre fosc sempre, que a sota hi ha una
+   fotografia i no es pot saber de quin color sera. */
+.seg-tira figure { position: relative; }
+.seg-treu {
+  position: absolute; top: 3px; right: 3px;
+  width: 32px; height: 32px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 0;
+  background: rgba(5, 8, 11, .74); color: #fff;
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
+}
+.seg-treu .ic { width: 15px; height: 15px; }
+.seg-treu:active { background: var(--gr); transform: scale(.92); }
+@media (hover: hover) and (pointer: fine) {
+  .seg-treu:hover { background: var(--gr); }
+}
+
 .seg-puja { display: flex; gap: var(--e2); flex-wrap: wrap; margin: var(--e2) 0; }
 .seg-puja .btn { flex: 1; min-width: 96px; cursor: pointer; }
 
