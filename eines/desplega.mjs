@@ -13,6 +13,7 @@
  * versió nova i l'hi apunta.
  */
 import { execFileSync } from 'child_process';
+import fs from 'fs';
 
 const CLASP = process.platform === 'win32'
   ? 'node_modules\\.bin\\clasp.cmd'
@@ -73,5 +74,25 @@ for (const d of produccio) {
     process.exit(1);
   }
 }
+
+/* L'ADREÇA /exec, APUNTADA.
+   `ScriptApp.getService().getUrl()` retorna la de proves —acabada en /dev—
+   quan s'executa des de l'editor, i aquella només funciona per a tu i
+   identificat: donada a un altre compte, no va. La bona és la del
+   desplegament, i qui la sap és aquest fitxer. Per això s'escriu aquí, com
+   la marca de construcció, en comptes de demanar-la a Apps Script. */
+const URL_EXEC = 'https://script.google.com/macros/s/' + produccio[0].id + '/exec';
+fs.writeFileSync('apps-script/03_Adreca.gs', [
+  '/**',
+  ' * GENERAT PER eines/desplega.mjs — NO EDITIS AQUEST FITXER.',
+  ' *',
+  ' * L\'adreça del desplegament, la que acaba en /exec. Apps Script no la sap',
+  ' * dir des de dins: `ScriptApp.getService().getUrl()` retorna la de proves',
+  ' * quan la crides des de l\'editor. Aquesta ve del desplegament de debò.',
+  ' */',
+  'var URL_APP = ' + JSON.stringify(URL_EXEC) + ';',
+  ''
+].join('\n'));
+console.log('  Adreça apuntada a 03_Adreca.gs');
 
 console.log('  El que hi ha a l\'editor i el que serveix l\'app ja són el mateix.\n');

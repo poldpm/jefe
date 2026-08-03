@@ -300,11 +300,21 @@ function provaAvisosEscola() {
     a('  Notificar-te .......... FALLA: ' + err.message);
   }
 
+  /* LES DUES COSES QUE HAS D'ENGANXAR AL SCRIPT DE L'ESCOLA, i ensenyades,
+     no només comptades: dir «posada» i no dir quina no serveix de res —era
+     exactament el que feia abans—. Van al registre d'execució, que només veus
+     tu; però són secrets, així que no les enganxis on no toqui. */
   var clau = PropertiesService.getScriptProperties().getProperty(PROP_CLAU_ACCES);
-  a('  Clau d\'accés .......... ' + (clau ? 'posada' : 'FALTA — executa generaClauAcces()'));
   a('');
-  a('  L\'script de l\'escola ha d\'enviar a aquesta adreça:');
-  a('    ' + ScriptApp.getService().getUrl());
+  a('  Al CONFIG de l\'script de l\'escola hi ha d\'anar això:');
+  a('');
+  if (typeof URL_APP === 'string' && URL_APP) {
+    a('    JEFE_URL:  ' + JSON.stringify(URL_APP) + ',');
+  } else {
+    a('    JEFE_URL:  <l\'adreça del desplegament, acabada en /exec>');
+    a('               Desplega → Gestiona desplegaments → la del quadre blau.');
+  }
+  a('    JEFE_CLAU: ' + (clau ? JSON.stringify(clau) + ',' : '<FALTA — executa generaClauAcces()>'));
 
   /* L'avís de prova es marca com a llegit i es queda. En aquest sistema res no
      s'esborra —no hi ha ni funció per fer-ho, i és a posta— i no serà una
