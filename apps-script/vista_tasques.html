@@ -354,7 +354,11 @@ App.registraVista('tasques', {
         return;
       }
       previPintat = nou;
-      pinta(r, !!dEnCau);
+      /* Marcar una tasca refà la llista sencera —la feta se n'hi va a una
+         altra secció i canvien els comptadors—, i això és correcte. El que no
+         ho és, és que a sobre et torni a dalt de tot quan n'estaves marcant
+         una de la setena posició. */
+      App.mantenintLaVista(function () { pinta(r, !!dEnCau); });
     }
 
     /* Es mira cada tant si ja ha acabat, en comptes d'esperar que salti el

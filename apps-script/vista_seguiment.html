@@ -549,7 +549,9 @@ App.registraVista('seguiment', {
               { data: inp.dataset.data, angle: inp.dataset.foto, contingut: dataUrl });
           }).then(function () {
             App.brindis('Foto desada');
-            carrega(true);
+            /* En puges tres seguides: si cada una et torna a dalt, has de baixar
+               tres vegades fins a la tira de fotos. */
+            App.mantenintLaVista(function () { carrega(true); });
           }).catch(function (err) { App.brindis(err.message, 'error'); });
         });
       });

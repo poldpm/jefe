@@ -429,6 +429,31 @@ var Jefe = (function () {
       el.textContent = n === 1 ? '1 canvi pendent de desar' : n + ' canvis pendents de desar';
     },
 
+    /**
+     * REFER UNA PANTALLA SENSE QUE SE'T MOGUI DE LLOC.
+     *
+     * Repintar una llista sencera per un canvi petit té un preu que no es veu
+     * llegint el codi i es veu de seguida fent servir l'app: has baixat fins a
+     * la setena tasca, la marques, i la pàgina et torna a dalt de tot. O puges
+     * la primera de tres fotos i has de tornar a baixar per pujar la segona.
+     *
+     * On el canvi és d'una sola cosa —treure una targeta— val més tocar només
+     * aquella i no passar per aquí. Això és per als altres casos: quan el que
+     * canvia és l'estructura i refer-ho és el més honest, però no hi ha cap
+     * raó perquè a més et faci perdre el lloc on eres.
+     *
+     * No salta al buit: si la pàgina nova és més curta, es queda al final.
+     */
+    mantenintLaVista: function (fer) {
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      fer();
+      if (!y) return;
+      requestAnimationFrame(function () {
+        var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo(0, Math.min(y, max));
+      });
+    },
+
     brindis: function (text, tipus) {
       var el = document.getElementById('brindis');
       el.innerHTML = ic(tipus === 'error' ? 'avis' : 'fet') + '<span>' + esc(text) + '</span>';

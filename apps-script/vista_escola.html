@@ -43,18 +43,80 @@ App.registraVista('escola', {
       avis:     'Avís'
     };
 
+    function buida(nHaHagut) {
+      return '<div class="estat">' + ic('escola', 'ic-g') +
+        '<h2>' + (nHaHagut ? 'Res nou' : 'Encara no hi ha res') + '</h2>' +
+        '<p>' + (nHaHagut
+          ? 'Ho tens tot vist. Quan l\'escola enviï alguna cosa, t\'arribarà al telèfon i sortirà aquí.'
+          : 'Aquí hi arribarà el que fins ara t\'enviava el bot: correus amb tasca o data, ' +
+            'actes de primària, canvis a la carpeta de 2n i els resums del matí.') +
+        '</p></div>';
+    }
+
+    /**
+     * DESPATXAR UN AVÍS SENSE REFER LA PÀGINA.
+     *
+     * Repintar-ho tot per treure una targeta té un preu que es veu de seguida:
+     * si has baixat fins a l'avís número set i el marques, la pàgina et torna
+     * a dalt de tot i has de tornar a baixar. I amb dos tocs seguits, el segon
+     * cau sobre un node que ja no existeix.
+     *
+     * Aquí es toca només el que canvia: la targeta, els dos comptadors i, si
+     * era l'últim, el forat que deixa. L'scroll no es mou, la resposta que
+     * tinguis oberta es queda, i el focus tampoc salta.
+     */
+    function despatxa(id, boto) {
+      var art = boto.closest('.esc-msg');
+
+      (d.missatges || []).forEach(function (x) {
+        if (x.id === id && !x.llegit_el) x.llegit_el = 'ara';
+      });
+      var nous = (d.missatges || []).filter(function (x) { return !x.llegit_el; }).length;
+      var vistos = (d.missatges || []).length - nous;
+      d.pendents = nous;
+      Cau.set('escola', d);
+
+      var compte = arrel.querySelector('#esc-compte');
+      if (compte) compte.textContent = nous ? nous + ' sense llegir' : 'tot llegit';
+      var tot = arrel.querySelector('[data-totllegit]');
+      if (tot) tot.hidden = !nous;
+      var ov = arrel.querySelector('[data-vistos]');
+      if (ov) ov.textContent = (veureVistos ? 'Amaga' : 'Veure') + ' els ' + vistos + ' ja vistos';
+
+      var acaba = function () {
+        if (art) art.remove();
+        /* Si era l'últim, el que hi havia deixa de tenir sentit i el forat s'ha
+           d'omplir. És l'únic canvi d'estructura, i és d'un sol contenidor. */
+        if (!nous) {
+          var caixa = arrel.querySelector('#esc-nous');
+          if (caixa) caixa.innerHTML = buida((d.missatges || []).length);
+        }
+      };
+
+      var quiet = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (art && !quiet) {
+        art.style.height = art.offsetHeight + 'px';
+        art.classList.add('esc-despatxat');
+        setTimeout(acaba, 200);
+      } else {
+        acaba();
+      }
+
+      crida('escola', 'marcaLlegit', { id: id })
+        .catch(function (err) { App.brindis(err.message, 'error'); carrega(true); });
+    }
+
     function capcalera() {
       return '<header class="capcalera"><div class="capcalera-fila">' +
         '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
           ic('conversa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Escola</h1>' +
-          '<p class="marge" style="margin:2px 0 0">' +
+          '<p class="marge" id="esc-compte" style="margin:2px 0 0">' +
             (d && d.pendents ? d.pendents + ' sense llegir' : 'tot llegit') + '</p>' +
         '</div>' +
-        (d && d.pendents
-          ? '<button class="btn btn-fantasma" data-totllegit="1">Llegit</button>'
-          : '') +
+        '<button class="btn btn-fantasma" data-totllegit="1"' +
+          (d && d.pendents ? '' : ' hidden') + '>Llegit</button>' +
       '</div></header>';
     }
 
@@ -117,15 +179,9 @@ App.registraVista('escola', {
               : '') +
           '</div>' +
 
-          (nous.length
-            ? '<div class="esc-safata">' + llista(nous) + '</div>'
-            : '<div class="estat">' + ic('escola', 'ic-g') +
-              '<h2>' + (tots.length ? 'Res nou' : 'Encara no hi ha res') + '</h2>' +
-              '<p>' + (tots.length
-                ? 'Ho tens tot vist. Quan l\'escola enviï alguna cosa, t\'arribarà al telèfon i sortirà aquí.'
-                : 'Aquí hi arribarà el que fins ara t\'enviava el bot: correus amb tasca o data, ' +
-                  'actes de primària, canvis a la carpeta de 2n i els resums del matí.') +
-              '</p></div>') +
+          '<div id="esc-nous">' +
+            (nous.length ? '<div class="esc-safata">' + llista(nous) + '</div>' : buida(tots.length)) +
+          '</div>' +
 
           /* L'HISTORIAL, DARRERE D'UNA LÍNIA. No s'esborra res mai; només que
              el que ja has despatxat no té per què ocupar-te la pantalla. */
@@ -162,19 +218,12 @@ App.registraVista('escola', {
       if (tr) tr.addEventListener('click', function () { resposta = null; pinta(); });
 
       arrel.querySelectorAll('[data-vist]').forEach(function (b) {
+        /* Un sol cop: sense això, dos tocs seguits envien dues crides i el
+           segon es troba la targeta a mig desaparèixer. */
         b.addEventListener('click', function () {
-          /* Es marca AQUÍ i es desa pel darrere: despatxar un avís no és una
-             cosa que hagis d'esperar-te. Es toca la còpia que tenim a mà i es
-             repinta, i així desapareix de la safata a l'instant. */
-          var id = b.dataset.vist;
-          (d.missatges || []).forEach(function (x) {
-            if (x.id === id && !x.llegit_el) x.llegit_el = 'ara';
-          });
-          d.pendents = (d.missatges || []).filter(function (x) { return !x.llegit_el; }).length;
-          Cau.set('escola', d);
-          pinta();
-          crida('escola', 'marcaLlegit', { id: id })
-            .catch(function (err) { App.brindis(err.message, 'error'); carrega(true); });
+          if (b.disabled) return;
+          b.disabled = true;
+          despatxa(b.dataset.vist, b);
         });
       });
 

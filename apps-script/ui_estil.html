@@ -1952,6 +1952,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
 /* L'HISTORIAL, PLEGAT. El que ja has despatxat no s'esborra mai, però tampoc
    t'ha d'ocupar la pantalla: al cap de dues setmanes era una llista
    inacabable de coses que ja havies llegit a la notificació. */
+/* SORTIR DE LA SAFATA. La targeta no desapareix de cop: s'esvaeix i es plega,
+   i així veus QUINA has despatxat. De cop, amb la llista movent-se avall, no
+   saps si has tocat la que volies. Amb moviment reduït, fora directament. */
+.esc-msg { transition: opacity .18s var(--entra), height .18s var(--entra),
+                       margin .18s var(--entra), padding .18s var(--entra); }
+.esc-despatxat { opacity: 0; height: 0 !important; margin: 0; padding-top: 0;
+                 padding-bottom: 0; overflow: hidden; pointer-events: none; }
+
 .esc-vistos { margin-top: var(--e4); border-top: 1px solid var(--neatline);
               padding-top: var(--e3); }
 .esc-obre-vistos {
