@@ -21,6 +21,14 @@ finances*.json
 dades/
 Codi_AppsScript.gs
 
+# L automatitzacio de l escola. Porta CLAUS EN CLAR —Gemini, el token del bot
+# de Telegram, l identificador del xat— i dades de persones: el nom sencer,
+# l escola, els correus de la direccio i de les coordinadores, i noms
+# d alumnes als exemples. Res d aixo pot sortir d aquesta maquina.
+Automatització Vedruna/
+*detector_tasques*
+*context_assistent*
+
 # El paquet de seguiment físic: pes, composició corporal, salut, fotos.
 # És material d'origen per muntar el mòdul, no codi, i no ha de sortir mai
 # d'aquesta màquina. La barra final hi és a posta: ignora la carpeta sencera
