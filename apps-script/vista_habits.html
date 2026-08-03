@@ -113,7 +113,7 @@ App.registraVista('habits', {
         '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="' + estat + '"' +
           ' aria-label="' + esc(diu) + '"' +
           ' aria-pressed="' + (h.complert ? 'true' : 'false') + '">' +
-          '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
+          Relleu.marcaHabit(h.nom) +
           '<span class="franja-nom">' + esc(h.nom) + '</span>' +
           '<span class="franja-peu">' +
             '<span class="franja-sota">' + esc(sota) + '</span>' +
@@ -145,7 +145,7 @@ App.registraVista('habits', {
       return '<div class="franja-fila" data-h="' + esc(h.id) + '" data-comptador="1">' +
         '<button class="franja" data-suma="' + esc(h.id) + '" data-estat="compta"' +
           ' aria-label="Suma un a ' + esc(h.nom) + '. En portes ' + n + '.">' +
-          '<svg class="ic ic-simbol" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
+          Relleu.marcaHabit(h.nom) +
           '<span class="franja-nom">' + esc(h.nom) + '</span>' +
           /* Sense la unitat: el nom de la fita ja diu què compta, i
              «cigarros» retallat a «ciga» no és informació, és brossa. */
@@ -502,7 +502,7 @@ App.registraVista('habits', {
 
         var html =
           '<div style="display:flex;align-items:center;gap:var(--e3);margin-bottom:var(--e4)">' +
-            '<svg class="ic ic-g" aria-hidden="true"><use href="#sb-' + Relleu.simbol(h.id) + '"/></svg>' +
+            Relleu.marcaHabit(h.nom, 'ic-g') +
             '<h2 style="font-size:1.375rem">' + esc(h.nom) + '</h2>' +
           '</div>' +
           (esCompt

@@ -275,13 +275,6 @@ var Relleu = (function () {
            'stroke-linejoin="round" stroke-linecap="round">' + camins.join('') + '</g></svg>';
   }
 
-  /** Símbol de mapa estable per a un hàbit, a partir del seu identificador. */
-  var SIMBOLS = ['cim', 'font', 'refugi', 'fita', 'creu', 'cova', 'arbre', 'pont', 'gual', 'mina'];
-  function simbol(id) {
-    var h = 0;
-    for (var i = 0; i < String(id).length; i++) h = (h * 31 + String(id).charCodeAt(i)) >>> 0;
-    return SIMBOLS[h % SIMBOLS.length];
-  }
   function llavor(id) {
     var h = 0;
     for (var i = 0; i < String(id).length; i++) h = (h * 17 + String(id).charCodeAt(i)) >>> 0;
@@ -295,7 +288,94 @@ var Relleu = (function () {
     return 'var(' + b[Math.min(6, Math.floor(pct / 15))] + ')';
   }
 
+
+  /* LA ICONA D'UN HÀBIT SURT DEL SEU NOM.
+     Abans sortia d'un hash de l'identificador i repartia simbologia de mapa:
+     «Llegir» podia tocar-li una cova i «Aigua» un pont. Un símbol que no diu
+     res de l'hàbit no serveix per trobar-lo a la llista, que és l'única feina
+     que té; i pitjor, fa dubtar —si hi ha una icona, esperes que signifiqui
+     alguna cosa—.
+
+     LES CLAUS SÓN ARRELS, NO PARAULES SENCERES, i és per una raó de llengua:
+     el plural català de «idioma» és «idiomes», amb la a convertida en e. O
+     sigui que «idioma» no és cap prefix de «idiomes» i no el trobaria mai.
+     Passa amb tot el que acaba en -a: pastilla/pastilles, cursa/curses,
+     fruita/fruites, despesa/despeses. Per això aquí hi diu «idiom» i no
+     «idioma». Si n'hi afegeixes una, talla-la abans de l'última vocal.
+
+     Les paraules van de la més específica a la més general, perquè «no mirar
+     el mòbil al llit» ha de sortir amb un mòbil i no amb una lluna.
+
+     I quan un nom no s'assembla a res, NO se n'inventa cap: es dibuixa la
+     inicial. Una lletra sempre vol dir alguna cosa i sempre és la mateixa per
+     al mateix hàbit. És preferible admetre que no ho sabem que endevinar
+     malament, que és exactament el que feia el sistema d'abans. */
+  var PARAULES = [
+    ['h-mobil',     ['mobil', 'movil', 'pantalla', 'telefon', 'xarxes', 'instagram', 'tiktok']],
+    ['h-dents',     ['dents', 'raspallar', 'raspall', 'fil dental']],
+    ['h-aigua',     ['aigua', 'beure', 'hidratar', 'got']],
+    ['h-llegir',    ['llegir', 'lectura', 'llibre', 'pagines']],
+    ['h-escriure',  ['escriure', 'diari', 'notes', 'apuntar', 'journal']],
+    ['h-idioma',    ['idiom', 'angles', 'ingles', 'frances', 'aleman', 'catala', 'vocabulari', 'duolingo']],
+    ['h-fumar',     ['fumar', 'cigarro', 'cigarret', 'tabac', 'vaper', 'nicotina']],
+    ['h-correr',    ['correr', 'corro', 'running', 'trail', 'curs', 'quilometres', 'km']],
+    ['h-caminar',   ['camin', 'passejar', 'passeig', 'passos']],
+    ['h-forca',     ['forca', 'pes', 'gimnas', 'musculacio', 'entrenar', 'entreno', 'flexions', 'dominades']],
+    ['h-estirar',   ['estirar', 'estirament', 'mobilitat', 'ioga', 'yoga', 'pilates']],
+    ['h-calma',     ['meditar', 'meditacio', 'respirar', 'respiracio', 'calma', 'mindfulness']],
+    ['h-dormir',    ['dormir', 'son', 'llit', 'despertar', 'hores de son']],
+    ['h-suplement', ['creatina', 'proteina', 'suplement', 'vitamina', 'pastill', 'magnesi', 'omega', 'medicacio']],
+    ['h-menjar',    ['menjar', 'fruit', 'verdur', 'dieta', 'esmorzar', 'dinar', 'sopar', 'berenar', 'calories']],
+    ['h-net',       ['netejar', 'neteja', 'ordenar', 'ordre', 'casa', 'plats', 'llencols']],
+    ['h-sol',       ['sol', 'llum', 'sortir', 'aire', 'terrassa']],
+    ['h-diners',    ['estalviar', 'estalvi', 'diners', 'pressupost', 'despes']]
+  ];
+
+  /* Sense accents i sense signes: «Rentar-se les dents» ha de trobar «dents».
+     No es fa amb normalize('NFD') a posta —vegeu Utils.aixafa al servidor: hi
+     ha navegadors on parteix la lletra accentuada en dues i «pàgina» es
+     converteix en «pa gina», que ja no conté cap paraula de la taula. */
+  function aixafa(text) {
+    var s = String(text || '').toLowerCase();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç';
+    var sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      var c = n === -1 ? s.charAt(i) : sense.charAt(n);
+      out += /[a-z0-9]/.test(c) ? c : ' ';
+    }
+    return ' ' + out.replace(/ +/g, ' ').trim() + ' ';
+  }
+
+  /**
+   * Retorna `{ icona: 'h-aigua' }` o `{ lletra: 'E' }`.
+   * Mai totes dues, i mai cap de les dues buida.
+   */
+  function perHabit(nom) {
+    var t = aixafa(nom);
+    for (var i = 0; i < PARAULES.length; i++) {
+      var claus = PARAULES[i][1];
+      for (var k = 0; k < claus.length; k++) {
+        if (t.indexOf(' ' + claus[k]) !== -1) return { icona: PARAULES[i][0] };
+      }
+    }
+    var net = t.trim();
+    return { lletra: (net.charAt(0) || '?').toUpperCase() };
+  }
+
+  /** El mateix, però ja dibuixat: o el símbol o la inicial. */
+  function marcaHabit(nom, classe) {
+    var m = perHabit(nom);
+    if (m.icona) {
+      return '<svg class="ic ' + (classe || 'ic-simbol') + '" aria-hidden="true">' +
+             '<use href="#ic-' + m.icona + '"/></svg>';
+    }
+    return '<span class="ic ' + (classe || 'ic-simbol') + ' inicial" aria-hidden="true">' +
+           m.lletra + '</span>';
+  }
+
   return { fullMes: fullMes, franja: franja, fons: fons,
-           simbol: simbol, llavor: llavor, tinta: tinta };
+           perHabit: perHabit, marcaHabit: marcaHabit, llavor: llavor, tinta: tinta };
 })();
 </script>

@@ -50,8 +50,15 @@ App.registraVista('inici', {
             '<div class="franja-fila"><button class="franja" data-ves="' +
               esc(t.accio || t.modul) + '" data-estat="' + estat + '">' +
               Relleu.franja(t.urgent ? 25 : 90, Relleu.llavor(t.modul)) +
+              /* LA ICONA LA DIU EL MÒDUL.
+                 Aquí hi havia «si és hàbits posa hàbits, si no la genèrica», i
+                 el resultat era que finances, tasques, nutrició, diari,
+                 calendari i seguiment sortien tots amb la mateixa quadrícula de
+                 quatre caselles —tot i tenir cadascun la seva icona dibuixada
+                 des del primer dia—. Sis targetes idèntiques no es distingeixen
+                 d'un cop d'ull, que és per a l'únic que serveix una icona. */
               '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
-                esc(t.modul === 'habits' ? 'habits' : 'modul') + '"/></svg>' +
+                esc(t.icona || t.modul || 'modul') + '"/></svg>' +
               '<span>' +
                 '<span class="franja-nom">' + esc(t.etiqueta) + '</span>' +
                 (t.error ? '<span class="franja-sota">No s\'ha pogut llegir</span>' : '') +

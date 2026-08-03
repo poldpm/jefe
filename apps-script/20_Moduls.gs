@@ -110,7 +110,9 @@ var Moduls = (function () {
               (function (mod) { return function () { return mod.resumInici(); }; })(m[i]));
         /* Es pot tocar sense por: quan ve desat, `Memoria` en torna una còpia
            acabada de fer, i el que hi ha guardat no porta el `modul` a dins. */
-        if (r) { r.modul = m[i].id; out.push(r); }
+        /* La icona la declara el modul i la passa el nucli: si la targeta se la
+           inventes, cada pantalla que ensenyi modul hauria de saber-se-les totes. */
+        if (r) { r.modul = m[i].id; r.icona = m[i].icona || 'modul'; out.push(r); }
       } catch (err) {
         Log.error('moduls.resumInici', 'Mòdul ' + m[i].id + ': ' + err.message);
         out.push({ modul: m[i].id, error: true, etiqueta: m[i].nom, valor: '—' });

@@ -327,7 +327,22 @@ h2 { font-size: 1.0625rem; }
       stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .ic-p { width: 18px; height: 18px; }
 .ic-g { width: 32px; height: 32px; }
-.ic-simbol { width: 28px; height: 28px; }        /* simbologia del mapa */
+.ic-simbol { width: 28px; height: 28px; }
+
+/* LA INICIAL, quan el nom d un habit no s assembla a res del que sabem
+   dibuixar. No es un premi de consolacio: es la resposta honesta. Una lletra
+   sempre vol dir alguna cosa i sempre es la mateixa per al mateix habit;
+   una icona triada a l atzar —que es el que hi havia— no vol dir res i a
+   sobre et fa buscar-hi sentit. Va amb la lletra de maquina de la resta de
+   xifres del sistema, que es el que la fa semblar una etiqueta i no un error. */
+.ic.inicial {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: .8125rem; font-weight: 600;
+  line-height: 1; letter-spacing: 0;
+  color: var(--ink-suau); border: 1px solid var(--neatline);
+  stroke: none; fill: none;
+}
+.ic.inicial.ic-g { font-size: 1.0625rem; }
 
 /* ------------------------------------------------------------------ botons */
 
