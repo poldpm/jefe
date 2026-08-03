@@ -17,7 +17,6 @@ App.registraVista('finances', {
     var mes = params.mes || null;          // AAAA-MM; null = mes en curs
     var periode = params.periode || 'mes'; // mes | mesos | estad
     var dades = null, cats = [], sugg = [];
-    var banc = null;                       // de quan és el que ve del banc
 
     var r0 = function (n) { return Math.round(Number(n) || 0); };
     var num = function (v) {
@@ -84,11 +83,14 @@ App.registraVista('finances', {
             '<b>' + esc(titol) + '</b>' +
             '<span>' + esc(sota) + (esActual && periode === 'mes' ? ' · en curs' : '') + ' ▾</span>' +
           '</button>' +
-          /* De quan és el que ve del banc. Va a la capçalera i sempre a la
-             vista: el número que hi ha a sota només vol dir alguna cosa si
-             saps de quan és. */
-          '<span class="menut" id="quan-banc">' +
-            esc(banc && banc.connectat && banc.fa ? 'Banc mirat ' + banc.fa : '') + '</span>' +
+          /* AQUÍ HI HAVIA «Banc mirat fa 3 minuts», i s'ha tret.
+             L'argument era que el número de sota només vol dir alguna cosa si
+             saps de quan és. Amb tres sincronitzacions al dia i el fitxer
+             sempre al dia, la resposta és sempre «fa una estona»: una línia
+             que diu el mateix cada vegada no informa de res, i en canvi
+             s'espremia el títol del període i les fletxes al mòbil.
+             De quan és l'última mirada al banc segueix sortint a
+             `diagnostic()`, que és on es va a mirar quan de debò importa. */
           (mostraFletxes
             ? '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Mes següent"' +
               (esActual ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' : '') +
@@ -1236,7 +1238,6 @@ App.registraVista('finances', {
      */
     function aplica(r, dEnCau) {
       cats = r.categories || cats;
-      if (r.banc) banc = r.banc;
       if (r.suggeriments && r.suggeriments.length) sugg = r.suggeriments;
       if (!mes && r.dades && r.dades.mes) mes = r.dades.mes;
       if (periode !== 'revisar' && periode !== 'recurrents' && periode !== 'patrimoni') {

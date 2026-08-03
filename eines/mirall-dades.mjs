@@ -479,8 +479,7 @@ export function dades(AVUI, menys) {
       { text: 'Nòmina', menut: '+1842,00 € · Feina' },
       { text: 'Supermercat del carrer gran', menut: '−48,20 € · Menjar' },
       { text: 'Benzinera de la carretera', menut: '−18,90 € · Cotxe · per classificar' },
-      { text: 'Cafè', menut: '−4,35 € · Sortides' },
-      { text: 'Banc mirat fa 6 minuts', menut: '' }
+      { text: 'Cafè', menut: '−4,35 € · Sortides' }
     ] });
     blocs.push({ modul: 'diari', titol: 'Diari', urgent: false, accio: 'diari',
       coses: [ { text: 'Escrit', menut: 'Matí a la zona del refugi. Molta gent per ser dimarts.',

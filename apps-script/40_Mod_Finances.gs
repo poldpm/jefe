@@ -158,22 +158,21 @@ function MODUL_FINANCES() {
          Cada petició a Apps Script costa 1,2 s abans de fer res, i mig segon
          més per obrir el full. Tres crides per obrir finances volien dir
          obrir el full tres vegades i esperar la més lenta de les tres. */
-      /* DESADA, MENYS EL RELLOTGE.
+      /* DESADA SENCERA.
          Muntar-la vol dir llegir el full de moviments sencer, i aquell full
          només creix: eren quatre o cinc segons cada cop que obries finances.
          Qualsevol escriptura —un moviment, una categoria, un pressupost— la
          tomba tota sola, perquè la invalidació penja de `Dades`.
 
-         El «Banc mirat fa…» NO hi va a dins i es calcula sempre de nou: és
-         l'única cosa d'aquesta pantalla que canvia sense que s'escrigui res,
-         i desar-la voldria dir dir-te «fa 2 minuts» durant mitja hora. */
+         Abans en quedava una cosa fora: el «Banc mirat fa…», que canviava
+         sol i desar-lo hauria volgut dir dir-te «fa 2 minuts» durant mitja
+         hora. Ara que aquella línia no hi és, no queda res que canviï sense
+         que algú escrigui, i la pantalla es desa tota. */
       pantalla:       function (p) {
         p = p || {};
-        var r = Memoria.recorda('finances',
+        return Memoria.recorda('finances',
           'pantalla:' + (p.periode || 'mes') + ':' + (p.mes || '') + ':' + (p.quants || ''),
           function () { return Finances.pantalla(p); });
-        r.banc = Finances.estatDelBanc();
-        return r;
       },
       pressupost:     function (p) { return Finances.desaPressupost(p.categoria, p.limit); },
       recurrents:     function ()  { return Finances.recurrents(); },
@@ -566,14 +565,15 @@ var Finances = (function () {
       compten.push(f);
     });
 
-    var quan = FinancesBanc_() ? FinancesBanc.ultimaMirada() : null;
-    var deQuan = quan ? { text: 'Banc mirat ' + Utils.faQuant(quan), menut: '' } : null;
+    /* AQUI hi havia una fila «Banc mirat fa 3 minuts» al final del bloc.
+       S'ha tret: amb tres sincronitzacions al dia sempre deia el mateix, i
+       en un bloc de sis moviments com a maxim, una fila que no es un
+       moviment es una fila menys de les que hi has vingut a veure. */
 
     if (!compten.length) {
       return {
         titol: 'Finances', accio: 'finances',
         coses: [{ text: 'Res apuntat avui', menut: 'ni despeses ni ingressos' }]
-          .concat(deQuan ? [deQuan] : [])
       };
     }
 
@@ -602,7 +602,6 @@ var Finances = (function () {
     if (compten.length > 6) {
       coses.push({ text: 'i ' + (compten.length - 6) + ' més', menut: '' });
     }
-    if (deQuan) coses.push(deQuan);
 
     return { titol: 'Finances', accio: 'finances', coses: coses };
   }
