@@ -6,6 +6,7 @@
  *   configuraJefe()     → crea el full de càlcul i tota l'estructura. Idempotent.
  *   instalaTriggers()   → instal·la els automatismes nocturns. Idempotent.
  *   treuTriggers()      → els desinstal·la.
+ *   provaAvisos()       → arribaran els avisos programats dels mòduls?
  *   informesALesOnze()  → posa els dos informes a les 23:00 i reinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
  */
@@ -737,6 +738,88 @@ function provaNotificacio() {
   });
 
   afegeix('=== FI · mira\'t el mòbil ===');
+  return linies.join('\n');
+}
+
+
+/**
+ * ELS AVISOS DELS MÒDULS: ARRIBARAN O NO?
+ *
+ * Un avís programat falla EN SILENCI. Si divendres a les set no et pica, el
+ * que passa és que no passa res, i te n'assabentes per no rebre res —que és la
+ * pitjor manera d'assabentar-se'n, perquè és igual que si aquell dia no hi
+ * hagués res a dir. Això ho pregunta avui.
+ *
+ * Comprova les quatre coses que poden estar trencades i les diu totes, no
+ * només la primera: quins avisos declaren els mòduls, si l'automatisme de
+ * l'hora existeix de debò, què contestaria el mòdul ara mateix, i si la
+ * cadena de notificacions està dempeus.
+ */
+function provaAvisos() {
+  var linies = ['=== AVISOS PROGRAMATS DELS MÒDULS ==='];
+  function afegeix(t) { linies.push(t); Logger.log(t); }
+
+  var DIES = ['', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge'];
+
+  var avisos = Moduls.avisos();
+  if (!avisos.length) {
+    afegeix('Cap mòdul demana cap avís. Aquí no hi ha res a comprovar.');
+    return linies.join('\n');
+  }
+
+  /* Quants n'hi ha instal·lats de debò. Apps Script no deixa preguntar a quina
+     hora està programat un automatisme —`getHandlerFunction` és tot el que en
+     dona—, o sigui que el que es pot comprovar és que n'hi hagi tants com
+     hores demanen els mòduls. Si el número no quadra, falta un
+     `instalaTriggers()`. */
+  var quants = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'triggerAvisos';
+  }).length;
+  var calen = {};
+  avisos.forEach(function (a) { calen[a.hora] = true; });
+  var nCalen = Object.keys(calen).length;
+
+  afegeix('Automatismes «triggerAvisos»: ' + quants + ' instal·lats, ' +
+          nCalen + ' que en calen (' + Object.keys(calen).join(', ') + 'h)');
+  if (quants < nCalen) {
+    afegeix('  FALLA: en falta algun. Executa instalaTriggers().');
+  }
+  afegeix('');
+
+  var potEnviar = Notifica.disponible();
+  afegeix('Cadena de notificacions: ' + (potEnviar ? 'dempeus' : 'TRENCADA — ' + Notifica.motiu()));
+  if (potEnviar) {
+    var d = [];
+    try { d = Notifica.dispositius(); } catch (e) { d = []; }
+    afegeix('Dispositius registrats: ' + d.length +
+            (d.length ? '' : '  ← FALLA: sense cap dispositiu no arribarà enlloc'));
+  }
+  afegeix('');
+
+  avisos.forEach(function (a) {
+    afegeix('· ' + a.modul + '.' + a.id + ' — ' +
+            (a.dia === null ? 'cada dia' : 'cada ' + (DIES[a.dia] || '?')) +
+            ' a la franja de les ' + a.hora + ':00');
+    var r;
+    try {
+      r = a.mira();
+    } catch (err) {
+      afegeix('  FALLA en preguntar-li: ' + err.message);
+      return;
+    }
+    if (!r || !r.titol) {
+      afegeix('  Ara mateix no diria res. No és cap error: vol dir que ara');
+      afegeix('  no hi ha res a avisar. Torna-ho a provar quan sí que n\'hi hagi.');
+      return;
+    }
+    afegeix('  Enviaria: «' + r.titol + '»');
+    afegeix('            ' + (r.cos || '').slice(0, 90) + ((r.cos || '').length > 90 ? '…' : ''));
+    afegeix('  Obriria:  ' + (r.url || a.modul));
+  });
+
+  afegeix('');
+  afegeix('=== FI ===');
+  afegeix('Si vols veure\'n una al mòbil ara, executa provaNotificacio().');
   return linies.join('\n');
 }
 
