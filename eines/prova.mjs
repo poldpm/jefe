@@ -1812,5 +1812,116 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
   cal('un avís que peta es registra i no tomba el repartidor', !ha_petat);
 }
 
+
+// --------------------------------------- les dues còpies de les regles del seguiment
+/* HI HA DUES IMPLEMENTACIONS DE LES MATEIXES REGLES, i és a posta: al navegador
+   perquè el veredicte surti sense cap viatge, i al servidor perquè `elDia`,
+   `resumInici` i el context de la IA no passen pel navegador.
+
+   Dues còpies deriven. I derivarien EN SILENCI: la pantalla diria una cosa i la
+   notificació una altra, i tu no ho sabries fins que et fixessis. Això les fa
+   córrer totes dues sobre els mateixos casos i compara què en surt. */
+console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mateix');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Seguiment.gs', 'utf8');
+  const vista = fs.readFileSync('apps-script/vista_seguiment.html', 'utf8');
+
+  // --- la del servidor
+  const srvFont = font.slice(font.indexOf('var Seguiment = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+  const srvCtx = {
+    Utils: { avui: () => '2026-08-03' }, Dades: { llegeix: () => [] },
+    Log: { info() {}, avis() {}, error() {} }, IA: { disponible: () => false },
+    Memoria: {}, Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+  };
+  vm.createContext(srvCtx);
+  vm.runInContext(srvFont.replace('var Seguiment =', 'var Seguiment ='), srvCtx);
+  const servidor = srvCtx.Seguiment;
+
+  // --- la del navegador
+  const i0 = vista.indexOf('    function coma(n, dec) {');
+  const i1 = vista.indexOf('    // ------------------------------------------------------------- gràfiques');
+  cal('es troba la còpia del navegador dins de la vista', i0 > 0 && i1 > i0);
+  const cliCtx = { Date, Math, Number, String, JSON, Object, Array };
+  vm.createContext(cliCtx);
+  vm.runInContext(vista.slice(i0, i1) + '\nvar __regles = Regles;', cliCtx);
+  const client = cliCtx.__regles;
+
+  /* Els casos que importen: cadascun dispara una regla diferent, i n'hi ha un
+     per cada error que el motor de referència tenia. */
+  const L = servidor.LLINDAR;
+  const c = (data, pes, cintura, valida, forca, trail, gros, energia) =>
+    ({ data, pes, cintura, cinturaValida: valida, forca, trail, trailGros: gros,
+       energia: energia || '', son: '', gana: '', dieta: '' });
+
+  const CASOS = [
+    ['ritme bo', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 69.4, 84.5, true, 2, 3, 0)]],
+    ['massa ràpid', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 68.5, 84, true, 2, 3, 0)]],
+    ['salt impossible', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 87, 84, true, 2, 3, 0)]],
+    ['senyal bo', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 70.2, 84.5, true, 2, 3, 0)]],
+    ['cintura incoherent', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 70.1, 82, true, 2, 3, 0)]],
+    ['poca força', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 69.5, 84.5, true, 0, 3, 0)]],
+    ['trail gros', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 69.5, 84.5, true, 2, 4, 2)]],
+    ['energia baixa dues vegades', [c('2026-01-02', 70, 85, true, 2, 3, 0, 'baixa'),
+                                    c('2026-01-09', 69.5, 84.5, true, 2, 3, 0, 'baixa')]],
+    // Els tres que el motor de Python feia malament:
+    ['interval de 10 dies', [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-12', 69.3, 84.5, true, 2, 3, 0)]],
+    ['cintura marcada com a dolenta', [c('2026-01-02', 70, 89, false, 2, 3, 0),
+                                       c('2026-01-09', 70.1, 84, true, 2, 3, 0)]],
+    ['cintura de referència vella', [c('2026-01-02', 70, 85, true, 2, 3, 0),
+                                     c('2026-01-09', 69.6, null, true, 2, 3, 0),
+                                     c('2026-01-16', 69.2, 84.6, true, 2, 3, 0)]]
+  ];
+
+  let iguals = 0, diferents = [];
+  CASOS.forEach(([nom, h]) => {
+    for (let i = 0; i < h.length; i++) {
+      const s = servidor.analitza(h, i).map((a) => a.id + ':' + a.nivell).sort().join(' ');
+      const n = client.analitza(h, i, L).map((a) => a.id + ':' + a.nivell).sort().join(' ');
+      if (s === n) iguals++;
+      else diferents.push(nom + ' [' + i + ']  servidor=«' + s + '»  navegador=«' + n + '»');
+    }
+    const vs = servidor.veredicte(servidor.analitza(h, h.length - 1));
+    const vn = client.veredicte(client.analitza(h, h.length - 1, L));
+    if (vs !== vn) diferents.push(nom + ' veredicte  servidor=«' + vs + '»  navegador=«' + vn + '»');
+  });
+
+  cal('les dues còpies donen les mateixes regles a tots els casos',
+      diferents.length === 0, '\n      ' + diferents.join('\n      '));
+  cal('i s\'han comparat prou casos', iguals >= 20, iguals + ' comparacions');
+
+  /* Els tres arreglos respecte del motor de referència, comprovats un per un
+     perquè si algú els desfés, la prova de dalt seguiria passant —les dues
+     còpies estarien igual de malament—. */
+  const regles = (h, i) => servidor.analitza(h, i).map((a) => a.id);
+
+  /* EL CAS HA DE DISTINGIR. −1,0 kg en 10 dies son −0,70/setmana: franja bona.
+     Sense normalitzar —que es el que feia el motor de referencia— serien
+     −1,0/setmana i saltaria «massa rapid». I al reves: −0,5 kg en 4 dies son
+     −0,875/setmana, massa; sense normalitzar semblarien una setmana bona.
+     Amb aquests dos, desfer l arreglo trenca la prova. */
+  const deuDies = [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-12', 69, 84.5, true, 2, 3, 0)];
+  cal('10 dies i −1,0 kg són −0,70/setmana, no −1,0: franja bona',
+      regles(deuDies, 1).indexOf('ritme_bo') !== -1 &&
+      regles(deuDies, 1).indexOf('massa_rapid') === -1,
+      JSON.stringify(regles(deuDies, 1)));
+
+  const quatreDies = [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-06', 69.5, 84.5, true, 2, 3, 0)];
+  cal('4 dies i −0,5 kg són −0,875/setmana: massa, i es diu que l interval és curt',
+      regles(quatreDies, 1).indexOf('massa_rapid') !== -1 &&
+      regles(quatreDies, 1).indexOf('interval_rar') !== -1,
+      JSON.stringify(regles(quatreDies, 1)));
+
+  const dolenta = [c('2026-01-02', 70, 89, false, 2, 3, 0), c('2026-01-09', 70.1, 84, true, 2, 3, 0)];
+  cal('una cintura marcada com a dolenta no genera cap senyal',
+      regles(dolenta, 1).indexOf('senyal_bo') === -1 &&
+      regles(dolenta, 1).indexOf('cintura_incoherent') === -1,
+      JSON.stringify(regles(dolenta, 1)));
+
+  const gros = [c('2026-01-02', 70, 85, true, 2, 3, 0), c('2026-01-09', 69.5, 84.5, true, 2, 4, 2)];
+  cal('els dies de trail gros avisen (la regla que no s\'havia implementat mai)',
+      regles(gros, 1).indexOf('trail_gros') !== -1, JSON.stringify(regles(gros, 1)));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
