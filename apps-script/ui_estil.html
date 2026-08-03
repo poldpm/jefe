@@ -1746,4 +1746,108 @@ input[type="checkbox"] { accent-color: var(--utm); }
     transition-duration: .01ms !important;
   }
 }
+
+/* ==========================================================================
+   SEGUIMENT FÍSIC
+
+   La pantalla té una jerarquia molt clara i el CSS l'ha de respectar: primer
+   el veredicte, després per què, després la forma al llarg del temps. Tot el
+   que hi ha aquí surt dels tokens que ja hi ha; no hi entra cap color nou.
+   ========================================================================== */
+
+/* LA CRIDA DE LA SETMANA PENDENT. És el motiu pel qual existeix el mòdul, o
+   sigui que quan hi és mana per sobre de tot i es veu que es pot tocar. */
+.seg-reclama {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; margin-bottom: var(--e3); padding: var(--e3);
+  border: 1px solid var(--avis); background: color-mix(in srgb, var(--avis) 14%, var(--paper2));
+  color: var(--ink); text-align: left;
+  border-left: 3px solid var(--avis);
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
+}
+.seg-reclama b { font-size: .9375rem; }
+.seg-reclama span { font-size: .8125rem; color: var(--ink-suau); }
+.seg-reclama:active { transform: scale(.99); }
+
+/* EL VEREDICTE. El fil s'encén segons com ha anat, però el color no hi va mai
+   sol: el titular ja ho diu amb paraules. */
+.seg-veredicte[data-mena="be"]   { border-color: var(--utm); }
+.seg-veredicte[data-mena="avis"] { border-color: var(--avis); }
+.seg-veredicte h2 { font-size: 1.25rem; }
+
+.seg-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
+              border-top: 1px solid var(--neatline); padding-top: var(--e3); }
+.seg-xifres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.seg-xifres b { font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
+                line-height: 1; font-variant-numeric: tabular-nums; }
+.seg-xifres b i { font-style: normal; font-size: .6875rem; color: var(--ink-suau);
+                  margin-left: 3px; font-weight: 400; }
+.seg-delta { font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
+             font-variant-numeric: tabular-nums; }
+
+/* ELS AVISOS. Cadascun amb la seva icona, perquè el nivell no depengui només
+   del color: qui no distingeixi el cian de l'ambre ha de poder llegir-ho. */
+.seg-avisos { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e3) 0; }
+.seg-avis { display: flex; gap: var(--e2); align-items: flex-start; margin: 0;
+            padding: var(--e3); border: 1px solid var(--neatline);
+            background: var(--paper2); font-size: .875rem; line-height: 1.45; }
+.seg-avis .ic { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+.seg-avis[data-n="avis"] { border-left: 3px solid var(--avis); }
+.seg-avis[data-n="avis"] .ic { color: var(--avis); }
+.seg-avis[data-n="be"]   { border-left: 3px solid var(--utm); }
+.seg-avis[data-n="be"] .ic { color: var(--utm); }
+.seg-avis[data-n="info"] .ic { color: var(--ink-suau); }
+
+.seg-diu { margin: var(--e3) 0; padding: var(--e3); border: 1px solid var(--utm-suau);
+           border-left: 3px solid var(--utm); background: var(--paper2);
+           font-size: .9375rem; line-height: 1.5; white-space: pre-wrap; }
+
+/* LES GRÀFIQUES. Una línia i prou: el que has de veure és la forma. */
+.seg-grafiques { display: grid; gap: var(--e3); margin-top: var(--e4); }
+@media (min-width: 700px) { .seg-grafiques { grid-template-columns: 1fr 1fr; } }
+.seg-graf { display: block; width: 100%; height: 96px; margin-top: var(--e2); overflow: visible; }
+.seg-linia { fill: none; stroke: var(--utm); stroke-width: 1.5;
+             vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.seg-punt  { fill: var(--paper2); stroke: var(--utm); stroke-width: 1.5;
+             vector-effect: non-scaling-stroke; }
+.seg-ara   { fill: var(--utm); }
+.seg-eix { display: flex; justify-content: space-between; margin-top: var(--e1);
+           font-family: var(--mono); font-size: .625rem; color: var(--ink-suau);
+           text-transform: uppercase; letter-spacing: .06em; }
+
+/* LES FOTOS, PER ANGLE. Una foto sola no diu res; la de fa un mes al costat,
+   sí. Per això la tira és horitzontal i el que s'alinea és el mateix angle. */
+.seg-angle { margin-bottom: var(--e3); }
+.seg-tira { display: flex; gap: var(--e2); overflow-x: auto; padding-bottom: var(--e1);
+            scroll-snap-type: x mandatory; }
+.seg-tira figure { margin: 0; flex: none; width: 118px; scroll-snap-align: start; }
+.seg-tira img { display: block; width: 118px; height: 158px; object-fit: cover;
+                border: 1px solid var(--neatline); background: var(--paper2); }
+.seg-tira figcaption { margin-top: 3px; font-family: var(--mono); font-size: .625rem;
+                       color: var(--ink-suau); text-transform: uppercase; letter-spacing: .06em; }
+.seg-puja { display: flex; gap: var(--e2); flex-wrap: wrap; margin: var(--e2) 0; }
+.seg-puja .btn { flex: 1; min-width: 96px; cursor: pointer; }
+
+/* L historic: una fila per control i prou. La graella de la pantalla d inici
+   hi posava tres per fila al mobil i "Hi ha coses a corregir" queia en tres
+   ratlles dins d una capsa de cent píxels. */
+.seg-controls { display: flex; flex-direction: column; gap: var(--e2); }
+.seg-fila { min-height: 0; flex-direction: row; align-items: center;
+            justify-content: space-between; gap: var(--e3); }
+.seg-fila[aria-current="true"] { background: var(--utm-suau); }
+.seg-check { display: flex; align-items: center; gap: var(--e2); margin-top: var(--e2);
+             font-size: .8125rem; color: var(--ink-suau); }
+.seg-check input { width: 18px; height: 18px; flex: none; accent-color: var(--utm); }
+
+/* La tria de tres opcions: energia, son, gana, dieta. Botons de debò, prou
+   grossos per al dit, i l'estat el diu l'atribut i no només el color. */
+.tria-fila { display: flex; gap: var(--e2); }
+.tria-bt { flex: 1; min-height: 44px; padding: 0 var(--e2);
+           border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+           font-size: .8125rem;
+           transition: border-color .16s var(--entra), color .16s var(--entra); }
+.tria-bt[aria-pressed="true"] { border-color: var(--utm); color: var(--utm);
+                                background: var(--utm-suau); }
+.camp-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2); }
+
 </style>

@@ -489,6 +489,44 @@ export function dades(AVUI, menys) {
              quantes: blocs.reduce((s, b) => s + b.coses.length, 0) };
   };
 
+
+  // ------------------------------------------------------------- seguiment
+  /* Inventat, com tot el mirall. Les xifres de debò no surten mai d aqui:
+     aquest fitxer si que va al repositori public. */
+  const segPantalla = () => ({
+    avui: AVUI,
+    historic: [
+      { id: 'seg_1', data: '2026-06-05', pes: 71.4, cintura: 88, cinturaValida: false,
+        forca: 1, trail: 2, trailGros: 0, energia: 'normal', son: 'normal', gana: 'normal',
+        dieta: 'a mitges', fotos: { frontal: '', perfil: '', esquena: '' }, notes: 'Punt de partida.' },
+      { id: 'seg_2', data: '2026-06-12', pes: 70.8, cintura: 84.5, cinturaValida: true,
+        forca: 2, trail: 3, trailGros: 1, energia: 'normal', son: 'bé', gana: 'normal',
+        dieta: 'bé', fotos: { frontal: '', perfil: '', esquena: '' }, notes: '' },
+      { id: 'seg_3', data: '2026-06-19', pes: 69.3, cintura: 83, cinturaValida: true,
+        forca: 0, trail: 4, trailGros: 2, energia: 'baixa', son: 'normal', gana: 'molta',
+        dieta: 'a mitges', fotos: { frontal: '', perfil: '', esquena: '' }, notes: 'Setmana de molt desnivell.' },
+      { id: 'seg_4', data: '2026-06-26', pes: 69.5, cintura: 82.5, cinturaValida: true,
+        forca: 2, trail: 3, trailGros: 0, energia: 'normal', son: 'bé', gana: 'normal',
+        dieta: 'bé', fotos: { frontal: '', perfil: '', esquena: '' }, notes: '' }
+    ],
+    pla: {
+      'control.dia': '5',
+      'pla.resum': 'Dèficit moderat, proteïna alta, trail com a prioritat.',
+      'fase.1.desde': '2026-06-01', 'fase.1.nom': 'Base',
+      'fase.1.objectiu': 'més magre i en forma aeròbica'
+    },
+    fase: { desde: '2026-06-01', nom: 'Base', objectiu: 'més magre i en forma aeròbica',
+            kcal: 2000, proteina: 150, forca: 2, trail: 3 },
+    estat: { avui: AVUI, dia: 5, toca: true, pendent: true, fetAquestaSetmana: false,
+             fa: 38, ultim: '2026-06-26' },
+    llindars: { perdSana: [0.4, 0.7], perdRapida: 0.8, saltImpossible: 3.0,
+                cinturaIncoherent: 2.5, pesEstable: 0.3, forcaMinima: 2, diesTolerats: [5, 10] },
+    comEsMesura: {
+      pes: 'Matí, en dejú, després del lavabo. Si pots, mitjana de 2-3 dies.',
+      cintura: 'Matí, en dejú, dret i relaxat. Expiració normal. Cinta al melic, sense estrènyer.',
+      fotos: 'Mateix lloc, mateixa llum, mateixa hora, mateixa roba.'
+    }
+  });
   // ------------------------------------------------------------------ inici
 
   const nucliInici = () => ({
@@ -514,5 +552,5 @@ export function dades(AVUI, menys) {
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia,
            CATEGORIES, finPantalla, tasquesPantalla, diariPantalla,
-           conversaEstat, conversaHistorial, nucliInici };
+           conversaEstat, conversaHistorial, nucliInici, segPantalla };
 }
