@@ -18,6 +18,30 @@ function cal(nom, cond, extra) {
   if (!cond) falles++;
 }
 
+
+/**
+ * Carrega TOT el servidor en un sol espai global, com fa Apps Script.
+ *
+ * Els blocs d aquest fitxer solen carregar un fitxer sol, i n hi ha prou. Per
+ * a les coses que travessen el nucli i un modul —els avisos programats, per
+ * exemple— no: alla el que es comprova es precisament que es trobin.
+ */
+function carregaTotElServidor() {
+  const ctx = {
+    console, Date, JSON, Math, RegExp, Number, String, Object, Array,
+    isFinite, isNaN, parseFloat, parseInt, encodeURIComponent, decodeURIComponent,
+    Utilities: {}, DriveApp: {}, SpreadsheetApp: {}, UrlFetchApp: {}, CacheService: {},
+    LockService: {}, Session: {}, HtmlService: {}, CalendarApp: {}, MailApp: {},
+    ContentService: {}, Logger: { log() {} }, ScriptApp: {},
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) }
+  };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).sort()
+    .forEach((f) => vm.runInContext(fs.readFileSync('apps-script/' + f, 'utf8'), ctx, { filename: f }));
+  return ctx;
+}
+
 // ---------------------------------------------------------------- encaminador
 console.log('\nEncaminador: escriure i tornar la pantalla en una sola crida');
 {
@@ -1720,6 +1744,72 @@ console.log("Inici: cada targeta desada a casa seva, i el calendari mai");
   ctx.Moduls.resumInici();
   cal('escriure a finances només torna a muntar la de finances',
       comptador.finances === 2 && comptador.tasques === 1, JSON.stringify(comptador));
+}
+
+
+// -------------------------------------------------- avisos programats dels mòduls
+/* El pic de divendres al matí és l'única raó per la qual el mòdul de seguiment
+   existeix: un xat no pot obrir conversa sol. Si això s'espatlla, el mòdul
+   deixa de servir per al que serveix i no ho notaria ningú fins divendres. */
+console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui');
+{
+  const ctx = carregaTotElServidor();
+
+  let triggers = [];
+  const cadena = (nom) => {
+    const c = {};
+    ['timeBased', 'everyDays', 'everyMinutes', 'onWeekDay', 'onMonthDay', 'nearMinute']
+      .forEach((m) => { c[m] = () => c; });
+    c.atHour = (h) => { triggers.push({ fn: nom, hora: h }); return c; };
+    c.create = () => {};
+    return c;
+  };
+  ctx.ScriptApp = { newTrigger: (n) => cadena(n), getProjectTriggers: () => [],
+                    WeekDay: { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4,
+                               FRIDAY: 5, SATURDAY: 6, SUNDAY: 7 } };
+  ctx.Config = { getNum: (k, d) => ({ hora_resum: 23, dia_revisio: 7, hora_revisio: 23 }[k] ?? d),
+                 get: () => null };
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.treuTriggers = () => {};
+  ctx.ambBloqueig_ = (f) => f();
+
+  let enviades = [];
+  ctx.Notifica = { envia: (t, c, o) => { enviades.push({ titol: t, url: o.url }); return {}; } };
+
+  ctx.instalaTriggers();
+  const seus = triggers.filter((t) => t.fn === 'triggerAvisos');
+  cal('es crea una hora de trigger per cada hora que demana un mòdul',
+      seus.length === 1 && seus[0].hora === 7, JSON.stringify(seus));
+
+  /* Les quatre combinacions que importen. La que ha d'enviar és una de sola:
+     divendres, a les set, i amb el control encara per fer. */
+  const quan = (iso) => { ctx.Date = class extends Date { constructor() { super(iso); } }; };
+  const prova = (iso, fet) => {
+    enviades = [];
+    ctx.Seguiment.estat = () => ({ fetAquestaSetmana: fet });
+    quan(iso);
+    ctx.triggerAvisos();
+    return enviades.length;
+  };
+
+  cal('divendres a les 7 amb el control per fer: pica',
+      prova('2026-08-07T07:15:00', false) === 1);
+  cal('divendres a les 7 amb el control ja fet: calla',
+      prova('2026-08-07T07:15:00', true) === 0);
+  cal('dijous a les 7: no és el seu dia',
+      prova('2026-08-06T07:15:00', false) === 0);
+  cal('divendres a les 15: no és la seva hora',
+      prova('2026-08-07T15:15:00', false) === 0);
+
+  /* Un mòdul que peti no se n'ha d'emportar cap altre: és la mateixa regla que
+     a `elDia` i a `resumInici`, i aquí encara importa més perquè ningú no ho
+     està mirant quan passa. */
+  enviades = [];
+  ctx.Seguiment.estat = () => { throw new Error('el full no hi és'); };
+  quan('2026-08-07T07:15:00');
+  let ha_petat = false;
+  try { ctx.triggerAvisos(); } catch (e) { ha_petat = true; }
+  cal('un avís que peta es registra i no tomba el repartidor', !ha_petat);
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

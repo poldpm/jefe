@@ -74,7 +74,40 @@ Tot és opcional excepte `id`, `nom` i `ordre`.
 | `elDia` | funció | `(data)` → `{titol, urgent, accio, coses: [{text, menut, fet, urgent}]}`. Què hi ha d'aquell dia, per ensenyar-ho. Ho fa servir la pàgina del dia. Retorna `null` si no hi ha res. |
 | `contextIA` | funció | Fitxa curta per a la conversa. **Mai el full sencer.** |
 | `einesIA` | array | Consultes que la IA pot fer per demanar-ne més dades. |
+| `avisos` | array | Avisos programats. El nucli crea els automatismes i els reparteix. Vegeu §3.1. |
 | `vista` | text | Nom del fitxer HTML de la seva pantalla. |
+
+---
+
+### 3.1 Avisos programats
+
+Un mòdul pot demanar que se l'avisi a una hora, un dia concret o cada dia.
+**No cal tocar res del nucli:** `instalaTriggers` mira quines hores demana algú
+i en crea una per hora, ni una més. Si cap mòdul demana res, no es crea cap
+automatisme.
+
+```javascript
+avisos: [{
+  id: 'control',              // per distingir-lo als registres
+  hora: 7,                    // 0-23, hora local
+  dia: 5,                     // 1 = dilluns … 7 = diumenge. Omet-ho = cada dia
+  mira: function () {
+    // Retorna null si avui no hi ha res a dir. Això no és cap error:
+    // un avís que pica tant si passa alguna cosa com si no deixa de
+    // voler dir res al cap de tres setmanes.
+    if (jaEstaFet()) return null;
+    return { titol: '…', cos: '…', url: 'elMeuModul' };
+  }
+}]
+```
+
+`titol` ha de servir sol des de la pantalla blocada: és el que es llegeix sense
+obrir res. `url` és la pantalla que s'obre en tocar la notificació.
+
+Un avís que peti es registra i no s'emporta els dels altres mòduls.
+
+**Cal tornar a executar `instalaTriggers()` després d'afegir un mòdul amb
+avisos**: les hores es miren quan es creen els automatismes, no cada dia.
 
 ---
 
@@ -253,6 +286,7 @@ App.registraVista('lectures', {
 - [ ] Si alguna eina seva ha d'obrir una pantalla en comptes de només contestar, posa-li `obre: 'nomDeLaVista'`
 - [ ] Has executat `configuraJefe()` perquè el nucli li creï els fulls
 - [ ] Si té pantalla, l'has afegida a `ui_index.html` amb `include()`
+- [ ] Si demana avisos programats, has tornat a executar `instalaTriggers()`
 
 ---
 

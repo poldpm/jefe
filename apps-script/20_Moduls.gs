@@ -162,6 +162,53 @@ var Moduls = (function () {
    *
    * Retorna [{ modul, titol, urgent, accio, coses: [{ text, menut, fet }] }].
    */
+  /**
+   * ELS AVISOS PROGRAMATS DELS MÒDULS.
+   *
+   * Fins ara els automatismes eren tots del nucli i amb nom fix, i per tant un
+   * mòdul nou no podia demanar que se l'avisés a cap hora sense que algú
+   * toqués `90_Instalacio.gs`. Això era un forat del nucli, no del mòdul: el
+   * contracte diu que afegir un mòdul ha de ser crear un fitxer i prou.
+   *
+   * Un modul declara:
+   *
+   *     avisos: [{
+   *       id: 'control',
+   *       hora: 7,                 // 0-23, hora local
+   *       dia: 5,                  // 1=dilluns … 7=diumenge. Omes = cada dia
+   *       mira: function () {      // null = avui no hi ha res a dir
+   *         return { titol: '…', cos: '…', url: 'seguiment' };
+   *       }
+   *     }]
+   *
+   * `instalaTriggers` mira quines hores demana algú i en crea una per hora, ni
+   * una més: si cap mòdul demana res, no hi ha cap automatisme de més. Un avís
+   * que no toqui avui no arriba ni a preguntar-ho al mòdul.
+   */
+  function avisos() {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (!m[i].avisos || !m[i].avisos.length) continue;
+      for (var k = 0; k < m[i].avisos.length; k++) {
+        var a = m[i].avisos[k];
+        var hora = Number(a.hora);
+        if (!(hora >= 0 && hora <= 23)) {
+          Log.avis('moduls.avisos', 'Avís de ' + m[i].id + ' sense hora vàlida. Ignorat.');
+          continue;
+        }
+        out.push({
+          modul: m[i].id,
+          id: a.id || (m[i].id + '.' + k),
+          hora: hora,
+          dia: a.dia === undefined || a.dia === null ? null : Number(a.dia),
+          mira: a.mira
+        });
+      }
+    }
+    return out;
+  }
+
   function elDia(data) {
     var out = [];
     var m = actius();
@@ -405,6 +452,7 @@ var Moduls = (function () {
     resumInici: resumInici,
     resumPeriode: resumPeriode,
     elDia: elDia,
+    avisos: avisos,
     contextIA: contextIA,
     invalidaContext: invalidaContext,
     alimentaContext: alimentaContext,

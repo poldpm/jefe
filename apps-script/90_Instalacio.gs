@@ -79,7 +79,7 @@ function netejaFullPerDefecte_(ss) {
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
-                'triggerAgendaDelDia', 'triggerEscalfa'];
+                'triggerAgendaDelDia', 'triggerEscalfa', 'triggerAvisos'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -153,8 +153,27 @@ function instalaTriggers() {
   ScriptApp.newTrigger('triggerPatrimoni')
     .timeBased().onMonthDay(28).atHour(21).create();
 
-  Log.info('instalacio', 'Triggers instal·lats', { horaResum: horaResum, diaRevisio: diaRevisio });
-  return 'Triggers instal·lats: ' + TRIGGERS.join(', ');
+  /* ELS AVISOS QUE DEMANIN ELS MÒDULS.
+     Una hora de trigger per cada hora que demani algú, i ni una més: si cap
+     mòdul en demana cap, aquí no es crea res. Tots criden la mateixa funció
+     —un automatisme d'Apps Script no pot rebre paràmetres— i és ella qui mira
+     quina hora és i a qui li toca.
+
+     Això existeix perquè fins ara un mòdul nou no podia demanar que se
+     l'avisés sense que algú vingués a editar aquest fitxer, i el contracte
+     diu el contrari: un mòdul és un fitxer i prou. */
+  var hores = {};
+  Moduls.avisos().forEach(function (a) { hores[a.hora] = true; });
+  Object.keys(hores).forEach(function (h) {
+    ScriptApp.newTrigger('triggerAvisos').timeBased().atHour(Number(h)).everyDays(1).create();
+  });
+
+  Log.info('instalacio', 'Triggers instal·lats', {
+    horaResum: horaResum, diaRevisio: diaRevisio, horaRevisio: horaRevisio,
+    horesDAvisos: Object.keys(hores)
+  });
+  return 'Triggers instal·lats: ' + TRIGGERS.join(', ') +
+         (Object.keys(hores).length ? '\nAvisos de mòduls a les: ' + Object.keys(hores).join(', ') : '');
 }
 
 /**
@@ -1925,6 +1944,44 @@ function provaClauBanc() {
  * es munta, es deixa estar i el registre ho diu. El que no pot passar és que
  * un automatisme d'aquests trenqui res.
  */
+/**
+ * EL REPARTIDOR DELS AVISOS DELS MÒDULS.
+ *
+ * Un automatisme d'Apps Script no pot rebre paràmetres, o sigui que totes les
+ * hores instal·lades criden aquí i és aquesta funció la que mira quina hora és
+ * i a qui li toca. Un mòdul que peti no s'emporta els altres: es registra i se
+ * segueix, que és la mateixa regla que a tot arreu.
+ */
+function triggerAvisos() {
+  var ara = new Date();
+  var hora = ara.getHours();
+  var dia = ara.getDay() === 0 ? 7 : ara.getDay();     // 1 = dilluns … 7 = diumenge
+  var enviats = 0, mirats = 0;
+
+  Moduls.avisos().forEach(function (a) {
+    if (a.hora !== hora) return;
+    if (a.dia !== null && a.dia !== dia) return;
+    if (typeof a.mira !== 'function') return;
+    mirats++;
+    try {
+      var r = ambBloqueig_(function () { return a.mira(); });
+      /* Retornar null vol dir «avui no hi ha res a dir», i no és cap error:
+         un avís que pica cada setmana tant si passa alguna cosa com si no
+         deixa de voler dir res al cap de tres setmanes. */
+      if (!r || !r.titol) return;
+      Notifica.envia(r.titol, r.cos || '', {
+        url: r.url || a.modul,
+        etiqueta: 'avis-' + a.modul + '-' + a.id
+      });
+      enviats++;
+    } catch (err) {
+      Log.error('trigger.avisos', 'Avís ' + a.modul + '.' + a.id + ': ' + err.message);
+    }
+  });
+
+  if (mirats) Log.info('trigger.avisos', 'Avisos mirats', { hora: hora, mirats: mirats, enviats: enviats });
+}
+
 function triggerEscalfa() {
   var t0 = Date.now();
   var fets = [], fallats = [];

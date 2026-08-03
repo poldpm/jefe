@@ -118,6 +118,31 @@ function MODUL_SEGUIMENT() {
       };
     },
 
+    /* EL PIC DE DIVENDRES AL MATÍ, que és per això que existeix tot això.
+       L'hora és la que és a posta: a les set del matí el que has de fer és
+       pesar-te i mesurar-te EN DEJÚ, abans de cafè i abans de moure't. Omplir
+       sis camps ja ho faràs quan puguis —el control es queda pendent al dia i
+       a l'inici fins que el despatxis—, però la mesura, si te la saltes, ja no
+       la pots recuperar fins divendres que ve.
+
+       Si ja l'has fet, no pica: un avís que arriba tant si toca com si no
+       deixa de voler dir res al cap de tres setmanes. */
+    avisos: [{
+      id: 'control',
+      hora: 7,
+      dia: 5,
+      mira: function () {
+        var e = Seguiment.estat();
+        if (e.fetAquestaSetmana) return null;
+        return {
+          titol: 'Control setmanal: pesa\'t i mesura\'t',
+          cos: 'Ara, en dejú i abans d\'esmorzar. Cintura al melic, dret i relaxat, ' +
+               'sense estrènyer. Els números els pots apuntar després.',
+          url: 'seguiment'
+        };
+      }
+    }],
+
     resumPeriode: function (desde, fins) { return Seguiment.resumPeriode(desde, fins); },
     contextIA:    function () { return Seguiment.contextIA(); },
 
