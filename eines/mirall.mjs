@@ -66,6 +66,7 @@ const MOCK = `
   var CONV_HIST   = ${j(D.conversaHistorial())};
   var INICI       = ${j(D.nucliInici())};
   var SEGUIMENT   = ${j(D.segPantalla())};
+  var ESCOLA      = ${j(D.escPantalla())};
   var DIA_BASE    = ${j(D.elDia({}))};
   var DIA_PAGINA  = function (p) {
     var d = copia(DIA_BASE);
@@ -135,6 +136,15 @@ const MOCK = `
                                       problemesEsquema: [], triggers: [], ia: { disponible: false } };
       if (accio === 'notificacions') return { disponible: false, motiu: 'mirall', dispositius: 0 };
       if (accio === 'ping') return { ara: AVUI, versio: 'mirall' };
+    }
+
+    if (modul === 'escola') {
+      if (accio === 'pantalla') return copia(ESCOLA);
+      if (accio === 'marcaLlegit') return { fet: true };
+      if (accio === 'llegeixTot') return { fets: 3 };
+      if (accio === 'comanda') return { text: 'Resposta inventada del mirall a /' + p.quina +
+        '.\\n\\nAqui no hi ha cap escola al darrere.' };
+      if (accio === 'digues') return { text: 'Fet (mirall).' };
     }
 
     if (modul === 'seguiment') {
@@ -460,7 +470,7 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
-const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances', 'seguiment', 'diari'];
+const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances', 'seguiment', 'escola', 'diari'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>
 <style>

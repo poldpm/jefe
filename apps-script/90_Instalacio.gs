@@ -8,6 +8,7 @@
  *   treuTriggers()      → els desinstal·la.
  *   provaAvisos()       → arribaran els avisos programats dels mòduls?
  *   provaFotos()        → hi ha permís per escriure les fotos del seguiment a Drive?
+ *   provaAvisosEscola() → arribaran els avisos de l'automatització de l'escola?
  *   informesALesOnze()  → posa els dos informes a les 23:00 i reinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
  */
@@ -212,6 +213,130 @@ function treuTriggers() {
     }
   }
   return 'Triggers eliminats: ' + tret;
+}
+
+
+/**
+ * EL PONT AMB L'AUTOMATITZACIÓ DE L'ESCOLA.
+ *
+ * No és el mateix que el del calendari, i per això té les seves propietats:
+ * són dos scripts diferents al mateix compte —un que escriu als calendaris i
+ * un que llegeix el correu—, amb dues adreces i dues claus. Barrejar-los
+ * voldria dir que tocar-ne un pot trencar l'altre.
+ *
+ * Aquest pont NOMÉS serveix per PREGUNTAR coses a l'escola. El que t'envia
+ * l'escola arriba pel doPost del nucli amb la clau d'accés de sempre, i
+ * funciona encara que aquí no hi hagi res configurat.
+ */
+function connectaAvisosEscola(url, clau) {
+  if (!url || !clau) {
+    return 'Aquesta funció necessita dos valors, i des del botó d\'executar no\n' +
+           'se li poden donar. Fes-ho així:\n\n' +
+           '  Configuració del projecte (l\'engranatge de l\'esquerra)\n' +
+           '  → Propietats de l\'script → Afegeix una propietat, dues vegades:\n\n' +
+           '     ESCOLA_PONT_URL   →  l\'adreça del detector, acabada en /exec\n' +
+           '     ESCOLA_PONT_CLAU  →  la clau que hi has posat al CONFIG\n\n' +
+           '  I després executa provaAvisosEscola().';
+  }
+
+  var u = String(url).trim();
+  if (u.indexOf('https://script.google.com/') !== 0 || u.slice(-5) !== '/exec') {
+    return 'Aquesta adreça no té la pinta bona. Ha de començar per\n' +
+           'https://script.google.com/macros/s/ i acabar en /exec\n' +
+           '(no en /dev, que és la de proves i només funciona per a tu).';
+  }
+
+  PropertiesService.getScriptProperties().setProperties({
+    ESCOLA_PONT_URL: u,
+    ESCOLA_PONT_CLAU: String(clau).trim()
+  });
+  return 'Desat. Ara executa provaAvisosEscola().';
+}
+
+
+/**
+ * ARRIBARÀ EL QUE M'ENVIÏ L'ESCOLA, I PODRÉ PREGUNTAR-LI RES?
+ *
+ * Comprova les dues direccions per separat, perquè són independents i poden
+ * fallar per motius diferents:
+ *
+ *   escola → JEFE   necessita el full, la clau d'accés i un dispositiu
+ *                   registrat. Es prova de debò: escriu un avís i el treu.
+ *   JEFE → escola   necessita el pont. Es prova trucant-hi.
+ *
+ * Si la segona falla, la primera segueix servint: continuaries rebent tot el
+ * que t'enviï l'escola i només no li podries preguntar res.
+ */
+function provaAvisosEscola() {
+  var l = ['=== ELS AVISOS DE L\'ESCOLA ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  // ---- direcció 1: el que t'envien
+  a('');
+  a('ESCOLA → JEFE   (el que t\'arriba sol)');
+
+  var idProva = null;
+  try {
+    var r = Escola.rebre({
+      mena: 'avis',
+      titol: 'Prova del pont amb l\'escola',
+      cos: 'Si veus això a l\'apartat Escola, el camí funciona. Ara el trec.',
+      notifica: false
+    });
+    idProva = r.id;
+    a('  Desar un avís ......... correcte');
+  } catch (err) {
+    a('  Desar un avís ......... FALLA: ' + err.message);
+    a('  Executa configuraJefe() per crear el full «Escola».');
+    return l.join('\n');
+  }
+
+  try {
+    var d = Notifica.dispositius();
+    a('  Notificar-te .......... ' + (Notifica.disponible()
+        ? (d.length ? d.length + ' dispositius' : 'FALLA: cap dispositiu registrat')
+        : 'FALLA: ' + Notifica.motiu()));
+  } catch (err) {
+    a('  Notificar-te .......... FALLA: ' + err.message);
+  }
+
+  var clau = PropertiesService.getScriptProperties().getProperty(PROP_CLAU_ACCES);
+  a('  Clau d\'accés .......... ' + (clau ? 'posada' : 'FALTA — executa generaClauAcces()'));
+  a('');
+  a('  L\'script de l\'escola ha d\'enviar a aquesta adreça:');
+  a('    ' + ScriptApp.getService().getUrl());
+
+  /* L'avís de prova es marca com a llegit i es queda. En aquest sistema res no
+     s'esborra —no hi ha ni funció per fer-ho, i és a posta— i no serà una
+     prova la que estreni l'excepció. Marcat com a llegit ja no et reclama ni
+     compta com a pendent, que és tot el que calia. */
+  try {
+    if (idProva) { Escola.marcaLlegit(idProva); a(''); a('  (l\'avís de prova queda com a llegit)'); }
+  } catch (err) {
+    a('');
+    a('  L\'avís de prova s\'ha quedat sense llegir; el pots marcar tu.');
+  }
+
+  // ---- direcció 2: el que li preguntes
+  a('');
+  a('JEFE → ESCOLA   (les preguntes: agenda, pendents, correus, setmana)');
+  if (!EscolaPont.hiEs()) {
+    a('  Pont .................. no configurat');
+    a('');
+    a('  Sense això seguiràs rebent-ho tot, però no li podràs preguntar res.');
+    a('  Posa ESCOLA_PONT_URL i ESCOLA_PONT_CLAU a Propietats de l\'script.');
+    return l.join('\n');
+  }
+  try {
+    var q = EscolaPont.prova();
+    a('  Contesta .............. sí' + (q && q.qui ? '  (' + q.qui + ')' : ''));
+  } catch (err) {
+    a('  Contesta .............. FALLA: ' + err.message);
+  }
+
+  a('');
+  a('=== FI ===');
+  return l.join('\n');
 }
 
 // ------------------------------------------------- punts d'entrada dels triggers

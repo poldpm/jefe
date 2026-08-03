@@ -1898,4 +1898,59 @@ input[type="checkbox"] { accent-color: var(--utm); }
                                 background: var(--utm-suau); }
 .camp-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2); }
 
+
+/* ==========================================================================
+   ESCOLA — la safata de l'automatització
+
+   Substitueix una finestra de Telegram, però NO és un xat: el que hi arriba
+   són avisos d'un automatisme, no conversa. Per això no hi ha bafarades ni
+   alineació a dreta i esquerra: és una safata, i el que ha de cantar és què
+   queda per llegir.
+   ========================================================================== */
+
+.esc-comandes { display: flex; gap: var(--e2); flex-wrap: wrap; margin-bottom: var(--e4); }
+.esc-comandes .btn { flex: 1; min-width: 88px; }
+
+.esc-safata { display: flex; flex-direction: column; gap: var(--e2); }
+
+.esc-msg {
+  border: 1px solid var(--neatline); background: var(--paper2);
+  padding: var(--e3);
+}
+.esc-msg header { display: flex; align-items: baseline; gap: var(--e2);
+                  margin-bottom: var(--e1); }
+.esc-mena { font-family: var(--mono); font-size: .625rem; letter-spacing: .12em;
+            text-transform: uppercase; color: var(--ink-suau); }
+.esc-quan { margin-left: auto; font-family: var(--mono); font-size: .625rem;
+            color: var(--ink-suau); font-variant-numeric: tabular-nums; }
+.esc-msg h2 { font-size: .9375rem; margin: 0 0 var(--e1); line-height: 1.3; }
+.esc-msg p { margin: 0; font-size: .875rem; line-height: 1.5; color: var(--ink-suau);
+             white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* EL QUE NO HAS LLEGIT. El fil viu a l'esquerra i la superfície encesa, la
+   mateixa marca que fan servir els hàbits fets: dins d'aquesta app, «això et
+   reclama» es diu sempre igual. I no ho diu només el color —hi ha el botó
+   «Vist», que als llegits no hi és—. */
+.esc-nou { border-color: var(--utm);
+           border-left: 3px solid var(--utm);
+           background: color-mix(in srgb, var(--utm) 8%, var(--paper2)); }
+.esc-nou h2 { color: var(--ink); }
+.esc-nou .esc-mena { color: var(--utm); }
+
+.esc-vist {
+  margin-top: var(--e3); min-height: 36px; padding: 0 var(--e3);
+  border: 1px solid var(--utm-suau); background: transparent; color: var(--utm);
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: border-color .16s var(--entra), background-color .16s var(--entra);
+}
+.esc-vist:active { background: var(--utm-suau); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .esc-vist:hover { border-color: var(--utm); }
+}
+
+/* La resposta a una pregunta que has fet tu: no és un avís rebut i no s'ha de
+   confondre amb la safata. Va a part i amb el fil de l'acció. */
+.esc-resposta { margin-top: var(--e4); border-left: 3px solid var(--accio); }
+
 </style>

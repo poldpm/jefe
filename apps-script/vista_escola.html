@@ -1,0 +1,163 @@
+<script>
+/* JEFE — MÒDUL · Escola
+
+   Aquesta pantalla substitueix una finestra de Telegram, i per això s'assembla
+   més a una safata que a un xat: el que hi arriba no és conversa, són avisos
+   d'un automatisme. El que has de poder fer d'un cop d'ull és veure què hi ha
+   sense llegir i despatxar-ho.
+
+   ELS BOTONS DE DALT SÍ QUE SÓN UNA PREGUNTA A L'ESCOLA i triguen: cada un és
+   un viatge al seu script. Per això es marquen mentre esperen i la resposta
+   arriba a la mateixa safata, com un missatge més. */
+
+App.registraVista('escola', {
+  render: function (arrel) {
+
+    var d = null;
+
+    function quan(iso) {
+      if (!iso) return '';
+      var t = String(iso).replace(' ', 'T');
+      var x = new Date(t);
+      if (isNaN(x)) return String(iso).slice(0, 16);
+      var avui = new Date();
+      var mateixDia = x.toDateString() === avui.toDateString();
+      var h = ('0' + x.getHours()).slice(-2) + ':' + ('0' + x.getMinutes()).slice(-2);
+      if (mateixDia) return h;
+      return x.getDate() + ' ' + ['gen','feb','març','abr','maig','juny','jul','ag','set','oct','nov','des'][x.getMonth()] + ' · ' + h;
+    }
+
+    var MENES = {
+      acta:     'Acta',
+      tasca:    'Tasca',
+      event:    'Event',
+      drive:    'Drive',
+      resum:    'Resum',
+      resposta: 'Resposta',
+      avis:     'Avís'
+    };
+
+    function capcalera() {
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:1.0625rem;margin:0">Escola</h1>' +
+          '<p class="marge" style="margin:2px 0 0">' +
+            (d && d.pendents ? d.pendents + ' sense llegir' : 'tot llegit') + '</p>' +
+        '</div>' +
+        (d && d.pendents
+          ? '<button class="btn btn-fantasma" data-totllegit="1">Llegit</button>'
+          : '') +
+      '</div></header>';
+    }
+
+    function pinta() {
+      var m = d.missatges || [];
+
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+
+          /* PREGUNTAR A L'ESCOLA. Són els quatre comandaments que fins ara
+             escrivies al bot. Si el pont no hi és, es diu i no s'amaguen: un
+             botó que desapareix no ensenya res, i un que no hi és mai no
+             s'entén. */
+          '<section class="esc-comandes">' +
+            (d.pont
+              ? [['agenda', 'Agenda'], ['pendents', 'Pendents'],
+                 ['correus', 'Correus'], ['setmana', 'Setmana']].map(function (c) {
+                  return '<button class="btn btn-secundari" data-cmd="' + c[0] + '">' +
+                    esc(c[1]) + '</button>';
+                }).join('')
+              : '<p class="menut" style="margin:0">Encara no pots preguntar-li res: falta ' +
+                'engegar el pont amb el compte de l\'escola. Els avisos que t\'enviï ' +
+                'sí que arriben.</p>') +
+          '</section>' +
+
+          (m.length
+            ? '<div class="esc-safata">' + m.map(function (x) {
+                var nou = !x.llegit_el;
+                return '<article class="esc-msg' + (nou ? ' esc-nou' : '') + '" data-id="' + esc(x.id) + '">' +
+                  '<header>' +
+                    '<span class="esc-mena">' + esc(MENES[x.mena] || 'Avís') + '</span>' +
+                    '<span class="esc-quan">' + esc(quan(x.rebut_el)) + '</span>' +
+                  '</header>' +
+                  '<h2>' + esc(x.titol) + '</h2>' +
+                  (x.cos ? '<p>' + esc(x.cos) + '</p>' : '') +
+                  (nou ? '<button class="esc-vist" data-vist="' + esc(x.id) + '">Vist</button>' : '') +
+                '</article>';
+              }).join('') + '</div>'
+            : '<div class="estat">' + ic('escola', 'ic-g') +
+              '<h2>Encara no hi ha res</h2>' +
+              '<p>Aquí hi arribarà el que fins ara t\'enviava el bot: correus amb ' +
+              'tasca o data, actes de primària, canvis a la carpeta de 2n i els ' +
+              'resums del matí.</p></div>') +
+
+          '<div id="esc-resposta"></div>' +
+        '</div>';
+
+      lliga();
+    }
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      var tot = arrel.querySelector('[data-totllegit]');
+      if (tot) tot.addEventListener('click', function () {
+        tot.disabled = true;
+        crida('escola', 'llegeixTot', {})
+          .then(function () { carrega(true); })
+          .catch(function (err) { tot.disabled = false; App.brindis(err.message, 'error'); });
+      });
+
+      arrel.querySelectorAll('[data-vist]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var art = b.closest('.esc-msg');
+          /* Es treu de seguida i es desa pel darrere: marcar un avís com a vist
+             no és una cosa que hagis d'esperar-te. Si peta, torna. */
+          if (art) { art.classList.remove('esc-nou'); b.remove(); }
+          crida('escola', 'marcaLlegit', { id: b.dataset.vist })
+            .catch(function (err) { App.brindis(err.message, 'error'); carrega(true); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-cmd]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var caixa = arrel.querySelector('#esc-resposta');
+          var abans = b.textContent;
+          b.disabled = true; b.textContent = 'Demanant…';
+          caixa.innerHTML = '<div class="esquelet" style="height:72px"></div>';
+          crida('escola', 'comanda', { quina: b.dataset.cmd }).then(function (r) {
+            caixa.innerHTML = '<article class="esc-msg esc-resposta">' +
+              '<header><span class="esc-mena">' + esc(abans) + '</span></header>' +
+              '<p>' + esc(String(r && r.text || '(sense resposta)')) + '</p></article>';
+            b.disabled = false; b.textContent = abans;
+          }).catch(function (err) {
+            caixa.innerHTML = '';
+            b.disabled = false; b.textContent = abans;
+            App.brindis(err.message, 'error');
+          });
+        });
+      });
+    }
+
+    function carrega(refresca) {
+      var cau = Cau.get('escola', null);
+      if (cau && !refresca) { d = cau; pinta(); }
+      else if (!cau) arrel.innerHTML = Comp.carregant(3);
+
+      crida('escola', 'pantalla', {}).then(function (r) {
+        d = r; Cau.set('escola', r); pinta();
+      }).catch(function (err) {
+        if (d) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
+        arrel.innerHTML = Comp.error(err, true);
+        var b = arrel.querySelector('[data-reintenta]');
+        if (b) b.addEventListener('click', function () { App.ves('escola'); });
+      });
+    }
+
+    carrega(false);
+  }
+});
+</script>

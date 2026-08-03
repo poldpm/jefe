@@ -490,6 +490,31 @@ export function dades(AVUI, menys) {
   };
 
 
+
+  // ---------------------------------------------------------------- escola
+  /* Inventat, com tot el mirall: cap nom de companya ni d'alumne de debò. */
+  const escPantalla = () => ({
+    avui: AVUI,
+    pont: true,
+    total: 5,
+    pendents: 3,
+    missatges: [
+      { id: 'esc_5', rebut_el: AVUI + 'T08:12:00', mena: 'acta', llegit_el: '',
+        titol: 'Substitució Medi 2nB (per la tutora de 2nB)',
+        cos: 'Dimarts 9, de 11:00 a 12:00. Surt de la taula de substitucions de l\'acta de primària.' },
+      { id: 'esc_4', rebut_el: AVUI + 'T07:40:00', mena: 'tasca', llegit_el: '',
+        titol: 'Firmar les autoritzacions de la sortida', cos: 'Abans de divendres.' },
+      { id: 'esc_3', rebut_el: AVUI + 'T07:02:00', mena: 'resum', llegit_el: '',
+        titol: 'Avui: 2 events, 3 tasques, 4 correus sense llegir',
+        cos: '09:00 Claustre de mestres\n17:00 Reunió de cicle\n\nPendents:\n' +
+             '· Corregir els controls\n· Preparar les fitxes de mates\n· Trucar a una família' },
+      { id: 'esc_2', rebut_el: menys(1) + 'T16:30:00', mena: 'drive', llegit_el: menys(1) + 'T18:00:00',
+        titol: 'S\'han modificat 2 fitxers a la carpeta de 2n',
+        cos: 'Programació.xlsx\nSortides.docx' },
+      { id: 'esc_1', rebut_el: menys(2) + 'T09:15:00', mena: 'event', llegit_el: menys(2) + 'T09:20:00',
+        titol: 'Excursió de cicle inicial', cos: 'Dijous 18, tot el dia.' }
+    ]
+  });
   // ------------------------------------------------------------- seguiment
   /* Inventat, com tot el mirall. Les xifres de debò no surten mai d aqui:
      aquest fitxer si que va al repositori public. */
@@ -554,5 +579,5 @@ export function dades(AVUI, menys) {
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia,
            CATEGORIES, finPantalla, tasquesPantalla, diariPantalla,
-           conversaEstat, conversaHistorial, nucliInici, segPantalla };
+           conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
 }
