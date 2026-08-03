@@ -655,6 +655,7 @@ var Seguiment = (function () {
     pantalla: pantalla,
     estat: estat,
     desaControl: desaControl,
+    carpetaFotos: carpeta_,
     pujaFoto: pujaFoto,
     esborraFoto: esborraFoto,
     comenta: comenta,

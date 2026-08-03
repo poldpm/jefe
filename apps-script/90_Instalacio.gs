@@ -7,6 +7,7 @@
  *   instalaTriggers()   → instal·la els automatismes nocturns. Idempotent.
  *   treuTriggers()      → els desinstal·la.
  *   provaAvisos()       → arribaran els avisos programats dels mòduls?
+ *   provaFotos()        → hi ha permís per escriure les fotos del seguiment a Drive?
  *   informesALesOnze()  → posa els dos informes a les 23:00 i reinstal·la.
  *   diagnostic()        → escriu l'estat del sistema al registre d'execució.
  */
@@ -820,6 +821,63 @@ function provaAvisos() {
   afegeix('');
   afegeix('=== FI ===');
   afegeix('Si vols veure\'n una al mòbil ara, executa provaNotificacio().');
+  return linies.join('\n');
+}
+
+
+/**
+ * LES FOTOS DEL SEGUIMENT: HI HA PERMÍS PER ESCRIURE A DRIVE?
+ *
+ * El mòdul de seguiment és el primer de tot JEFE que toca Drive, i això vol
+ * dir un permís que abans no calia. El problema és ON es demana: un permís que
+ * falta el navegador te'l pregunta, però una app web ja desplegada no pregunta
+ * res —peta i prou—. O sigui que provant-ho des del telèfon el que veuries és
+ * un error, i no sabries que només et falta dir que sí.
+ *
+ * Aquí sí que es pot preguntar: executant això des de l'editor, Google et
+ * demana el permís, tu l'acceptes, i a partir d'aquell moment el telèfon ja
+ * el té. Per això existeix aquesta funció i per això s'executa des d'aquí.
+ *
+ * Crea la carpeta si no hi és, hi escriu un fitxer de no res i el llença a la
+ * paperera. No toca res del que hi hagi.
+ */
+function provaFotos() {
+  var linies = ['=== FOTOS DEL SEGUIMENT ==='];
+  function afegeix(t) { linies.push(t); Logger.log(t); }
+
+  var carpeta;
+  try {
+    carpeta = Seguiment.carpetaFotos();
+  } catch (err) {
+    afegeix('FALLA en obrir la carpeta: ' + err.message);
+    afegeix('');
+    afegeix('Si parla de permisos o d\'autorització, torna a executar aquesta');
+    afegeix('mateixa funció i accepta el que et demani Google.');
+    return linies.join('\n');
+  }
+  afegeix('1. Carpeta .............. ' + carpeta.getName());
+  afegeix('   ' + carpeta.getUrl());
+
+  var f;
+  try {
+    var blob = Utilities.newBlob('prova', 'text/plain', 'prova-jefe.txt');
+    f = carpeta.createFile(blob);
+  } catch (err) {
+    afegeix('2. Escriure-hi .......... FALLA: ' + err.message);
+    return linies.join('\n');
+  }
+  afegeix('2. Escriure-hi .......... correcte (' + f.getId() + ')');
+
+  try {
+    f.setTrashed(true);
+    afegeix('3. Netejar .............. el fitxer de prova és a la paperera');
+  } catch (err) {
+    afegeix('3. Netejar .............. no s\'ha pogut treure: ' + err.message);
+    afegeix('   Es diu «prova-jefe.txt» i el pots esborrar tu.');
+  }
+
+  afegeix('');
+  afegeix('=== FI · ja pots pujar fotos des del mòbil ===');
   return linies.join('\n');
 }
 
