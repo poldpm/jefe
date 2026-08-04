@@ -1846,11 +1846,26 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 .caixes { display: grid; gap: var(--e3); grid-template-columns: 1fr; }
 .caixa { border: 1px solid var(--neatline); background: var(--paper2); }
+/* LA CAPÇALERA HA DE SEMBLAR UNA CAPÇALERA.
+   Era del mateix color que el cos i una mica més petita que les files: el nom
+   de la llista es llegia com una tasca més i la caixa semblava un munt de
+   coses sense títol.
+   Qui ho arregla és LA LLETRA, no el fons. En fosc, la superfície tenyida i la
+   del cos només es diferencien 1,21:1 —mesurat—: per molt que hi posis un
+   fons, allà no hi ha cap graó que es vegi. Lletra de màquina, versaleta i
+   espaiada és com aquesta app diu «això és una etiqueta i no contingut» a
+   totes les altres pantalles, i aquí fa exactament la mateixa feina. El fons
+   tenyit s'hi queda per acompanyar, no per sostenir-ho.
+   I centrada: amb `baseline`, el «+» de 44 px estirava la barra cap avall i
+   deixava el títol enganxat a dalt. */
 .caixa-cap {
-  display: flex; align-items: baseline; gap: var(--e2);
+  display: flex; align-items: center; gap: var(--e2);
   margin: 0; padding: var(--e2) var(--e3);
+  background: var(--utm-suau);
   border-bottom: 1px solid var(--neatline);
-  font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--ink);
+  font-family: var(--mono); font-size: .75rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  line-height: 1.3; color: var(--ink);
 }
 .caixa-cap > span { flex: 1; min-width: 0; }
 /* Dins la caixa no hi ha ratlles quan les files són text: la caixa ja diu on
