@@ -2689,7 +2689,8 @@ function triggerEscalfaFora() {
     if (typeof m[i].escalfa !== 'function') continue;
     try {
       var r = m[i].escalfa();
-      fets.push(m[i].id + (r && r.ms ? ' ' + r.ms + 'ms' : ''));
+      fets.push(m[i].id + (r && r.ms ? ' ' + r.ms + 'ms' : '') +
+                (r && r.detall ? ' [' + r.detall + ']' : ''));
     } catch (err) {
       fallats.push(m[i].id + ': ' + err.message);
     }

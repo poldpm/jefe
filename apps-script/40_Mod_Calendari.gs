@@ -436,8 +436,16 @@ var Calendari = (function () {
    * SEMPRE —si mirés el que hi ha desat, no refaria mai res i la finestra
    * caducaria a les mans de qui obrís l'app.
    */
+  /* ON SE'N VA EL TEMPS DE L'ÚLTIMA LECTURA. Serveix per no haver d'endevinar:
+     el 4 d'agost del 2026 vaig posar el pont dins la mateixa tirada que les
+     agendes «per estalviar tres segons» i la lectura va passar de 7 a 42, i em
+     vaig quedar sense saber quina de les dues bandes era. Amb això, `escalfa`
+     ho diu i no cal suposar-ho. */
+  var ultimTemps = {};
+
   function llegeix_(desde, fins) {
     var tz = Config.zonaHoraria();
+    ultimTemps = { pont: 0, meves: 0, deCop: false };
     var inici = Utils.aData(desde);
     var final = Utils.aData(fins);
     if (!inici || !final) throw new Error('Rang de dates no vàlid.');
@@ -456,11 +464,14 @@ var Calendari = (function () {
        un mes sense res. */
     var delPont = mirats.filter(function (c) { return c.pont; });
     if (delPont.length && CalendariPont.hiEs()) {
+      var tPont = Date.now();
       try {
         var seus = CalendariPont.esdeveniments(desde, fins,
           delPont.map(function (c) { return c.id; }));
         (seus || []).forEach(function (e) { out.push(e); });
+        ultimTemps.pont = Date.now() - tPont;
       } catch (err) {
+        ultimTemps.pont = Date.now() - tPont;
         Log.avis('calendari.pont',
                  'No he pogut llegir el calendari de l\'altre compte: ' + err.message,
                  { desde: desde, fins: fins });
@@ -471,6 +482,7 @@ var Calendari = (function () {
        Vegeu `totesDeCop_`: vuit agendes preguntades una darrere l'altra eren
        tretze segons; preguntades alhora, el que triga és la més lenta. */
     var meves = mirats.filter(function (c) { return !c.pont; });
+    var tMeves = Date.now();
     var deCop = totesDeCop_(meves, inici, final);
 
     meves.forEach(function (c) {
@@ -479,6 +491,8 @@ var Calendari = (function () {
       if (events === null) events = perCalendarApp_(c, inici, final);
       events.forEach(function (e) { out.push(e); });
     });
+    ultimTemps.meves = Date.now() - tMeves;
+    ultimTemps.deCop = !!deCop;
 
     out.sort(function (a, b) {
       if (a.data !== b.data) return a.data.localeCompare(b.data);
@@ -814,7 +828,14 @@ var Calendari = (function () {
     var events = llegeix_(f.desde, f.fins);
     desaFinestra_(f.desde, f.fins, events);
     var t = targeta();
-    return { ms: Date.now() - t0, events: events.length, targeta: t.valor };
+    return {
+      ms: Date.now() - t0,
+      events: events.length,
+      targeta: t.valor,
+      /* Partit, per saber a qui s'ha de mirar la pròxima vegada. */
+      detall: 'escola ' + ultimTemps.pont + 'ms + meves ' + ultimTemps.meves + 'ms' +
+              (ultimTemps.deCop ? ' (de cop)' : ' (una a una)')
+    };
   }
 
   /**
