@@ -2231,6 +2231,16 @@ console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor 
       vista.indexOf('caixesPendents(dia.pendents)') !== -1);
   cal('i la resposta de la comanda «Pendents» es capsa igual',
       vista.indexOf('trossos.push(caixesPendents(cua))') !== -1);
+
+  /* La capçalera deia «3 sense llegir» i la secció «Notificacions · 2» a la
+     mateixa pantalla, perquè comptaven conjunts diferents —i `despatxa` encara
+     els separava més—. Ara els tres surten de `nous()`; si algú torna a comptar
+     pel seu compte, això ho ha de dir. */
+  cal('els tres comptadors de sense llegir surten del mateix lloc',
+      /function nous\(\)/.test(vista) &&
+      vista.indexOf('var n = d ? nous().length : 0;') !== -1 &&
+      vista.indexOf('var quantsNous = nous().length;') !== -1 &&
+      vista.indexOf('(elsNous.length ? \' · \' + elsNous.length : \'\')') !== -1);
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

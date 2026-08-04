@@ -1396,12 +1396,16 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .dia-cosa[data-fet="1"] .dia-marca { color: var(--ink-suau); }
 
 .dia-text { line-height: 1.35; overflow-wrap: anywhere; min-width: 0; }
-/* La columna de la dreta és per a dades curtes —una hora, un import, «fa 4
-   dies»— i per això no parteix. Però el diari hi posa un tros del que has
-   escrit, i allò sí que és llarg: es deixa encongir i s'acaba amb punts en
-   comptes d'empènyer la pàgina cap a fora. */
+/* La columna de la dreta és per a dades curtes —una hora, un import, «Tutoria»,
+   «fa 4 dies»— i per això no parteix ni s'escapça: NO S'ENCONGEIX. Abans sí, i
+   com que qui li prenia l'espai era el títol del costat, una tasca de títol
+   llarg et deixava «Tutor…» al costat: l'etiqueta curta pagava el text llarg
+   d'un altre. Ara el títol parteix, que és el que sap fer.
+   El sostre del 48% es queda per al diari, que hi posa un tros del que has
+   escrit: allò sí que és llarg de debò i s'acaba amb punts en comptes
+   d'empènyer la pàgina cap a fora. */
 .dia-cosa .menut { margin-left: auto; white-space: nowrap;
-                   flex: 0 1 auto; min-width: 0; max-width: 48%;
+                   flex: 0 0 auto; min-width: 0; max-width: 48%;
                    overflow: hidden; text-overflow: ellipsis;
                    font-family: var(--mono); font-size: .6875rem; }
 .dia-cosa[data-fet="1"] .dia-text { color: var(--ink-suau); }
@@ -1916,28 +1920,36 @@ input[type="checkbox"] { accent-color: var(--utm); }
 }
 .esc-msg header { display: flex; align-items: baseline; gap: var(--e2);
                   margin-bottom: var(--e1); }
-.esc-mena { font-family: var(--mono); font-size: .625rem; letter-spacing: .12em;
+.esc-mena { font-family: var(--mono); font-size: .6875rem; letter-spacing: .1em;
             text-transform: uppercase; color: var(--ink-suau); }
-.esc-quan { margin-left: auto; font-family: var(--mono); font-size: .625rem;
+.esc-quan { margin-left: auto; font-family: var(--mono); font-size: .6875rem;
             color: var(--ink-suau); font-variant-numeric: tabular-nums; }
 .esc-msg h3 { font-size: .9375rem; margin: 0 0 var(--e1); line-height: 1.3; }
-.esc-msg p { margin: 0; font-size: .875rem; line-height: 1.5; color: var(--ink-suau);
+/* La mesura, aturada: a l'escriptori aquest paràgraf feia tota l'amplada de la
+   pàgina i una línia de cent-trenta caràcters no es llegeix, es recorre. */
+.esc-msg p { margin: 0; max-width: 68ch; font-size: .875rem; line-height: 1.5;
+             color: var(--ink-suau);
              white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* EL QUE NO HAS LLEGIT. El fil viu a l'esquerra i la superfície encesa, la
    mateixa marca que fan servir els hàbits fets: dins d'aquesta app, «això et
    reclama» es diu sempre igual. I no ho diu només el color —hi ha el botó
    «Vist», que als llegits no hi és—. */
+/* Sense pestanya de 3 px a l'esquerra: amb la vora encesa i la superfície
+   tenyida, aquell tros de vora gruixuda només afegia pes a una fitxa que ja
+   pesava més que la columna d'hores —que és el que has vingut a mirar—. */
 .esc-nou { border-color: var(--utm);
-           border-left: 3px solid var(--utm);
            background: color-mix(in srgb, var(--utm) 8%, var(--paper2)); }
 .esc-nou h3 { color: var(--ink); }
 .esc-nou .esc-mena { color: var(--utm); }
+/* Sobre la superfície tenyida, `--ink-suau` es queda a 4,1:1. El cos d'un avís
+   que encara no has llegit és justament el que has de poder llegir. */
+.esc-nou p { color: var(--ink); }
 
 .esc-vist {
   margin-top: var(--e3); min-height: 36px; padding: 0 var(--e3);
   border: 1px solid var(--utm-suau); background: transparent; color: var(--utm);
-  font-family: var(--mono); font-size: .625rem; letter-spacing: .12em;
+  font-family: var(--mono); font-size: .75rem; letter-spacing: .1em;
   text-transform: uppercase;
   transition: border-color .16s var(--entra), background-color .16s var(--entra);
 }
@@ -1957,17 +1969,25 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .esc-despatxat { opacity: 0; height: 0 !important; margin: 0; padding-top: 0;
                  padding-bottom: 0; overflow: hidden; pointer-events: none; }
 
-.esc-vistos { margin-top: var(--e4); border-top: 1px solid var(--neatline);
-              padding-top: var(--e3); }
+/* HA DE SEMBLAR UN BOTÓ. Era text pelat alineat a l'esquerra: allà hi ha
+   quinze dies d'avisos al darrere i ningú no els obria perquè res no deia que
+   allò es pogués tocar. Vora, i un galó que gira quan s'obre. */
 .esc-obre-vistos {
-  width: 100%; min-height: 44px; padding: 0 var(--e3);
-  border: 0; background: transparent; color: var(--ink-suau);
-  font-family: var(--mono); font-size: .6875rem; letter-spacing: .1em;
+  display: flex; align-items: center; gap: var(--e2);
+  width: 100%; min-height: 44px; margin-top: var(--e3); padding: 0 var(--e3);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .08em;
   text-transform: uppercase; text-align: left;
-  transition: color .16s var(--entra);
+  transition: color .16s var(--entra), border-color .16s var(--entra);
 }
-.esc-obre-vistos:active { color: var(--utm); }
-.esc-vistos .esc-safata { margin-top: var(--e2); }
+.esc-obre-vistos .ic { width: 12px; height: 12px; flex: none;
+                       transition: transform .16s var(--entra); }
+.esc-obre-vistos[aria-expanded="true"] .ic { transform: rotate(90deg); }
+.esc-obre-vistos:active { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .esc-obre-vistos:hover { color: var(--utm); border-color: var(--utm); }
+}
+.esc-obre-vistos + .esc-safata { margin-top: var(--e2); }
 
 /* La resposta a una pregunta teva va JUST SOTA el botó que l'ha demanada, no
    al final de la pàgina: el que has demanat ha de sortir on estàs mirant. */
@@ -1986,31 +2006,51 @@ input[type="checkbox"] { accent-color: var(--utm); }
 /* LA COLUMNA D'HORES. El fil vertical és el dia; cada cosa hi penja pel seu
    punt. Les hores lliures hi són escrites: un forat entre dues cites no és un
    buit del disseny, és una hora que tens. */
-.esc-columna { position: relative; padding-left: 52px; }
+/* El fil i els punts van amb `--ink-suau`, no amb `--neatline`: una vora de
+   caixa pot ser fluixa perquè la caixa ja es veu, però aquí el fil ÉS el dia i
+   amb `--neatline` sobre el fons quedava a 1,4:1 —o sigui, no s'hi veia—.
+   L'opacitat el deixa a prop de 3,5:1, que és el mínim d'una cosa que has de
+   distingir sense llegir-la. */
+.esc-columna { position: relative; padding-left: 58px; }
 .esc-columna::before {
-  content: ""; position: absolute; left: 44px; top: 6px; bottom: 6px;
-  width: 1px; background: var(--neatline);
+  content: ""; position: absolute; left: 50px; top: 6px; bottom: 6px;
+  width: 1px; background: var(--ink-suau); opacity: .8;
 }
 .esc-h {
-  position: relative; margin-bottom: 2px; padding: var(--e2) var(--e3);
+  position: relative; margin-bottom: 2px; padding: var(--e3);
   border: 1px solid var(--neatline); background: var(--paper2);
 }
-.esc-h b { display: block; font-size: .9375rem; font-weight: 600; line-height: 1.3; }
+.esc-h b { display: block; font-size: 1rem; font-weight: 600; line-height: 1.3; }
 .esc-hora {
-  position: absolute; left: -52px; top: 10px; width: 38px; text-align: right;
-  font-family: var(--mono); font-size: .6875rem; font-style: normal;
+  position: absolute; left: -58px; top: 13px; width: 44px; text-align: right;
+  font-family: var(--mono); font-size: .75rem; font-style: normal;
   color: var(--ink-suau); font-variant-numeric: tabular-nums;
 }
 .esc-h::after {
-  content: ""; position: absolute; left: -9px; top: 14px;
+  content: ""; position: absolute; left: -9px; top: 17px;
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--paper); border: 1px solid var(--neatline);
+  background: var(--paper); border: 1px solid var(--ink-suau);
 }
+
+/* LES HORES LLIURES. Sense opacitat: a .55 quedaven a 2,2:1 i eren just la
+   informació que hi hem posat expressament —«aquesta estona és teva»—. I amb
+   l'hora a la canal, com totes les altres: si se'n surt, la columna d'hores
+   deixa de ser una columna i passa a ser una llista amb sagnats desiguals. */
 .esc-lliure {
-  padding: var(--e1) var(--e3); margin-bottom: 2px;
-  font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
-  opacity: .55; font-variant-numeric: tabular-nums;
+  position: relative; padding: var(--e2) var(--e3); margin-bottom: 2px;
+  font-size: .8125rem; color: var(--ink-suau);
 }
+.esc-lliure .esc-hora { top: var(--e2); }
+
+/* ARA. La pantalla promet «l'hora que ve» i fins ara no deia per on anaves. */
+.esc-ara {
+  position: relative; display: flex; align-items: center; gap: var(--e2);
+  padding: var(--e1) 0 var(--e1) var(--e3); margin: var(--e1) 0 3px;
+  border-top: 1px solid var(--utm);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--utm);
+}
+.esc-ara .esc-hora { top: 3px; color: var(--utm); letter-spacing: 0; }
 
 /* UNA SUBSTITUCIÓ NO ÉS UN AVÍS MÉS. Si te'n perds una, una classe es queda
    sense mestre: és l'única cosa d'aquesta pantalla que va en vermell, i el
@@ -2024,7 +2064,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .esc-subs::after { background: var(--gr); border-color: var(--gr); }
 .esc-et {
   display: block; margin-bottom: 2px;
-  font-family: var(--mono); font-size: .5625rem; letter-spacing: .14em;
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .12em;
   text-transform: uppercase; color: var(--gr);
 }
 
@@ -2091,7 +2131,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .esc-acc a:first-child { grid-column: 1 / -1; }
 .esc-acc b { font-size: .8125rem; }
 .esc-acc span {
-  font-family: var(--mono); font-size: .5625rem; letter-spacing: .1em;
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .08em;
   text-transform: uppercase; color: var(--ink-suau);
 }
 .esc-acc a:active { border-color: var(--utm); background: var(--utm-suau); }
@@ -2112,7 +2152,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .esc-cmd button {
   flex: 1; min-width: 76px; min-height: 44px; padding: 0 var(--e2);
   border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
-  font-family: var(--mono); font-size: .625rem; letter-spacing: .1em;
+  font-family: var(--mono); font-size: .75rem; letter-spacing: .06em;
   text-transform: uppercase;
   transition: border-color .16s var(--entra), color .16s var(--entra);
 }
@@ -2129,6 +2169,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
 @media (min-width: 700px) {
   .esc-acc { grid-template-columns: repeat(3, 1fr); }
   .esc-acc a:first-child { grid-column: auto; }
+}
+
+/* L'ESCRIPTORI NO ÉS EL MÒBIL ESTIRAT. Era exactament això: la mateixa columna
+   feta ampla, amb el dia i els pendents un sota l'altre —de manera que en una
+   pantalla de mil nou-cents no veies les dues coses alhora— i les línies de
+   text de banda a banda. Les dues denses passen a anar de costat, i la pàgina
+   s'atura on s'atura la del dia, que ja ho tenia resolt. */
+@media (min-width: 900px) {
+  .esc-pag { max-width: 1040px; }
+  .esc-dalt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+              gap: var(--e5); align-items: start; }
+  .esc-dalt > .esc-secc { margin-top: 0; }
 }
 
 </style>

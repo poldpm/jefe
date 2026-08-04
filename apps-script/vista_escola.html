@@ -65,9 +65,24 @@ App.registraVista('escola', {
       return ('0' + x.getHours()).slice(-2) + ':' + ('0' + x.getMinutes()).slice(-2);
     }
 
+    // --------------------------------------------------- un sol comptador
+    /* La capçalera deia «3 sense llegir» i el títol de la secció «Notificacions
+       · 2» a la mateixa pantalla. No era cap misteri: l'una comptava tots els
+       missatges sense llegir i l'altre els que la pantalla ENSENYA —el resum
+       d'avui no hi surt com a fitxa perquè el seu contingut ja és la pàgina—.
+       Dos números diferents per a la mateixa cosa fan dubtar dels dos, o sigui
+       que ara tothom compta el mateix: el que pots tocar aquí. */
+    function visibles() {
+      return (d && d.missatges || []).filter(function (x) {
+        return !(x.mena === 'resum' && String(x.rebut_el).slice(0, 10) === d.avui);
+      });
+    }
+    function nous() { return visibles().filter(function (x) { return !x.llegit_el; }); }
+    function vistos() { return visibles().filter(function (x) { return !!x.llegit_el; }); }
+
     // ------------------------------------------------------------- capçalera
     function capcalera() {
-      var n = d ? d.pendents : 0;
+      var n = d ? nous().length : 0;
       return '<header class="capcalera"><div class="capcalera-fila">' +
         '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
           ic('conversa', 'ic-p') + '</button>' +
@@ -91,29 +106,54 @@ App.registraVista('escola', {
       var h0 = Number(hores[0].hora.slice(0, 2));
       var h1 = Number(hores[hores.length - 1].hora.slice(0, 2));
 
+      /* ON ETS ARA. La pantalla diu que véns a veure «l'hora que ve», i fins
+         ara la columna no deia enlloc per on anaves: les quatre hores eren
+         iguals a les nou del matí i a dos quarts de sis. La marca ho resol amb
+         una línia i prou. Només si el que mires és avui: en un altre dia, «ara»
+         no vol dir res. */
+      var araNum = null;
+      if (!d || d.avui === fmt.avui()) {
+        var x0 = new Date();
+        araNum = x0.getHours() + x0.getMinutes() / 60;
+      }
+      var posat = false;
+      var marcaAra = function () {
+        posat = true;
+        files.push('<div class="esc-ara"><i class="esc-hora">' + esc(ara()) + '</i>' +
+                   '<span>ara</span></div>');
+      };
+
       var buides = [];
       var buidaFora = function () {
         if (!buides.length) return;
         /* Un tram lliure seguit va en UNA línia i no en cinc. Cinc «lliure»
            un sota l'altre entre les onze i les cinc omplien mitja pantalla
-           per dir una cosa que cap en set caràcters. */
+           per dir una cosa que cap en set caràcters.
+           L'hora d'inici va a la canal, amb les altres hores: si es queda dins
+           la caixa, la columna d'hores deixa de ser una columna. */
         var a = ('0' + buides[0]).slice(-2) + ':00';
-        var b = ('0' + buides[buides.length - 1]).slice(-2) + ':00';
-        files.push('<div class="esc-lliure">' +
-          (buides.length === 1 ? a : a + '–' + b) + ' · lliure</div>');
+        var b = ('0' + (buides[buides.length - 1] + 1)).slice(-2) + ':00';
+        files.push('<div class="esc-lliure"><i class="esc-hora">' + a + '</i>' +
+          '<span>' + (buides.length === 1 ? 'lliure' : 'lliure fins a les ' + b) + '</span></div>');
         buides = [];
       };
 
       for (var h = h0; h <= h1; h++) {
+        if (!posat && araNum !== null && araNum < h) { buidaFora(); marcaAra(); }
+
         var aquesta = hores.filter(function (x) { return Number(x.hora.slice(0, 2)) === h; });
         if (aquesta.length) {
           buidaFora();
           aquesta.forEach(function (x) {
             var subs = esSubstitucio(x.que);
+            /* «SUBSTITUCIÓ · Substitució Medi 2nB» era dir-ho dues vegades.
+               L'etiqueta hi ha de ser —el vermell no pot anar sol—, o sigui
+               que el que sobra és la paraula repetida del títol. */
+            var que = subs ? String(x.que).replace(/^substituci[óo]\s*(de\s+|d'\s*)?/i, '') : x.que;
             files.push('<div class="esc-h' + (subs ? ' esc-subs' : '') + '">' +
               '<i class="esc-hora">' + esc(x.hora) + '</i>' +
               (subs ? '<span class="esc-et">Substitució</span>' : '') +
-              '<b>' + esc(x.que) + '</b>' +
+              '<b>' + esc(que || x.que) + '</b>' +
             '</div>');
           });
         } else {
@@ -121,6 +161,7 @@ App.registraVista('escola', {
         }
       }
       buidaFora();
+      if (!posat && araNum !== null && araNum >= h1) marcaAra();
       return '<div class="esc-columna">' + files.join('') + '</div>';
     }
 
@@ -158,12 +199,10 @@ App.registraVista('escola', {
       /* EL RESUM D'AVUI NO SURT COM A FITXA. El seu contingut ÉS aquesta
          pàgina —les hores de dalt i els pendents de sota surten d'ell—, i
          ensenyar-lo a més com a targeta era dir-ho tot dues vegades a la
-         mateixa pantalla. Els d'altres dies sí que hi són, a les vistes. */
-      var tots = (d.missatges || []).filter(function (x) {
-        return !(x.mena === 'resum' && String(x.rebut_el).slice(0, 10) === d.avui);
-      });
-      var nous = tots.filter(function (x) { return !x.llegit_el; });
-      var vistos = tots.filter(function (x) { return !!x.llegit_el; });
+         mateixa pantalla. Els d'altres dies sí que hi són, a les vistes.
+         Qui el treu és `visibles()`, i d'allà surten tots els comptadors. */
+      var elsNous = nous();
+      var elsVistos = vistos();
 
       var fitxa = function (x) {
         var nou = !x.llegit_el;
@@ -177,25 +216,34 @@ App.registraVista('escola', {
       };
 
       arrel.innerHTML = capcalera() +
-        '<div class="pagina">' +
+        '<div class="pagina esc-pag">' +
 
-          // ---- 1. AVUI
-          '<section>' +
-            '<p class="marge">Avui</p>' +
-            (dia.hores.length
-              ? columna(dia.hores)
-              : '<p class="menut">' + (d.teResum
-                  ? 'El resum d\'aquest matí no portava cap hora.'
-                  : 'Encara no ha arribat el resum del matí. Arriba a les set.') + '</p>') +
-          '</section>' +
+          /* A L'ESCRIPTORI, AQUESTES DUES DE COSTAT. Són les dues denses i les
+             dues que véns a mirar; una sota l'altra en una pantalla ampla feia
+             que el dia sencer quedés per sobre del plec i que cada línia de
+             text fes mitja pantalla d'amplada. Al mòbil, la caixa no fa res:
+             segueixen una sota l'altra i en el mateix ordre. */
+          '<div class="esc-dalt">' +
 
-          // ---- 2. PENDENTS
-          (dia.pendents.length
-            ? '<section class="esc-secc">' +
-                '<p class="marge">Pendents</p>' +
-                caixesPendents(dia.pendents) +
-              '</section>'
-            : '') +
+            // ---- 1. AVUI
+            '<section>' +
+              '<p class="marge">Avui</p>' +
+              (dia.hores.length
+                ? columna(dia.hores)
+                : '<p class="menut">' + (d.teResum
+                    ? 'El resum d\'aquest matí no portava cap hora.'
+                    : 'Encara no ha arribat el resum del matí. Arriba a les set.') + '</p>') +
+            '</section>' +
+
+            // ---- 2. PENDENTS
+            (dia.pendents.length
+              ? '<section class="esc-secc">' +
+                  '<p class="marge">Pendents</p>' +
+                  caixesPendents(dia.pendents) +
+                '</section>'
+              : '') +
+
+          '</div>' +
 
           // ---- 3. ACCESSOS
           '<section class="esc-secc">' +
@@ -209,19 +257,20 @@ App.registraVista('escola', {
           // ---- 4. AVISOS
           '<section class="esc-secc">' +
             '<p class="marge esc-titol-avisos">' + ic('campana', 'ic-p') +
-              'Notificacions' + (nous.length ? ' · ' + nous.length : '') + '</p>' +
+              'Notificacions' + (elsNous.length ? ' · ' + elsNous.length : '') + '</p>' +
             '<div id="esc-nous">' +
-              (nous.length
-                ? '<div class="esc-safata">' + nous.map(fitxa).join('') + '</div>'
+              (elsNous.length
+                ? '<div class="esc-safata">' + elsNous.map(fitxa).join('') + '</div>'
                 : '<p class="menut">Res nou. Quan l\'escola enviï alguna cosa, ' +
                   't\'arribarà al telèfon i sortirà aquí.</p>') +
             '</div>' +
-            (vistos.length
+            (elsVistos.length
               ? '<button class="esc-obre-vistos" data-vistos="1" aria-expanded="' +
                   (veureVistos ? 'true' : 'false') + '">' +
-                  (veureVistos ? 'Amaga' : 'Veure') + ' les ' + vistos.length + ' ja vistes' +
+                  ic('dreta', 'ic-p') + '<span>' + (veureVistos ? 'Amaga' : 'Veure') +
+                  ' les ' + elsVistos.length + ' ja vistes</span>' +
                 '</button>' +
-                (veureVistos ? '<div class="esc-safata">' + vistos.map(fitxa).join('') + '</div>' : '')
+                (veureVistos ? '<div class="esc-safata">' + elsVistos.map(fitxa).join('') + '</div>' : '')
               : '') +
           '</section>' +
 
@@ -327,27 +376,30 @@ App.registraVista('escola', {
       (d.missatges || []).forEach(function (x) {
         if (x.id === id && !x.llegit_el) x.llegit_el = 'ara';
       });
-      var nous = (d.missatges || []).filter(function (x) { return !x.llegit_el; }).length;
-      var vistos = (d.missatges || []).length - nous;
-      d.pendents = nous;
+      /* Els mateixos comptadors que fa servir `pinta`, i per la mateixa
+         raó: aquí és on abans se separaven de la capçalera. */
+      var quantsNous = nous().length;
+      var quantsVistos = vistos().length;
+      d.pendents = quantsNous;
       Cau.set('escola', d);
 
       var compte = arrel.querySelector('#esc-compte');
       if (compte) {
         compte.textContent = fmt.relativa(d.avui) + ' · ' + ara() +
-          (nous ? ' · ' + nous + ' sense llegir' : '');
+          (quantsNous ? ' · ' + quantsNous + ' sense llegir' : '');
       }
       var tit = arrel.querySelector('.esc-titol-avisos');
       if (tit) {
         var s = tit.querySelector('svg');
-        tit.innerHTML = (s ? s.outerHTML : '') + 'Notificacions' + (nous ? ' · ' + nous : '');
+        tit.innerHTML = (s ? s.outerHTML : '') + 'Notificacions' +
+          (quantsNous ? ' · ' + quantsNous : '');
       }
-      var ov = arrel.querySelector('[data-vistos]');
-      if (ov) ov.textContent = (veureVistos ? 'Amaga' : 'Veure') + ' les ' + vistos + ' ja vistes';
+      var ov = arrel.querySelector('[data-vistos] span');
+      if (ov) ov.textContent = (veureVistos ? 'Amaga' : 'Veure') + ' les ' + quantsVistos + ' ja vistes';
 
       var acaba = function () {
         if (art) art.remove();
-        if (!nous) {
+        if (!quantsNous) {
           var caixa = arrel.querySelector('#esc-nous');
           if (caixa) {
             caixa.innerHTML = '<p class="menut">Res nou. Quan l\'escola enviï alguna cosa, ' +
