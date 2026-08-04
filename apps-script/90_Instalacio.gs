@@ -1339,6 +1339,51 @@ function preparaCalendari() {
 
 
 /**
+ * ¿EL PONT DE L'ESCOLA JA SAP APUNTAR TASQUES?
+ *
+ * Ho pregunta sense apuntar res: demana les llistes de Google Tasks d'aquell
+ * compte, que és una acció nova del pont. Si contesta, és que el codi nou hi és
+ * i està desplegat; si diu «Acció desconeguda», és que falta una de les dues
+ * coses —enganxar-lo o tornar a desplegar-lo.
+ */
+function provaTasquesEscola() {
+  var l = ['=== APUNTAR TASQUES A L\'ESCOLA ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  if (!EscolaPont.hiEs()) {
+    a('FALLA: no hi ha pont configurat. Executa configuraPontEscola().');
+    return l.join('\n');
+  }
+
+  var r;
+  try {
+    r = EscolaPont.llistes();
+  } catch (err) {
+    a('FALLA: ' + err.message);
+    a('');
+    if (/desconeguda/i.test(err.message)) {
+      a('Això vol dir que l\'script de l\'escola encara té el codi vell. Repassa:');
+      a('  1. Has enganxat el doPost nou (el que té «llistes» i «creaTasca»)?');
+      a('  2. L\'has DESAT?');
+      a('  3. L\'has tornat a desplegar amb VERSIÓ NOVA? Sense això, la que');
+      a('     serveix segueix sent la d\'abans encara que el codi sigui nou.');
+    }
+    return l.join('\n');
+  }
+
+  var llistes = (r && r.llistes) || [];
+  a('El pont contesta ............ sí');
+  a('Llistes que té l\'escola ..... ' + llistes.length);
+  a('');
+  llistes.forEach(function (x) { a('  · ' + x.nom); });
+  a('');
+  a('A l\'app, el «+» de cada caixa apunta a la llista que porta el nom. Aquí no');
+  a('s\'ha creat res: això només ho ha preguntat.');
+  return l.join('\n');
+}
+
+
+/**
  * DONAR-LI ACCÉS A GOOGLE TASKS.
  *
  * Igual que amb el calendari: el mòdul de tasques necessita un permís que
