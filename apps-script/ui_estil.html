@@ -1908,9 +1908,6 @@ input[type="checkbox"] { accent-color: var(--utm); }
    queda per llegir.
    ========================================================================== */
 
-.esc-comandes { display: flex; gap: var(--e2); flex-wrap: wrap; margin-bottom: var(--e4); }
-.esc-comandes .btn { flex: 1; min-width: 88px; }
-
 .esc-safata { display: flex; flex-direction: column; gap: var(--e2); }
 
 .esc-msg {
@@ -1923,7 +1920,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
             text-transform: uppercase; color: var(--ink-suau); }
 .esc-quan { margin-left: auto; font-family: var(--mono); font-size: .625rem;
             color: var(--ink-suau); font-variant-numeric: tabular-nums; }
-.esc-msg h2 { font-size: .9375rem; margin: 0 0 var(--e1); line-height: 1.3; }
+.esc-msg h3 { font-size: .9375rem; margin: 0 0 var(--e1); line-height: 1.3; }
 .esc-msg p { margin: 0; font-size: .875rem; line-height: 1.5; color: var(--ink-suau);
              white-space: pre-wrap; overflow-wrap: anywhere; }
 
@@ -1934,7 +1931,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .esc-nou { border-color: var(--utm);
            border-left: 3px solid var(--utm);
            background: color-mix(in srgb, var(--utm) 8%, var(--paper2)); }
-.esc-nou h2 { color: var(--ink); }
+.esc-nou h3 { color: var(--ink); }
 .esc-nou .esc-mena { color: var(--utm); }
 
 .esc-vist {
@@ -1974,14 +1971,131 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 /* La resposta a una pregunta teva va JUST SOTA el botó que l'ha demanada, no
    al final de la pàgina: el que has demanat ha de sortir on estàs mirant. */
-.esc-resposta { margin-bottom: var(--e4); border-left: 3px solid var(--accio); }
-.esc-resposta header { align-items: center; }
-.esc-tanca-resposta {
-  margin-left: auto; width: 32px; height: 32px; flex: none; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  border: 0; background: transparent; color: var(--ink-suau);
+
+
+/* ==========================================================================
+   ESCOLA — el que l'automatització ha trobat
+
+   No és una safata de missatges: és el dia que l'automatisme ha extret. Per
+   això mana la columna d'hores i no la llista de fitxes, i per això una
+   substitució no es pinta com un canvi de fitxer al Drive.
+   ========================================================================== */
+
+.esc-secc { margin-top: var(--e5); }
+
+/* LA COLUMNA D'HORES. El fil vertical és el dia; cada cosa hi penja pel seu
+   punt. Les hores lliures hi són escrites: un forat entre dues cites no és un
+   buit del disseny, és una hora que tens. */
+.esc-columna { position: relative; padding-left: 52px; }
+.esc-columna::before {
+  content: ""; position: absolute; left: 44px; top: 6px; bottom: 6px;
+  width: 1px; background: var(--neatline);
 }
-.esc-tanca-resposta .ic { width: 15px; height: 15px; }
-.esc-tanca-resposta:active { color: var(--ink); }
+.esc-h {
+  position: relative; margin-bottom: 2px; padding: var(--e2) var(--e3);
+  border: 1px solid var(--neatline); background: var(--paper2);
+}
+.esc-h b { display: block; font-size: .9375rem; font-weight: 600; line-height: 1.3; }
+.esc-hora {
+  position: absolute; left: -52px; top: 10px; width: 38px; text-align: right;
+  font-family: var(--mono); font-size: .6875rem; font-style: normal;
+  color: var(--ink-suau); font-variant-numeric: tabular-nums;
+}
+.esc-h::after {
+  content: ""; position: absolute; left: -9px; top: 14px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--paper); border: 1px solid var(--neatline);
+}
+.esc-lliure {
+  padding: var(--e1) var(--e3); margin-bottom: 2px;
+  font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
+  opacity: .55; font-variant-numeric: tabular-nums;
+}
+
+/* UNA SUBSTITUCIÓ NO ÉS UN AVÍS MÉS. Si te'n perds una, una classe es queda
+   sense mestre: és l'única cosa d'aquesta pantalla que va en vermell, i el
+   color no hi va sol —hi ha l'etiqueta escrita al damunt—. */
+/* La vora SENCERA i el punt del fil, no una pestanya a l esquerra. Amb el fil
+   vertical al costat, un tros de vora gruixuda mes es llegia com un accessori;
+   la caixa vermella entre dues de fosques ja canta prou.
+   (El detector marca la pestanya lateral com el tell d IA mes reconeixible, i
+   aqui no calia per res.) */
+.esc-subs { border-color: var(--gr); }
+.esc-subs::after { background: var(--gr); border-color: var(--gr); }
+.esc-et {
+  display: block; margin-bottom: 2px;
+  font-family: var(--mono); font-size: .5625rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--gr);
+}
+
+/* ELS PENDENTS. Una línia cadascun, sense capsa: no són targetes, són una
+   llista, i una llista es llegeix de dalt a baix i no per blocs. */
+.esc-pend { display: flex; flex-direction: column; }
+.esc-p {
+  display: flex; align-items: baseline; gap: var(--e3);
+  padding: var(--e2) 0; border-bottom: 1px solid var(--neatline);
+  font-size: .875rem; line-height: 1.4;
+}
+.esc-p:last-child { border-bottom: 0; }
+.esc-p i {
+  font-style: normal; flex: none; width: 14px; text-align: center;
+  color: var(--ink-suau); font-family: var(--mono); font-size: .75rem;
+}
+.esc-p .esc-hora-p {
+  width: 44px; text-align: left; color: var(--utm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ELS ACCESSOS. El primer ample: és el que obre més sovint. */
+.esc-acc { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); }
+.esc-acc a {
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  min-height: 56px; padding: var(--e2) var(--e3);
+  border: 1px solid var(--neatline); background: var(--paper2);
+  color: var(--ink); text-decoration: none;
+  transition: border-color .16s var(--entra), background-color .16s var(--entra);
+}
+.esc-acc a:first-child { grid-column: 1 / -1; }
+.esc-acc b { font-size: .8125rem; }
+.esc-acc span {
+  font-family: var(--mono); font-size: .5625rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-suau);
+}
+.esc-acc a:active { border-color: var(--utm); background: var(--utm-suau); }
+@media (hover: hover) and (pointer: fine) {
+  .esc-acc a:hover { border-color: var(--utm); }
+}
+
+/* LA CAMPANETA. Va al títol perquè, sense una marca que ho digui, una fitxa és
+   una fitxa: en Pol no va reconèixer que allò eren els avisos que li havien
+   arribat, i tenia raó a no reconèixer-ho. */
+.esc-titol-avisos { display: flex; align-items: center; gap: var(--e2); }
+.esc-titol-avisos .ic { width: 14px; height: 14px; color: var(--utm); }
+
+/* LES CONSULTES, AL PEU. Són consulta, no el motiu d'entrar: per això van
+   últimes i més petites que qualsevol altra cosa de la pantalla. */
+.esc-consultes { padding-top: var(--e3); border-top: 1px solid var(--neatline); }
+.esc-cmd { display: flex; gap: var(--e2); flex-wrap: wrap; }
+.esc-cmd button {
+  flex: 1; min-width: 76px; min-height: 44px; padding: 0 var(--e2);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .1em;
+  text-transform: uppercase;
+  transition: border-color .16s var(--entra), color .16s var(--entra);
+}
+.esc-cmd button:active { border-color: var(--utm); color: var(--utm); }
+.esc-cmd button:disabled { opacity: .45; }
+@media (hover: hover) and (pointer: fine) {
+  .esc-cmd button:hover:not(:disabled) { border-color: var(--utm); color: var(--utm); }
+}
+
+/* LA RESPOSTA, EN UN FULL A PART I D'UNA EN UNA. Abans queien a la pàgina i
+   s'hi acumulaven: tres preguntes eren tres parets de text seguides. */
+.esc-resp .esc-p:last-child { border-bottom: 0; }
+
+@media (min-width: 700px) {
+  .esc-acc { grid-template-columns: repeat(3, 1fr); }
+  .esc-acc a:first-child { grid-column: auto; }
+}
 
 </style>

@@ -505,6 +505,20 @@ export function dades(AVUI, menys) {
     pont: true,
     total: 5,
     pendents: 3,
+    teResum: true,
+    dia: {
+      hores: [
+        { hora: '09:00', que: 'Claustre de mestres' },
+        { hora: '11:00', que: 'Substitució Medi 2nB' },
+        { hora: '17:00', que: 'Reunió de cicle' }
+      ],
+      pendents: [
+        { que: 'Corregir els controls' },
+        { que: 'Preparar les fitxes de mates' },
+        { que: 'Firmar les autoritzacions' }
+      ],
+      altres: [{ que: 'Correus no llegits: 3' }]
+    },
     missatges: [
       { id: 'esc_5', rebut_el: AVUI + 'T08:12:00', mena: 'acta', llegit_el: '',
         titol: 'Substitució Medi 2nB (per la tutora de 2nB)',

@@ -207,9 +207,24 @@ var Escola = (function () {
   function pantalla(p) {
     p = p || {};
     var quants = Math.max(1, Math.min(200, num_(p.quants, 60)));
+    var avui = Utils.avui();
     var f = tots();
+    var resum = resumDe_(avui);
+    var dia = desglossa_(resum);
+
+    /* Els avisos de mena «tasca» també són pendents: venen d'un correu que
+       demanava una cosa i no d'un resum. Van a la mateixa llista, que és on
+       els busques. */
+    f.forEach(function (m) {
+      if (m.mena === 'tasca' && !m.llegit_el) dia.pendents.push({ que: m.titol, id: m.id });
+    });
+
     return {
-      avui: Utils.avui(),
+      avui: avui,
+      dia: dia,
+      teResum: !!resum,
+      /* La resta: tot el que no és ni una hora ni un pendent. Va plegat al peu
+         i per això es marca, no s'amaga: el que no es veu no es perd. */
       missatges: f.slice(0, quants),
       total: f.length,
       pendents: f.filter(function (m) { return !m.llegit_el; }).length,
@@ -228,6 +243,83 @@ var Escola = (function () {
     var ara = Utils.ara();
     f.forEach(function (m) { Dades.actualitza('Escola', m.id, { llegit_el: ara }); });
     return { fets: f.length };
+  }
+
+  // ------------------------------------------------- QUÈ HI HA EXTRET D'AVUI
+  /**
+   * EL RESUM DEL MATÍ, OBERT EN PECES.
+   *
+   * Aquesta pantalla ensenya el que l'automatització n'ha tret, no una segona
+   * vista del calendari. I resulta que ja ho té tot: el missatge de les set
+   * porta les hores del dia i el que queda pendent, i és al full des de llavors.
+   * O sigui que la columna d'hores no costa cap viatge a ningú.
+   *
+   * El desxifrat és deliberadament curt de gambals. Aquell format és de
+   * l'script de l'escola i pot canviar demà; si canvia, el pitjor que ha de
+   * passar és que una línia caigui a «la resta» en comptes de tenir hora, no
+   * que la pantalla es quedi buida ni que peti.
+   */
+  function desglossa_(resum) {
+    var buit = { hores: [], pendents: [], altres: [] };
+    if (!resum) return buit;
+
+    var seccio = '';
+    var out = { hores: [], pendents: [], altres: [] };
+
+    String(resum.cos || '').split('\n').forEach(function (l) {
+      var t = l.replace(/\*/g, '').trim();
+      if (!t) return;
+
+      var esCosa = /^[·•\-]/.test(t);
+      if (!esCosa && t.slice(-1) === ':') {
+        seccio = aixafa_(t);
+        return;
+      }
+      var text = t.replace(/^[·•\-]\s*/, '').trim();
+      if (!text) return;
+
+      /* Una hora al davant vol dir que és una cosa del dia amb hora: «09:00
+         Claustre de mestres». La resta de la línia és què és. */
+      var m = text.match(/^(\d{1,2}[:.]\d{2})\s*[·\-–]?\s*(.+)$/);
+      if (m) {
+        out.hores.push({ hora: m[1].replace('.', ':'), que: m[2].trim() });
+        return;
+      }
+      /* NOMÉS EL QUE VA AMB PIC PERTANY A LA SECCIÓ.
+         Una línia solta com «Correus no llegits: 3» és una altra capçalera
+         —no acaba en dos punts i per això no s'havia detectat— i s'estava
+         quedant amb la secció d'abans: acabava a pendents com si fos una
+         cosa a fer. Una línia sense pic tanca la secció i va a la resta. */
+      if (esCosa && (seccio.indexOf('pendent') !== -1 || seccio.indexOf('tasca') !== -1)) {
+        out.pendents.push({ que: text });
+        return;
+      }
+      if (!esCosa) seccio = '';
+      out.altres.push({ que: text, seccio: seccio });
+    });
+
+    out.hores.sort(function (a, b) { return a.hora < b.hora ? -1 : 1; });
+    return out;
+  }
+
+  function aixafa_(text) {
+    var s = String(text || '').toLowerCase();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç', sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      out += n === -1 ? s.charAt(i) : sense.charAt(n);
+    }
+    return out;
+  }
+
+  /** El resum d'un dia, si n'hi ha. */
+  function resumDe_(data) {
+    var f = tots();
+    for (var i = 0; i < f.length; i++) {
+      if (f[i].mena === 'resum' && String(f[i].rebut_el).slice(0, 10) === data) return f[i];
+    }
+    return null;
   }
 
   // ---------------------------------------------------------- LA PÀGINA DEL DIA
@@ -320,7 +412,7 @@ var Escola = (function () {
   }
 
   return {
-    rebre: rebre, elDia: elDia, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
+    rebre: rebre, elDia: elDia, desglossa: desglossa_, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
     pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA
   };
 })();
