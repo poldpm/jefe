@@ -301,7 +301,7 @@ var Escola = (function () {
 
       var esCosa = /^[·•\-]/.test(t);
       if (!esCosa && t.slice(-1) === ':') {
-        seccio = aixafa_(t);
+        seccio = Utils.senseAccents(t);
         return;
       }
       var text = t.replace(/^[·•\-]\s*/, '').trim();
@@ -335,17 +335,6 @@ var Escola = (function () {
     });
 
     out.hores.sort(function (a, b) { return a.hora < b.hora ? -1 : 1; });
-    return out;
-  }
-
-  function aixafa_(text) {
-    var s = String(text || '').toLowerCase();
-    var amb = 'àáâäèéêëìíîïòóôöùúûüñç', sense = 'aaaaeeeeiiiioooouuuunc';
-    var out = '';
-    for (var i = 0; i < s.length; i++) {
-      var n = amb.indexOf(s.charAt(i));
-      out += n === -1 ? s.charAt(i) : sense.charAt(n);
-    }
     return out;
   }
 

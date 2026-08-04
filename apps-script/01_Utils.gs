@@ -142,6 +142,28 @@ var Utils = (function () {
   }
 
   /**
+   * NOMÉS ELS ACCENTS FORA, i res més.
+   *
+   * Serveix per comparar noms escrits per una persona en dos llocs diferents:
+   * la llista «Coordinació» del Google Tasks i la «coordinacio» que en surt en
+   * un missatge de text. Els signes s'hi queden —«D'un correu» no és «D un
+   * correu»— i per això no és `aixafa`, que sí que se'ls menja.
+   *
+   * Viu aquí perquè estava escrita DUES vegades, a Escola i a Tasques, i ja
+   * havien començat a separar-se: una retallava els espais i l'altra no.
+   */
+  function senseAccents(text) {
+    var s = String(text || '').toLowerCase().trim();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç', sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      out += n === -1 ? s.charAt(i) : sense.charAt(n);
+    }
+    return out;
+  }
+
+  /**
    * Text a mà oberta: minúscules, sense accents, sense signes, un sol espai.
    *
    * Serveix per comparar el que ha dit una persona amb una frase que tenim
@@ -217,6 +239,7 @@ var Utils = (function () {
     talla: talla,
     faQuant: faQuant,
     aixafa: aixafa,
+    senseAccents: senseAccents,
     plegaPem: plegaPem,
     json: json,
     desJson: desJson

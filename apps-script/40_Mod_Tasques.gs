@@ -359,11 +359,11 @@ var Tasques = (function () {
   }
 
   function llistaPerNom_(nom) {
-    var n = aixafa_(nom);
+    var n = Utils.senseAccents(nom);
     if (!n) return null;
     var totes = llistes();
-    var exacte = totes.filter(function (l) { return aixafa_(l.nom) === n; })[0];
-    return exacte || totes.filter(function (l) { return aixafa_(l.nom).indexOf(n) !== -1; })[0] || null;
+    var exacte = totes.filter(function (l) { return Utils.senseAccents(l.nom) === n; })[0];
+    return exacte || totes.filter(function (l) { return Utils.senseAccents(l.nom).indexOf(n) !== -1; })[0] || null;
   }
 
   // -------------------------------------------------------------- marques
@@ -751,30 +751,19 @@ var Tasques = (function () {
 
   // ------------------------------------------------------------- per a la IA
 
-  function aixafa_(text) {
-    var s = String(text || '').toLowerCase().trim();
-    var amb = 'àáâäèéêëìíîïòóôöùúûüñç', sense = 'aaaaeeeeiiiioooouuuunc';
-    var out = '';
-    for (var i = 0; i < s.length; i++) {
-      var n = amb.indexOf(s.charAt(i));
-      out += n === -1 ? s.charAt(i) : sense.charAt(n);
-    }
-    return out;
-  }
-
   /** La que més s'assembla al que ha dit, d'entre les pendents. */
   function troba_(text) {
-    var q = aixafa_(text);
+    var q = Utils.senseAccents(text);
     if (!q) return null;
     var totes = pantalla({}).tasques;
-    var exacta = totes.filter(function (t) { return aixafa_(t.text) === q; })[0];
+    var exacta = totes.filter(function (t) { return Utils.senseAccents(t.text) === q; })[0];
     if (exacta) return exacta;
-    var conte = totes.filter(function (t) { return aixafa_(t.text).indexOf(q) !== -1; });
+    var conte = totes.filter(function (t) { return Utils.senseAccents(t.text).indexOf(q) !== -1; });
     if (conte.length === 1) return conte[0];
     if (conte.length > 1) return conte.sort(ordena_)[0];
     /* I si ha dit més del que hi ha apuntat —«acaba d'una vegada l'informe»
        quan la tasca diu «informe»—, també val. */
-    var alReves = totes.filter(function (t) { return q.indexOf(aixafa_(t.text)) !== -1; });
+    var alReves = totes.filter(function (t) { return q.indexOf(Utils.senseAccents(t.text)) !== -1; });
     return alReves[0] || null;
   }
 

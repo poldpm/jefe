@@ -606,11 +606,6 @@ var Finances = (function () {
     return { titol: 'Finances', accio: 'finances', coses: coses };
   }
 
-  /** El mòdul del banc pot no existir en una instal·lació sense connectar-lo. */
-  function FinancesBanc_() {
-    return typeof FinancesBanc !== 'undefined' && FinancesBanc.disponible();
-  }
-
   // --------------------------------------------------------------- el mes
 
   /**
