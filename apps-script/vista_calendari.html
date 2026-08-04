@@ -531,7 +531,13 @@ App.registraVista('calendari', {
     // ---------------------------------------------------------------- càrrega
 
     function quePinto() { return { mes: mes, data: dia }; }
-    function claCau() { return 'calendari.' + (mes || 'ara'); }
+    /* LA MATEIXA CLAU PER DESAR I PER LLEGIR.
+       Desava a «calendari.2026-08» —el mes que li tornava el servidor— i, en
+       obrir, llegia «calendari.ara», perquè encara no sabia quin mes miraves.
+       No coincidien mai: la còpia del telèfon hi era i no la feia servir ningú,
+       i per això obrir el calendari sempre esperava el servidor. El mes en curs
+       el sap el navegador, o sigui que la clau és sempre un mes de debò. */
+    function claCau(quin) { return 'calendari.' + (quin || mes || fmt.avui().slice(0, 7)); }
 
     function aplica(r, dEnCau, forca) {
       cals = r.calendaris || cals;
@@ -541,7 +547,7 @@ App.registraVista('calendari', {
          de tornar a preguntar res. */
       if (r.mesos) Object.keys(r.mesos).forEach(function (k) { mesosTinguts[k] = r.mesos[k]; });
 
-      Cau.set('calendari.' + (d.mes || 'ara'), r);
+      Cau.set(claCau(d.mes), r);
 
       /* SI MENTRE ESPERÀVEM JA HA CANVIAT DE MES, aquesta resposta és vella.
          Pintar-la li mouria la pantalla sota els peus i el deixaria en un mes
@@ -572,13 +578,67 @@ App.registraVista('calendari', {
       if (r) aplica(r);
     }
 
+    /**
+     * QUIN DIA ÉS NO HO HA DE DIR EL SERVIDOR.
+     *
+     * La còpia desada al telèfon porta el dia que era quan es va desar. Si
+     * s'obre l'endemà i es pinta tal com està, veus el dia 2 marcat com a avui
+     * fins que Apps Script contesta —tres segons—, i llavors salta. Semblava
+     * lentitud i no ho era: la data la sap el navegador des del primer
+     * mil·lisegon i no hi ha cap motiu per esperar-la.
+     *
+     * Les cites desades sí que serveixen: són del mes, no del dia. El que es
+     * refà és quin dia és avui, quin surt marcat i què hi ha en aquell dia.
+     * Torna `null` si la còpia és d'un altre mes, i llavors val més la graella
+     * buida del mes bo que un mes sencer equivocat.
+     */
+    function posaAlDia_(desat, avuiAra) {
+      var d = desat && desat.dades;
+      if (!d || !d.avui) return null;
+      if (d.avui === avuiAra) return desat;
+      if (!mes && d.mes !== avuiAra.slice(0, 7)) return null;   // la còpia és d'un altre mes
+
+      /* Quin dia era quan es va desar, guardat ABANS de tocar res: `arregla`
+         escriu el dia nou a `d.avui`, i com que `d` i `desat.dades` són el
+         mateix objecte, després ja no hi ha manera de saber quin era el vell.
+         Sense això, el dia triat es quedava al 2 i el marcat també. */
+      var avuiVell = d.avui;
+
+      var arregla = function (m) {
+        if (!m || !m.caselles) return;
+        m.avui = avuiAra;
+        m.caselles.forEach(function (c) { c.esAvui = c.data === avuiAra; });
+      };
+      arregla(d);
+      if (desat.mesos) { for (var k in desat.mesos) arregla(desat.mesos[k]); }
+
+      /* El dia triat: si era «avui», passa a ser el d'avui de debò. Si n'havies
+         triat un altre a mà, es respecta —no te'l canviarà l'app per tu. */
+      if (d.diaTriat === avuiVell || !d.diaTriat) {
+        d.diaTriat = d.mes === avuiAra.slice(0, 7) ? avuiAra : d.mes + '-01';
+      }
+      return desat;
+    }
+
     function carrega() {
-      var desat = Cau.get(claCau(), null);
+      var avuiAra = fmt.avui();
+      var desat = posaAlDia_(Cau.get(claCau(), null), avuiAra);
+
       if (desat && desat.dades) {
         cals = desat.calendaris || cals;
         if (desat.mesos) mesosTinguts = desat.mesos;
-        try { previPintat = JSON.stringify(desat.dades); pinta(desat.dades, true); }
+        try {
+          dades = desat.dades;
+          dades.esdeveniments = deLDia(dades.diaTriat);
+          previPintat = JSON.stringify(dades);
+          pinta(dades, true);
+        }
         catch (e) { previPintat = null; }
+      } else {
+        /* Sense res desat que valgui: la graella del mes, dibuixada aquí
+           mateix. Els números dels dies i quin és avui no els ha de portar
+           ningú de fora. Les cites hi cauen quan arriben. */
+        try { pinta(mesProvisional(mes || avuiAra.slice(0, 7)), false); } catch (e) {}
       }
 
       /* Clicar tres cops seguits la fletxa no ha de fer tres peticions del
@@ -595,7 +655,6 @@ App.registraVista('calendari', {
         });
     }
 
-    arrel.innerHTML = Comp.carregant(4);
     carrega();
   }
 });

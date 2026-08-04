@@ -182,6 +182,45 @@ function apiNucli_(accio, params) {
         ia: IA.estat()
       };
 
+    /**
+     * TOTES LES PANTALLES EN UNA ANADA.
+     *
+     * Cada viatge a Apps Script costa DOS SEGONS abans de fer res —mesurat el
+     * 4 d'agost del 2026 amb peticions que el servidor rebutjava per clau
+     * incorrecta, o sigui sense obrir res—. Amb una petició per pantalla, obrir
+     * l'app i tocar quatre apartats són vuit segons d'espera pura encara que
+     * cada pantalla es munti en cent mil·lisegons, que és el que passa ara.
+     *
+     * Això les porta totes juntes. El client se les desa i, a partir d'aquí,
+     * canviar d'apartat no espera ningú: pinta el que ja té i, si de cas, es
+     * posa al dia sol.
+     *
+     * VA EN SEGON PLA i no bloqueja res: quan arriba, arriba. Si falla, cada
+     * pantalla segueix sabent demanar la seva com abans.
+     *
+     * Les que costen car —calendari, tasques, escola— ja les té escalfades el
+     * trigger, o sigui que aquí no es paguen: es recullen.
+     */
+    case 'paquet': {
+      var quines = (params && params.quines) || [];
+      var out = {};
+      var mm = Moduls.actius();
+      for (var i = 0; i < mm.length; i++) {
+        var mod = mm[i];
+        if (quines.length && quines.indexOf(mod.id) === -1) continue;
+        if (!mod.accions || typeof mod.accions.pantalla !== 'function') continue;
+        /* Un mòdul que peta no s'emporta els altres: qui falti, la seva
+           pantalla ja se'l demanarà quan hi entris. */
+        try { out[mod.id] = mod.accions.pantalla({}); }
+        catch (err) { Log.avis('paquet', mod.id + ': ' + err.message); }
+      }
+      /* La pàgina del dia, amb la mateixa forma exacta que demana la seva
+         pantalla: si aquí es tornés una altra cosa, el client desaria una
+         forma que la vista no sap pintar. */
+      try { out._dia = Conversa.elDia(Utils.avui()); } catch (err) {}
+      return { avui: Utils.avui(), pantalles: out };
+    }
+
     /* NOMÉS EL REGISTRE DE MÒDULS.
        El tauler d'apartats de la conversa el necessita, i abans només el
        tenia qui hagués passat per l'inici: qui obria l'app i anava directe a

@@ -186,6 +186,73 @@ var Jefe = (function () {
 
   // ------------------------------------------------- cua d'escriptures pendents
 
+  /* ==========================================================================
+     TOTES LES PANTALLES EN UNA ANADA, i abans que les demanis
+
+     El problema no era que les pantalles es muntessin lentes —mesurat el 4
+     d'agost del 2026: cap passa de mig segon al servidor—. Era que cada
+     apartat feia el seu propi viatge, i cada viatge a Apps Script val DOS
+     SEGONS abans de fer res. Obrir l'app i tocar quatre apartats eren vuit
+     segons d'espera pura.
+
+     Això en fa un de sol, en segon pla, just després d'arrencar, i desa cada
+     pantalla amb la clau que la seva vista mirarà. Quan hi entres, ja hi és.
+
+     LA TAULA DE CLAUS ÉS AQUÍ i no al servidor a posta: quina clau fa servir
+     una vista és cosa de la vista, i el nucli no ha de saber-ne res. Si un dia
+     una vista canvia de clau, es canvia aquí i prou; i si algú se n'oblida, el
+     pitjor que passa és que aquella pantalla torni a fer el seu viatge com
+     abans —no que ensenyi res que no toca.
+     ========================================================================== */
+  var Precarrega = {
+    fet: 0,
+
+    clauDe: function (modul, avui) {
+      switch (modul) {
+        case 'habits':    return 'habits.' + avui;
+        case 'calendari': return 'calendari.' + avui.slice(0, 7);
+        case 'tasques':   return 'tasques.llista';
+        case 'escola':    return 'escola';
+        case 'seguiment': return 'seguiment';
+        case 'diari':     return 'diari.' + avui;
+        case 'nutricio':  return 'nutricio.dia.' + avui;
+        case 'finances':  return 'finances.mes.ara';
+        default:          return null;      // el que no sabem, no es desa
+      }
+    },
+
+    omple: function () {
+      /* Un cop per obertura i prou. Tornar-hi cada vegada que canvies
+         d'apartat seria fer feina per no guanyar res: el que hi ha desat es
+         posa al dia sol quan entres. */
+      if (this.fet) return;
+      this.fet = Date.now();
+
+      var jo = this;
+      /* Mig segon de marge perquè la pantalla que hagis obert tingui la
+         connexió per a ella sola: el paquet és per a les que ENCARA no mires. */
+      setTimeout(function () {
+        crida('nucli', 'paquet', {}).then(function (r) {
+          if (!r || !r.pantalles) return;
+          var avui = r.avui || fmt.avui();
+          Object.keys(r.pantalles).forEach(function (id) {
+            var dades = r.pantalles[id];
+            if (!dades) return;
+            if (id === '_dia') { Cau.set('dia.' + avui, dades); return; }
+            var clau = jo.clauDe(id, avui);
+            if (clau) Cau.set(clau, dades);
+            /* Els hàbits porten el mes a la mateixa resposta i la seva vista
+               el busca a part: si no es desa aquí, la graella del mes seria
+               l'única cosa que encara esperaria. */
+            if (id === 'habits' && dades.mes) Cau.set('habits.mes', dades.mes);
+          });
+        }).catch(function () {
+          /* Si falla, no passa res de res: cada pantalla sap demanar la seva. */
+        });
+      }, 500);
+    }
+  };
+
   var Cua = {
     tot: function () { return Cau.get('cua', []); },
 
@@ -363,6 +430,8 @@ var Jefe = (function () {
           App.moduls = d.moduls; App.pintaNav();
         }
       }).catch(function () { /* sense connexió: seguim amb la cau */ });
+
+      Precarrega.omple();
     },
 
     /**
@@ -384,6 +453,11 @@ var Jefe = (function () {
         params: /^\d{4}-\d{2}-\d{2}$/.test(valor) ? { data: valor } : {}
       };
     },
+
+    /* Portar-se totes les pantalles d'una anada. Surt aquí perquè hi ha dos
+       moments que ho volen: en arrencar, i just quan acabes de connectar el
+       servidor —aquell dia l'arrencada ja havia passat de llarg. */
+    precarrega: function () { Precarrega.omple(); },
 
     ves: function (id, params, sensePila) {
       var def = App.vistes[id];
@@ -589,7 +663,11 @@ var Jefe = (function () {
         ev.currentTarget.dataset.carregant = '1';
         Servidor.desa(url, clau);
         crida('nucli', 'ping', {})
-          .then(function () { App.tancaModal(); App.brindis('Connectat'); App.refresca(); })
+          .then(function () {
+            App.tancaModal(); App.brindis('Connectat');
+            App.precarrega();          // el dia que connectes, l'arrencada ja ha passat
+            App.refresca();
+          })
           .catch(function (err) {
             ev.currentTarget.dataset.carregant = '0';
             Servidor.esborra();

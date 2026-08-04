@@ -139,6 +139,27 @@ const MOCK = `
                                       problemesEsquema: [], triggers: [], ia: { disponible: false } };
       if (accio === 'notificacions') return { disponible: false, motiu: 'mirall', dispositius: 0 };
       if (accio === 'ping') return { ara: AVUI, versio: 'mirall' };
+
+      /* El paquet: totes les pantalles en una anada. Aquí es munta amb les
+         mateixes dades que tornaria cadascuna per separat, que és justament el
+         que ha de passar: si el paquet tornés una altra forma, el client
+         desaria una cosa que la vista no sap pintar. */
+      if (accio === 'paquet') {
+        var dins = function (m, a) {
+          try { return respon(m, a, {}); } catch (e) { return null; }
+        };
+        return { avui: AVUI, pantalles: {
+          habits: dins('habits', 'pantalla'),
+          calendari: dins('calendari', 'pantalla'),
+          tasques: dins('tasques', 'pantalla'),
+          escola: dins('escola', 'pantalla'),
+          seguiment: dins('seguiment', 'pantalla'),
+          nutricio: dins('nutricio', 'pantalla'),
+          finances: dins('finances', 'pantalla'),
+          diari: dins('diari', 'pantalla'),
+          _dia: copia(DIA_PAGINA({}))
+        } };
+      }
     }
 
     if (modul === 'escola') {

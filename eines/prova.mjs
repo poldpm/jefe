@@ -2504,5 +2504,66 @@ console.log('\nObrir l\'app: les targetes no poden anar a buscar res a Google');
       capEscalfa.length === 0, capEscalfa.join(', '));
 }
 
+// ------- la precàrrega ha de desar amb la clau que cada pantalla llegirà
+/* El 4 d'agost del 2026 es va trobar que el calendari DESAVA a
+   «calendari.2026-08» i LLEGIA de «calendari.ara»: no coincidien mai, la còpia
+   del telèfon hi era i no la feia servir ningú, i per això obrir el calendari
+   sempre esperava el servidor. Un error d'una paraula que no es veu mirant el
+   codi —les dues línies són a quatre-centes línies l'una de l'altra— i que es
+   veu de seguida si es comparen.
+   Això compara la taula de claus de la precàrrega amb la clau que cada vista
+   fa servir de debò. Si algú en canvia una i s'oblida de l'altra, peta aquí. */
+console.log('\nLa precàrrega desa on cada pantalla mirarà');
+{
+  const app = fs.readFileSync('apps-script/ui_app.html', 'utf8');
+  const tros = app.slice(app.indexOf('    clauDe: function (modul, avui) {'),
+                         app.indexOf('    omple: function () {'));
+  const c2 = { String };
+  vm.createContext(c2);
+  vm.runInContext('var P = { ' + tros.replace(/,\s*$/, '') + ' };', c2);
+
+  const AVUI = '2026-08-04';
+  const clau = (m) => c2.P.clauDe(m, AVUI);
+
+  /* Què llegeix cada vista de debò, tret del seu propi codi. */
+  const llegeix = (fitxer, expressio) => {
+    const s = fs.readFileSync('apps-script/' + fitxer, 'utf8');
+    return expressio(s);
+  };
+
+  const esperat = {
+    habits: 'habits.' + AVUI,
+    tasques: 'tasques.llista',
+    escola: 'escola',
+    seguiment: 'seguiment',
+    diari: 'diari.' + AVUI,
+    nutricio: 'nutricio.dia.' + AVUI,
+    finances: 'finances.mes.ara',
+    calendari: 'calendari.2026-08'
+  };
+  Object.keys(esperat).forEach((m) => {
+    cal('la clau de ' + m + ' és la que espera la seva vista',
+        clau(m) === esperat[m], clau(m) + ' ≠ ' + esperat[m]);
+  });
+
+  /* I la del calendari, a més, ha de sortir de la MATEIXA funció que fa servir
+     la vista per desar i per llegir: si tornen a ser dues, torna a passar. */
+  const calv = llegeix('vista_calendari.html', (s) => s);
+  cal('el calendari desa i llegeix amb la mateixa funció',
+      /Cau\.set\(claCau\(d\.mes\), r\)/.test(calv) &&
+      /Cau\.get\(claCau\(\), null\)/.test(calv),
+      'algú ha tornat a escriure la clau a mà');
+  cal('i la clau del mes en curs no és mai «ara»',
+      !/'calendari\.' \+ \(mes \|\| 'ara'\)/.test(calv) && !/calendari\.ara/.test(app));
+
+  /* El paquet ha de portar el dia amb la forma que la seva vista sap pintar:
+     el que la vista demana és `conversa.elDia`, no una altra cosa. */
+  const enc = fs.readFileSync('apps-script/30_Encaminador.gs', 'utf8');
+  cal('el paquet porta la pàgina del dia tal com la demana la seva vista',
+      /out\._dia = Conversa\.elDia\(/.test(enc));
+  cal('i un mòdul que peti no s\'emporta la resta del paquet',
+      /try \{ out\[mod\.id\] = mod\.accions\.pantalla\(\{\}\); \}/.test(enc));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
