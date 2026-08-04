@@ -59,50 +59,26 @@ var CalendariPont = (function () {
    * —i Apps Script— hi afegirien una petició de comprovació prèvia que l'altra
    * banda no sap respondre. El cos segueix sent JSON; només canvia l'etiqueta.
    */
-  /**
-   * LA PETICIÓ, MUNTADA PERÒ NO ENVIADA.
-   *
-   * Existeix perquè el calendari pugui posar-la a la MATEIXA tirada que les
-   * agendes pròpies —vegeu `totesDeCop_` a 40_Mod_Calendari.gs—: preguntar-ho
-   * tot alhora fa que el pont deixi de costar tres segons a sobre de la resta i
-   * passi a costar el que trigui la petició més lenta de totes.
-   *
-   * El que no fa és decidir res: qui l'envia és qui la demana, i llegir-ne la
-   * resposta segueix sent feina d'aquí —vegeu `llegeix`—, que és on hi ha totes
-   * les maneres en què això pot anar malament.
-   */
-  function peticio(accio, dades) {
+  function demana_(accio, dades) {
     var c = config_();
-    if (!c) return null;
+    if (!c) throw new Error('No hi ha cap pont configurat amb l\'altre compte.');
 
     var cos = { clau: c.clau, accio: accio };
     for (var k in dades) cos[k] = dades[k];
 
-    return {
-      url: c.url,
-      method: 'post',
-      contentType: 'text/plain;charset=utf-8',
-      payload: JSON.stringify(cos),
-      muteHttpExceptions: true,
-      followRedirects: true
-    };
-  }
-
-  function demana_(accio, dades) {
-    var p = peticio(accio, dades);
-    if (!p) throw new Error('No hi ha cap pont configurat amb l\'altre compte.');
-
     var r;
     try {
-      r = UrlFetchApp.fetch(p.url, p);
+      r = UrlFetchApp.fetch(c.url, {
+        method: 'post',
+        contentType: 'text/plain;charset=utf-8',
+        payload: JSON.stringify(cos),
+        muteHttpExceptions: true,
+        followRedirects: true
+      });
     } catch (err) {
       throw new Error('No arribo al compte de l\'escola: ' + err.message);
     }
-    return llegeix(r);
-  }
 
-  /** Què vol dir el que ha contestat. Totes les maneres de sortir malament. */
-  function llegeix(r) {
     var codi = r.getResponseCode();
     var text = r.getContentText();
 
@@ -132,16 +108,9 @@ var CalendariPont = (function () {
   return {
     hiEs: hiEs,
     config: config_,
-    peticio: peticio,
-    llegeix: llegeix,
     calendaris: function () { return demana_('calendaris', {}); },
     esdeveniments: function (desde, fins, ids) {
       return demana_('esdeveniments', { desde: desde, fins: fins, calendaris: ids || [] });
-    },
-    /* El mateix, però només muntada: la fa servir el calendari per preguntar-ho
-       tot de cop. Si no hi ha pont, torna `null` i qui la demana ja se'n surt. */
-    peticioEsdeveniments: function (desde, fins, ids) {
-      return peticio('esdeveniments', { desde: desde, fins: fins, calendaris: ids || [] });
     },
     crea: function (p) { return demana_('crea', p); },
     edita: function (p) { return demana_('edita', p); },

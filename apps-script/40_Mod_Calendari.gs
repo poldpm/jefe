@@ -448,22 +448,14 @@ var Calendari = (function () {
     var out = [];
     var mirats = actius_();
 
-    /* TOT DE COP: LES TEVES AGENDES I LES DE L'ESCOLA.
-       Les de l'escola no les pot llegir aquest compte de cap manera i van pel
-       pont —vegeu `44_Calendari_Pont.gs`—, que és una volta sencera a un altre
-       Apps Script i costa tres segons. Anaven a part i se sumaven al que
-       costava la resta; ara viatgen a la mateixa tirada, i el que es paga és la
-       petició més lenta de totes i no la suma.
-       Si el pont no contesta, la resta surt igual i queda constància: val més
-       un mes sense les cites de l'escola que un mes sense res. */
-    var meves = mirats.filter(function (c) { return !c.pont; });
+    /* ELS DE L'ALTRE COMPTE ELS DEMANEM AL PONT.
+       Aquest compte no els pot llegir de cap manera, o sigui que sense això
+       la pantalla no en veuria ni un. Van tots en UNA sola petició, no una
+       per calendari. I si el pont no contesta, la resta surt igual i queda
+       constància al registre: val més un mes sense les cites de l'escola que
+       un mes sense res. */
     var delPont = mirats.filter(function (c) { return c.pont; });
-
-    var deCop = totesDeCop_(meves, delPont, desde, fins, inici, final);
-
-    if (deCop && deCop._pont) {
-      deCop._pont.forEach(function (e) { out.push(e); });
-    } else if (delPont.length && CalendariPont.hiEs()) {
+    if (delPont.length && CalendariPont.hiEs()) {
       try {
         var seus = CalendariPont.esdeveniments(desde, fins,
           delPont.map(function (c) { return c.id; }));
@@ -474,6 +466,12 @@ var Calendari = (function () {
                  { desde: desde, fins: fins });
       }
     }
+
+    /* LES AGENDES, TOTES DE COP.
+       Vegeu `totesDeCop_`: vuit agendes preguntades una darrere l'altra eren
+       tretze segons; preguntades alhora, el que triga és la més lenta. */
+    var meves = mirats.filter(function (c) { return !c.pont; });
+    var deCop = totesDeCop_(meves, inici, final);
 
     meves.forEach(function (c) {
       var events = deCop && deCop[c.id];
@@ -510,12 +508,8 @@ var Calendari = (function () {
    * Torna `null` si no se'n surt, i llavors qui crida hi va d'una en una com
    * abans. Aquí no s'hi juga res: és una drecera, no l'únic camí.
    */
-  function totesDeCop_(agendes, delPont, desde, fins, inici, final) {
-    agendes = agendes || [];
-    delPont = delPont || [];
-
-    var potPont = delPont.length && CalendariPont.hiEs();
-    if (agendes.length < 2 && !potPont) return null;   // per una, no cal muntar res
+  function totesDeCop_(agendes, inici, final) {
+    if (!agendes || agendes.length < 2) return null;      // per una, no cal muntar res
 
     var testimoni;
     try { testimoni = ScriptApp.getOAuthToken(); } catch (e) { return null; }
@@ -537,14 +531,6 @@ var Calendari = (function () {
       };
     });
 
-    /* I la de l'escola, a la mateixa tirada. Va l'última perquè les respostes
-       tornen en el mateix ordre que les peticions i així no cal comptar res. */
-    var pontPeticio = potPont
-      ? CalendariPont.peticioEsdeveniments(desde, fins,
-          delPont.map(function (c) { return c.id; }))
-      : null;
-    if (pontPeticio) peticions.push(pontPeticio);
-
     var respostes;
     try { respostes = UrlFetchApp.fetchAll(peticions); }
     catch (err) {
@@ -557,20 +543,7 @@ var Calendari = (function () {
     var out = {};
     var quantes = 0;
 
-    if (pontPeticio) {
-      /* La de l'escola es llegeix amb el codi del pont, no aquí: totes les
-         maneres en què allò pot sortir malament —que Google contesti una
-         pàgina d'inici de sessió, per exemple— ja les sap ell. Si falla, qui
-         crida ho tornarà a provar pel camí lent. */
-      try {
-        var seus = CalendariPont.llegeix(respostes[respostes.length - 1]);
-        if (seus && seus.length !== undefined) out._pont = seus;
-      } catch (err) {
-        Log.avis('calendari.pont', 'De cop no ha anat: ' + err.message);
-      }
-    }
-
-    for (var i = 0; i < agendes.length; i++) {
+    for (var i = 0; i < respostes.length; i++) {
       var c = agendes[i];
       if (respostes[i].getResponseCode() !== 200) continue;   // aquesta, d'una en una
       var dades;
@@ -591,9 +564,7 @@ var Calendari = (function () {
       quantes++;
     }
 
-    /* Si no se n'ha pogut llegir cap —ni una agenda ni la de l'escola—, val més
-       dir que no ha anat i que ho provin d'una en una. */
-    return (quantes || out._pont) ? out : null;
+    return quantes ? out : null;
   }
 
   /**
