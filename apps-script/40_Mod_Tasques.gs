@@ -1,29 +1,42 @@
 /**
- * JEFE — MÒDUL · Tasques i captura ràpida
+ * JEFE — MÒDUL · Tasques (Google Tasks)
  *
- * Cap línia del nucli s'ha tocat per afegir aquest fitxer.
+ * Cap línia del nucli s'ha tocat per fer aquest canvi.
  *
- * PER QUÈ CAPTURA I TASQUES SÓN EL MATEIX MÒDUL
- *   Al briefing eren dos. Són el mateix objecte en dos moments: el que
- *   captures ARA sense pensar-hi, i el que decideixes DESPRÉS que era. Si
- *   fossin dos mòduls, en capturar hauries de triar a quin dels dos va —i
- *   estalviar-te justament aquesta decisió és per al que serveix una captura
- *   ràpida. Aquí tot cau a la safata i es classifica quan tens temps.
+ * L'EXCEPCIÓ A «EL FULL ÉS L'ÚNICA FONT DE VERITAT», IGUAL QUE AL CALENDARI
  *
- * DECISIONS DE DISSENY
+ *   Les tasques NO es copien al full. Es llegeixen de Google Tasks cada cop
+ *   que fan falta, i les altes i els canvis van directament allà.
  *
- *   1. CAPTURAR NO DEMANA RES MÉS QUE EL TEXT. Ni context, ni prioritat, ni
- *      data. Qualsevol camp obligatori al moment de capturar és una excusa
- *      per no capturar, i el que no s'apunta es perd.
+ *   És l'única manera que no menteixi: les tasques les toques des del mòbil,
+ *   des de l'ordinador i des del rellotge, i n'hi ha que te les crea sol
+ *   l'automatisme de l'escola. Una còpia al full estaria desactualitzada la
+ *   primera tarda i llavors tindries dues veritats que no coincideixen —que
+ *   és pitjor que no tenir-ne cap.
  *
- *   2. Els contextos són els seus tres i no una llista genèrica: docència,
- *      agent rural i personal. Surten del briefing, no d'una plantilla.
+ * QUÈ HI HA AL FULL, DONCS
  *
- *   3. La safata és un estat, no una pantalla a part. Una tasca sense
- *      classificar és una tasca amb feina pendent, no una altra cosa.
+ *   1. `LlistesTasques` — les teves llistes de Google Tasks i quines mires.
+ *      El nom i l'ordre són de Google; el `mostra` és teu.
  *
- *   4. RES S'ESBORRA. Completar no esborra: posa data a `fet_el` i la treu de
- *      la llista. L'històric del que has fet és la meitat del valor.
+ *   2. `TasquesMarques` — el que Google Tasks no sap desar i tu vols: la
+ *      prioritat i «hi estic». Va per l'id de la tasca de Google, i no en
+ *      copia ni el text ni la data: si algun dia treus aquest full, no perds
+ *      cap tasca, perds dues anotacions.
+ *
+ * ELS CONTEXTOS ARA SÓN LES TEVES LLISTES
+ *   Abans eren tres fixos —docència, agent rural, personal— escrits al codi.
+ *   Ara manen les llistes que tinguis: si te'n fas una de nova al mòbil,
+ *   surt aquí sense tocar res. La d'Automatització de l'escola no hi és:
+ *   aquella viu al compte de l'escola i té la seva pantalla.
+ *
+ * PERMISOS
+ *   Aquest mòdul fa que l'app demani accés a Google Tasks. Cal tornar a
+ *   autoritzar-la una vegada. Vegeu `preparaTasques()` a 90_Instalacio.gs.
+ *
+ * SI EL SERVEI NO HI ÉS
+ *   Si l'API de Tasks encara no està activada, la pantalla ho diu i no peta:
+ *   ni la pàgina del dia ni la fitxa de la IA es queden penjades per això.
  */
 function MODUL_TASQUES() {
   return {
@@ -31,22 +44,34 @@ function MODUL_TASQUES() {
     nom: 'Tasques',
     icona: 'tasques',
     ordre: 15,
-    versioEsquema: 1,
+    versioEsquema: 2,
+
+    /* NO DESIS RES DEL QUE DIGUI. El que ensenya no surt del seu full: surt de
+       Google Tasks i pot canviar des del mòbil sense que aquí s'escrigui ni
+       una fila. Té la seva pròpia finestra curta —vegeu `deLaLlista_`. */
+    volatil: true,
 
     fulls: [
       {
-        nom: 'Tasques',
+        nom: 'LlistesTasques',
+        columnes: [
+          { nom: 'id',              tipus: 'text' },   // l'id de Google
+          { nom: 'nom',             tipus: 'text' },
+          { nom: 'mostra',          tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'principal',       tipus: 'text', valors: ['SI', 'NO'] },
+          { nom: 'ordre',           tipus: 'num'  },
+          { nom: 'creat_el',        tipus: 'iso'  },
+          { nom: 'actualitzat_el',  tipus: 'iso'  }
+        ]
+      },
+      {
+        nom: 'TasquesMarques',
         columnes: [
           { nom: 'id',              tipus: 'text' },
-          { nom: 'text',            tipus: 'text' },
-          { nom: 'estat',           tipus: 'text', valors: ['safata', 'per_fer', 'fent', 'feta'] },
-          { nom: 'context',         tipus: 'text', valors: ['docencia', 'rural', 'personal'] },
+          { nom: 'tasca',           tipus: 'text' },   // l'id de Google
+          { nom: 'llista',          tipus: 'text' },
           { nom: 'prioritat',       tipus: 'text', valors: ['', 'alta'] },
-          { nom: 'venc_el',         tipus: 'data' },
-          { nom: 'fet_el',          tipus: 'data' },
-          { nom: 'nota',            tipus: 'text' },
-          { nom: 'origen',          tipus: 'text', valors: ['app', 'veu', 'conversa'] },
-          { nom: 'esborrat_el',     tipus: 'iso'  },
+          { nom: 'fent',            tipus: 'text', valors: ['', 'SI'] },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }
         ]
@@ -54,24 +79,23 @@ function MODUL_TASQUES() {
     ],
 
     accions: {
-      /* Desada: obrir tasques vol dir llegir el full sencer, i el full creix.
-         Qualsevol escriptura a `Tasques` la tomba tota sola; vegeu `Memoria`. */
-      pantalla: function (p) {
-        return Memoria.recorda('tasques', 'pantalla', function () { return Tasques.pantalla(p); });
-      },
-      captura:  function (p) { return Tasques.captura(p.text, p.origen); },
-      edita:    function (p) { return Tasques.edita(p.id, p); },
-      completa: function (p) { return Tasques.completa(p.id, p.desfes); },
-      treu:     function (p) { return Tasques.treu(p.id); },
-      neteja:   function ()  { return Tasques.netejaFetes(); }
+      pantalla:    function (p) { return Tasques.pantalla(p); },
+      fetes:       function (p) { return Tasques.fetes(p); },
+      captura:     function (p) { return Tasques.captura(p.text, p.origen, p.llista); },
+      edita:       function (p) { return Tasques.edita(p); },
+      completa:    function (p) { return Tasques.completa(p.id, p.llista, p.desfes); },
+      treu:        function (p) { return Tasques.treu(p.id, p.llista); },
+      llistes:     function ()  { return Tasques.llistes(); },
+      sincronitza: function ()  { return Tasques.sincronitzaLlistes(); },
+      mostra:      function (p) { return Tasques.mostra(p.id, p.mostra); }
     },
 
     resumInici: function () {
       var r = Tasques.compte();
       return {
-        etiqueta: r.safata ? 'A la safata' : (r.vencudes ? 'Tasques vençudes' : 'Tasques per fer'),
-        valor: r.safata || r.vencudes || r.perFer,
-        urgent: r.safata > 0 || r.vencudes > 0,
+        etiqueta: r.vencudes ? 'Tasques vençudes' : 'Tasques per fer',
+        valor: r.vencudes || r.perFer,
+        urgent: r.vencudes > 0,
         accio: 'tasques'
       };
     },
@@ -79,43 +103,30 @@ function MODUL_TASQUES() {
     resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
 
     elDia: function (data) {
+      /* Del futur no en diu res: «et falten quatre tasques» d'aquí a tres
+         dies és evident i no és cap informació. */
+      if (data > Utils.avui()) return null;
       var d = Tasques.pantalla({});
-      var coses = [];
+      if (!d.hiHaServei) return null;
 
-      /* Les vençudes primer i dient quant fa: una tasca que arrossegues no és
-         el mateix que una que venç avui, i a la pàgina del dia és el que
-         primer has de veure. */
+      var coses = [];
       d.tasques.filter(function (t) { return t.vencuda; }).forEach(function (t) {
-        /* QUANT FA, no quin dia era. «Vencia el 2026-07-29» t'obliga a comptar
-           mentalment; «fa quatre dies» és la informació que en volies treure. */
-        var fa = Utils.diesEntre(t.vencEl, data);
-        coses.push({
-          text: t.text,
-          menut: fa <= 0 ? 'vencia avui'
-               : fa === 1 ? 'vencia ahir'
-               : 'fa ' + fa + ' dies que vencia',
-          urgent: true
-        });
+        /* QUANT FA, no quin dia era: «vencia el 2026-07-29» t'obliga a comptar
+           mentalment, «fa quatre dies» és el que en volies treure. */
+        coses.push({ text: t.text, menut: Utils.faQuant(t.vencEl) + ' que vencia', urgent: true });
       });
-      d.tasques.filter(function (t) { return t.vencEl === data; }).forEach(function (t) {
-        coses.push({ text: t.text, menut: 'per avui' + (t.contextNom ? ' · ' + t.contextNom : '') });
+      d.tasques.filter(function (t) { return t.venAvui; }).forEach(function (t) {
+        coses.push({ text: t.text, menut: 'per avui · ' + t.llistaNom });
       });
-      if (d.safata.length) {
-        coses.push({ text: d.safata.length + (d.safata.length === 1 ? ' cosa a la safata'
-                                                                    : ' coses a la safata'),
-                     menut: 'sense classificar' });
-      }
+
       if (!coses.length) return null;
-      return { titol: 'Tasques', urgent: true, accio: 'tasques', coses: coses };
+      return { titol: 'Tasques', accio: 'tasques', coses: coses.slice(0, 12) };
     },
 
     contextIA: function () {
       var d = Tasques.pantalla({});
-      if (!d.tasques.length && !d.safata.length) return 'Tasques: no en té cap de pendent.';
-
-      var l = ['Tasques d\'en Pol:'];
-      if (d.safata.length) l.push('- ' + d.safata.length + ' coses a la safata, sense classificar.');
-
+      if (!d.hiHaServei) return '';
+      var l = [];
       var vencudes = d.tasques.filter(function (t) { return t.vencuda; });
       if (vencudes.length) {
         l.push('- VENCUDES (' + vencudes.length + '): ' +
@@ -125,45 +136,51 @@ function MODUL_TASQUES() {
       if (avui.length) {
         l.push('- Per avui: ' + avui.map(function (t) { return t.text; }).join('; '));
       }
-      l.push('- Pendents en total: ' + d.tasques.length);
+      l.push('- Pendents en total: ' + d.tasques.length +
+             (d.blocs.length ? ' (' + d.blocs.map(function (b) {
+               return b.nom + ' ' + b.tasques.length;
+             }).join(', ') + ')' : ''));
       return l.join('\n');
     },
 
     einesIA: [{
       nom: 'consulta_tasques',
-      descripcio: 'Les tasques pendents de l\'usuari. Pot filtrar per context ' +
-                  '(docencia, rural, personal) o demanar només les vençudes.',
+      descripcio: 'Les tasques pendents de l\'usuari a Google Tasks. Pot filtrar per ' +
+                  'llista (el nom de la llista, per exemple «Docència») o demanar ' +
+                  'només les vençudes.',
       esquema: {
         type: 'object',
         properties: {
-          context: { type: 'string', description: 'docencia, rural o personal' },
-          nomes_vencudes: { type: 'boolean', description: 'Només les que ja han passat de data' },
-          incloure_fetes: { type: 'boolean', description: 'Incloure-hi les ja completades' }
+          llista: { type: 'string', description: 'Nom de la llista, si en vol una de sola' },
+          nomes_vencudes: { type: 'boolean', description: 'Només les que ja han passat de data' }
         }
       },
       executa: function (a) { return Tasques.consultaIA(a); }
     }, {
       nom: 'apunta_tasca',
-      descripcio: 'Apunta una cosa per fer. NO s\'executa directament: genera una ' +
-                  'proposta que en Pol ha de confirmar amb un botó.',
+      descripcio: 'Apunta una cosa per fer a Google Tasks. NO s\'executa directament: ' +
+                  'genera una proposta que en Pol ha de confirmar amb un botó.',
       escriu: true,
       esquema: {
         type: 'object',
         properties: {
           text:    { type: 'string', description: 'Què s\'ha de fer' },
-          context: { type: 'string', description: 'docencia, rural o personal. Si no se sap, s\'omet.' },
+          llista:  { type: 'string', description: 'Nom de la llista. Si no se sap, s\'omet.' },
           venc_el: { type: 'string', description: 'Data límit AAAA-MM-DD, si n\'hi ha' }
         },
         required: ['text']
       },
       etiqueta: function (a) {
-        return 'Apuntar «' + (a.text || '?') + '»' + (a.venc_el ? ' per al ' + a.venc_el : '');
+        return 'Apuntar «' + (a.text || '?') + '»' +
+               (a.llista ? ' a ' + a.llista : '') +
+               (a.venc_el ? ' per al ' + a.venc_el : '');
       },
       executa: function (a) { return Tasques.apuntaPerNom(a); }
     }, {
       nom: 'completa_tasca',
-      descripcio: 'Marca una tasca com a feta. S\'identifica pel text, encara que no sigui ' +
-                  'exacte. NO s\'executa directament: genera una proposta a confirmar.',
+      descripcio: 'Marca una tasca com a feta a Google Tasks. S\'identifica pel text, ' +
+                  'encara que no sigui exacte. NO s\'executa directament: genera una ' +
+                  'proposta a confirmar.',
       escriu: true,
       esquema: {
         type: 'object',
@@ -179,14 +196,14 @@ function MODUL_TASQUES() {
       executa: function (a) { return Tasques.completaPerNom(a); }
     }, {
       nom: 'classifica_tasca',
-      descripcio: 'Posa context, data límit o prioritat a una tasca que ja existeix. ' +
-                  'Serveix per treure coses de la safata. NO s\'executa directament.',
+      descripcio: 'Posa data límit, prioritat o canvia de llista una tasca que ja ' +
+                  'existeix. NO s\'executa directament.',
       escriu: true,
       esquema: {
         type: 'object',
         properties: {
           text:      { type: 'string', description: 'Part del text de la tasca' },
-          context:   { type: 'string', description: 'docencia, rural o personal' },
+          llista:    { type: 'string', description: 'Nom de la llista on ha d\'anar' },
           venc_el:   { type: 'string', description: 'Data límit AAAA-MM-DD' },
           prioritat: { type: 'boolean', description: 'true per marcar-la prioritària' }
         },
@@ -194,23 +211,23 @@ function MODUL_TASQUES() {
       },
       etiqueta: function (a) {
         var q = [];
-        if (a.context) q.push('context ' + a.context);
+        if (a.llista) q.push('a ' + a.llista);
         if (a.venc_el) q.push('per al ' + a.venc_el);
         if (a.prioritat) q.push('prioritària');
-        return 'Posar «' + (a.text || '?') + '» com a ' + (q.join(', ') || 'per fer');
+        return 'Posar «' + (a.text || '?') + '» ' + (q.join(', ') || 'per fer');
       },
       executa: function (a) { return Tasques.classificaPerNom(a); }
     }, {
       nom: 'treu_tasca',
-      descripcio: 'Treu una tasca de la llista. NO s\'executa directament: genera una ' +
-                  'proposta a confirmar.',
+      descripcio: 'ESBORRA una tasca de Google Tasks. No es pot desfer. NO s\'executa ' +
+                  'directament: genera una proposta a confirmar.',
       escriu: true,
       esquema: {
         type: 'object',
         properties: { text: { type: 'string', description: 'Part del text de la tasca' } },
         required: ['text']
       },
-      etiqueta: function (a) { return 'TREURE la tasca «' + (a.text || '?') + '»'; },
+      etiqueta: function (a) { return 'ESBORRAR de Google Tasks «' + (a.text || '?') + '»'; },
       executa: function (a) { return Tasques.treuPerNom(a); }
     }],
 
@@ -221,128 +238,334 @@ function MODUL_TASQUES() {
 
 var Tasques = (function () {
 
-  /* Els seus tres contextos. Surten del briefing i no d'una llista genèrica:
-     la seva vida té aquests tres compartiments i no cap altre. */
-  var CONTEXTOS = [
-    { clau: 'docencia', nom: 'Docència' },
-    { clau: 'rural',    nom: 'Agent rural' },
-    { clau: 'personal', nom: 'Personal' }
-  ];
+  var CAU = 'tasq_';
+  var QUANT = 90;             // segons que dura la còpia de les llistes llegides
 
-  var ESTATS = ['safata', 'per_fer', 'fent', 'feta'];
+  // ------------------------------------------------------------ el servei
 
-  function vives_(filtre) {
-    return Dades.llegeix('Tasques', function (f) {
-      if (f.esborrat_el) return false;
-      return !filtre || filtre(f);
-    });
+  /* L'API de Tasks és un servei avançat: si encara no s'ha activat, la
+     variable global no hi és. No es dóna per feta enlloc. */
+  function serveiHiEs() {
+    try { return typeof Tasks !== 'undefined' && !!Tasks && !!Tasks.Tasklists; }
+    catch (e) { return false; }
   }
 
-  function ambDades_(f, avui) {
-    var venc = String(f.venc_el || '');
+  function calServei_() {
+    if (!serveiHiEs()) {
+      throw new Error('Google Tasks encara no està engegat. Executa preparaTasques() una vegada.');
+    }
+  }
+
+  // -------------------------------------------------------------- la còpia
+
+  /* Mateixa manera que al calendari: no es poden llistar les claus desades, o
+     sigui que per buidar-ho tot es canvia el número de versió que forma part
+     de la clau. Les velles queden orfes i moren soles. */
+  function buidaCau() {
+    try { CacheService.getScriptCache().put(CAU + 'versio', String(Date.now()), 21600); } catch (e) {}
+  }
+
+  function versioCau_() {
+    try {
+      var c = CacheService.getScriptCache();
+      var v = c.get(CAU + 'versio');
+      if (!v) { v = String(Date.now()); c.put(CAU + 'versio', v, 21600); }
+      return v;
+    } catch (e) { return '0'; }
+  }
+
+  // ------------------------------------------------------------- llistes
+
+  /**
+   * Les teves llistes de Google Tasks, apuntades al full.
+   *
+   * El `mostra` NO es toca mai si la llista ja hi era: si l'has apagada tu,
+   * mana el teu. Les noves s'encenen —te l'acabes de fer, la vols veure.
+   */
+  function sincronitzaLlistes() {
+    calServei_();
+
+    var items = [];
+    var pagina = null;
+    do {
+      var r = Tasks.Tasklists.list(pagina ? { maxResults: 100, pageToken: pagina } : { maxResults: 100 });
+      items = items.concat(r.items || []);
+      pagina = r.nextPageToken;
+    } while (pagina);
+
+    var principal = '';
+    try { principal = (Tasks.Tasklists.get('@default') || {}).id || ''; } catch (e) {}
+
+    var nous = 0, actualitzats = 0;
+    items.forEach(function (l, i) {
+      var existent = Dades.un('LlistesTasques', { id: l.id });
+      if (existent) {
+        // El `mostra` NO es toca: si l'has apagada tu, mana el teu.
+        Dades.actualitza('LlistesTasques', l.id, {
+          nom: l.title, principal: l.id === principal ? 'SI' : 'NO', ordre: i + 1
+        });
+        actualitzats++;
+      } else {
+        Dades.insereix('LlistesTasques', {
+          id: l.id, nom: l.title, mostra: 'SI',
+          principal: l.id === principal ? 'SI' : 'NO', ordre: i + 1
+        });
+        nous++;
+      }
+    });
+
+    buidaCau();
+    return { nous: nous, actualitzats: actualitzats, total: items.length };
+  }
+
+  function llistes() {
+    return Dades.llegeix('LlistesTasques').map(function (f) {
+      return {
+        id: f.id, nom: f.nom,
+        mostra: String(f.mostra).toUpperCase() === 'SI',
+        principal: String(f.principal).toUpperCase() === 'SI',
+        ordre: Number(f.ordre || 99)
+      };
+    }).sort(function (a, b) { return a.ordre - b.ordre; });
+  }
+
+  function queMires_() {
+    return llistes().filter(function (l) { return l.mostra; });
+  }
+
+  function mostra(id, valor) {
+    var r = Dades.actualitza('LlistesTasques', id, { mostra: valor ? 'SI' : 'NO' });
+    if (!r) throw new Error('Aquesta llista no existeix.');
+    buidaCau();
+    return { id: id, mostra: !!valor };
+  }
+
+  /** La llista on cau el que captures: la principal de Google, si no en dius cap. */
+  function llistaPerDefecte_() {
+    var l = llistes();
+    var p = l.filter(function (x) { return x.principal; })[0] || l.filter(function (x) { return x.mostra; })[0] || l[0];
+    if (!p) {
+      /* Encara no s'ha sincronitzat mai: es fa ara i prou, en comptes de
+         demanar-li que executi res. */
+      sincronitzaLlistes();
+      l = llistes();
+      p = l.filter(function (x) { return x.principal; })[0] || l[0];
+    }
+    if (!p) throw new Error('No tens cap llista a Google Tasks.');
+    return p;
+  }
+
+  function llistaPerNom_(nom) {
+    var n = aixafa_(nom);
+    if (!n) return null;
+    var totes = llistes();
+    var exacte = totes.filter(function (l) { return aixafa_(l.nom) === n; })[0];
+    return exacte || totes.filter(function (l) { return aixafa_(l.nom).indexOf(n) !== -1; })[0] || null;
+  }
+
+  // -------------------------------------------------------------- marques
+
+  /* El que Google Tasks no sap desar i tu vols. Per l'id de la tasca. */
+  function marques_() {
+    var per = {};
+    Dades.llegeix('TasquesMarques').forEach(function (f) {
+      if (f.tasca) per[f.tasca] = f;
+    });
+    return per;
+  }
+
+  function posaMarca_(tascaId, llistaId, canvis) {
+    var m = Dades.un('TasquesMarques', { tasca: tascaId });
+    if (m) return Dades.actualitza('TasquesMarques', m.id, canvis);
+    var nova = { tasca: tascaId, llista: llistaId, prioritat: '', fent: '' };
+    for (var k in canvis) nova[k] = canvis[k];
+    return Dades.insereix('TasquesMarques', nova, 'tmk');
+  }
+
+  // ---------------------------------------------------------------- dates
+
+  /* Google desa el venciment a mitjanit UTC: els deu primers caràcters ja són
+     el dia que volies. Per escriure s'hi posa el migdia, que és el que fa
+     l'automatisme de l'escola i el que evita que un canvi d'hora et mogui una
+     tasca de dia. */
+  function dataDeGoogle_(due) {
+    return due ? String(due).slice(0, 10) : '';
+  }
+
+  function dataCapAGoogle_(data) {
+    var p = String(data || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!p) return null;
+    return new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3]), 12, 0, 0).toISOString();
+  }
+
+  // --------------------------------------------------------------- llegir
+
+  function deLaLlista_(llistaId, ambFetes) {
+    var clau = CAU + versioCau_() + '_' + (ambFetes ? 'f_' : 'p_') + llistaId;
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) {}
+    if (cau && !ambFetes) {
+      var desat = cau.get(clau);
+      if (desat) { try { return JSON.parse(desat); } catch (e) {} }
+    }
+
+    var params = { maxResults: 100, showCompleted: !!ambFetes };
+    if (ambFetes) { params.showHidden = true; params.completedMin = fa_(21); }
+
+    var items = (Tasks.Tasks.list(llistaId, params) || {}).items || [];
+
+    /* Les subtasques no s'ensenyen com si fossin tasques soltes: el pare ja hi
+       és i posar-les al mateix nivell fa una llista que no vol dir res. */
+    items = items.filter(function (t) { return !t.parent && !t.deleted; });
+
+    if (cau && !ambFetes) {
+      try { cau.put(clau, JSON.stringify(items), QUANT); } catch (e) {}
+    }
+    return items;
+  }
+
+  function fa_(dies) {
+    var d = new Date();
+    d.setDate(d.getDate() - dies);
+    return d.toISOString();
+  }
+
+  function ambDades_(t, llista, avui, marca) {
+    var venc = dataDeGoogle_(t.due);
     return {
-      id: f.id,
-      text: f.text,
-      estat: f.estat || 'safata',
-      context: f.context || '',
-      contextNom: (CONTEXTOS.filter(function (c) { return c.clau === f.context; })[0] || {}).nom || '',
-      prioritat: f.prioritat || '',
+      id: t.id,
+      llista: llista.id,
+      llistaNom: llista.nom,
+      text: String(t.title || '').trim() || '(sense text)',
+      nota: t.notes || '',
       vencEl: venc,
       vencuda: !!venc && venc < avui,
       venAvui: venc === avui,
-      fetEl: f.fet_el || '',
-      nota: f.nota || '',
-      origen: f.origen || 'app'
+      prioritat: marca && marca.prioritat === 'alta' ? 'alta' : '',
+      fent: !!(marca && String(marca.fent).toUpperCase() === 'SI'),
+      feta: t.status === 'completed',
+      fetEl: t.completed ? String(t.completed).slice(0, 10) : ''
     };
   }
 
-  // -------------------------------------------------------------- pantalla
+  /* Primer el que ja ha vençut, després el que venç, i al final el que no té
+     data. Una llista ordenada per quan la vas escriure no ajuda ningú. */
+  function ordena_(a, b) {
+    var ad = a.vencEl || '9999-99-99', bd = b.vencEl || '9999-99-99';
+    if (ad !== bd) return ad < bd ? -1 : 1;
+    if (a.prioritat !== b.prioritat) return a.prioritat === 'alta' ? -1 : 1;
+    return String(a.text).localeCompare(String(b.text));
+  }
 
   /**
-   * La safata i les pendents, separades.
+   * La pantalla: una caixa per llista, com les llistes que són.
    *
-   * L'ordre de les pendents no és per data de creació sinó pel que et convé
-   * mirar: primer el que ja ha vençut, després el que venç, i al final el que
-   * no té data. Una llista ordenada per quan la vas escriure no ajuda ningú.
+   * Les vençudes NO es treuen en un bloc a part. Sortirien dues vegades —al
+   * bloc i a la seva llista— i ja hem vist a l'escola què passa llavors: la
+   * mateixa cosa dos cops fa dubtar de si són dues coses. Es marquen allà on
+   * són, i el compte de vençudes va a la capçalera.
    */
   function pantalla(p) {
     p = p || {};
     var avui = Utils.avui();
-    var totes = vives_().map(function (f) { return ambDades_(f, avui); });
 
-    var safata = totes.filter(function (t) { return t.estat === 'safata'; })
-      .sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); });
+    if (!serveiHiEs()) {
+      return { avui: avui, hiHaServei: false, hiHaLlistes: false,
+               llistes: [], blocs: [], tasques: [], vencudes: 0 };
+    }
 
-    var pendents = totes.filter(function (t) {
-      return t.estat === 'per_fer' || t.estat === 'fent';
-    }).sort(function (a, b) {
-      // Sense data va al final: no és més urgent per ser més antiga.
-      var ad = a.vencEl || '9999-99-99', bd = b.vencEl || '9999-99-99';
-      if (ad !== bd) return ad.localeCompare(bd);
-      if (a.prioritat !== b.prioritat) return a.prioritat === 'alta' ? -1 : 1;
-      return String(a.id).localeCompare(String(b.id));
-    });
+    var mires = queMires_();
+    if (!llistes().length) {
+      try { sincronitzaLlistes(); mires = queMires_(); } catch (e) {}
+    }
 
-    var fetes = totes.filter(function (t) { return t.estat === 'feta'; })
-      .sort(function (a, b) { return String(b.fetEl).localeCompare(String(a.fetEl)); })
-      .slice(0, 20);      // les últimes vint: l'històric sencer no es mira
+    var marca = marques_();
+    var blocs = [], totes = [];
+
+    /* SI GOOGLE DIU QUE NO, AIXÒ NO POT TOMBAR RES MÉS. El permís es demana un
+       cop i pot no estar-hi encara; la pàgina del dia, els avisos i la fitxa de
+       la IA pregunten per aquí i no han de caure per això. Es diu que no hi ha
+       servei i cadascú se n'aparta sol. */
+    try {
+      mires.forEach(function (l) {
+        var t = deLaLlista_(l.id, false).map(function (x) {
+          return ambDades_(x, l, avui, marca[x.id]);
+        }).sort(ordena_);
+        totes = totes.concat(t);
+        blocs.push({ id: l.id, nom: l.nom, tasques: t });
+      });
+    } catch (err) {
+      if (typeof Log !== 'undefined') Log.avis('tasques', 'no puc llegir Google Tasks', err.message);
+      return { avui: avui, hiHaServei: false, hiHaLlistes: llistes().length > 0,
+               llistes: llistes(), blocs: [], tasques: [], vencudes: 0,
+               motiu: err.message };
+    }
 
     return {
       avui: avui,
-      safata: safata,
-      tasques: pendents,
-      fetes: fetes,
-      contextos: CONTEXTOS,
-      vencudes: pendents.filter(function (t) { return t.vencuda; }).length
+      hiHaServei: true,
+      hiHaLlistes: llistes().length > 0,
+      llistes: llistes(),
+      blocs: blocs,
+      tasques: totes.slice().sort(ordena_),
+      vencudes: totes.filter(function (t) { return t.vencuda; }).length
     };
   }
 
-  function compte() {
+  /** Les fetes es demanen a part: no les mires cada cop que obres. */
+  function fetes(p) {
+    p = p || {};
+    if (!serveiHiEs()) return { fetes: [] };
     var avui = Utils.avui();
-    var totes = vives_().map(function (f) { return ambDades_(f, avui); });
-    var pendents = totes.filter(function (t) { return t.estat === 'per_fer' || t.estat === 'fent'; });
+    var marca = marques_();
+    var out = [];
+    try {
+      queMires_().forEach(function (l) {
+        deLaLlista_(l.id, true).forEach(function (x) {
+          if (x.status !== 'completed') return;
+          out.push(ambDades_(x, l, avui, marca[x.id]));
+        });
+      });
+    } catch (err) {
+      if (typeof Log !== 'undefined') Log.avis('tasques', 'no puc llegir les fetes', err.message);
+      return { fetes: [], motiu: err.message };
+    }
+    out.sort(function (a, b) { return String(b.fetEl).localeCompare(String(a.fetEl)); });
+    return { fetes: out.slice(0, 30) };
+  }
+
+  function compte() {
+    var d = pantalla({});
     return {
-      safata: totes.filter(function (t) { return t.estat === 'safata'; }).length,
-      perFer: pendents.length,
-      vencudes: pendents.filter(function (t) { return t.vencuda; }).length
+      perFer: d.tasques.length,
+      vencudes: d.vencudes,
+      hiHaServei: d.hiHaServei
     };
   }
 
   /**
    * Què ha passat entre dues dates. Per a la revisió setmanal.
    *
-   * Diu les fetes, les que han entrat, i sobretot LA MÉS VELLA que segueix
-   * pendent. Aquesta última és l'única xifra que fa mal i és la que serveix:
-   * una tasca que arrossegues des de fa tres setmanes o la fas o la treus,
-   * però tenir-la allà no és tenir-la controlada.
+   * Diu les fetes i, sobretot, LA MÉS VELLA que segueix pendent: una tasca que
+   * arrossegues des de fa tres setmanes o la fas o la treus, però tenir-la
+   * allà no és tenir-la controlada.
    */
   function resumPeriode(desde, fins) {
-    var avui = Utils.avui();
-    var totes = vives_().map(function (f) { return ambDades_(f, avui); });
+    if (!serveiHiEs()) return null;
+    var d = pantalla({});
+    var f = fetes({}).fetes.filter(function (t) {
+      return t.fetEl && t.fetEl >= desde && t.fetEl <= fins;
+    });
 
-    var fetes = vives_(function (f) {
-      var d = String(f.fet_el || '');
-      return f.estat === 'feta' && d >= desde && d <= fins;
-    }).length;
-
-    var noves = vives_(function (f) {
-      var d = String(f.creat_el || '').slice(0, 10);
-      return d >= desde && d <= fins;
-    }).length;
-
-    var pendents = totes.filter(function (t) { return t.estat === 'per_fer' || t.estat === 'fent'; });
-    var safata = totes.filter(function (t) { return t.estat === 'safata'; }).length;
-    var vencudes = pendents.filter(function (t) { return t.vencuda; });
-
-    if (!fetes && !noves && !pendents.length && !safata) return null;
+    if (!f.length && !d.tasques.length) return null;
 
     var linies = [];
-    linies.push(fetes + (fetes === 1 ? ' feta' : ' fetes') + ' i ' +
-                noves + (noves === 1 ? ' de nova' : ' de noves'));
-    if (pendents.length) linies.push(pendents.length + ' pendents' +
-      (vencudes.length ? ', ' + vencudes.length + ' de vençudes' : ''));
-    if (safata) linies.push(safata + ' a la safata sense classificar');
-
+    linies.push(f.length + (f.length === 1 ? ' feta' : ' fetes'));
+    if (d.tasques.length) {
+      linies.push(d.tasques.length + ' pendents' +
+        (d.vencudes ? ', ' + d.vencudes + ' de vençudes' : ''));
+    }
+    var vencudes = d.tasques.filter(function (t) { return t.vencuda; });
     if (vencudes.length) {
       var vella = vencudes.slice().sort(function (a, b) {
         return String(a.vencEl).localeCompare(String(b.vencEl));
@@ -352,226 +575,220 @@ var Tasques = (function () {
     return { titol: 'Tasques', linies: linies };
   }
 
-  // ------------------------------------------------------------ escriptura
+  // ---------------------------------------------------------- escriptura
 
   /**
    * Capturar NO demana res més que el text.
    *
-   * Ni context, ni prioritat, ni data. Cada camp obligatori al moment de
-   * capturar és una excusa per no capturar, i el que no s'apunta es perd.
-   * Va a la safata, i ja decidiràs què era.
+   * Ni llista, ni data, ni prioritat: cada camp obligatori al moment de
+   * capturar és una excusa per no capturar, i el que no s'apunta es perd. Cau
+   * a la llista principal de Google Tasks i ja ho mouràs.
    */
-  function captura(text, origen) {
+  function captura(text, origen, llistaId) {
+    calServei_();
     var t = String(text || '').trim();
     if (!t) throw new Error('No has dit què vols apuntar.');
 
-    return Dades.insereix('Tasques', {
-      text: t,
-      estat: 'safata',
-      context: '',
-      prioritat: '',
-      venc_el: '',
-      fet_el: '',
-      nota: '',
-      origen: origen || 'app'
-    }, 'tsk');
-  }
-
-  function edita(id, p) {
-    if (!id) throw new Error('Falta l\'identificador.');
-    var canvis = {};
-
-    if (p.text !== undefined) {
-      var t = String(p.text).trim();
-      if (!t) throw new Error('El text no pot quedar buit.');
-      canvis.text = t;
-    }
-    if (p.estat !== undefined && ESTATS.indexOf(p.estat) !== -1) canvis.estat = p.estat;
-    if (p.context !== undefined) canvis.context = p.context;
-    if (p.prioritat !== undefined) canvis.prioritat = p.prioritat === 'alta' ? 'alta' : '';
-    if (p.venc_el !== undefined) canvis.venc_el = p.venc_el || '';
-    if (p.nota !== undefined) canvis.nota = p.nota;
-
-    /* Classificar una cosa de la safata la treu d'allà sola. Obligar-te a
-       triar «per fer» a part de dir-ne el context serien dos tocs per a una
-       sola decisió. */
-    if (canvis.context && !p.estat) {
-      var actual = Dades.perId('Tasques', id);
-      if (actual && actual.estat === 'safata') canvis.estat = 'per_fer';
-    }
-
-    var r = Dades.actualitza('Tasques', id, canvis);
-    if (!r) throw new Error('Aquesta tasca no existeix.');
-    return r;
-  }
-
-  /** Completar no esborra: marca. Es pot desfer. */
-  function completa(id, desfes) {
-    if (!id) throw new Error('Falta l\'identificador.');
-    var r = Dades.actualitza('Tasques', id, desfes
-      ? { estat: 'per_fer', fet_el: '' }
-      : { estat: 'feta', fet_el: Utils.avui() });
-    if (!r) throw new Error('Aquesta tasca no existeix.');
-    return r;
-  }
-
-  function treu(id) {
-    if (!id) throw new Error('Falta l\'identificador.');
-    var r = Dades.actualitza('Tasques', id, { esborrat_el: Utils.ara() });
-    if (!r) throw new Error('Aquesta tasca no existeix.');
-    return { tret: true };
+    var llista = llistaId || llistaPerDefecte_().id;
+    var creada = Tasks.Tasks.insert({ title: t }, llista);
+    buidaCau();
+    return { id: creada.id, llista: llista, text: t };
   }
 
   /**
-   * Buidar la llista de fetes.
+   * Canviar una tasca.
    *
-   * «Res s'esborra» segueix sent cert al full: es marquen amb data
-   * d'esborrat, igual que treure'n una de sola, i la fila hi continua. El que
-   * desapareix és de la pantalla. Una llista de fetes que no es pot buidar
-   * acaba sent soroll permanent a sota de la que sí que has de mirar.
+   * El text, la nota i la data van a Google. La prioritat i «hi estic» van al
+   * nostre full. I si canvia de llista, Google no la mou: se'n fa una de nova
+   * i s'esborra la vella —o sigui que canvia d'id, i les nostres marques han
+   * de seguir-la.
    */
-  function netejaFetes() {
-    var fetes = vives_(function (f) { return f.estat === 'feta'; });
-    if (!fetes.length) return { tretes: 0 };
-    var n = Dades.actualitzaMoltes('Tasques',
-      fetes.map(function (f) { return f.id; }), { esborrat_el: Utils.ara() });
-    return { tretes: n };
+  function edita(p) {
+    calServei_();
+    if (!p || !p.id || !p.llista) throw new Error('Falta saber quina tasca.');
+
+    var t = Tasks.Tasks.get(p.llista, p.id);
+    if (!t) throw new Error('Aquesta tasca ja no hi és.');
+
+    var toca = false;
+    if (p.text !== undefined) {
+      var text = String(p.text).trim();
+      if (!text) throw new Error('El text no pot quedar buit.');
+      t.title = text; toca = true;
+    }
+    if (p.nota !== undefined) { t.notes = String(p.nota || ''); toca = true; }
+    if (p.venc_el !== undefined) {
+      var due = dataCapAGoogle_(p.venc_el);
+      /* Treure la data vol dir `update` sense el camp: amb `patch` i null,
+         Google se la queda. */
+      if (due) t.due = due; else delete t.due;
+      toca = true;
+    }
+
+    var id = p.id, llista = p.llista;
+    if (toca) { Tasks.Tasks.update(t, llista, id); }
+
+    if (p.llistaNova && p.llistaNova !== llista) {
+      var copia = { title: t.title, notes: t.notes || '' };
+      if (t.due) copia.due = t.due;
+      var nova = Tasks.Tasks.insert(copia, p.llistaNova);
+      Tasks.Tasks.remove(llista, id);
+      var vella = Dades.un('TasquesMarques', { tasca: id });
+      if (vella) Dades.actualitza('TasquesMarques', vella.id, { tasca: nova.id, llista: p.llistaNova });
+      id = nova.id; llista = p.llistaNova;
+    }
+
+    if (p.prioritat !== undefined || p.fent !== undefined) {
+      var canvis = {};
+      if (p.prioritat !== undefined) canvis.prioritat = p.prioritat ? 'alta' : '';
+      if (p.fent !== undefined) canvis.fent = p.fent ? 'SI' : '';
+      posaMarca_(id, llista, canvis);
+    }
+
+    buidaCau();
+    return { id: id, llista: llista };
   }
 
-  // -------------------------------------------------------------------- IA
+  /** Completar no esborra: Google la deixa marcada i es pot desfer. */
+  function completa(id, llista, desfes) {
+    calServei_();
+    if (!id || !llista) throw new Error('Falta saber quina tasca.');
+    var t = Tasks.Tasks.get(llista, id);
+    if (!t) throw new Error('Aquesta tasca ja no hi és.');
 
-  function consultaIA(a) {
-    a = a || {};
-    var d = pantalla({});
-    var llista = d.tasques;
+    if (desfes) { t.status = 'needsAction'; delete t.completed; }
+    else { t.status = 'completed'; }
 
-    if (a.context) {
-      var c = String(a.context).toLowerCase();
-      llista = llista.filter(function (t) { return t.context === c; });
-    }
-    if (a.nomes_vencudes) llista = llista.filter(function (t) { return t.vencuda; });
+    Tasks.Tasks.update(t, llista, id);
+    if (!desfes) posaMarca_(id, llista, { fent: '' });
+    buidaCau();
+    return { id: id, feta: !desfes };
+  }
 
-    var out = {
-      safata: d.safata.length,
-      pendents: llista.length,
-      vencudes: llista.filter(function (t) { return t.vencuda; }).length,
-      llista: llista.slice(0, 25).map(function (t) {
-        return t.text + (t.vencEl ? ' (per al ' + t.vencEl + (t.vencuda ? ', VENÇUDA' : '') + ')' : '') +
-               (t.contextNom ? ' [' + t.contextNom + ']' : '');
-      })
-    };
-    if (a.incloure_fetes) {
-      out.fetes = d.fetes.slice(0, 15).map(function (t) { return t.text + ' (fet el ' + t.fetEl + ')'; });
+  /**
+   * Treure una tasca L'ESBORRA de Google Tasks, i això no es pot desfer.
+   *
+   * Al full antic «treure» era posar-hi una data i la fila hi continuava. Aquí
+   * la tasca no és nostra: és de Google, i esborrar-la vol dir esborrar-la. Per
+   * això la pantalla ho pregunta abans i el nom del botó ho diu.
+   */
+  function treu(id, llista) {
+    calServei_();
+    if (!id || !llista) throw new Error('Falta saber quina tasca.');
+    Tasks.Tasks.remove(llista, id);
+    var m = Dades.un('TasquesMarques', { tasca: id });
+    if (m) Dades.actualitza('TasquesMarques', m.id, { prioritat: '', fent: '' });
+    buidaCau();
+    return { tret: true };
+  }
+
+  // ------------------------------------------------------------- per a la IA
+
+  function aixafa_(text) {
+    var s = String(text || '').toLowerCase().trim();
+    var amb = 'àáâäèéêëìíîïòóôöùúûüñç', sense = 'aaaaeeeeiiiioooouuuunc';
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var n = amb.indexOf(s.charAt(i));
+      out += n === -1 ? s.charAt(i) : sense.charAt(n);
     }
     return out;
   }
 
-  /** Ve d'una proposta confirmada. Si porta context o data, ja no va a la safata. */
-  function apuntaPerNom(a) {
-    var r = captura(a.text, 'conversa');
+  /** La que més s'assembla al que ha dit, d'entre les pendents. */
+  function troba_(text) {
+    var q = aixafa_(text);
+    if (!q) return null;
+    var totes = pantalla({}).tasques;
+    var exacta = totes.filter(function (t) { return aixafa_(t.text) === q; })[0];
+    if (exacta) return exacta;
+    var conte = totes.filter(function (t) { return aixafa_(t.text).indexOf(q) !== -1; });
+    if (conte.length === 1) return conte[0];
+    if (conte.length > 1) return conte.sort(ordena_)[0];
+    /* I si ha dit més del que hi ha apuntat —«acaba d'una vegada l'informe»
+       quan la tasca diu «informe»—, també val. */
+    var alReves = totes.filter(function (t) { return q.indexOf(aixafa_(t.text)) !== -1; });
+    return alReves[0] || null;
+  }
 
-    var canvis = {};
-    var ctx = String(a.context || '').toLowerCase();
-    if (CONTEXTOS.filter(function (c) { return c.clau === ctx; }).length) canvis.context = ctx;
-    if (a.venc_el && /^\d{4}-\d{2}-\d{2}$/.test(String(a.venc_el))) canvis.venc_el = a.venc_el;
-    if (Object.keys(canvis).length) {
-      canvis.estat = 'per_fer';
-      r = Dades.actualitza('Tasques', r.id, canvis);
+  function consultaIA(a) {
+    a = a || {};
+    var d = pantalla({});
+    if (!d.hiHaServei) return { tasques: [], nota: 'Google Tasks no està engegat.' };
+
+    var l = d.tasques;
+    if (a.llista) {
+      var quina = llistaPerNom_(a.llista);
+      if (quina) l = l.filter(function (t) { return t.llista === quina.id; });
     }
+    if (a.nomes_vencudes) l = l.filter(function (t) { return t.vencuda; });
 
     return {
-      apuntat: true,
-      text: r.text,
-      // Si ha anat a la safata s'ha de dir: si no, semblaria classificada.
-      on: r.estat === 'safata' ? 'a la safata, per classificar' : 'a les pendents',
-      vencEl: r.venc_el || null
+      quantes: l.length,
+      tasques: l.slice(0, 30).map(function (t) {
+        return { text: t.text, llista: t.llistaNom, venc_el: t.vencEl,
+                 vencuda: t.vencuda, prioritat: t.prioritat };
+      })
     };
   }
 
-  /**
-   * TROBAR UNA TASCA PEL QUE EN DIUS, NO PEL SEU IDENTIFICADOR.
-   *
-   * En Pol diu «la de l'informe», no «tsk_ln4k2x_a7f». Però una coincidència
-   * a mitges és pitjor que cap: si dues tasques encaixen, NO se'n tria una a
-   * l'atzar. Es retornen totes dues i que ho pregunti. Completar la tasca
-   * equivocada perquè el nom s'assemblava és exactament la mena d'error que
-   * et fa deixar de confiar en l'assistent.
-   */
-  function troba_(text, inclouFetes) {
-    var q = String(text || '').trim().toLowerCase();
-    if (!q) throw new Error('No has dit quina tasca.');
-
-    var avui = Utils.avui();
-    var totes = vives_(function (f) {
-      return inclouFetes || f.estat !== 'feta';
-    }).map(function (f) { return ambDades_(f, avui); });
-
-    var exactes = totes.filter(function (t) { return t.text.toLowerCase() === q; });
-    var candidats = exactes.length ? exactes
-      : totes.filter(function (t) { return t.text.toLowerCase().indexOf(q) !== -1; });
-
-    if (!candidats.length) {
-      throw new Error('No trobo cap tasca que digui «' + text + '».');
-    }
-    if (candidats.length > 1) {
-      throw new Error('N\'hi ha ' + candidats.length + ' que hi encaixen: ' +
-        candidats.slice(0, 5).map(function (t) { return '«' + t.text + '»'; }).join(', ') +
-        '. Digues quina exactament.');
-    }
-    return candidats[0];
+  function apuntaPerNom(a) {
+    a = a || {};
+    var quina = a.llista ? llistaPerNom_(a.llista) : null;
+    var r = captura(a.text, 'conversa', quina ? quina.id : null);
+    if (a.venc_el) edita({ id: r.id, llista: r.llista, venc_el: a.venc_el });
+    return { fet: true, text: r.text, llista: (quina || llistaPerDefecte_()).nom };
   }
 
   function completaPerNom(a) {
-    var t = troba_(a.text, !!a.desfes);
-    completa(t.id, !!a.desfes);
-    return { fet: !a.desfes, tasca: t.text };
+    a = a || {};
+    var t = troba_(a.text);
+    if (!t) throw new Error('No trobo cap tasca que digui «' + (a.text || '') + '».');
+    completa(t.id, t.llista, !!a.desfes);
+    return { fet: true, text: t.text };
   }
 
   function classificaPerNom(a) {
-    var t = troba_(a.text, false);
-    var canvis = {};
-
-    var ctx = String(a.context || '').toLowerCase();
-    if (ctx) {
-      if (!CONTEXTOS.filter(function (c) { return c.clau === ctx; }).length) {
-        throw new Error('«' + a.context + '» no és cap context. Són: docencia, rural o personal.');
-      }
-      canvis.context = ctx;
+    a = a || {};
+    var t = troba_(a.text);
+    if (!t) throw new Error('No trobo cap tasca que digui «' + (a.text || '') + '».');
+    var canvis = { id: t.id, llista: t.llista };
+    if (a.venc_el) canvis.venc_el = a.venc_el;
+    if (a.prioritat !== undefined) canvis.prioritat = !!a.prioritat;
+    if (a.llista) {
+      var quina = llistaPerNom_(a.llista);
+      if (quina && quina.id !== t.llista) canvis.llistaNova = quina.id;
     }
-    if (a.venc_el) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(a.venc_el))) {
-        throw new Error('La data ha de ser AAAA-MM-DD.');
-      }
-      canvis.venc_el = a.venc_el;
-    }
-    if (a.prioritat !== undefined) canvis.prioritat = a.prioritat ? 'alta' : '';
-    if (!Object.keys(canvis).length) throw new Error('No has dit què li vols posar.');
-
-    var r = edita(t.id, canvis);
-    return { tasca: r.text, context: r.context || null, vencEl: r.venc_el || null,
-             prioritaria: r.prioritat === 'alta' };
+    edita(canvis);
+    return { fet: true, text: t.text };
   }
 
   function treuPerNom(a) {
-    var t = troba_(a.text, true);
-    treu(t.id);
-    return { tret: true, tasca: t.text };
+    a = a || {};
+    var t = troba_(a.text);
+    if (!t) throw new Error('No trobo cap tasca que digui «' + (a.text || '') + '».');
+    treu(t.id, t.llista);
+    return { fet: true, text: t.text };
   }
 
   return {
-    CONTEXTOS: CONTEXTOS,
-    completaPerNom: completaPerNom,
-    classificaPerNom: classificaPerNom,
-    treuPerNom: treuPerNom,
-    resumPeriode: resumPeriode,
+    serveiHiEs: serveiHiEs,
+    sincronitzaLlistes: sincronitzaLlistes,
+    llistes: llistes,
+    mostra: mostra,
     pantalla: pantalla,
+    fetes: fetes,
     compte: compte,
+    resumPeriode: resumPeriode,
     captura: captura,
     edita: edita,
     completa: completa,
     treu: treu,
-    netejaFetes: netejaFetes,
     consultaIA: consultaIA,
-    apuntaPerNom: apuntaPerNom
+    apuntaPerNom: apuntaPerNom,
+    completaPerNom: completaPerNom,
+    classificaPerNom: classificaPerNom,
+    treuPerNom: treuPerNom,
+    buidaCau: buidaCau
   };
 })();

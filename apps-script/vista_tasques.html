@@ -1,18 +1,28 @@
 <script>
-/* JEFE — MÒDUL · Tasques i captura ràpida
+/* JEFE — MÒDUL · Tasques (Google Tasks)
    Món: full de mapa topogràfic.
 
-   LA DECISIÓ QUE MANA: el camp de capturar és el primer que hi ha i està
-   sempre obert. No demana context ni data ni prioritat, perquè cada camp
-   obligatori al moment de capturar és una excusa per no capturar, i el que no
-   s'apunta es perd. Tot cau a la safata i ja ho classificaràs.
+   QUÈ ENSENYA I PER QUÈ AIXÍ:
 
-   La safata va a dalt i les pendents a sota: primer el que has de decidir,
-   després el que has de fer.
+     1. EL CAMP D'APUNTAR, sempre obert i a dalt. No demana llista ni data ni
+        prioritat: cada camp obligatori al moment de capturar és una excusa per
+        no capturar, i el que no s'apunta es perd. Cau a la llista principal de
+        Google Tasks i ja ho mouràs.
 
-   I EL QUE APUNTES SURT A L'INSTANT, sense esperar el servidor. Vegeu
-   `afegeixEsperant` més avall: capturar sis coses seguides no ha de ser sis
-   pauses de segon i mig mirant la pantalla. */
+     2. UNA CAIXA PER LLISTA, les mateixes caixes que a Escola —perquè és el
+        mateix: llistes del Google Tasks—. Les vençudes NO surten en un bloc a
+        part: sortirien dues vegades, i ja hem vist què passa llavors. Es
+        marquen allà on són i el compte va a la capçalera.
+
+     3. LES FETES es demanen, no es carreguen. No les mires cada cop que obres
+        i costen una volta per llista.
+
+   AQUÍ LA CASELLA ÉS DE DEBÒ. A Escola no n'hi ha perquè allò només mira; això
+   escriu al Google Tasks, i el que marquis aquí ho veuràs al mòbil.
+
+   I EL QUE APUNTES SURT A L'INSTANT, sense esperar el servidor: vegeu
+   `afegeixEsperant`. Apuntar sis coses seguides no ha de ser sis pauses de
+   segon i mig mirant la pantalla. */
 
 App.registraVista('tasques', {
   render: function (arrel, params) {
@@ -21,35 +31,133 @@ App.registraVista('tasques', {
     var previPintat = null;    // JSON del que hi ha pintat ara mateix
     var ajornat = null;        // pantalla que espera que pari d'escriure
     var esperant = 0;          // captures enviades i encara sense resposta
+    var veureFetes = false;
+    var lesFetes = null;       // les fetes, quan les hagi demanades
+    var demanantFetes = false;
 
     // ------------------------------------------------------------- capçalera
 
     function capcalera() {
+      var n = dades ? dades.tasques.length : 0;
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
             ic('conversa', 'ic-p') + '</button>' +
           '<span class="titol-periode" style="cursor:default">' +
             '<b>Tasques</b>' +
-            '<span>' + (dades ? dades.tasques.length + ' pendents' : '') +
-              (dades && dades.vencudes ? ' · ' + dades.vencudes + ' vençudes' : '') + '</span>' +
+            '<span>' + (dades ? n + (n === 1 ? ' pendent' : ' pendents') : '') +
+              (dades && dades.vencudes
+                ? ' · ' + dades.vencudes + (dades.vencudes === 1 ? ' vençuda' : ' vençudes')
+                : '') + '</span>' +
           '</span>' +
+          '<button class="btn btn-fantasma btn-icona" data-ajustos="1" aria-label="Quines llistes vull veure">' +
+            ic('ajust', 'ic-p') + '</button>' +
         '</div>' +
       '</header>';
     }
 
     // ---------------------------------------------------------------- pintura
 
+    /* Una fila per tasca: la rodona de completar i el cos, que obre el detall.
+       El text petit diu el que has de saber sense obrir-la —quan venç, si és
+       prioritària, si hi estàs— i res més. */
+    function fila(t) {
+      var menut = [];
+      if (t.vencEl) menut.push((t.vencuda ? 'vencia ' : '') + fmt.relativa(t.vencEl));
+      if (t.prioritat === 'alta') menut.push('prioritària');
+      if (t.fent) menut.push('hi estic');
+      if (t.nota) menut.push('amb nota');
+
+      return '<div class="tasca" data-t="' + esc(t.id) + '"' +
+        (t.vencuda ? ' data-vencuda="1"' : '') + '>' +
+        '<button class="tasca-marca" data-fet="' + esc(t.id) + '"' +
+          ' data-llista="' + esc(t.llista) + '"' +
+          ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
+        '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
+          '<span class="tasca-text">' + esc(t.text) + '</span>' +
+          (menut.length ? '<span class="menut">' + esc(menut.join(' · ')) + '</span>' : '') +
+        '</button>' +
+      '</div>';
+    }
+
+    /* El contenidor d'una caixa s'escriu SEMPRE, encara que la llista estigui
+       buida i amagada: és on aterren les captures que encara no han tornat del
+       servidor, i si no hi fos les hauria de fer aparèixer repintant. */
+    function caixes(d) {
+      if (!d.blocs.length) return '';
+      return '<div class="caixes">' + d.blocs.map(function (b) {
+        return '<section class="caixa" data-llista="' + esc(b.id) + '"' +
+            (b.tasques.length ? '' : ' hidden') + '>' +
+          '<h3 class="caixa-cap"><span>' + esc(b.nom) + '</span>' +
+            '<b data-compte="' + esc(b.id) + '">' + b.tasques.length + '</b></h3>' +
+          '<div class="caixa-cos" data-coses="' + esc(b.id) + '">' +
+            b.tasques.map(fila).join('') +
+          '</div>' +
+        '</section>';
+      }).join('') + '</div>';
+    }
+
+    function blocFetes() {
+      return '<div class="tsq-fetes">' +
+        '<button class="desplega" data-fetes="1" aria-expanded="' +
+          (veureFetes ? 'true' : 'false') + '">' +
+          ic('dreta', 'ic-p') + '<span>' +
+          (veureFetes ? 'Amaga les fetes' : 'Veure les fetes') + '</span>' +
+        '</button>' +
+        (veureFetes
+          ? '<div id="tsq-fetes-cos">' +
+              (lesFetes === null
+                ? '<p class="menut">Un moment…</p>'
+                : (lesFetes.length
+                    /* Dins de `caixes` perquè a l'escriptori no faci una fila
+                       de mil pixels d'ample amb quatre paraules a l'esquerra:
+                       les fetes són una caixa més. */
+                    ? '<div class="caixes"><div class="caixa"><div class="caixa-cos">' +
+                        lesFetes.map(function (t) {
+                          return '<div class="tasca" data-feta="1">' +
+                            '<button class="tasca-marca" data-desfes="' + esc(t.id) + '"' +
+                              ' data-llista="' + esc(t.llista) + '" data-fet="1"' +
+                              ' aria-label="Torna-la a pendent: ' + esc(t.text) + '"></button>' +
+                            '<span class="tasca-cos">' +
+                              '<span class="tasca-text">' + esc(t.text) + '</span>' +
+                              '<span class="menut">' + esc(t.llistaNom +
+                                (t.fetEl ? ' · ' + fmt.relativa(t.fetEl) : '')) + '</span>' +
+                            '</span>' +
+                          '</div>';
+                        }).join('') +
+                      '</div></div></div>'
+                    : '<p class="menut">Cap de feta aquestes tres setmanes.</p>')) +
+            '</div>'
+          : '') +
+      '</div>';
+    }
+
     function pinta(d, dEnCau) {
       dades = d;
 
+      if (!d.hiHaServei) {
+        arrel.innerHTML = capcalera() +
+          '<div class="pagina">' +
+            '<p class="marge">Google Tasks</p>' +
+            '<p class="menut">Encara no li has donat permís. Obre l\'editor d\'Apps Script ' +
+              'i executa <b>preparaTasques()</b> una vegada: després aquí hi haurà les teves ' +
+              'llistes tal com són al mòbil.</p>' +
+          '</div>';
+        lliga();
+        return;
+      }
+
+      var quina = (d.llistes.filter(function (l) { return l.principal; })[0] ||
+                   d.llistes.filter(function (l) { return l.mostra; })[0] || {}).nom || '';
+
       arrel.innerHTML = capcalera() +
-        '<div class="pagina nutri">' +
-          '<section class="nutri-dalt">' +
+        '<div class="pagina">' +
+          '<section>' +
             /* Sempre obert i sempre a dalt. Si has de prémer un botó per
                obrir-lo, ja has perdut la meitat del que volies apuntar. */
-            '<label class="camp-captura">' +
-              '<span class="marge">Apunta-ho i segueix</span>' +
+            '<label class="camp-captura tsq-capt">' +
+              '<span class="marge">Apunta-ho i segueix' +
+                (quina ? ' · va a ' + esc(quina) : '') + '</span>' +
               '<div class="captura-fila">' +
                 '<input id="t-captura" placeholder="Què t\'acaba de passar pel cap?" autocomplete="off">' +
                 '<button class="btn btn-primari" data-captura>' + ic('mes') + '</button>' +
@@ -57,91 +165,19 @@ App.registraVista('tasques', {
             '</label>' +
           '</section>' +
 
-          '<section class="nutri-apats">' +
-            blocSafata(d) +
-            blocPendents(d) +
+          '<section class="secc">' +
+            (d.tasques.length
+              ? caixes(d)
+              : (d.blocs.length
+                  ? '<p class="menut">Res pendent. Bon senyal.</p>' + caixes(d)
+                  : '<p class="menut">No mires cap llista. Tria-les al botó de dalt a la dreta.</p>')) +
           '</section>' +
 
-          '<section class="nutri-tanca">' + blocFetes(d) + '</section>' +
+          '<section class="secc">' + blocFetes() + '</section>' +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
       lliga();
-    }
-
-    /* La safata és el que has capturat i encara no has decidit què era.
-       Cada línia porta els tres contextos a un toc: classificar-la la treu
-       d'aquí sola, sense haver de dir a més que és «per fer».
-
-       El contenidor s'escriu SEMPRE, encara que estigui buit i amagat: és on
-       aterren les captures que encara no han tornat del servidor, i si no hi
-       fos les hauria de fer aparèixer repintant mitja pàgina. */
-    function blocSafata(d) {
-      return '<div id="t-safata-bloc"' + (d.safata.length ? '' : ' hidden') + '>' +
-        '<p class="marge">A la safata</p>' +
-        '<p class="menut">Toca on va cadascuna. Amb això surt de la safata.</p>' +
-        '<div class="safata-t" id="t-safata">' +
-          d.safata.map(function (t) {
-            return '<div class="safata-fila" data-fila="' + esc(t.id) + '">' +
-              '<div class="safata-text">' + esc(t.text) + '</div>' +
-              '<div class="safata-tria">' +
-                d.contextos.map(function (c) {
-                  return '<button data-ctx="' + esc(c.clau) + '" data-id="' + esc(t.id) + '">' +
-                         esc(c.nom) + '</button>';
-                }).join('') +
-                '<button class="safata-fora" data-treu="' + esc(t.id) + '" aria-label="Treu-ho">' +
-                  ic('tancar', 'ic-p') + '</button>' +
-              '</div>' +
-            '</div>';
-          }).join('') +
-        '</div>' +
-      '</div>';
-    }
-
-    function blocPendents(d) {
-      if (!d.tasques.length) {
-        return '<p class="marge" style="margin-top:var(--e5)">Per fer</p>' +
-               '<p class="menut">Res pendent. Bon senyal.</p>';
-      }
-
-      return '<p class="marge" style="margin-top:var(--e5)">Per fer</p>' +
-        '<div class="tasques">' +
-          d.tasques.map(function (t) {
-            return '<div class="tasca" data-t="' + esc(t.id) + '"' +
-              (t.vencuda ? ' data-vencuda="1"' : '') + '>' +
-              '<button class="tasca-marca" data-fet="' + esc(t.id) + '"' +
-                ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
-              '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
-                '<span class="tasca-text">' + esc(t.text) + '</span>' +
-                '<span class="menut">' +
-                  (t.contextNom ? esc(t.contextNom) : 'sense context') +
-                  (t.vencEl ? ' · ' + (t.vencuda ? 'vencia ' : '') + esc(fmt.relativa(t.vencEl)) : '') +
-                  (t.prioritat === 'alta' ? ' · prioritària' : '') +
-                '</span>' +
-              '</button>' +
-            '</div>';
-          }).join('') +
-        '</div>';
-    }
-
-    function blocFetes(d) {
-      if (!d.fetes.length) return '';
-      return '<div class="fetes-titol">' +
-          '<p class="marge">Fetes</p>' +
-          '<button class="btn btn-fantasma btn-menut" data-neteja>Buida-les</button>' +
-        '</div>' +
-        '<div class="tasques">' +
-          d.fetes.map(function (t) {
-            return '<div class="tasca" data-feta="1">' +
-              '<button class="tasca-marca" data-desfes="' + esc(t.id) + '"' +
-                ' data-fet="1" aria-label="Desfés"></button>' +
-              '<span class="tasca-cos">' +
-                '<span class="tasca-text">' + esc(t.text) + '</span>' +
-                '<span class="menut">' + esc(fmt.relativa(t.fetEl)) + '</span>' +
-              '</span>' +
-            '</div>';
-          }).join('') +
-        '</div>';
     }
 
     // ---------------------------------------------------------------- accions
@@ -150,13 +186,16 @@ App.registraVista('tasques', {
       var bv = arrel.querySelector('[data-torna]');
       if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
 
+      var ba = arrel.querySelector('[data-ajustos]');
+      if (ba) ba.addEventListener('click', obreAjustos);
+
       var camp = arrel.querySelector('#t-captura');
 
       /**
        * APUNTAR NO POT FER ESPERAR.
        *
-       * La línia surt a la safata abans de sortir del telèfon i el camp queda
-       * lliure de seguida: pots dir-ne quatre de seguides sense que la
+       * La línia surt a la seva caixa abans de sortir del telèfon i el camp
+       * queda lliure de seguida: pots dir-ne quatre de seguides sense que la
        * pantalla et pari entre l'una i l'altra. Quan el servidor contesta,
        * torna la llista de debò i la provisional desapareix sola.
        *
@@ -175,55 +214,49 @@ App.registraVista('tasques', {
           .then(function (r) { esperant--; aplica(r); })
           .catch(function (err) {
             esperant--;
-            if (provisional.parentNode) provisional.parentNode.removeChild(provisional);
+            if (provisional && provisional.parentNode) provisional.parentNode.removeChild(provisional);
             camp.value = t;
             App.brindis(err.message, 'error');
           });
       }
-      arrel.querySelector('[data-captura]').addEventListener('click', captura);
-      camp.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') { ev.preventDefault(); captura(); }
-      });
-
-      arrel.querySelectorAll('[data-ctx]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var fila = b.closest('.safata-fila');
-          fila.dataset.fet = '1';
-          escriu('tasques', 'edita', { id: b.dataset.id, context: b.dataset.ctx })
-            .then(aplica)
-            .catch(function (err) { fila.dataset.fet = '0'; App.brindis(err.message, 'error'); });
+      var bc = arrel.querySelector('[data-captura]');
+      if (bc) bc.addEventListener('click', captura);
+      if (camp) {
+        camp.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); captura(); }
         });
-      });
-
-      arrel.querySelectorAll('[data-treu]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          b.disabled = true;
-          escriu('tasques', 'treu', { id: b.dataset.treu })
-            .then(aplica)
-            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
-        });
-      });
+      }
 
       arrel.querySelectorAll('[data-fet]:not([data-fet="1"])').forEach(function (b) {
         b.addEventListener('click', function () {
           var t = b.closest('.tasca');
           t.dataset.fent = '1';
-          escriu('tasques', 'completa', { id: b.dataset.fet })
-            .then(aplica)
+          escriu('tasques', 'completa', { id: b.dataset.fet, llista: b.dataset.llista })
+            .then(function (r) { lesFetes = null; aplica(r); })
             .catch(function (err) { t.dataset.fent = '0'; App.brindis(err.message, 'error'); });
         });
       });
 
       arrel.querySelectorAll('[data-desfes]').forEach(function (b) {
         b.addEventListener('click', function () {
-          escriu('tasques', 'completa', { id: b.dataset.desfes, desfes: true })
-            .then(aplica)
-            .catch(function (err) { App.brindis(err.message, 'error'); });
+          b.disabled = true;
+          escriu('tasques', 'completa',
+                 { id: b.dataset.desfes, llista: b.dataset.llista, desfes: true })
+            .then(function (r) { lesFetes = null; aplica(r); })
+            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
         });
       });
 
-      var bn = arrel.querySelector('[data-neteja]');
-      if (bn) bn.addEventListener('click', neteja);
+      var bf = arrel.querySelector('[data-fetes]');
+      if (bf) bf.addEventListener('click', function () {
+        veureFetes = !veureFetes;
+        repinta();
+      });
+
+      /* Marcar una tasca invalida les fetes —n'hi ha una de nova— i si el bloc
+         era obert es quedava a «Un moment…» per sempre, perquè ningú les
+         tornava a demanar. Es demanen aquí, que és per on passa cada pintada. */
+      if (veureFetes && lesFetes === null && !demanantFetes) demanaFetes();
 
       arrel.querySelectorAll('[data-obre]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -236,67 +269,69 @@ App.registraVista('tasques', {
       });
     }
 
-    /** Una línia provisional a la safata, mentre el servidor no contesta. */
+    function repinta() {
+      App.mantenintLaVista(function () { pinta(dades, false); });
+    }
+
+    function demanaFetes() {
+      demanantFetes = true;
+      crida('tasques', 'fetes', {})
+        .then(function (r) {
+          demanantFetes = false; lesFetes = r.fetes || [];
+          if (veureFetes) repinta();
+        })
+        .catch(function (err) {
+          demanantFetes = false; lesFetes = [];
+          App.brindis(err.message, 'error');
+          if (veureFetes) repinta();
+        });
+    }
+
+    /** Una línia provisional a la caixa on caurà, mentre el servidor no contesta. */
     function afegeixEsperant(text) {
-      var bloc = arrel.querySelector('#t-safata-bloc');
-      bloc.hidden = false;
+      var quina = (dades.llistes.filter(function (l) { return l.principal; })[0] ||
+                   dades.llistes.filter(function (l) { return l.mostra; })[0] || {}).id;
+      var caixa = arrel.querySelector('.caixa[data-llista="' + quina + '"]');
+      var coses = arrel.querySelector('[data-coses="' + quina + '"]');
+      if (!caixa || !coses) return null;
+      caixa.hidden = false;
+
       var el = document.createElement('div');
-      el.className = 'safata-fila';
+      el.className = 'tasca';
       el.dataset.esperant = '1';
-      el.innerHTML = '<div class="safata-text">' + esc(text) + '</div>';
-      arrel.querySelector('#t-safata').appendChild(el);
+      el.innerHTML = '<span class="tasca-marca"></span>' +
+                     '<span class="tasca-cos"><span class="tasca-text">' + esc(text) + '</span></span>';
+      coses.appendChild(el);
       return el;
     }
 
-    /* Buidar les fetes es pregunta: són moltes de cop i no es veu venir. Al
-       full hi continuen totes; el que es buida és la pantalla. */
-    function neteja() {
-      if (!dades || !dades.fetes.length) return;
-      var n = dades.fetes.length;
-
-      var cos = App.modal('Buidar les fetes',
-        '<div class="form-ajustos">' +
-          '<p>Desapareixeran de la llista ' + n + (n === 1 ? ' tasca feta' : ' tasques fetes') + '.</p>' +
-          '<p class="menut">Al full de càlcul hi continuen totes. El que es buida és la pantalla.</p>' +
-          '<button class="btn btn-primari" data-si>Buida-les</button>' +
-          '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">Deixa-ho estar</button>' +
-        '</div>');
-
-      cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
-      cos.querySelector('[data-si]').addEventListener('click', function () {
-        var b = this;
-        b.disabled = true;
-        escriu('tasques', 'neteja', {})
-          .then(function (r) {
-            App.tancaModal();
-            App.brindis(n === 1 ? 'Buidada' : 'Buidades');
-            aplica(r);
-          })
-          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
-      });
-    }
+    // ------------------------------------------------------------- el detall
 
     function obreTasca(t) {
       var cos = App.modal('Tasca',
         '<div class="form-ajustos">' +
           '<label><span class="marge">Què s\'ha de fer</span>' +
             '<input data-c="text" value="' + esc(t.text) + '" autocomplete="off"></label>' +
-          '<label><span class="marge">Context</span>' +
-            '<select data-c="context">' +
-              '<option value="">Sense context</option>' +
-              dades.contextos.map(function (c) {
-                return '<option value="' + esc(c.clau) + '"' +
-                       (t.context === c.clau ? ' selected' : '') + '>' + esc(c.nom) + '</option>';
+          '<label><span class="marge">A quina llista</span>' +
+            '<select data-c="llista">' +
+              dades.llistes.map(function (l) {
+                return '<option value="' + esc(l.id) + '"' +
+                       (t.llista === l.id ? ' selected' : '') + '>' + esc(l.nom) + '</option>';
               }).join('') +
             '</select></label>' +
           '<label><span class="marge">Per quan</span>' +
             '<input data-c="venc_el" type="date" value="' + esc(t.vencEl || '') + '" autocomplete="off"></label>' +
           '<label class="cat-exclou"><input type="checkbox" data-c="prioritat"' +
             (t.prioritat === 'alta' ? ' checked' : '') + '><span>Prioritària</span></label>' +
+          '<label class="cat-exclou"><input type="checkbox" data-c="fent"' +
+            (t.fent ? ' checked' : '') + '><span>Hi estic</span></label>' +
           '<label><span class="marge">Nota</span>' +
             '<textarea data-c="nota" rows="3">' + esc(t.nota || '') + '</textarea></label>' +
+          '<p class="menut">La prioritat i el «hi estic» se\'ls guarda en JEFE: ' +
+            'Google Tasks no els sap desar. La resta és la tasca de debò.</p>' +
           '<button class="btn btn-primari" data-desa>Desa</button>' +
-          '<button class="btn btn-secundari" data-treu-t style="margin-top:var(--e2)">Treu-la</button>' +
+          '<button class="btn btn-secundari" data-esborra style="margin-top:var(--e2)">' +
+            'Esborra-la de Google Tasks</button>' +
         '</div>');
 
       var camps = {};
@@ -307,26 +342,94 @@ App.registraVista('tasques', {
         b.disabled = true;
         escriu('tasques', 'edita', {
           id: t.id,
+          llista: t.llista,
+          llistaNova: camps.llista.value !== t.llista ? camps.llista.value : '',
           text: camps.text.value,
-          context: camps.context.value,
           venc_el: camps.venc_el.value,
-          prioritat: camps.prioritat.checked ? 'alta' : '',
+          prioritat: camps.prioritat.checked,
+          fent: camps.fent.checked,
           nota: camps.nota.value
         }).then(function (r) {
           App.tancaModal(); App.brindis('Desat');
+          lesFetes = null;
           aplica(r);
         }).catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
       });
 
-      cos.querySelector('[data-treu-t]').addEventListener('click', function () {
+      /* ESBORRAR ÉS ESBORRAR. Al full antic, treure una tasca hi deixava la
+         fila amb una data; aquí la tasca no és nostra, és de Google, i el que
+         es fa és el que diu. Per això es pregunta i el botó no diu «treure». */
+      cos.querySelector('[data-esborra]').addEventListener('click', function () {
+        var segon = App.modal('Esborrar la tasca',
+          '<div class="form-ajustos">' +
+            '<p>«' + esc(t.text) + '» desapareixerà de Google Tasks, també del mòbil.</p>' +
+            '<p class="menut">Això no es pot desfer. Si només l\'has acabada, tanca això i ' +
+              'marca-la amb la rodona: així es queda a les fetes.</p>' +
+            '<button class="btn btn-primari" data-si>Esborra-la</button>' +
+            '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">Deixa-ho estar</button>' +
+          '</div>');
+
+        segon.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+        segon.querySelector('[data-si]').addEventListener('click', function () {
+          var b = this;
+          b.disabled = true;
+          escriu('tasques', 'treu', { id: t.id, llista: t.llista })
+            .then(function (r) {
+              App.tancaModal(); App.brindis('Esborrada');
+              aplica(r);
+            })
+            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+        });
+      });
+    }
+
+    // ------------------------------------------------------------- ajustos
+
+    /* Quines llistes mires. Igual que al calendari: les tens totes i tries.
+       «Torna a llegir-les» hi és perquè una llista nova feta al mòbil no
+       apareix sola: qui les llegeix és aquesta crida. */
+    function obreAjustos() {
+      var cos = App.modal('Les teves llistes',
+        '<div class="form-ajustos">' +
+          '<p class="menut">Les que marquis són les que veuràs. Les tasques són de ' +
+            'Google Tasks: aquí només tries quines mires.</p>' +
+          '<div id="tsq-llistes">' +
+            (dades.llistes.length
+              ? dades.llistes.map(function (l) {
+                  return '<label class="cat-exclou"><input type="checkbox" data-l="' + esc(l.id) + '"' +
+                    (l.mostra ? ' checked' : '') + '><span>' + esc(l.nom) +
+                    (l.principal ? ' · la principal' : '') + '</span></label>';
+                }).join('')
+              : '<p class="menut">Encara no n\'hi ha cap. Toca «Torna a llegir-les».</p>') +
+          '</div>' +
+          '<button class="btn btn-secundari" data-sincro style="margin-top:var(--e3)">' +
+            'Torna a llegir-les de Google</button>' +
+        '</div>');
+
+      cos.querySelectorAll('[data-l]').forEach(function (c) {
+        c.addEventListener('change', function () {
+          c.disabled = true;
+          escriu('tasques', 'mostra', { id: c.dataset.l, mostra: c.checked })
+            .then(function (r) { c.disabled = false; aplica(r); })
+            .catch(function (err) {
+              c.disabled = false; c.checked = !c.checked;
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+
+      cos.querySelector('[data-sincro]').addEventListener('click', function () {
         var b = this;
-        b.disabled = true;
-        escriu('tasques', 'treu', { id: t.id })
+        b.disabled = true; b.textContent = 'Un moment…';
+        escriu('tasques', 'sincronitza', {})
           .then(function (r) {
-            App.tancaModal(); App.brindis('Treta');
+            App.tancaModal(); App.brindis('Llistes al dia');
             aplica(r);
           })
-          .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          .catch(function (err) {
+            b.disabled = false; b.textContent = 'Torna a llegir-les de Google';
+            App.brindis(err.message, 'error');
+          });
       });
     }
 
@@ -335,12 +438,12 @@ App.registraVista('tasques', {
     /**
      * Rebre una pantalla del servidor i pintar-la si toca.
      *
-     * Ara la torna CADA escriptura, no només `pantalla`: desar i tornar a
-     * demanar la llista eren dos viatges, i a Apps Script el viatge és tot el
-     * cost. Amb un, apuntar una tasca passa de tres segons a un i mig.
+     * La torna CADA escriptura, no només `pantalla`: desar i tornar a demanar
+     * la llista eren dos viatges, i a Apps Script el viatge és tot el cost.
      *
-     * No es repinta mentre té un camp obert: repintar li tancaria el desplegable
-     * o li esborraria el que estava escrivint. S'espera i es pinta quan pari.
+     * No es repinta mentre té un camp obert: repintar li tancaria el
+     * desplegable o li esborraria el que estava escrivint. S'espera i es pinta
+     * quan pari.
      */
     function aplica(r, dEnCau) {
       Cau.set('tasques.llista', r);
@@ -354,18 +457,15 @@ App.registraVista('tasques', {
         return;
       }
       previPintat = nou;
-      /* Marcar una tasca refà la llista sencera —la feta se n'hi va a una
-         altra secció i canvien els comptadors—, i això és correcte. El que no
-         ho és, és que a sobre et torni a dalt de tot quan n'estaves marcant
-         una de la setena posició. */
+      /* Marcar una tasca refà la llista sencera —la feta se'n va i canvien els
+         comptadors—, i això és correcte. El que no ho és, és que a sobre et
+         torni a dalt de tot quan n'estaves marcant una de la setena. */
       App.mantenintLaVista(function () { pinta(r, !!dEnCau); });
     }
 
     /* Es mira cada tant si ja ha acabat, en comptes d'esperar que salti el
        focus: mentre escrius al camp de captura les línies provisionals es
-       queden a la vista, que és el que vols, i quan pares es posa al dia.
-       Amb `focusout` n'hi ha prou de tancar un tauler sense cap camp enfocat
-       perquè no salti mai i el que hi ha ajornat no es pinti. */
+       queden a la vista, que és el que vols, i quan pares es posa al dia. */
     function quanPari() {
       if (!arrel.isConnected) { ajornat = null; return; }
       if (App.interactuant()) { setTimeout(quanPari, 400); return; }

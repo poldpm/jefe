@@ -1142,28 +1142,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
                       border: 1.5px solid var(--neatline); border-radius: var(--r); }
 .captura-fila .btn { flex: none; padding: 0 var(--e4); }
 
-/* La safata: el que has capturat i encara no has decidit què era. Els tres
-   contextos a un toc, perquè classificar-ho ha de costar menys que llegir-ho. */
-.safata-t { display: flex; flex-direction: column; gap: var(--e2); }
-.safata-fila { border: 1px solid var(--neatline); padding: var(--e3);
-               transition: opacity .25s ease, transform .25s var(--sortida); }
-.safata-fila[data-fet="1"] { opacity: 0; transform: translateX(20px); }
-.safata-text { margin-bottom: var(--e2); overflow-wrap: anywhere; }
-.safata-tria { display: flex; gap: var(--e2); }
-.safata-tria button { flex: 1; min-height: 44px; font: inherit; font-size: .8125rem;
-                      background: transparent; color: var(--ink-suau);
-                      border: 1px solid var(--neatline); border-radius: var(--r); }
-.safata-tria button:active { background: var(--ink); color: var(--paper); }
-.safata-tria .safata-fora { flex: none; width: 44px; color: var(--ink-suau);
-                            border-color: var(--utm-suau); }
-
 /* Acabat d'apuntar i encara no ha tornat del servidor. Es veu de seguida
    —això és tot el sentit— però es distingeix del que ja hi és desat: sense
-   els botons de context, que encara no tenen a què apuntar. La ratlla que
-   avança per sota diu que hi ha feina en curs sense fer-ne cap escàndol. */
-.safata-fila[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
-.safata-fila[data-esperant="1"] .safata-text { margin-bottom: 0; }
-.safata-fila[data-esperant="1"]::after {
+   rodona de completar, que encara no tindria a què apuntar. La ratlla que
+   avança per sota diu que hi ha feina en curs sense fer-ne cap escàndol.
+   (La safata ja no hi és: ara el que apuntes cau a la llista principal de
+   Google Tasks, que és la safata de debò i la que també veus al mòbil.) */
+.tasca[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
+.tasca[data-esperant="1"]::after {
   content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 40%;
   background: var(--ink-suau); animation: esperant-va 1.1s ease-in-out infinite;
 }
@@ -1172,7 +1158,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
   100% { transform: translateX(350%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .safata-fila[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
+  .tasca[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
 }
 
 /* =========================================================================
@@ -1277,65 +1263,6 @@ input[type="checkbox"] { accent-color: var(--utm); }
 @media (hover: hover) and (pointer: fine) {
   .dia-porta:hover { border-bottom-color: var(--fil-viu); }
 }
-
-/* ------------------------------------------------------------- la safata
-   Les pastilles de context. NO ESTAVEN ESTILADES: eren botons de sèrie amb
-   el gris del navegador, i en fosc allò donava 4,22 de contrast amb la
-   lletra a sobre. Es veia com el que era, un botó que ningú havia mirat.
-
-   Ara són el que han de ser: una tria de tres o quatre coses on cap no és
-   la principal. Fil, res de farciment, i el cian només quan la prems. */
-
-.safata-t { display: flex; flex-direction: column; gap: var(--e2); }
-
-.safata-fila {
-  display: flex; flex-direction: column; gap: var(--e2);
-  padding: var(--e3);
-  background: var(--paper2);
-  border: 1px solid var(--fil-viu);
-}
-.safata-text { line-height: 1.35; overflow-wrap: anywhere; }
-
-.safata-tria { display: flex; flex-wrap: wrap; gap: var(--e2); }
-
-/* 44 px de mínim: es prem amb el dit i amb el dit a sobre no es veu res.
-   A 36 fallava la mida mínima que demanen les dues plataformes. */
-.safata-tria button {
-  min-height: 44px;
-  padding: 0 var(--e3);
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid var(--neatline);
-  border-radius: var(--r);
-  font-family: var(--mono);
-  font-size: .6875rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  transition: border-color .16s var(--entra), color .16s var(--entra),
-              background-color .16s var(--entra), transform .12s var(--entra);
-}
-/* Prémer ha de notar-se al moment: sense això sembla que no hagi sentit res. */
-.safata-tria button:active {
-  transform: scale(.97);
-  border-color: var(--utm);
-  color: var(--utm);
-  background: var(--utm-suau);
-}
-@media (hover: hover) and (pointer: fine) {
-  .safata-tria button:hover { border-color: var(--utm); color: var(--utm); }
-}
-
-/* Treure-la de la safata és una acció diferent de classificar-la: va a la
-   dreta, sense text i amb la creu, perquè no es confongui amb les altres. */
-.safata-fora {
-  margin-left: auto;
-  min-width: 44px; min-height: 44px;
-  display: inline-grid; place-content: center;
-  background: transparent; color: var(--ink-suau);
-  border: 1px solid transparent; border-radius: var(--r);
-  transition: color .16s var(--entra), border-color .16s var(--entra);
-}
-.safata-fora:active { color: var(--gr); border-color: var(--gr); }
 
 /* ------------------------------------------------------- la pàgina del dia
    La consola sencera en una pantalla. A dalt, el nucli: un anell amb el que
@@ -1904,6 +1831,54 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   CAIXES PER LLISTA — compartides per Tasques i Escola
+
+   Les dues pantalles ensenyen el mateix: llistes del Google Tasks. Abans eren
+   una tirallonga amb el nom de la llista entre claudàtors al davant de cada
+   línia, i el que ordena la feina quedava reduït a un caràcter enmig del text.
+   La caixa hi torna a posar l'ordre que la llista ja tenia i el nom es diu un
+   sol cop.
+
+   Són compartides a posta: dues pantalles que ensenyen la mateixa cosa no
+   s'han de veure diferents, i qui es fes la seva còpia acabaria amb dos
+   dissenys que divergeixen a la primera correcció.
+   ========================================================================== */
+
+.caixes { display: grid; gap: var(--e3); grid-template-columns: 1fr; }
+.caixa { border: 1px solid var(--neatline); background: var(--paper2); }
+.caixa-cap {
+  display: flex; align-items: baseline; gap: var(--e2);
+  margin: 0; padding: var(--e2) var(--e3);
+  border-bottom: 1px solid var(--neatline);
+  font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--ink);
+}
+.caixa-cap > span { flex: 1; min-width: 0; }
+.caixa-cap b {
+  flex: none; font-family: var(--mono); font-size: .75rem; font-weight: 400;
+  color: var(--ink-suau); font-variant-numeric: tabular-nums;
+}
+/* Dins la caixa no hi ha ratlles quan les files són text: la caixa ja diu on
+   comença i on acaba, i una ratlla per línia torna a fer el soroll que hem
+   tret. Les tasques sí que en porten, perquè cada fila s'hi pot tocar. */
+.caixa-coses { margin: 0; padding: var(--e2) 0; list-style: none; }
+.caixa-coses li { padding: var(--e1) var(--e3); font-size: .875rem; line-height: 1.45; }
+.caixa-cos { padding: 0 var(--e3); }
+
+/* Dues columnes tan bon punt hi caben: amb sis llistes, una sola columna
+   t'obliga a baixar per veure què tens. */
+@media (min-width: 560px) {
+  .caixes { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+}
+
+/* El camp d'apuntar no creix fins als mil pixels: és una ratlla de text, i una
+   ratlla de text que va de banda a banda no es llegeix millor, només fa que el
+   cursor quedi lluny d'on mires. */
+@media (min-width: 900px) {
+  .tsq-capt { max-width: 640px; }
+}
+
+
+/* ==========================================================================
    ESCOLA — la safata de l'automatització
 
    Substitueix una finestra de Telegram, però NO és un xat: el que hi arriba
@@ -1972,7 +1947,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 /* HA DE SEMBLAR UN BOTÓ. Era text pelat alineat a l'esquerra: allà hi ha
    quinze dies d'avisos al darrere i ningú no els obria perquè res no deia que
    allò es pogués tocar. Vora, i un galó que gira quan s'obre. */
-.esc-obre-vistos {
+.desplega {
   display: flex; align-items: center; gap: var(--e2);
   width: 100%; min-height: 44px; margin-top: var(--e3); padding: 0 var(--e3);
   border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
@@ -1980,14 +1955,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
   text-transform: uppercase; text-align: left;
   transition: color .16s var(--entra), border-color .16s var(--entra);
 }
-.esc-obre-vistos .ic { width: 12px; height: 12px; flex: none;
+.desplega .ic { width: 12px; height: 12px; flex: none;
                        transition: transform .16s var(--entra); }
-.esc-obre-vistos[aria-expanded="true"] .ic { transform: rotate(90deg); }
-.esc-obre-vistos:active { color: var(--utm); border-color: var(--utm); }
+.desplega[aria-expanded="true"] .ic { transform: rotate(90deg); }
+.desplega:active { color: var(--utm); border-color: var(--utm); }
 @media (hover: hover) and (pointer: fine) {
-  .esc-obre-vistos:hover { color: var(--utm); border-color: var(--utm); }
+  .desplega:hover { color: var(--utm); border-color: var(--utm); }
 }
-.esc-obre-vistos + .esc-safata { margin-top: var(--e2); }
+.desplega + .esc-safata { margin-top: var(--e2); }
 
 /* La resposta a una pregunta teva va JUST SOTA el botó que l'ha demanada, no
    al final de la pàgina: el que has demanat ha de sortir on estàs mirant. */
@@ -2001,7 +1976,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
    substitució no es pinta com un canvi de fitxer al Drive.
    ========================================================================== */
 
-.esc-secc { margin-top: var(--e5); }
+.secc { margin-top: var(--e5); }
 
 /* LA COLUMNA D'HORES. El fil vertical és el dia; cada cosa hi penja pel seu
    punt. Les hores lliures hi són escrites: un forat entre dues cites no és un
@@ -2068,39 +2043,12 @@ input[type="checkbox"] { accent-color: var(--utm); }
   text-transform: uppercase; color: var(--gr);
 }
 
-/* ELS PENDENTS, UNA CAIXA PER LLISTA. Venen del Google Tasks, on ja estan
-   repartits per llistes, i allà es miren per llistes. Posats en una tirallonga
-   amb el nom entre claudàtors al davant de cada línia, el que ordena la feina
-   d'un mestre queda reduït a un caràcter enmig del text: la caixa hi torna a
-   posar l'ordre que la llista ja tenia, i el nom es diu un sol cop.
-   Res d'aquí no es marca ni es completa: qui mana és el Google Tasks. Per això
-   no hi ha rodona de casella —una casella que no es pot clicar és una mentida
-   sobre el que la pantalla sap fer. */
-.esc-grups { display: grid; gap: var(--e3); grid-template-columns: 1fr; }
-.esc-grup { border: 1px solid var(--neatline); background: var(--paper2); }
-.esc-grup-cap {
-  display: flex; align-items: baseline; gap: var(--e2);
-  margin: 0; padding: var(--e2) var(--e3);
-  border-bottom: 1px solid var(--neatline);
-  font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--ink);
-}
-.esc-grup-cap span { flex: 1; min-width: 0; }
-.esc-grup-cap b {
-  flex: none; font-family: var(--mono); font-size: .75rem; font-weight: 400;
-  color: var(--ink-suau); font-variant-numeric: tabular-nums;
-}
-/* Dins la caixa no hi ha ratlles: la caixa ja diu on comença i on acaba, i
-   una ratlla per tasca tornava a fer el soroll que hem tret. */
-.esc-grup-coses { margin: 0; padding: var(--e2) 0; list-style: none; }
-.esc-grup-coses li {
-  padding: var(--e1) var(--e3); font-size: .875rem; line-height: 1.45;
-}
-
-/* Dues columnes tan bon punt hi caben: amb sis llistes, una sola columna
-   t'obliga a baixar per veure què tens, que és el que fèiem abans. */
-@media (min-width: 560px) {
-  .esc-grups { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
-}
+/* Els pendents fan servir LES CAIXES PER LLISTA, que són compartides amb les
+   tasques —vegeu «CAIXES PER LLISTA» més avall—: les dues pantalles ensenyen
+   llistes del Google Tasks i no tenia cap sentit que es veiessin diferents.
+   Aquí, a més, res no es marca ni es completa: qui mana és el Google Tasks, i
+   una casella que no es pot clicar seria una mentida sobre el que la pantalla
+   sap fer. Per això les files són text i prou. */
 
 /* Les línies soltes de les respostes (agenda, correus…) segueixen sent línies:
    allà no hi ha llistes que capsar. */
@@ -2180,7 +2128,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
   .esc-pag { max-width: 1040px; }
   .esc-dalt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
               gap: var(--e5); align-items: start; }
-  .esc-dalt > .esc-secc { margin-top: 0; }
+  .esc-dalt > .secc { margin-top: 0; }
 }
 
 </style>

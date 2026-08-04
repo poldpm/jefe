@@ -1338,6 +1338,72 @@ function preparaCalendari() {
 }
 
 
+/**
+ * DONAR-LI ACCÉS A GOOGLE TASKS.
+ *
+ * Igual que amb el calendari: el mòdul de tasques necessita un permís que
+ * l'app no tenia, i Google no el demana sol. Executar això el demana, i de
+ * passada deixa les teves llistes apuntades al full.
+ *
+ * S'ha d'executar UNA vegada, des de l'editor. Si diu que no coneix `Tasks`,
+ * és que falta activar el servei avançat: a l'editor, Serveis + → Tasks API.
+ */
+function preparaTasques() {
+  var l = ['=== TASQUES ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  /* Els dos fulls nous els crea `configuraJefe()`, que és qui llegeix el que
+     declara cada mòdul. Sense ells, això petaria amb un missatge que no diu
+     què has de fer. */
+  if (!Dades.existeixFull('LlistesTasques') || !Dades.existeixFull('TasquesMarques')) {
+    a('FALTEN ELS FULLS NOUS.');
+    a('');
+    a('Executa primer configuraJefe() —crea el que falta i no toca res del que');
+    a('ja hi ha— i després torna aquí.');
+    return l.join('\n');
+  }
+
+  if (!Tasques.serveiHiEs()) {
+    a('FALLA: el servei de Tasks no hi és.');
+    a('');
+    a('A l\'editor d\'Apps Script, al costat de «Serveis», toca el +, tria');
+    a('«Tasks API» i afegeix-lo. Després torna a executar això.');
+    return l.join('\n');
+  }
+
+  var r;
+  try {
+    r = Tasques.sincronitzaLlistes();
+  } catch (err) {
+    a('FALLA en llegir Google Tasks: ' + err.message);
+    a('');
+    a('Si no ha sortit la pantalla de permisos, torna a executar-ho.');
+    return l.join('\n');
+  }
+
+  a('Permís .................... concedit');
+  a('Llistes que tens .......... ' + r.total);
+  a('Apuntades al full ......... ' + r.nous + ' de noves, ' + r.actualitzats + ' ja hi eren');
+  a('');
+  Tasques.llistes().forEach(function (x) {
+    a('  ' + (x.mostra ? '[x]' : '[ ]') + ' ' + x.nom + (x.principal ? '   ← la principal' : ''));
+  });
+  a('');
+  a('Els marcats amb [x] són els que veuràs. Es canvien des de l\'app, al botó');
+  a('d\'ajustos de la pantalla de tasques.');
+  a('');
+  a('LES TASQUES NO ES COPIEN AL FULL. Es llegeixen de Google cada cop. Al full');
+  a('només hi ha aquesta llista, quines mires, i la prioritat i el «hi estic»,');
+  a('que són dues coses que Google Tasks no sap desar.');
+
+  var n = 0;
+  try { n = Tasques.pantalla({}).tasques.length; } catch (e) {}
+  a('');
+  a('Pendents ara mateix ....... ' + n);
+  return l.join('\n');
+}
+
+
 function perQueNoMHasAvisat() {
   var l = ['=== L\'AVÍS DE LES CALORIES CREMADES ==='];
   function a(t) { l.push(t); Logger.log(t); }

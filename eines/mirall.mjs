@@ -60,7 +60,9 @@ const MOCK = `
                       revisar: ${j(D.finPantalla({ periode: 'revisar' }))},
                       recurrents: ${j(D.finPantalla({ periode: 'recurrents' }))},
                       patrimoni: ${j(D.finPantalla({ periode: 'patrimoni' }))} };
-  var TASQUES     = ${j(D.tasquesPantalla())};
+  var TASQUES       = ${j(D.tasquesPantalla())};
+  var TASQUES_FETES = ${j(D.tasquesFetes())};
+  var seguit        = 0;
   var DIARI       = ${j(D.diariPantalla({}))};
   var CONV_ESTAT  = ${j(D.conversaEstat())};
   var CONV_HIST   = ${j(D.conversaHistorial())};
@@ -319,8 +321,87 @@ const MOCK = `
       return { ok: true, tocats: 1 };
     }
 
+    /* Les tasques del mirall es toquen de debò: apuntar-ne una, marcar-la o
+       treure-la ha de canviar el que hi ha a la pantalla, si no no es pot
+       provar res. Van a la llista principal, com al servidor. */
     if (modul === 'tasques') {
-      if (accio === 'pantalla') return copia(TASQUES);
+      var caixa = function (id) {
+        var b = TASQUES.blocs.filter(function (x) { return x.id === id; })[0];
+        if (!b) { b = { id: id, nom: id, tasques: [] }; TASQUES.blocs.push(b); }
+        return b;
+      };
+      var refresca = function () {
+        TASQUES.tasques = TASQUES.blocs.reduce(function (l, b) { return l.concat(b.tasques); }, []);
+        TASQUES.vencudes = TASQUES.tasques.filter(function (t) { return t.vencuda; }).length;
+        return copia(TASQUES);
+      };
+      var laTasca = function (id) {
+        for (var i = 0; i < TASQUES.blocs.length; i++) {
+          var t = TASQUES.blocs[i].tasques.filter(function (x) { return x.id === id; })[0];
+          if (t) return { t: t, bloc: TASQUES.blocs[i] };
+        }
+        return null;
+      };
+
+      if (accio === 'fetes') return copia(TASQUES_FETES);
+
+      if (accio === 'captura') {
+        var pral = TASQUES.llistes.filter(function (l) { return l.principal; })[0] || TASQUES.llistes[0];
+        caixa(pral.id).tasques.push({
+          id: 'tm_' + (++seguit), llista: pral.id, llistaNom: pral.nom,
+          text: String(p.text || ''), nota: '', vencEl: '', vencuda: false,
+          venAvui: false, prioritat: '', fent: false, feta: false, fetEl: ''
+        });
+        return refresca();
+      }
+
+      if (accio === 'completa') {
+        var q = laTasca(p.id);
+        if (q) q.bloc.tasques = q.bloc.tasques.filter(function (x) { return x.id !== p.id; });
+        return refresca();
+      }
+
+      if (accio === 'treu') {
+        var r2 = laTasca(p.id);
+        if (r2) r2.bloc.tasques = r2.bloc.tasques.filter(function (x) { return x.id !== p.id; });
+        return refresca();
+      }
+
+      if (accio === 'edita') {
+        var r3 = laTasca(p.id);
+        if (r3) {
+          var t3 = r3.t;
+          if (p.text !== undefined) t3.text = p.text;
+          if (p.nota !== undefined) t3.nota = p.nota;
+          if (p.venc_el !== undefined) {
+            t3.vencEl = p.venc_el || '';
+            t3.vencuda = !!t3.vencEl && t3.vencEl < TASQUES.avui;
+            t3.venAvui = t3.vencEl === TASQUES.avui;
+          }
+          if (p.prioritat !== undefined) t3.prioritat = p.prioritat ? 'alta' : '';
+          if (p.fent !== undefined) t3.fent = !!p.fent;
+          if (p.llistaNova) {
+            var nova = TASQUES.llistes.filter(function (l) { return l.id === p.llistaNova; })[0];
+            if (nova) {
+              r3.bloc.tasques = r3.bloc.tasques.filter(function (x) { return x.id !== p.id; });
+              t3.llista = nova.id; t3.llistaNom = nova.nom;
+              caixa(nova.id).nom = nova.nom;
+              caixa(nova.id).tasques.push(t3);
+            }
+          }
+        }
+        return refresca();
+      }
+
+      if (accio === 'mostra') {
+        TASQUES.llistes.forEach(function (l) { if (l.id === p.id) l.mostra = !!p.mostra; });
+        TASQUES.blocs = TASQUES.llistes.filter(function (l) { return l.mostra; }).map(function (l) {
+          return caixa(l.id).nom === l.id ? { id: l.id, nom: l.nom, tasques: [] } : caixa(l.id);
+        });
+        return refresca();
+      }
+
+      if (accio === 'sincronitza') return refresca();
       return copia(TASQUES);
     }
 

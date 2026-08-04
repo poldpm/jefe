@@ -294,30 +294,55 @@ export function dades(AVUI, menys) {
 
   // ---------------------------------------------------------------- tasques
 
-  const CONTEXTOS = [
-    { clau: 'docencia', nom: 'Docència' },
-    { clau: 'rural', nom: 'Agent rural' },
-    { clau: 'personal', nom: 'Personal' }
+  /* Les tasques ara són de Google Tasks: el mirall les inventa amb la mateixa
+     forma que torna el mòdul —llistes i una caixa per llista—, i els noms de
+     les llistes són els tres compartiments que tenia abans com a contextos.
+     Inventat, com tot el mirall: cap tasca de debò. */
+  const LLISTES_T = [
+    { id: 'lst_1', nom: 'Meves tasques', mostra: true,  principal: true,  ordre: 1 },
+    { id: 'lst_2', nom: 'Docència',      mostra: true,  principal: false, ordre: 2 },
+    { id: 'lst_3', nom: 'Agent rural',   mostra: true,  principal: false, ordre: 3 },
+    { id: 'lst_4', nom: 'Casa',          mostra: false, principal: false, ordre: 4 }
   ];
 
-  const tasquesPantalla = () => ({
-    avui: AVUI,
-    contextos: CONTEXTOS,
-    safata: [
-      { id: 't1', text: 'Mirar el pressupost de la sortida de tercer', estat: 'safata', context: '', contextNom: '', prioritat: '', vencEl: '', vencuda: false, venAvui: false, fetEl: '', nota: '', origen: 'app' },
-      { id: 't2', text: 'Trucar al taller', estat: 'safata', context: '', contextNom: '', prioritat: '', vencEl: '', vencuda: false, venAvui: false, fetEl: '', nota: '', origen: 'veu' }
-    ],
-    tasques: [
-      { id: 't3', text: 'Informe de la batuda de senglar del vessant nord', estat: 'per_fer', context: 'rural', contextNom: 'Agent rural', prioritat: 'alta', vencEl: menys(4), vencuda: true, venAvui: false, fetEl: '', nota: '', origen: 'app' },
-      { id: 't4', text: 'Corregir els controls', estat: 'per_fer', context: 'docencia', contextNom: 'Docència', prioritat: '', vencEl: AVUI, vencuda: false, venAvui: true, fetEl: '', nota: '', origen: 'app' },
-      { id: 't5', text: 'Canviar les rodes', estat: 'per_fer', context: 'personal', contextNom: 'Personal', prioritat: '', vencEl: '', vencuda: false, venAvui: false, fetEl: '', nota: '', origen: 'app' }
-    ],
-    fetes: [
-      { id: 't6', text: 'Enviar les notes', estat: 'feta', context: 'docencia', contextNom: 'Docència', prioritat: '', vencEl: '', vencuda: false, venAvui: false, fetEl: menys(1), nota: '', origen: 'app' },
-      { id: 't7', text: 'Comprar pinso', estat: 'feta', context: 'personal', contextNom: 'Personal', prioritat: '', vencEl: '', vencuda: false, venAvui: false, fetEl: menys(2), nota: '', origen: 'app' }
-    ],
-    vencudes: 1
-  });
+  const T = (id, llista, llistaNom, text, extra) => Object.assign({
+    id, llista, llistaNom, text, nota: '', vencEl: '', vencuda: false,
+    venAvui: false, prioritat: '', fent: false, feta: false, fetEl: ''
+  }, extra || {});
+
+  const tasquesPantalla = () => {
+    const blocs = [
+      { id: 'lst_1', nom: 'Meves tasques', tasques: [
+        T('t1', 'lst_1', 'Meves tasques', 'Mirar el pressupost de la sortida de tercer'),
+        T('t2', 'lst_1', 'Meves tasques', 'Trucar al taller')
+      ] },
+      { id: 'lst_2', nom: 'Docència', tasques: [
+        T('t4', 'lst_2', 'Docència', 'Corregir els controls',
+          { vencEl: AVUI, venAvui: true }),
+        T('t8', 'lst_2', 'Docència', 'Preparar la reunió de pares', { fent: true })
+      ] },
+      { id: 'lst_3', nom: 'Agent rural', tasques: [
+        T('t3', 'lst_3', 'Agent rural', 'Informe de la batuda de senglar del vessant nord',
+          { vencEl: menys(4), vencuda: true, prioritat: 'alta', nota: 'Amb les fotos del GPS.' }),
+        T('t5', 'lst_3', 'Agent rural', 'Canviar les rodes del tot terreny')
+      ] }
+    ];
+    const totes = blocs.reduce((l, b) => l.concat(b.tasques), []);
+    return {
+      avui: AVUI,
+      hiHaServei: true,
+      hiHaLlistes: true,
+      llistes: LLISTES_T.map((l) => Object.assign({}, l)),
+      blocs,
+      tasques: totes,
+      vencudes: totes.filter((t) => t.vencuda).length
+    };
+  };
+
+  const tasquesFetes = () => ({ fetes: [
+    T('t6', 'lst_2', 'Docència', 'Enviar les notes', { feta: true, fetEl: menys(1) }),
+    T('t7', 'lst_1', 'Meves tasques', 'Comprar pinso', { feta: true, fetEl: menys(2) })
+  ] });
 
   // ------------------------------------------------------------------ diari
 
@@ -449,7 +474,6 @@ export function dades(AVUI, menys) {
   const elDia = (p) => {
     const data = (p && p.data) || AVUI;
     const cites = calendariPantalla({}).dades.tots.filter(e => e.data === data);
-    const t = tasquesPantalla();
 
     const blocs = [];
     if (cites.length) {
@@ -463,8 +487,7 @@ export function dades(AVUI, menys) {
     blocs.push({ modul: 'tasques', titol: 'Tasques', urgent: true, accio: 'tasques', coses: [
       { text: 'Informe de la batuda de senglar del vessant nord',
         menut: 'fa 4 dies que vencia', urgent: true },
-      { text: 'Corregir els controls', menut: 'per avui · Docència' },
-      { text: t.safata.length + ' coses a la safata', menut: 'sense classificar' }
+      { text: 'Corregir els controls', menut: 'per avui · Docència' }
     ] });
     blocs.push({ modul: 'habits', titol: 'Hàbits que et falten', urgent: false, accio: 'habits',
       coses: [ { text: 'Rentar-se les dents', menut: '1 de 2' },
@@ -602,7 +625,7 @@ export function dades(AVUI, menys) {
     ],
     targetes: [
       { modul: 'habits', icona: 'habits', etiqueta: 'Hàbits pendents', valor: 4, urgent: true, accio: 'habits' },
-      { modul: 'tasques', icona: 'tasques', etiqueta: 'A la safata', valor: 2, urgent: true, accio: 'tasques' },
+      { modul: 'tasques', icona: 'tasques', etiqueta: 'Tasques vençudes', valor: 1, urgent: true, accio: 'tasques' },
       { modul: 'nutricio', icona: 'nutricio', etiqueta: 'Proteïna pendent', valor: '32 g', urgent: true, accio: 'nutricio' },
       { modul: 'finances', icona: 'finances', etiqueta: 'Balanç del mes', valor: '+486,20 €', urgent: false, accio: 'finances' },
       { modul: 'seguiment', icona: 'seguiment', etiqueta: 'Control setmanal', valor: 'fa 3 d', urgent: false, accio: 'seguiment' },
@@ -613,6 +636,6 @@ export function dades(AVUI, menys) {
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia,
-           CATEGORIES, finPantalla, tasquesPantalla, diariPantalla,
+           CATEGORIES, finPantalla, tasquesPantalla, tasquesFetes, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
 }

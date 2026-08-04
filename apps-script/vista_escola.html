@@ -182,11 +182,11 @@ App.registraVista('escola', {
     }
 
     function caixesPendents(pendents) {
-      return '<div class="esc-grups">' + agrupa(pendents).map(function (g) {
-        return '<section class="esc-grup">' +
-          '<h3 class="esc-grup-cap"><span>' + esc(g.nom) + '</span>' +
+      return '<div class="caixes">' + agrupa(pendents).map(function (g) {
+        return '<section class="caixa">' +
+          '<h3 class="caixa-cap"><span>' + esc(g.nom) + '</span>' +
             '<b>' + g.coses.length + '</b></h3>' +
-          '<ul class="esc-grup-coses">' + g.coses.map(function (x) {
+          '<ul class="caixa-coses">' + g.coses.map(function (x) {
             return '<li>' + esc(x.que) + '</li>';
           }).join('') + '</ul>' +
         '</section>';
@@ -237,7 +237,7 @@ App.registraVista('escola', {
 
             // ---- 2. PENDENTS
             (dia.pendents.length
-              ? '<section class="esc-secc">' +
+              ? '<section class="secc">' +
                   '<p class="marge">Pendents</p>' +
                   caixesPendents(dia.pendents) +
                 '</section>'
@@ -246,7 +246,7 @@ App.registraVista('escola', {
           '</div>' +
 
           // ---- 3. ACCESSOS
-          '<section class="esc-secc">' +
+          '<section class="secc">' +
             '<p class="marge">Accessos</p>' +
             '<div class="esc-acc">' + ENLLACOS.map(function (e) {
               return '<a href="' + esc(e[2]) + '" target="_blank" rel="noopener">' +
@@ -255,7 +255,7 @@ App.registraVista('escola', {
           '</section>' +
 
           // ---- 4. AVISOS
-          '<section class="esc-secc">' +
+          '<section class="secc">' +
             '<p class="marge esc-titol-avisos">' + ic('campana', 'ic-p') +
               'Notificacions' + (elsNous.length ? ' · ' + elsNous.length : '') + '</p>' +
             '<div id="esc-nous">' +
@@ -265,7 +265,7 @@ App.registraVista('escola', {
                   't\'arribarà al telèfon i sortirà aquí.</p>') +
             '</div>' +
             (elsVistos.length
-              ? '<button class="esc-obre-vistos" data-vistos="1" aria-expanded="' +
+              ? '<button class="desplega" data-vistos="1" aria-expanded="' +
                   (veureVistos ? 'true' : 'false') + '">' +
                   ic('dreta', 'ic-p') + '<span>' + (veureVistos ? 'Amaga' : 'Veure') +
                   ' les ' + elsVistos.length + ' ja vistes</span>' +
@@ -275,7 +275,7 @@ App.registraVista('escola', {
           '</section>' +
 
           // ---- 5. CONSULTES
-          '<section class="esc-secc esc-consultes">' +
+          '<section class="secc esc-consultes">' +
             '<p class="marge">Preguntar a l\'escola</p>' +
             (d.pont
               ? '<div class="esc-cmd">' +

@@ -2250,5 +2250,176 @@ console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor 
       vista.indexOf('(elsNous.length ? \' · \' + elsNous.length : \'\')') !== -1);
 }
 
+// ------------------------------------- les tasques, ara que manen les de Google
+/* El full ja no és qui les guarda: les tasques són de Google Tasks i el full
+   només diu quines llistes mires i les dues coses que Google no sap desar
+   —prioritat i «hi estic»—. Aquí es prova amb un Google de mentida a sota,
+   perquè el que s'ha de comprovar és el que decideix el nostre codi: on cau el
+   que apuntes, com s'ordena, què passa quan mous una tasca de llista, i que si
+   el permís no hi és no caigui res més. */
+console.log('\nLes tasques: Google mana, i el full només hi posa el que ell no sap');
+{
+  const ctx = carregaTotElServidor();
+  const AVUI = '2026-08-04';
+  ctx.Utils.avui = () => AVUI;
+  ctx.Utils.faQuant = () => 'fa uns dies';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.CacheService = { getScriptCache: () => ({ get: () => null, put() {} }) };
+
+  // --- el full, en memòria
+  const fulls = { LlistesTasques: [], TasquesMarques: [] };
+  let seguit = 0;
+  ctx.Dades = {
+    llegeix: (full) => JSON.parse(JSON.stringify(fulls[full] || [])),
+    un: (full, q) => (fulls[full] || []).filter(
+      (f) => Object.keys(q).every((k) => f[k] === q[k]))[0] || null,
+    perId: (full, id) => (fulls[full] || []).filter((f) => f.id === id)[0] || null,
+    insereix: (full, fila, prefix) => {
+      const f = Object.assign({ id: fila.id || (prefix || 'x') + (++seguit) }, fila);
+      fulls[full].push(f);
+      return f;
+    },
+    actualitza: (full, id, canvis) => {
+      const f = (fulls[full] || []).filter((x) => x.id === id)[0];
+      if (!f) return null;
+      Object.assign(f, canvis);
+      return f;
+    }
+  };
+
+  // --- el Google Tasks de mentida
+  const llistes = [{ id: 'L1', title: 'Meves tasques' }, { id: 'L2', title: 'Docència' }];
+  const tasques = {
+    L1: [{ id: 'g1', title: 'Trucar al taller', status: 'needsAction' }],
+    L2: [
+      { id: 'g2', title: 'Corregir els controls', status: 'needsAction',
+        due: '2026-08-01T00:00:00.000Z' },
+      { id: 'g3', title: 'Preparar la reunió', status: 'needsAction' },
+      { id: 'g4', title: 'Enviar les notes', status: 'completed',
+        completed: '2026-08-03T10:00:00.000Z' }
+    ]
+  };
+  let idNou = 100;
+  ctx.Tasks = {
+    Tasklists: {
+      list: () => ({ items: llistes.map((l) => ({ id: l.id, title: l.title })) }),
+      get: () => ({ id: 'L1', title: 'Meves tasques' })
+    },
+    Tasks: {
+      list: (llista, p) => ({
+        items: (tasques[llista] || []).filter(
+          (t) => (p && p.showCompleted) || t.status !== 'completed')
+      }),
+      get: (llista, id) => {
+        const t = (tasques[llista] || []).filter((x) => x.id === id)[0];
+        return t ? JSON.parse(JSON.stringify(t)) : null;
+      },
+      insert: (t, llista) => {
+        const nova = Object.assign({ id: 'g' + (++idNou), status: 'needsAction' }, t);
+        (tasques[llista] = tasques[llista] || []).push(nova);
+        return nova;
+      },
+      update: (t, llista, id) => {
+        tasques[llista] = (tasques[llista] || []).map((x) => (x.id === id ? t : x));
+        return t;
+      },
+      remove: (llista, id) => {
+        tasques[llista] = (tasques[llista] || []).filter((x) => x.id !== id);
+      }
+    }
+  };
+
+  // --- les llistes
+  const sinc = ctx.Tasques.sincronitzaLlistes();
+  cal('llegeix les teves llistes de Google i les apunta', sinc.total === 2 && sinc.nous === 2,
+      JSON.stringify(sinc));
+  cal('i les noves s\'encenen soles', ctx.Tasques.llistes().every((l) => l.mostra));
+
+  ctx.Tasques.mostra('L2', false);
+  cal('apagar-ne una la treu de la pantalla',
+      ctx.Tasques.pantalla({}).blocs.length === 1);
+  ctx.Tasques.sincronitzaLlistes();
+  cal('i tornar a llegir-les de Google NO te la torna a encendre',
+      ctx.Tasques.llistes().filter((l) => l.id === 'L2')[0].mostra === false);
+  ctx.Tasques.mostra('L2', true);
+
+  // --- la pantalla
+  const p = ctx.Tasques.pantalla({});
+  cal('una caixa per llista', p.blocs.length === 2 &&
+      p.blocs.map((b) => b.nom).join('|') === 'Meves tasques|Docència',
+      JSON.stringify(p.blocs.map((b) => b.nom)));
+  cal('les fetes no surten amb les pendents',
+      p.tasques.every((t) => t.text !== 'Enviar les notes'));
+  cal('la que ja ha vençut es marca com a vençuda',
+      p.tasques.filter((t) => t.text === 'Corregir els controls')[0].vencuda === true);
+  cal('i el venciment de Google es llegeix com el dia que és, sense saltar-ne cap',
+      p.tasques.filter((t) => t.text === 'Corregir els controls')[0].vencEl === '2026-08-01');
+  cal('dins la caixa, primer el que venç i al final el que no té data',
+      p.blocs[1].tasques[0].text === 'Corregir els controls', JSON.stringify(p.blocs[1].tasques));
+
+  // --- apuntar
+  const nova = ctx.Tasques.captura('Comprar cartolines');
+  cal('el que apuntes cau a la llista principal, sense preguntar res',
+      nova.llista === 'L1' && tasques.L1.filter((t) => t.id === nova.id).length === 1);
+
+  // --- la prioritat, que és nostra
+  ctx.Tasques.edita({ id: nova.id, llista: 'L1', prioritat: true });
+  const ambPrio = ctx.Tasques.pantalla({}).tasques.filter((t) => t.id === nova.id)[0];
+  cal('la prioritat es desa al nostre full i torna amb la tasca',
+      ambPrio.prioritat === 'alta' && fulls.TasquesMarques.length === 1,
+      JSON.stringify(fulls.TasquesMarques));
+  cal('i no s\'escriu res del text de la tasca al nostre full: si el perds, no perds cap tasca',
+      Object.keys(fulls.TasquesMarques[0]).indexOf('text') === -1,
+      JSON.stringify(Object.keys(fulls.TasquesMarques[0])));
+
+  // --- moure de llista
+  /* Google no sap moure una tasca de llista: se'n fa una de nova i s'esborra la
+     vella, o sigui que canvia d'id. Si la marca no el segueix, la prioritat es
+     queda enganxada a una tasca que ja no existeix. */
+  const moguda = ctx.Tasques.edita({ id: nova.id, llista: 'L1', llistaNova: 'L2' });
+  cal('moure-la de llista la treu de la vella i la posa a la nova',
+      tasques.L1.filter((t) => t.id === nova.id).length === 0 &&
+      tasques.L2.filter((t) => t.id === moguda.id).length === 1);
+  cal('i la prioritat la segueix encara que Google li canviï l\'id',
+      ctx.Tasques.pantalla({}).tasques.filter((t) => t.id === moguda.id)[0].prioritat === 'alta',
+      JSON.stringify(fulls.TasquesMarques));
+
+  // --- completar
+  ctx.Tasques.completa('g2', 'L2');
+  cal('completar-la la treu de les pendents',
+      ctx.Tasques.pantalla({}).tasques.every((t) => t.id !== 'g2'));
+  cal('i la trobes a les fetes, no esborrada',
+      ctx.Tasques.fetes({}).fetes.filter((t) => t.id === 'g2').length === 1);
+  ctx.Tasques.completa('g2', 'L2', true);
+  cal('i es pot desfer', ctx.Tasques.pantalla({}).tasques.filter((t) => t.id === 'g2').length === 1);
+
+  // --- treure
+  ctx.Tasques.treu('g3', 'L2');
+  cal('treure-la l\'esborra de Google de debò', tasques.L2.every((t) => t.id !== 'g3'));
+
+  // --- la pàgina del dia
+  const dia = ctx.MODUL_TASQUES().elDia(AVUI);
+  cal('a la pàgina del dia hi surt el que ha vençut i el d\'avui',
+      dia && dia.coses.length > 0, JSON.stringify(dia));
+  cal('i del futur no en diu res', ctx.MODUL_TASQUES().elDia('2026-08-09') === null);
+
+  // --- sense permís
+  /* El permís es dóna un cop i pot no estar-hi encara. Si Google diu que no,
+     això no pot tombar la pàgina del dia ni els avisos: cadascú se n'aparta. */
+  ctx.Tasks.Tasks.list = () => { throw new Error('Authorization required'); };
+  const sensePermis = ctx.Tasques.pantalla({});
+  cal('si Google encara no li dóna permís, ho diu i no peta',
+      sensePermis.hiHaServei === false && sensePermis.tasques.length === 0,
+      JSON.stringify(sensePermis).slice(0, 120));
+  cal('i llavors la pàgina del dia calla en comptes de caure',
+      ctx.MODUL_TASQUES().elDia(AVUI) === null);
+  cal('i la fitxa de la IA també', ctx.MODUL_TASQUES().contextIA() === '');
+
+  delete ctx.Tasks;
+  cal('i si el servei ni tan sols hi és, igual',
+      ctx.Tasques.pantalla({}).hiHaServei === false &&
+      ctx.MODUL_TASQUES().elDia(AVUI) === null);
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
