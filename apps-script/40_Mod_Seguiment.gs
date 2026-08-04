@@ -25,7 +25,15 @@
 function MODUL_SEGUIMENT() {
   return {
     id: 'seguiment',
-    nom: 'Seguiment',
+    /* «Seguiment» a seques era massa global i es confonia amb qualsevol altra
+       cosa. D'aquí surten el menú, el tauler d'apartats i el títol de les
+       notificacions: el nucli agafa el nom del registre, i canviant-lo aquí
+       canvia a tot arreu alhora.
+
+       EL FULL SEGUEIX DIENT-SE «Seguiment» i no s'ha de tocar mai: allà hi ha
+       l'històric, i canviar-li el nom el deixaria orfe. Igual amb la carpeta
+       de fotos del Drive. El que canvia és com se'n diu, no on és. */
+    nom: 'Seguiment FitFat',
     icona: 'seguiment',
     ordre: 25,                 // entre nutrició (20) i finances (30): és el cos
     versioEsquema: 1,
@@ -633,11 +641,11 @@ var Seguiment = (function () {
     var f = faseDe(plaM, Utils.avui());
 
     if (!h.length) {
-      return 'Seguiment físic: encara no hi ha cap control' +
+      return 'Seguiment FitFat: encara no hi ha cap control' +
              (e.pendent ? '. Avui en toca un.' : '.');
     }
     var u = h[h.length - 1];
-    var t = ['Seguiment físic' + (f ? ' · fase: ' + f.nom + (f.objectiu ? ' (' + f.objectiu + ')' : '') : '') + ':'];
+    var t = ['Seguiment FitFat' + (f ? ' · fase: ' + f.nom + (f.objectiu ? ' (' + f.objectiu + ')' : '') : '') + ':'];
     t.push('- Últim control (' + u.data + ', fa ' + e.fa + ' dies): ' + linia_(u));
     if (h.length > 1) {
       var v = analitza(h, h.length - 1);
@@ -657,7 +665,7 @@ var Seguiment = (function () {
       var i = tots.map(function (x) { return x.data; }).indexOf(c.data);
       return c.data + ': ' + linia_(c) + ' — ' + veredicte(analitza(tots, i)).toLowerCase();
     });
-    return { titol: 'Seguiment físic', linies: linies };
+    return { titol: 'Seguiment FitFat', linies: linies };
   }
 
   function perALaIA(quants) {
