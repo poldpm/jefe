@@ -80,10 +80,24 @@ function netejaFullPerDefecte_(ss) {
 
 // ------------------------------------------------------------------ triggers
 
+/**
+ * ELS AUTOMATISMES QUE SÓN NOSTRES.
+ *
+ * Aquesta llista NO és decoració: és la que fa servir `treuTriggers` per
+ * netejar abans de tornar-los a crear. Un automatisme que no hi surti no
+ * s'esborra mai, i cada `instalaTriggers()` en deixa un de vell i en crea un
+ * de nou. Va passar amb `triggerEscalfaFora` el 4 d'agost del 2026: en van
+ * quedar dos, i com que aquell costa quaranta segons per passada, entre tots
+ * dos es menjaven més quota diària de la que té el compte sencer. Quan la
+ * quota s'acaba, Google atura TOTS els automatismes sense dir res.
+ *
+ * REGLA: si afegeixes un `newTrigger` aquí sota, el seu nom va aquí dalt. La
+ * prova `eines/prova.mjs` ho comprova i peta si te'n descuides.
+ */
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
-                'triggerAgendaDelDia', 'triggerEscalfa', 'triggerAvisos',
-                'triggerDema'];
+                'triggerAgendaDelDia', 'triggerEscalfa', 'triggerEscalfaFora',
+                'triggerAvisos', 'triggerDema'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -216,6 +230,11 @@ function informesALesOnze() {
   return diu;
 }
 
+/**
+ * Esborra els automatismes NOSTRES —els de — i deixa estar els
+ * d'altri. Si en trobés dos amb el mateix nom, els treu tots dos: duplicats
+ * vol dir doble consum de quota, i la quota és de tot el compte.
+ */
 function treuTriggers() {
   var tots = ScriptApp.getProjectTriggers();
   var tret = 0;

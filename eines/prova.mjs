@@ -2565,5 +2565,36 @@ console.log('\nLa precàrrega desa on cada pantalla mirarà');
       /try \{ out\[mod\.id\] = mod\.accions\.pantalla\(\{\}\); \}/.test(enc));
 }
 
+// ------ cap automatisme pot quedar-se fora de la llista que els neteja
+/* `instalaTriggers` esborra els seus i els torna a crear. Els «seus» són els
+   d'una llista escrita a mà, i el 4 d'agost del 2026 hi faltava
+   `triggerEscalfaFora`: cada execució en deixava un de vell i en creava un de
+   nou. Amb dos, i costant quaranta segons per passada, es menjaven més quota
+   diària de la que té el compte —i quan la quota s'acaba, Google atura TOTS
+   els automatismes sense avisar de res.
+   Un descuit d'una línia amb aquestes conseqüències no es pot deixar a la
+   memòria de ningú. */
+console.log('\nEls automatismes: cap pot quedar fora de la llista que els neteja');
+{
+  const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+
+  const creats = (inst.match(/newTrigger\('(\w+)'\)/g) || [])
+    .map((x) => x.replace(/newTrigger\('|'\)/g, ''));
+  const llista = (inst.slice(inst.indexOf('var TRIGGERS = ['),
+                             inst.indexOf('];', inst.indexOf('var TRIGGERS = [')))
+    .match(/'(\w+)'/g) || []).map((x) => x.replace(/'/g, ''));
+
+  cal('n\'hi ha uns quants de creats', creats.length >= 8, String(creats.length));
+  const fora = creats.filter((t) => llista.indexOf(t) === -1);
+  cal('i tots surten a la llista que els esborra',
+      fora.length === 0, 'en falten: ' + fora.join(', '));
+
+  /* I a l'inrevés: un nom a la llista que ja no es crea enlloc no fa mal, però
+     vol dir que hi ha codi mort o un nom mal escrit. */
+  const morts = llista.filter((t) => creats.indexOf(t) === -1);
+  cal('i a la llista no hi ha noms que ja no existeixin',
+      morts.length === 0, 'sobren: ' + morts.join(', '));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
