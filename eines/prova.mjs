@@ -2698,5 +2698,82 @@ console.log('\nEl calendari, llegit per l\'API: la traducció ha de dir el matei
   cal('i el servei de Calendar està declarat al manifest', /"serviceId": "calendar"/.test(man));
 }
 
+// ------------------------- vuit agendes no poden ser vuit voltes seguides
+/* Apps Script no sap esperar dues coses alhora excepte amb `fetchAll`. Amb el
+   servei avançat una per una, les vuit agendes d'en Pol trigaven tretze
+   segons; de cop han de trigar el que trigui la més lenta.
+   Aquí es comprova que les demani TOTES en una sola tirada, que en tregui el
+   mateix que pel camí d'una en una, i —sobretot— que si alguna falla no es
+   perdi: ha de tornar a demanar-se sola. */
+console.log('\nLes agendes, demanades totes de cop');
+{
+  const ctx = carregaTotElServidor();
+  const TZ = 'Europe/Madrid';
+  ctx.Config = { zonaHoraria: () => TZ, get: () => null, getNum: (k, d) => d };
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.avui = () => '2026-08-04';
+  ctx.Utilities.formatDate = (d, tz, f) => {
+    const p = (n) => ('0' + n).slice(-2);
+    return f === 'HH:mm' ? p(d.getHours()) + ':' + p(d.getMinutes())
+                         : d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  };
+  ctx.CacheService = { getScriptCache: () => ({ get: () => null, put() {}, remove() {} }) };
+  ctx.CalendariPont = { hiEs: () => false };
+  ctx.ScriptApp = { getOAuthToken: () => 'un-testimoni' };
+
+  const AGENDES = ['a@g.com', 'b@g.com', 'c@g.com'];
+  ctx.Dades = {
+    llegeix: () => AGENDES.map((id, i) => ({
+      id: id, nom: 'Agenda ' + i, color: '#000', mostra: 'SI',
+      principal: i === 0 ? 'SI' : 'NO', meu: 'SI', pont: 'NO', ordre: i + 1
+    })),
+    un: () => null, perId: () => null, insereix: (f, x) => x, actualitza: () => null
+  };
+
+  const cita = (id, dia) => ({ id: id, summary: id, status: 'confirmed',
+    start: { dateTime: '2026-08-0' + dia + 'T09:00:00+02:00' },
+    end: { dateTime: '2026-08-0' + dia + 'T10:00:00+02:00' } });
+
+  let tirades = 0, urls = [];
+  ctx.UrlFetchApp = { fetchAll: (p) => {
+    tirades++;
+    urls = p.map((x) => x.url);
+    return p.map((x, i) => ({
+      getResponseCode: () => (i === 2 ? 500 : 200),      // la tercera falla
+      getContentText: () => JSON.stringify({ items: [cita('de-cop-' + i, i + 1)] })
+    }));
+  } };
+
+  // El camí d'una en una, per a la que ha fallat.
+  let solesDemanades = [];
+  ctx.Calendar = { Events: { list: (id) => {
+    solesDemanades.push(id);
+    return { items: [cita('sola-' + id, 4)] };
+  } } };
+  ctx.CalendarApp = { getCalendarById: () => { throw new Error('no s\'ha de tocar'); } };
+
+  const l = ctx.Calendari.rang('2026-08-01', '2026-08-31');
+  const ids = l.map((e) => e.id).sort();
+
+  cal('les demana totes en UNA sola tirada', tirades === 1, String(tirades));
+  cal('i una per agenda, amb el seu identificador a l\'adreça',
+      urls.length === 3 && urls[0].indexOf(encodeURIComponent('a@g.com')) !== -1,
+      JSON.stringify(urls[0] || ''));
+  cal('el que torna de cop es pinta igual que el que torna d\'una en una',
+      ids.indexOf('de-cop-0') !== -1 && ids.indexOf('de-cop-1') !== -1);
+  cal('i la que ha fallat es torna a demanar sola, no es perd',
+      solesDemanades.length === 1 && solesDemanades[0] === 'c@g.com' &&
+      ids.indexOf('sola-c@g.com') !== -1,
+      JSON.stringify({ soles: solesDemanades, ids: ids }));
+
+  /* Sense testimoni no hi ha drecera possible: ha de seguir funcionant. */
+  ctx.ScriptApp = { getOAuthToken: () => { throw new Error('sense permís'); } };
+  solesDemanades = [];
+  const l2 = ctx.Calendari.rang('2026-08-01', '2026-08-31');
+  cal('i si no hi ha manera de demanar-les de cop, es demanen d\'una en una',
+      solesDemanades.length === 3 && l2.length === 3,
+      JSON.stringify({ soles: solesDemanades.length, quantes: l2.length }));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

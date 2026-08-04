@@ -467,8 +467,15 @@ var Calendari = (function () {
       }
     }
 
-    mirats.filter(function (c) { return !c.pont; }).forEach(function (c) {
-      var events = perLApi_(c, inici, final);
+    /* LES AGENDES, TOTES DE COP.
+       Vegeu `totesDeCop_`: vuit agendes preguntades una darrere l'altra eren
+       tretze segons; preguntades alhora, el que triga és la més lenta. */
+    var meves = mirats.filter(function (c) { return !c.pont; });
+    var deCop = totesDeCop_(meves, inici, final);
+
+    meves.forEach(function (c) {
+      var events = deCop && deCop[c.id];
+      if (!events) events = perLApi_(c, inici, final);
       if (events === null) events = perCalendarApp_(c, inici, final);
       events.forEach(function (e) { out.push(e); });
     });
@@ -480,6 +487,84 @@ var Calendari = (function () {
     });
 
     return out;
+  }
+
+  /**
+   * TOTES LES AGENDES ALHORA.
+   *
+   * Apps Script no sap esperar dues coses a la vegada... excepte aquí:
+   * `UrlFetchApp.fetchAll` envia totes les peticions de cop i torna quan han
+   * contestat totes. O sigui que vuit agendes ja no costen vuit voltes, sinó
+   * el que trigui la més lenta.
+   *
+   * Mesurat el 4 d'agost del 2026: amb `CalendarApp`, 40 s; amb el servei
+   * avançat una per una, 13 s; d'aquesta manera hauria de ser el temps d'una.
+   *
+   * Es parla amb l'API de Calendar directament perquè el servei avançat no té
+   * cap manera de fer-ho en paral·lel. El permís és el mateix que ja té l'app
+   * —`ScriptApp.getOAuthToken()` porta el que li han concedit— i no en demana
+   * cap de nou.
+   *
+   * Torna `null` si no se'n surt, i llavors qui crida hi va d'una en una com
+   * abans. Aquí no s'hi juga res: és una drecera, no l'únic camí.
+   */
+  function totesDeCop_(agendes, inici, final) {
+    if (!agendes || agendes.length < 2) return null;      // per una, no cal muntar res
+
+    var testimoni;
+    try { testimoni = ScriptApp.getOAuthToken(); } catch (e) { return null; }
+    if (!testimoni) return null;
+
+    var params = '?singleEvents=true&orderBy=startTime&showDeleted=false&maxResults=2500' +
+      '&timeMin=' + encodeURIComponent(inici.toISOString()) +
+      '&timeMax=' + encodeURIComponent(final.toISOString()) +
+      '&fields=' + encodeURIComponent('nextPageToken,items(id,summary,location,description,' +
+                                      'status,start(date,dateTime),end(date,dateTime))');
+
+    var peticions = agendes.map(function (c) {
+      return {
+        url: 'https://www.googleapis.com/calendar/v3/calendars/' +
+             encodeURIComponent(c.id) + '/events' + params,
+        method: 'get',
+        headers: { Authorization: 'Bearer ' + testimoni },
+        muteHttpExceptions: true
+      };
+    });
+
+    var respostes;
+    try { respostes = UrlFetchApp.fetchAll(peticions); }
+    catch (err) {
+      Log.avis('calendari.decop', 'No he pogut demanar-les totes de cop: ' + err.message);
+      return null;
+    }
+
+    var tz = Config.zonaHoraria();
+    var ara = new Date();
+    var out = {};
+    var quantes = 0;
+
+    for (var i = 0; i < respostes.length; i++) {
+      var c = agendes[i];
+      if (respostes[i].getResponseCode() !== 200) continue;   // aquesta, d'una en una
+      var dades;
+      try { dades = JSON.parse(respostes[i].getContentText()); } catch (e) { continue; }
+
+      var seus = [];
+      (dades.items || []).forEach(function (e) {
+        var pintat = deLApi_(e, c, tz, ara);
+        if (pintat) seus.push(pintat);
+      });
+
+      /* Si n'hi ha més de dues mil cinc-centes en cinc mesos, la resta es va a
+         buscar d'una en una. No passarà mai, però si passés val més trigar que
+         no ensenyar mitja agenda. */
+      if (dades.nextPageToken) continue;
+
+      out[c.id] = seus;
+      quantes++;
+    }
+
+    return quantes ? out : null;
   }
 
   /**
