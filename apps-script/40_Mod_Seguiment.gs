@@ -152,6 +152,12 @@ function MODUL_SEGUIMENT() {
     }],
 
     resumPeriode: function (desde, fins) { return Seguiment.resumPeriode(desde, fins); },
+    /**
+     * El control setmanal que toca i encara no has fet. És una setmana que es
+     * perd de la sèrie, i la sèrie és tot el que té valor aquí.
+     */
+    senyals:      function () { return Seguiment.senyals(); },
+
     contextIA:    function () { return Seguiment.contextIA(); },
 
     einesIA: [{
@@ -686,7 +692,29 @@ var Seguiment = (function () {
     };
   }
 
+  /**
+   * EL CONTROL DE LA SETMANA, QUE JA TOCAVA.
+   *
+   * Una setmana sense control és una setmana que desapareix de la sèrie, i
+   * aquí el valor és justament la sèrie: una xifra sola no diu res.
+   */
+  function senyals() {
+    var e = estat();
+    if (!e.pendent) return [];
+    if (e.fa !== null && e.fa < 8) return [];
+    return [{
+      id: 'seg_control:' + e.avui,
+      titol: 'Seguiment FitFat',
+      text: (e.fa === null ? 'Encara no hi ha cap control.'
+                           : 'Fa ' + e.fa + ' dies de l\'últim control.') +
+            ' Són dues xifres i trenta segons; sense elles, la setmana no compta.',
+      urgencia: 1,
+      accio: 'seguiment'
+    }];
+  }
+
   return {
+    senyals: senyals,
     pantalla: pantalla,
     estat: estat,
     desaControl: desaControl,

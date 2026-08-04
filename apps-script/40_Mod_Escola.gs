@@ -119,6 +119,12 @@ function MODUL_ESCOLA() {
      */
     elDia: function (data) { return Escola.elDia(data); },
 
+    /**
+     * Els avisos de l'escola que fa dies que són allà sense llegir. L'escola
+     * no torna a enviar res: si no els obres, es queden.
+     */
+    senyals: function () { return Escola.senyals(); },
+
     contextIA: function () { return Escola.contextIA(); },
 
     einesIA: [{
@@ -589,7 +595,30 @@ var EscolaPont = (function () {
     return resposta.dades;
   }
 
+  /**
+   * ELS AVISOS QUE FA DIES QUE SÓN ALLÀ.
+   *
+   * L'escola no torna a enviar res: si no els obres, es queden. Amb dos dies
+   * i tres avisos ja no és «encara no els he mirat», és que se t'han passat.
+   */
+  function senyals() {
+    var limit = Utils.sumaDies(Utils.avui(), -2);
+    var vells = senseLlegir().filter(function (m) {
+      return String(m.rebut_el).slice(0, 10) <= limit;
+    });
+    if (vells.length < 3) return [];
+    return [{
+      id: 'escola_sense_llegir',
+      titol: 'Escola',
+      text: vells.length + ' avisos de fa més de dos dies sense obrir. El més vell: «' +
+            Utils.talla(vells[vells.length - 1].titol, 60) + '».',
+      urgencia: 2,
+      accio: 'escola'
+    }];
+  }
+
   return {
+    senyals: senyals,
     hiEs: hiEs,
     comandes: function () { return COMANDES.slice(); },
 

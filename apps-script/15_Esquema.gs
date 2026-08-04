@@ -51,6 +51,24 @@ var FULLS_NUCLI = [
     ]
   },
   {
+    /* El que ha passat i què se n'ha dit. Hi va TOT: també el que s'ha callat
+       per no passar-se del pressupost del dia. Vegeu `65_Senyals.gs`. */
+    nom: '_Senyals',
+    columnes: [
+      { nom: 'id',        tipus: 'text' },
+      { nom: 'clau',      tipus: 'text' },   // senyal + dia: un per dia i prou
+      { nom: 'senyal',    tipus: 'text' },
+      { nom: 'modul',     tipus: 'text' },
+      { nom: 'data',      tipus: 'data' },
+      { nom: 'titol',     tipus: 'text' },
+      { nom: 'text',      tipus: 'text' },
+      { nom: 'urgencia',  tipus: 'num'  },
+      { nom: 'enviat_el', tipus: 'iso'  },
+      { nom: 'creat_el',  tipus: 'iso'  },
+      { nom: 'actualitzat_el', tipus: 'iso' }
+    ]
+  },
+  {
     nom: '_Moduls',
     columnes: [
       { nom: 'id_modul', tipus: 'text' },

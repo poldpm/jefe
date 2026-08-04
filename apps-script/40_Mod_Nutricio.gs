@@ -131,6 +131,15 @@ function MODUL_NUTRICIO() {
 
     resumPeriode: function (desde, fins) { return Nutricio.resumPeriode(desde, fins); },
 
+    /**
+     * ELS DIES QUE NO HAS APUNTAT RES.
+     *
+     * No és per renyar: un registre que es deixa dos dies no es reprèn mai, i
+     * quan tornes a obrir-lo has perdut la comparació que el feia servir per a
+     * res. Tres dies és el punt on encara es recupera.
+     */
+    senyals: function () { return Nutricio.senyals(); },
+
     contextIA: function () {
       var d = Nutricio.dia(Utils.avui());
       if (!d.totals.ingerides && !d.teCremades) return 'Nutrició: avui encara no hi ha res apuntat.';
@@ -806,7 +815,35 @@ var Nutricio = (function () {
   /** Un decimal, com feia FitFat. */
   function r1(n) { return Math.round(Number(n || 0) * 10) / 10; }
 
+  /**
+   * TRES DIES SENSE APUNTAR RES.
+   *
+   * No és per renyar: un registre que es deixa dos dies no es reprèn mai, i el
+   * valor d'això és la comparació —què menjaves quan baixaves de pes—, que es
+   * perd amb els forats. Tres dies és el punt on encara es recupera.
+   */
+  function senyals() {
+    var avui = Utils.avui();
+    var buits = 0;
+    for (var i = 1; i <= 5; i++) {
+      var d = Utils.sumaDies(avui, -i);
+      var q = dia(d);
+      if (q && q.totals && q.totals.ingerides > 0) break;
+      buits++;
+    }
+    if (buits < 3) return [];
+    return [{
+      id: 'nutri_sense_registre',
+      titol: 'Menjar',
+      text: 'Fa ' + buits + ' dies que no hi ha res apuntat. Amb forats, la ' +
+            'comparació amb el pes deixa de dir res: apunta el d\'avui i ja està.',
+      urgencia: 2,
+      accio: 'nutricio'
+    }];
+  }
+
   return {
+    senyals: senyals,
     r1: r1,
     dia: dia,
     resumPeriode: resumPeriode,

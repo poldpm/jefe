@@ -98,6 +98,20 @@ function MODUL_TASQUES() {
 
     escalfa: function () { return Tasques.escalfa(); },
 
+    /**
+     * QUÈ PASSA AMB LES TASQUES QUE VALGUI LA PENA INTERROMPRE'L.
+     *
+     * La recerca sobre procrastinació és clara i no va de disciplina: es deixa
+     * per després el que fa sentir malament, i el que costa és COMENÇAR. Amb
+     * una tasca vaga que arrossegues fa dues setmanes, recordar-te-la un cop
+     * més no fa res —ja saps que hi és—. El que sí que fa alguna cosa és
+     * partir-la: demanar-te el primer pas de deu minuts.
+     *
+     * Per això aquests senyals no renyen mai ni compten quants dies fa per
+     * fer-te sentir malament: diuen què hi ha i ofereixen el pas següent.
+     */
+    senyals: function () { return Tasques.senyals(); },
+
     resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
 
     elDia: function (data) {
@@ -446,6 +460,11 @@ var Tasques = (function () {
       venAvui: venc === avui,
       prioritat: marca && marca.prioritat === 'alta' ? 'alta' : '',
       fent: !!(marca && String(marca.fent).toUpperCase() === 'SI'),
+      /* L'última vegada que algú la va tocar. Google no diu quan es va crear,
+         però sí quan es va modificar per últim cop, i per saber si una cosa
+         s'ha encallat això és fins i tot millor: no és «quan la vaig apuntar»,
+         és «quant fa que no li faig res». */
+      tocadaEl: t.updated ? String(t.updated).slice(0, 10) : '',
       feta: t.status === 'completed',
       fetEl: t.completed ? String(t.completed).slice(0, 10) : ''
     };
@@ -749,6 +768,66 @@ var Tasques = (function () {
     return { tret: true };
   }
 
+  // --------------------------------------------------------------- senyals
+
+  /**
+   * ELS DIES QUE HAN DE PASSAR abans de dir-ne res.
+   *
+   * Deu no és una xifra rodona per gust: una tasca de quinze dies ja no és una
+   * tasca ajornada, és una que no faràs mai tal com està escrita. I una de
+   * tres dies no és res: la vida va així.
+   */
+  var ENCALLADA = 10;
+
+  function senyals() {
+    if (!serveiHiEs()) return [];
+    var d;
+    try { d = pantalla({}); } catch (e) { return []; }
+    if (!d.hiHaServei) return [];
+
+    var out = [];
+    var avui = Utils.avui();
+
+    /* 1. LA MÉS VENÇUDA. Una de sola: dir-te que en tens set de vençudes és
+       donar-te set motius per no obrir res. */
+    var vencudes = d.tasques.filter(function (t) { return t.vencuda; })
+      .sort(function (a, b) { return a.vencEl < b.vencEl ? -1 : 1; });
+    if (vencudes.length) {
+      var v = vencudes[0];
+      out.push({
+        id: 'tasca_vencuda:' + v.id,
+        titol: 'Vençuda',
+        text: '«' + v.text + '» ' + Utils.faQuant(v.vencEl) + ' que vencia' +
+              (vencudes.length > 1 ? ' (i ' + (vencudes.length - 1) + ' més)' : '') +
+              '. Si ja no toca, treu-li la data.',
+        urgencia: 3,
+        accio: 'tasques'
+      });
+    }
+
+    /* 2. LA QUE S'HA ENCALLAT. Sense data i sense moure's: la que et menja el
+       cap sense sortir mai a cap llista d'urgents. */
+    var vella = null;
+    d.tasques.forEach(function (t) {
+      if (t.vencEl) return;                       // aquesta ja té la seva data
+      if (!t.tocadaEl) return;
+      if (Utils.diesEntre(t.tocadaEl, avui) < ENCALLADA) return;
+      if (!vella || t.tocadaEl < vella.tocadaEl) vella = t;
+    });
+    if (vella) {
+      out.push({
+        id: 'tasca_encallada:' + vella.id,
+        titol: 'Encallada',
+        text: '«' + vella.text + '» fa ' + Utils.diesEntre(vella.tocadaEl, avui) +
+              ' dies que hi és i no s\'ha mogut. Quin seria el primer pas de deu minuts?',
+        urgencia: 2,
+        accio: 'tasques'
+      });
+    }
+
+    return out;
+  }
+
   // ------------------------------------------------------------- per a la IA
 
   /** La que més s'assembla al que ha dit, d'entre les pendents. */
@@ -829,6 +908,7 @@ var Tasques = (function () {
 
   return {
     serveiHiEs: serveiHiEs,
+    senyals: senyals,
     targeta: targeta,
     escalfa: escalfa,
     sincronitzaLlistes: sincronitzaLlistes,

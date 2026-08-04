@@ -1774,7 +1774,7 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
   let triggers = [];
   const cadena = (nom) => {
     const c = {};
-    ['timeBased', 'everyDays', 'everyMinutes', 'onWeekDay', 'onMonthDay', 'nearMinute']
+    ['timeBased', 'everyDays', 'everyMinutes', 'everyHours', 'onWeekDay', 'onMonthDay', 'nearMinute']
       .forEach((m) => { c[m] = () => c; });
     c.atHour = (h) => { triggers.push({ fn: nom, hora: h }); return c; };
     c.create = () => {};
@@ -2882,6 +2882,121 @@ console.log('\nEls comptadors: la corba a la pantalla, i sense pagar-la a cada t
       !/data-tema="1"/.test(fs.readFileSync('apps-script/vista_inici.html', 'utf8')));
   cal('i el tema es queda fosc sense preguntar',
       /aplicaTema: function \(\) \{/.test(app) && /temaActual: function \(\) \{ return 'fosc'; \}/.test(app));
+}
+
+// -------------------------------- els senyals: la part difícil és NO dir-los
+/* JEFE avisava per rellotge. Els senyals avisen pel que passa. La feina no és
+   trobar coses a dir —n'hi ha sempre—: és callar-ne prou perquè les que surtin
+   es llegeixin. Si això falla, en tres setmanes silencia l'app i llavors ja no
+   s'assabenta de res.
+   Aquí es comproven les quatre regles que ho sostenen: dos al dia, tres dies
+   abans de repetir-ne un, res de nit, i que tot quedi apuntat encara que no
+   s'enviï. */
+console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
+{
+  const ctx = carregaTotElServidor();
+  const AVUI = '2026-08-05';
+  ctx.Utils.avui = () => AVUI;
+  ctx.Utils.ara = () => AVUI + 'T10:00:00+02:00';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d };
+
+  /* El formatador ha de formatar DE DEBÒ. La primera versió d'aquesta prova el
+     falsejava tornant sempre el mateix dia, i això trencava `Utils.sumaDies`:
+     la regla dels tres dies no es podia complir mai i la prova acusava el codi
+     d'una cosa que feia ella. */
+  let horaAra = 10;
+  ctx.Utilities.formatDate = (d, tz, f) => {
+    if (f === 'H') return String(horaAra);
+    const p = (n) => ('0' + n).slice(-2);
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  };
+
+  // El full, en memòria
+  let files = [], seguit = 0;
+  ctx.Dades = {
+    llegeix: (full, filtre) => files.filter((f) => !filtre || filtre(f)),
+    un: (full, q) => files.filter((f) => Object.keys(q).every((k) => f[k] === q[k]))[0] || null,
+    insereix: (full, fila, prefix) => {
+      const f = Object.assign({ id: (prefix || 'x') + (++seguit) }, fila);
+      files.push(f); return f;
+    },
+    actualitza: (full, id, canvis) => {
+      const f = files.filter((x) => x.id === id)[0];
+      if (f) Object.assign(f, canvis);
+      return f || null;
+    }
+  };
+
+  let enviades = [];
+  ctx.Notifica = { envia: (t, c, o) => { enviades.push({ t, c, url: o && o.url }); return { enviades: 1 }; } };
+
+  const senyal = (id, urgencia) => ({ id, titol: 'T', text: 'passa una cosa', urgencia });
+  let elsMeus = [senyal('a', 3), senyal('b', 2), senyal('c', 1)];
+  ctx.Moduls = { actius: () => [{ id: 'prova', nom: 'Prova', senyals: () => elsMeus }] };
+
+  const r1 = ctx.Senyals.passa({});
+  cal('en troba tres i n\'envia dos', r1.trobats === 3 && r1.enviats === 2, JSON.stringify(r1));
+  cal('i envia els MÉS urgents, no els primers que troba',
+      enviades.length === 2 && r1.quins.join(',') === 'a,b', JSON.stringify(r1.quins));
+  cal('el que s\'ha callat també queda apuntat',
+      files.length === 3 && files.filter((f) => !f.enviat_el).length === 1,
+      JSON.stringify(files.map((f) => f.senyal + ':' + (f.enviat_el ? 'dit' : 'callat'))));
+
+  enviades = [];
+  const r2 = ctx.Senyals.passa({});
+  cal('a la segona passada del mateix dia ja no diu res més',
+      r2.enviats === 0 && /ja s'han dit/.test(r2.motiu), JSON.stringify(r2));
+
+  /* L'endemà: els mateixos senyals segueixen passant. Les dues que es van dir
+     han de callar —fa menys de tres dies—, però la que es va quedar a la cua
+     ha de sortir. El pressupost APLAÇA, no llença: si llencés, la tercera cosa
+     important d'un dia ple no s'assabentaria mai. */
+  ctx.Utils.avui = () => '2026-08-06';
+  ctx.Utils.ara = () => '2026-08-06T10:00:00+02:00';
+  enviades = [];
+  const r3 = ctx.Senyals.passa({});
+  cal('l\'endemà no repeteix les que va dir, però sí que treu la que esperava',
+      r3.enviats === 1 && r3.quins[0] === 'c', JSON.stringify(r3));
+
+  /* Quatre dies més tard sí, perquè ja han passat els tres d'espera. */
+  ctx.Utils.avui = () => '2026-08-10';
+  ctx.Utils.ara = () => '2026-08-10T10:00:00+02:00';
+  enviades = [];
+  const r4 = ctx.Senyals.passa({});
+  cal('passats els tres dies, torna a dir-ho', r4.enviats === 2, JSON.stringify(r4));
+
+  /* De nit no es diu res, encara que passin coses noves. */
+  ctx.Utils.avui = () => '2026-08-20';
+  ctx.Utils.ara = () => '2026-08-20T23:00:00+02:00';
+  horaAra = 23;
+  enviades = [];
+  const r5 = ctx.Senyals.passa({});
+  cal('de nit no interromp', r5.enviats === 0 && /de nit/.test(r5.motiu), JSON.stringify(r5));
+  cal('però ho apunta igual, per no perdre-ho',
+      files.filter((f) => f.data === '2026-08-20').length === 3);
+
+  /* Un mòdul que peta no s'emporta els altres. */
+  horaAra = 10;
+  ctx.Utils.avui = () => '2026-08-25';
+  ctx.Utils.ara = () => '2026-08-25T10:00:00+02:00';
+  ctx.Moduls = { actius: () => [
+    { id: 'dolent', nom: 'Dolent', senyals: () => { throw new Error('peta'); } },
+    { id: 'bo', nom: 'Bo', senyals: () => [senyal('z', 3)] }
+  ] };
+  enviades = [];
+  const r6 = ctx.Senyals.passa({});
+  cal('un mòdul que peta no s\'emporta els altres', r6.enviats === 1, JSON.stringify(r6));
+
+  /* I els mòduls de debò han de saber-ne declarar. */
+  const declaren = ['40_Mod_Tasques.gs', '40_Mod_Habits.gs', '40_Mod_Nutricio.gs',
+                    '40_Mod_Escola.gs', '40_Mod_Seguiment.gs']
+    .filter((f) => /senyals:\s*function/.test(fs.readFileSync('apps-script/' + f, 'utf8')));
+  cal('cinc mòduls saben dir què els passa', declaren.length === 5, declaren.join(', '));
+
+  const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  cal('i hi ha un trigger que ho mira, i surt a la llista de neteja',
+      /newTrigger\('triggerSenyals'\)/.test(inst) && /'triggerSenyals'\]/.test(inst));
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

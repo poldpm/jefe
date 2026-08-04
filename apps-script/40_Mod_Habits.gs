@@ -147,6 +147,13 @@ function MODUL_HABITS() {
        demana al nucli què ha passat i el nucli ens ho pregunta a nosaltres. */
     resumPeriode: function (desde, fins) { return Habits.resumPeriode(desde, fins); },
 
+    /**
+     * Dels hàbits, dues coses i cap més: un comptador que puja i una ratxa
+     * llarga que s'acaba de trencar. La resta —«et falten quatre hàbits»— ja
+     * surt a la pàgina del dia i no cal que soni el telèfon.
+     */
+    senyals: function () { return Habits.senyals(); },
+
     contextIA: function () {
       var d = Habits.dia(Utils.avui());
       if (!d.habits.length) return 'Hàbits: cap definit.';
@@ -994,7 +1001,59 @@ var Habits = (function () {
     };
   }
 
+  /**
+   * DUES COSES I CAP MÉS.
+   *
+   * Un comptador que puja de debò —no un mal dia— i una ratxa llarga que
+   * s'acaba de trencar. La resta («et falten quatre hàbits») ja surt a la
+   * pàgina del dia i no cal que soni el telèfon per allò.
+   */
+  function senyals() {
+    var avui = Utils.avui();
+    var d = dia(avui);
+    var out = [];
+
+    d.habits.forEach(function (h) {
+      /* UN COMPTADOR QUE PUJA. Es demana una diferència d'un al dia i no de
+         mig: amb mig, salta cada setmana i deixa de voler dir res. */
+      if (h.esComptador) {
+        if (h.canvi7 === null || h.canvi7 === undefined || h.canvi7 < 1) return;
+        out.push({
+          id: 'compt_puja:' + h.id,
+          titol: h.nom,
+          text: 'Aquesta setmana vas ' + (Math.round(h.canvi7 * 10) / 10) +
+                ' al dia per sobre de la passada' +
+                (h.mitjana7 === null || h.mitjana7 === undefined ? '' : ' (' + h.mitjana7 + ' de mitjana)') +
+                '. No cal fer res: només que ho sàpigues.',
+          urgencia: 2,
+          accio: 'habits'
+        });
+        return;
+      }
+
+      /* UNA RATXA LLARGA TRENCADA. Set dies és on una ratxa comença a ser
+         teva; per sota, trencar-la no és cap notícia. */
+      if (h.ratxa !== 0 || h.ratxaMax < 7) return;
+      if (!h.exigit) return;
+      var ahir = Utils.sumaDies(avui, -1);
+      var dAhir = dia(ahir);
+      var seu = dAhir.habits.filter(function (x) { return x.id === h.id; })[0];
+      if (!seu || seu.complert || !seu.exigit) return;
+      out.push({
+        id: 'ratxa_trencada:' + h.id + ':' + ahir,
+        titol: h.nom,
+        text: 'Se t\'ha trencat una ratxa de ' + h.ratxaMax + ' dies. Avui es torna a començar, ' +
+              'que és l\'única cosa que es pot fer amb una ratxa trencada.',
+        urgencia: 1,
+        accio: 'habits'
+      });
+    });
+
+    return out;
+  }
+
   return {
+    senyals: senyals,
     definicions: definicions,
     dia: dia,
     mes: mes,

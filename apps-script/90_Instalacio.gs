@@ -97,7 +97,7 @@ function netejaFullPerDefecte_(ss) {
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
                 'triggerAgendaDelDia', 'triggerEscalfa', 'triggerEscalfaFora',
-                'triggerAvisos', 'triggerDema'];
+                'triggerAvisos', 'triggerDema', 'triggerSenyals'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -159,6 +159,11 @@ function instalaTriggers() {
      surt per 9 minuts diaris. O sigui que no és que ara ens hi arrisquem més:
      és que ara costa cinc vegades menys. Vegeu `triggerEscalfaFora`. */
   ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(15).create();
+
+  /* ELS SENYALS, cada tres hores. Prou per assabentar-te el mateix dia, poc
+     perquè no sigui un degoteig. Qui decideix si en surt cap és el pressupost
+     de dos al dia —vegeu 65_Senyals.gs—, no aquesta xifra. */
+  ScriptApp.newTrigger('triggerSenyals').timeBased().everyHours(3).create();
 
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */
