@@ -1881,10 +1881,6 @@ input[type="checkbox"] { accent-color: var(--utm); }
   font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--ink);
 }
 .caixa-cap > span { flex: 1; min-width: 0; }
-.caixa-cap b {
-  flex: none; font-family: var(--mono); font-size: .75rem; font-weight: 400;
-  color: var(--ink-suau); font-variant-numeric: tabular-nums;
-}
 /* Dins la caixa no hi ha ratlles quan les files són text: la caixa ja diu on
    comença i on acaba, i una ratlla per línia torna a fer el soroll que hem
    tret. Les tasques sí que en porten, perquè cada fila s'hi pot tocar. */
@@ -1894,12 +1890,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 /* EL «+» DE LA CAPÇALERA. Va al costat del nom de la llista perquè el que
    apuntes ha d'anar a AQUELLA llista i no a un lloc que hagis de triar després.
-   El marge negatiu és perquè un botó de 44 px no faci créixer la capçalera: el
-   que ha de fer 44 és on poses el dit, no la barra. */
+   Els marges negatius fan dues coses: que un botó de 44 px no faci créixer la
+   capçalera —el que ha de fer 44 és on poses el dit, no la barra— i que el
+   signe quedi a la dreta del tot, alineat amb la vora de la caixa, en comptes
+   de flotar-hi a dins. */
 .caixa-mes {
   flex: none; align-self: center;
-  width: 44px; height: 44px; margin: -8px -6px -8px 0; padding: 0;
-  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; margin: -8px -12px -8px 0; padding: 0 12px 0 0;
+  display: flex; align-items: center; justify-content: flex-end;
   border: 0; background: transparent; color: var(--ink-suau);
   transition: color .16s var(--entra);
 }
@@ -2203,7 +2201,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-04 21:09 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-04 21:15 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2513,7 +2511,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-04 21:09 · en curs";
+window.MARCA_JEFE = "2026-08-04 21:15 · en curs";
 </script>
 
 <script>
@@ -9348,9 +9346,12 @@ App.registraVista('escola', {
     function caixesPendents(pendents, ambAfegir) {
       return '<div class="caixes">' + agrupa(pendents).map(function (g) {
         var potAfegir = ambAfegir && d && d.pont && g.nom !== 'Sense llista';
+        /* SENSE COMPTADOR. Hi era per dir quantes en tens a cada llista, i les
+           tens totes a la vista, una sota l'altra: el número no deia res que no
+           es veiés, i a sobre empenyia el «+» cap endins i el deixava penjat
+           entremig. Ara el «+» va a la dreta del tot, que és on el busques. */
         return '<section class="caixa" data-caixa="' + esc(g.nom) + '">' +
           '<h3 class="caixa-cap"><span>' + esc(g.nom) + '</span>' +
-            '<b>' + g.coses.length + '</b>' +
             (potAfegir
               ? '<button class="caixa-mes" data-afegeix="' + esc(g.nom) + '"' +
                 ' aria-label="Apunta una tasca a ' + esc(g.nom) + '">' + ic('mes', 'ic-p') + '</button>'
@@ -9814,8 +9815,9 @@ App.registraVista('tasques', {
       return '<div class="caixes">' + d.blocs.map(function (b) {
         return '<section class="caixa" data-llista="' + esc(b.id) + '"' +
             (b.tasques.length ? '' : ' hidden') + '>' +
-          '<h3 class="caixa-cap"><span>' + esc(b.nom) + '</span>' +
-            '<b data-compte="' + esc(b.id) + '">' + b.tasques.length + '</b></h3>' +
+          /* Sense comptador, com a Escola: les tasques hi són totes a la vista
+             i el número no deia res que no es veiés. */
+          '<h3 class="caixa-cap"><span>' + esc(b.nom) + '</span></h3>' +
           '<div class="caixa-cos" data-coses="' + esc(b.id) + '">' +
             b.tasques.map(fila).join('') +
           '</div>' +

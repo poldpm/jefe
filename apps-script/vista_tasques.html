@@ -88,8 +88,9 @@ App.registraVista('tasques', {
       return '<div class="caixes">' + d.blocs.map(function (b) {
         return '<section class="caixa" data-llista="' + esc(b.id) + '"' +
             (b.tasques.length ? '' : ' hidden') + '>' +
-          '<h3 class="caixa-cap"><span>' + esc(b.nom) + '</span>' +
-            '<b data-compte="' + esc(b.id) + '">' + b.tasques.length + '</b></h3>' +
+          /* Sense comptador, com a Escola: les tasques hi són totes a la vista
+             i el número no deia res que no es veiés. */
+          '<h3 class="caixa-cap"><span>' + esc(b.nom) + '</span></h3>' +
           '<div class="caixa-cos" data-coses="' + esc(b.id) + '">' +
             b.tasques.map(fila).join('') +
           '</div>' +

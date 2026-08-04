@@ -197,9 +197,12 @@ App.registraVista('escola', {
     function caixesPendents(pendents, ambAfegir) {
       return '<div class="caixes">' + agrupa(pendents).map(function (g) {
         var potAfegir = ambAfegir && d && d.pont && g.nom !== 'Sense llista';
+        /* SENSE COMPTADOR. Hi era per dir quantes en tens a cada llista, i les
+           tens totes a la vista, una sota l'altra: el número no deia res que no
+           es veiés, i a sobre empenyia el «+» cap endins i el deixava penjat
+           entremig. Ara el «+» va a la dreta del tot, que és on el busques. */
         return '<section class="caixa" data-caixa="' + esc(g.nom) + '">' +
           '<h3 class="caixa-cap"><span>' + esc(g.nom) + '</span>' +
-            '<b>' + g.coses.length + '</b>' +
             (potAfegir
               ? '<button class="caixa-mes" data-afegeix="' + esc(g.nom) + '"' +
                 ' aria-label="Apunta una tasca a ' + esc(g.nom) + '">' + ic('mes', 'ic-p') + '</button>'
