@@ -2596,5 +2596,107 @@ console.log('\nEls automatismes: cap pot quedar fora de la llista que els neteja
       morts.length === 0, 'sobren: ' + morts.join(', '));
 }
 
+// ------------- llegir el calendari per l'API en comptes de per CalendarApp
+/* `CalendarApp.getEvents` no és una crida a l'API: és una capa que va a buscar
+   cada peça quan la demanes, i llegir cinc mesos de vuit agendes hi costava 40
+   segons —mesurat el 4 d'agost del 2026—. Amb l'API és una petició per agenda.
+   El que es prova aquí és la traducció, que és on es trenquen aquestes coses:
+   un dia de festa acaba «l'endemà a les 00:00» i sortia marcat dos dies; una
+   cita cancel·lada segueix venint a la llista; i les dues formes —l'API i
+   CalendarApp— han de tornar EXACTAMENT el mateix, perquè la pantalla no sap
+   ni ha de saber d'on ha sortit. */
+console.log('\nEl calendari, llegit per l\'API: la traducció ha de dir el mateix');
+{
+  const ctx = carregaTotElServidor();
+  const TZ = 'Europe/Madrid';
+  ctx.Config = { zonaHoraria: () => TZ, get: () => null, getNum: (k, d) => d, full: () => null };
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.avui = () => '2026-08-04';
+  ctx.Utilities.formatDate = (d, tz, f) => {
+    const p = (n) => ('0' + n).slice(-2);
+    return f === 'HH:mm' ? p(d.getHours()) + ':' + p(d.getMinutes())
+                         : d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  };
+  ctx.CacheService = { getScriptCache: () => ({ get: () => null, put() {}, remove() {} }) };
+  ctx.CalendariPont = { hiEs: () => false };
+
+  const AGENDA = { id: 'a@g.com', nom: 'El meu', color: '#123456', pont: false, mostra: true };
+  ctx.Dades = {
+    llegeix: () => [{ id: AGENDA.id, nom: AGENDA.nom, color: AGENDA.color,
+                      mostra: 'SI', principal: 'SI', meu: 'SI', pont: 'NO', ordre: 1 }],
+    un: () => null, perId: () => null, insereix: (f, x) => x, actualitza: () => null
+  };
+
+  /* El que tornaria l'API de debò, amb els casos que fan mal. */
+  const ITEMS = [
+    { id: 'e1', summary: 'Reunió de cicle', status: 'confirmed',
+      start: { dateTime: '2026-08-04T17:00:00+02:00' },
+      end:   { dateTime: '2026-08-04T18:30:00+02:00' }, location: 'Sala 2' },
+    { id: 'e2', summary: 'Festa major', status: 'confirmed',
+      start: { date: '2026-08-05' }, end: { date: '2026-08-06' } },   // UN dia
+    { id: 'e3', summary: 'Vacances', status: 'confirmed',
+      start: { date: '2026-08-10' }, end: { date: '2026-08-15' } },   // cinc dies
+    { id: 'e4', summary: 'Anul·lada', status: 'cancelled',
+      start: { dateTime: '2026-08-04T09:00:00+02:00' },
+      end:   { dateTime: '2026-08-04T10:00:00+02:00' } }
+  ];
+
+  let peticions = 0;
+  ctx.Calendar = { Events: { list: (id, p) => {
+    peticions++;
+    if (p.pageToken === 'seg') return { items: [] };
+    return { items: ITEMS, nextPageToken: peticions === 1 ? 'seg' : null };
+  } } };
+  ctx.CalendarApp = { getCalendarById: () => { throw new Error('no s\'ha de tocar'); } };
+
+  const l = ctx.Calendari.rang('2026-08-01', '2026-08-31');
+  const per = {};
+  l.forEach((e) => { per[e.id] = e; });
+
+  cal('una sola petició per agenda, no una per esdeveniment', peticions <= 2, String(peticions));
+  cal('la cita amb hora surt amb la seva hora i la seva durada',
+      per.e1 && per.e1.hora === '17:00' && per.e1.horaFi === '18:30' && per.e1.minuts === 90,
+      JSON.stringify(per.e1));
+  cal('i amb el lloc i el color de la seva agenda',
+      per.e1.lloc === 'Sala 2' && per.e1.color === '#123456');
+
+  /* El final d'un dia de festa és EXCLUSIU a l'API: si no es resta un dia, la
+     festa del 5 surt marcada també el 6. */
+  cal('un dia de festa ocupa el seu dia i no l\'endemà',
+      per.e2 && per.e2.totElDia && per.e2.data === '2026-08-05' && per.e2.dataFi === '2026-08-05',
+      JSON.stringify(per.e2));
+  cal('i unes vacances ocupen del primer a l\'últim, no un dia de més',
+      per.e3 && per.e3.data === '2026-08-10' && per.e3.dataFi === '2026-08-14',
+      JSON.stringify(per.e3));
+  cal('una cita anul·lada no es pinta', !per.e4);
+
+  /* I ara la mateixa lectura per CalendarApp: han de sortir iguals. Si un dia
+     l'API falla, la pantalla no pot canviar de cara. */
+  const cita = (ini, fi, totElDia, titol) => ({
+    getId: () => titol, getTitle: () => titol, getLocation: () => '',
+    getDescription: () => '', getColor: () => '',
+    getStartTime: () => ini, getEndTime: () => fi, isAllDayEvent: () => totElDia
+  });
+  ctx.Calendar = undefined;      // com si el servei no hi fos
+  ctx.CalendarApp = { getCalendarById: () => ({ getEvents: () => [
+    cita(new Date(2026, 7, 4, 17, 0), new Date(2026, 7, 4, 18, 30), false, 'Reunió de cicle'),
+    cita(new Date(2026, 7, 5, 0, 0), new Date(2026, 7, 6, 0, 0), true, 'Festa major')
+  ] }) };
+  const vell = ctx.Calendari.rang('2026-08-01', '2026-08-31');
+  const perV = {};
+  vell.forEach((e) => { perV[e.titol] = e; });
+
+  cal('sense el servei avançat, segueix llegint com sempre', vell.length === 2);
+  cal('i el dia de festa cau al mateix dia per tots dos camins',
+      perV['Festa major'].data === per.e2.data && perV['Festa major'].dataFi === per.e2.dataFi,
+      JSON.stringify([perV['Festa major'].data, perV['Festa major'].dataFi]));
+  cal('i la cita amb hora, també',
+      perV['Reunió de cicle'].hora === per.e1.hora &&
+      perV['Reunió de cicle'].minuts === per.e1.minuts);
+
+  const man = fs.readFileSync('apps-script/appsscript.json', 'utf8');
+  cal('i el servei de Calendar està declarat al manifest', /"serviceId": "calendar"/.test(man));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

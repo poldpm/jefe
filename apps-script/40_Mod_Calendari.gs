@@ -468,38 +468,9 @@ var Calendari = (function () {
     }
 
     mirats.filter(function (c) { return !c.pont; }).forEach(function (c) {
-      var cal;
-      try { cal = CalendarApp.getCalendarById(c.id); } catch (e) { return; }
-      if (!cal) return;
-
-      var events;
-      try { events = cal.getEvents(inici, final); } catch (e) { return; }
-
-      events.forEach(function (e) {
-        var ini = e.getStartTime(), fi = e.getEndTime();
-        var totElDia = e.isAllDayEvent();
-        /* Un esdeveniment de tot el dia acaba a les 00:00 de l'endemà. Restar
-           un minut el deixa al dia que li toca; sense això, un dia de festa
-           surt marcat també al dia següent. */
-        var dataFi = Utilities.formatDate(new Date(fi.getTime() - (totElDia ? 60000 : 0)),
-                                          tz, 'yyyy-MM-dd');
-        out.push({
-          id: e.getId(),
-          calendari: c.id,
-          calendariNom: c.nom,
-          color: e.getColor() || c.color || '',
-          titol: e.getTitle() || '(sense títol)',
-          lloc: e.getLocation() || '',
-          nota: Utils.talla(e.getDescription() || '', 300),
-          data: Utilities.formatDate(ini, tz, 'yyyy-MM-dd'),
-          dataFi: dataFi,
-          totElDia: totElDia,
-          hora: totElDia ? '' : hhmm_(ini, tz),
-          horaFi: totElDia ? '' : hhmm_(fi, tz),
-          passat: fi < ara,
-          minuts: totElDia ? 0 : Math.round((fi - ini) / 60000)
-        });
-      });
+      var events = perLApi_(c, inici, final);
+      if (events === null) events = perCalendarApp_(c, inici, final);
+      events.forEach(function (e) { out.push(e); });
     });
 
     out.sort(function (a, b) {
@@ -509,6 +480,141 @@ var Calendari = (function () {
     });
 
     return out;
+  }
+
+  /**
+   * ELS ESDEVENIMENTS D'UNA AGENDA, PER L'API DE CALENDAR.
+   *
+   * PER QUÈ NO `CalendarApp`. Perquè `CalendarApp.getEvents` no és una crida a
+   * l'API: és una capa que va a buscar cada peça quan la demanes, i llegir cinc
+   * mesos de vuit agendes hi costava QUARANTA SEGONS —mesurat el 4 d'agost del
+   * 2026 amb `triggerEscalfaFora`—. Amb l'API és una sola petició per agenda
+   * amb tot el que hi ha a dins.
+   *
+   * `singleEvents` desplega les repeticions —el que et fa falta és «cada dimarts
+   * a les nou hi ha classe», no la regla de repetició— i `pageToken` recull la
+   * resta quan n'hi ha més de dues mil cinc-centes.
+   *
+   * Torna `null` si el servei no hi és o si peta, i llavors qui crida se'n va a
+   * `CalendarApp` com sempre: el dia que això s'estreni, val més anar lent que
+   * quedar-se sense agenda.
+   */
+  function perLApi_(c, inici, final) {
+    if (typeof Calendar === 'undefined' || !Calendar || !Calendar.Events) return null;
+
+    var tz = Config.zonaHoraria();
+    var ara = new Date();
+    var out = [];
+    var pagina = null;
+
+    try {
+      do {
+        var r = Calendar.Events.list(c.id, {
+          timeMin: inici.toISOString(),
+          timeMax: final.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+          showDeleted: false,
+          maxResults: 2500,
+          pageToken: pagina || undefined,
+          /* Només el que es pinta. Demanar-ho tot és transportar descripcions
+             senceres, convidats i adjunts de cinc mesos per no ensenyar-los. */
+          fields: 'nextPageToken,items(id,summary,location,description,status,' +
+                  'start(date,dateTime),end(date,dateTime),colorId)'
+        });
+        (r.items || []).forEach(function (e) {
+          var pintat = deLApi_(e, c, tz, ara);
+          if (pintat) out.push(pintat);
+        });
+        pagina = r.nextPageToken;
+      } while (pagina);
+    } catch (err) {
+      Log.avis('calendari.api', 'L\'API no ha pogut llegir «' + c.nom + '»: ' + err.message);
+      return null;
+    }
+    return out;
+  }
+
+  /* Una peça de l'API, amb la forma que pinta la pantalla. */
+  function deLApi_(e, c, tz, ara) {
+    if (!e || e.status === 'cancelled') return null;
+
+    var totElDia = !!(e.start && e.start.date);
+    var ini, fi;
+    if (totElDia) {
+      /* Els de tot el dia venen en dies, no en hores, i el final és EXCLUSIU:
+         un dia de festa acaba «l'endemà a les 00:00». Es fa a migdia perquè cap
+         canvi d'hora no el mogui de dia. */
+      ini = novaData_(e.start.date);
+      fi = novaData_((e.end && e.end.date) || e.start.date);
+      fi.setDate(fi.getDate() - 1);
+    } else {
+      ini = new Date(e.start.dateTime);
+      fi = new Date((e.end && e.end.dateTime) || e.start.dateTime);
+    }
+    if (isNaN(ini) || isNaN(fi)) return null;
+
+    return {
+      id: e.id,
+      calendari: c.id,
+      calendariNom: c.nom,
+      color: c.color || '',
+      titol: e.summary || '(sense títol)',
+      lloc: e.location || '',
+      nota: Utils.talla(e.description || '', 300),
+      data: Utilities.formatDate(ini, tz, 'yyyy-MM-dd'),
+      dataFi: Utilities.formatDate(fi, tz, 'yyyy-MM-dd'),
+      totElDia: totElDia,
+      hora: totElDia ? '' : hhmm_(ini, tz),
+      horaFi: totElDia ? '' : hhmm_(fi, tz),
+      passat: totElDia ? (Utilities.formatDate(fi, tz, 'yyyy-MM-dd') < Utils.avui())
+                       : fi < ara,
+      minuts: totElDia ? 0 : Math.round((fi - ini) / 60000)
+    };
+  }
+
+  function novaData_(text) {
+    var p = String(text).split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0);
+  }
+
+  /* El camí de sempre. Es queda com a xarxa de seguretat mentre el servei
+     avançat no estigui engegat, i per si algun dia falla. */
+  function perCalendarApp_(c, inici, final) {
+    var tz = Config.zonaHoraria();
+    var ara = new Date();
+    var cal;
+    try { cal = CalendarApp.getCalendarById(c.id); } catch (e) { return []; }
+    if (!cal) return [];
+
+    var events;
+    try { events = cal.getEvents(inici, final); } catch (e) { return []; }
+
+    return events.map(function (e) {
+      var ini = e.getStartTime(), fi = e.getEndTime();
+      var totElDia = e.isAllDayEvent();
+      /* Un esdeveniment de tot el dia acaba a les 00:00 de l'endemà. Restar un
+         minut el deixa al dia que li toca; sense això, un dia de festa surt
+         marcat també al dia següent. */
+      var dataFi = Utilities.formatDate(new Date(fi.getTime() - (totElDia ? 60000 : 0)),
+                                        tz, 'yyyy-MM-dd');
+      return {
+        id: e.getId(),
+        calendari: c.id,
+        calendariNom: c.nom,
+        color: e.getColor() || c.color || '',
+        titol: e.getTitle() || '(sense títol)',
+        lloc: e.getLocation() || '',
+        nota: Utils.talla(e.getDescription() || '', 300),
+        data: Utilities.formatDate(ini, tz, 'yyyy-MM-dd'),
+        dataFi: dataFi,
+        totElDia: totElDia,
+        hora: totElDia ? '' : hhmm_(ini, tz),
+        horaFi: totElDia ? '' : hhmm_(fi, tz),
+        passat: fi < ara,
+        minuts: totElDia ? 0 : Math.round((fi - ini) / 60000)
+      };
+    });
   }
 
   /* La memòria cau d'Apps Script no admet més de 100 kB per clau. Si la
