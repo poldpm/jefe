@@ -1892,6 +1892,44 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .caixa-coses li { padding: var(--e1) var(--e3); font-size: .875rem; line-height: 1.45; }
 .caixa-cos { padding: 0 var(--e3); }
 
+/* EL «+» DE LA CAPÇALERA. Va al costat del nom de la llista perquè el que
+   apuntes ha d'anar a AQUELLA llista i no a un lloc que hagis de triar després.
+   El marge negatiu és perquè un botó de 44 px no faci créixer la capçalera: el
+   que ha de fer 44 és on poses el dit, no la barra. */
+.caixa-mes {
+  flex: none; align-self: center;
+  width: 44px; height: 44px; margin: -8px -6px -8px 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra);
+}
+.caixa-mes .ic { width: 15px; height: 15px; }
+.caixa-mes:active { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .caixa-mes:hover { color: var(--utm); }
+}
+
+/* El camp d'apuntar, dins la caixa: hi escrius i prems Enter. Es queda obert
+   després d'apuntar-ne una, que és com s'apunten tres coses seguides. */
+.caixa-nova { padding: 0 var(--e3) var(--e2); }
+.caixa-nova input {
+  width: 100%; min-height: 40px; padding: 0 var(--e2);
+  font: inherit; font-size: .875rem;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--utm); border-radius: var(--r);
+}
+.caixa-nova[data-esperant="1"] input { opacity: .6; }
+
+/* Acabada d'apuntar i encara no ha tornat del compte de l'escola. */
+.caixa-coses li[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
+.caixa-coses li[data-esperant="1"]::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 40%;
+  background: var(--ink-suau); animation: esperant-va 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caixa-coses li[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
+}
+
 /* Dues columnes tan bon punt hi caben: amb sis llistes, una sola columna
    t'obliga a baixar per veure què tens. */
 @media (min-width: 560px) {
@@ -2165,7 +2203,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-04 20:42 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-04 21:04 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2475,7 +2513,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-04 20:42 · en curs";
+window.MARCA_JEFE = "2026-08-04 21:04 · en curs";
 </script>
 
 <script>
@@ -9147,6 +9185,8 @@ App.registraVista('escola', {
 
     var d = null;
     var veureVistos = false;
+    var viu = null;            // els pendents d'ara mateix, quan l'escola contesti
+    var demanantViu = false;
 
     var ENLLACOS = [
       ['VedrunApp',      'escola', 'https://poldpm.github.io/VedrunApp/#home'],
@@ -9294,16 +9334,61 @@ App.registraVista('escola', {
       return ordre.map(function (k) { return { nom: k, coses: per[k] }; });
     }
 
-    function caixesPendents(pendents) {
+    /**
+     * Les caixes.
+     *
+     * `ambAfegir` només és cert a la pantalla: al full d'una resposta, el «+»
+     * no hi va —allà mires el que has demanat, no hi treballes— i a més aquell
+     * full es tanca i s'emportaria el camp obert.
+     *
+     * El «+» va al lloc del comptador perquè és on hi ha el nom de la llista, i
+     * el comptador es queda al costat: saber quantes en tens no sobra pel fet
+     * de poder-ne afegir una.
+     */
+    function caixesPendents(pendents, ambAfegir) {
       return '<div class="caixes">' + agrupa(pendents).map(function (g) {
-        return '<section class="caixa">' +
+        var potAfegir = ambAfegir && d && d.pont && g.nom !== 'Sense llista';
+        return '<section class="caixa" data-caixa="' + esc(g.nom) + '">' +
           '<h3 class="caixa-cap"><span>' + esc(g.nom) + '</span>' +
-            '<b>' + g.coses.length + '</b></h3>' +
+            '<b>' + g.coses.length + '</b>' +
+            (potAfegir
+              ? '<button class="caixa-mes" data-afegeix="' + esc(g.nom) + '"' +
+                ' aria-label="Apunta una tasca a ' + esc(g.nom) + '">' + ic('mes', 'ic-p') + '</button>'
+              : '') +
+          '</h3>' +
           '<ul class="caixa-coses">' + g.coses.map(function (x) {
             return '<li>' + esc(x.que) + '</li>';
           }).join('') + '</ul>' +
         '</section>';
       }).join('') + '</div>';
+    }
+
+    /**
+     * EL BLOC DELS PENDENTS, que és l'únic tros d'aquesta pàgina que canvia sol.
+     *
+     * D'on surten: del resum del matí quan s'obre —és instantani i ja és al
+     * full— i de l'escola quan contesta, que triga un parell de segons però és
+     * el que hi ha ARA. Si hi apuntes una tasca a les deu, el resum de les set
+     * no la porta; per això la llista viva mana quan arriba.
+     */
+    function pendents() {
+      var llista = viu !== null ? viu : ((d.dia || {}).pendents || []);
+      if (!llista.length) {
+        return '<p class="marge">Pendents</p>' +
+          '<p class="menut">' + (viu !== null
+            ? 'Res pendent a les llistes de l\'escola.'
+            : 'El resum d\'aquest matí no en portava cap.') + '</p>';
+      }
+      return '<p class="marge">Pendents</p>' + caixesPendents(llista, true);
+    }
+
+    /* Refà NOMÉS aquest tros. Refer la pàgina sencera per una tasca et tornaria
+       a dalt de tot i et tancaria el que tinguessis obert. */
+    function refesPendents() {
+      var caixa = arrel.querySelector('#esc-pendents');
+      if (!caixa) return;
+      caixa.innerHTML = pendents();
+      lligaPendents();
     }
 
     // ----------------------------------------------------------------- pinta
@@ -9349,12 +9434,7 @@ App.registraVista('escola', {
             '</section>' +
 
             // ---- 2. PENDENTS
-            (dia.pendents.length
-              ? '<section class="secc">' +
-                  '<p class="marge">Pendents</p>' +
-                  caixesPendents(dia.pendents) +
-                '</section>'
-              : '') +
+            '<section class="secc" id="esc-pendents">' + pendents() + '</section>' +
 
           '</div>' +
 
@@ -9405,10 +9485,101 @@ App.registraVista('escola', {
       lliga();
     }
 
+    // --------------------------------------------------- apuntar a una llista
+    /* EL CAMP S'OBRE DINS LA CAIXA, com al Google Tasks: hi escrius i prems
+       Enter. Un full a part per apuntar quatre paraules seria fer-t'ho pensar
+       dues vegades, i el que no s'apunta es perd.
+       Enter apunta i el camp es queda obert, buit, per si en tens una altra;
+       Escape el tanca. */
+    function obreCamp(caixa, llista) {
+      var vell = caixa.querySelector('.caixa-nova');
+      if (vell) { vell.querySelector('input').focus(); return; }
+
+      var fila = document.createElement('div');
+      fila.className = 'caixa-nova';
+      fila.innerHTML = '<input type="text" placeholder="Què s\'ha de fer?" autocomplete="off"' +
+                       ' aria-label="Nova tasca a ' + esc(llista) + '">';
+      caixa.appendChild(fila);
+
+      var camp = fila.querySelector('input');
+      camp.focus();
+
+      camp.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { ev.preventDefault(); fila.remove(); return; }
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+
+        var text = camp.value.trim();
+        if (!text) { fila.remove(); return; }
+
+        camp.value = '';
+        camp.disabled = true;
+        fila.dataset.esperant = '1';
+
+        /* Es pinta a la caixa abans de sortir del telèfon: el viatge fins al
+           compte de l'escola i tornada són un parell de segons, i mirar-los és
+           el que fa que deixis d'apuntar coses. Si falla, es desfà i el text et
+           torna al camp. */
+        var provisional = document.createElement('li');
+        provisional.textContent = text;
+        provisional.dataset.esperant = '1';
+        caixa.querySelector('.caixa-coses').appendChild(provisional);
+
+        crida('escola', 'creaTasca', { llista: llista, titol: text })
+          .then(function (r) {
+            /* Si l'escola ha apuntat la tasca però no ha pogut tornar la
+               llista al dia, la posem nosaltres: el que no pot passar és que
+               la tasca hi sigui i la caixa no ho digui. */
+            if (r && r.pendents) viu = r.pendents;
+            else (viu = viu || []).push({ llista: llista, que: text });
+            camp.disabled = false;
+            refesPendents();
+            var altre = arrel.querySelector('[data-caixa="' + llista.replace(/"/g, '') + '"]');
+            if (altre) obreCamp(altre, llista);
+            App.brindis('Apuntada a ' + llista);
+          })
+          .catch(function (err) {
+            provisional.remove();
+            fila.removeAttribute('data-esperant');
+            camp.disabled = false; camp.value = text; camp.focus();
+            App.brindis(err.message, 'error');
+          });
+      });
+    }
+
+    function lligaPendents() {
+      arrel.querySelectorAll('[data-afegeix]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          obreCamp(b.closest('.caixa'), b.dataset.afegeix);
+        });
+      });
+    }
+
+    /* Els pendents d'ara mateix, demanats en segon pla just després de pintar.
+       No es fa abans perquè la pàgina s'ha de veure de seguida: el resum del
+       matí ja és al full i no costa cap viatge. */
+    function demanaViu() {
+      if (!d || !d.pont || demanantViu) return;
+      demanantViu = true;
+      crida('escola', 'pendentsViu', {})
+        .then(function (r) {
+          demanantViu = false;
+          viu = (r && r.pendents) || [];
+          if (arrel.isConnected && !arrel.querySelector('.caixa-nova')) refesPendents();
+        })
+        .catch(function () {
+          /* Si l'escola no contesta, no es diu res: el que hi ha pintat és el
+             resum del matí, que és informació bona encara que sigui d'abans. */
+          demanantViu = false;
+        });
+    }
+
     // ------------------------------------------------------------------ lliga
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
       if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      lligaPendents();
 
       var ov = arrel.querySelector('[data-vistos]');
       if (ov) ov.addEventListener('click', function () { veureVistos = !veureVistos; pinta(); });
@@ -9539,6 +9710,7 @@ App.registraVista('escola', {
 
       crida('escola', 'pantalla', {}).then(function (r) {
         d = r; Cau.set('escola', r); pinta();
+        demanaViu();
       }).catch(function (err) {
         if (d) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
         arrel.innerHTML = Comp.error(err, true);

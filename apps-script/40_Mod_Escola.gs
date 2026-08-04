@@ -61,7 +61,27 @@ function MODUL_ESCOLA() {
          compte i poden trigar; per això van a part i no dins de `pantalla`. */
       comanda: function (p) { return EscolaPont.comanda(p.quina); },
       digues:  function (p) { return EscolaPont.digues(p.text); },
-      prova:   function ()  { return EscolaPont.prova(); }
+      prova:   function ()  { return EscolaPont.prova(); },
+
+      /* ELS PENDENTS D'ARA MATEIX, no els de les set del matí.
+         La pantalla els pinta del resum perquè és instantani i ja és al full,
+         però el resum és una foto: si hi apuntes una cosa a les deu, allà no hi
+         és. Això va a preguntar-ho a l'escola. */
+      pendentsViu: function () { return { pendents: Escola.pendentsDelPont() }; },
+
+      /* APUNTAR A UNA LLISTA DE L'ESCOLA. Torna els pendents d'ara mateix,
+         perquè la caixa s'ha de veure com queda i no com estava. */
+      creaTasca: function (p) {
+        var r = EscolaPont.creaTasca(p.llista, p.titol);
+        /* La tasca JA ESTÀ CREADA. Si el segon viatge —el de tornar la llista
+           al dia— falla, això no pot dir que hagi fallat: diria que no s'ha
+           apuntat una cosa que sí que s'ha apuntat, i la tornaries a apuntar.
+           Es torna sense llista i la pantalla se'n surt igual. */
+        var ara = null;
+        try { ara = Escola.pendentsDelPont(); }
+        catch (err) { Log.avis('escola', 'tasca creada, però no puc rellegir els pendents', err.message); }
+        return { tasca: r, pendents: ara };
+      }
     },
 
     resumInici: function () {
@@ -324,6 +344,37 @@ var Escola = (function () {
   }
 
   /** El resum d'un dia, si n'hi ha. */
+  /**
+   * ELS PENDENTS D'ARA MATEIX, preguntats a l'escola.
+   *
+   * La pantalla els pinta del resum del matí perquè és instantani i ja és al
+   * full. Però el resum és una FOTO de les set: una tasca apuntada a les deu
+   * —per l'automatisme o per tu des d'aquí— no hi surt fins l'endemà. Això va
+   * a buscar la llista de debò, que és la mateixa que et donaria el botó
+   * «Pendents» de baix de tot.
+   *
+   * Costa un viatge al compte de l'escola, i per això no és el que pinta la
+   * pantalla en obrir-se: es demana després, i la caixa es refà quan arriba.
+   */
+  function pendentsDelPont() {
+    var r = EscolaPont.comanda('pendents');
+    return pendentsDeText_(String(r && r.text || ''));
+  }
+
+  /* «• [Tutoria] Corregir els controls» → { llista: 'Tutoria', que: '...' }.
+     Les línies que no duguin claudàtor no són tasques d'una llista —són
+     capçaleres o comptadors— i es queden fora. */
+  function pendentsDeText_(text) {
+    var out = [];
+    String(text || '').split('\n').forEach(function (l) {
+      var net = l.replace(/\*/g, '').replace(/^[·•\-]\s*/, '').trim();
+      if (!net) return;
+      var m = net.match(/^\[([^\]]+)\]\s*(.+)$/);
+      if (m) out.push({ llista: m[1].trim(), que: m[2].trim() });
+    });
+    return out;
+  }
+
   function resumDe_(data) {
     var f = tots();
     for (var i = 0; i < f.length; i++) {
@@ -429,7 +480,8 @@ var Escola = (function () {
 
   return {
     rebre: rebre, elDia: elDia, desglossa: desglossa_, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
-    pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA
+    pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA,
+    pendentsDelPont: pendentsDelPont, pendentsDeText: pendentsDeText_
   };
 })();
 
@@ -516,6 +568,25 @@ var EscolaPont = (function () {
         throw new Error('Comanda desconeguda: «' + quina + '».');
       }
       return demana_('comanda', { quina: String(quina) });
+    },
+
+    /* LES LLISTES DE TASQUES DEL COMPTE DE L'ESCOLA.
+       No són les teves: les teves són al compte personal i les ensenya el mòdul
+       de tasques. Aquestes viuen allà i aquest compte no les pot ni mirar, o
+       sigui que qui les diu és el pont. */
+    llistes: function () { return demana_('llistes', {}); },
+
+    /* APUNTAR UNA TASCA A UNA LLISTA DE L'ESCOLA.
+       La llista es diu pel nom —el mateix que surt a la caixa de la pantalla—
+       i qui el resol és l'altra banda, que és qui les té. Si no n'hi ha cap que
+       es digui així, no se'n crea cap de nova: es diu i prou. */
+    creaTasca: function (llista, titol, extra) {
+      var t = String(titol || '').trim();
+      if (!t) throw new Error('No has dit què vols apuntar.');
+      var d = { llista: String(llista || ''), titol: t };
+      if (extra && extra.venc_el) d.venc_el = extra.venc_el;
+      if (extra && extra.notes) d.notes = extra.notes;
+      return demana_('creaTasca', d);
     },
 
     /* El text natural. JEFE ja transcriu la veu; el que viatja és text, no

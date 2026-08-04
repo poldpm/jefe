@@ -1864,6 +1864,44 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .caixa-coses li { padding: var(--e1) var(--e3); font-size: .875rem; line-height: 1.45; }
 .caixa-cos { padding: 0 var(--e3); }
 
+/* EL «+» DE LA CAPÇALERA. Va al costat del nom de la llista perquè el que
+   apuntes ha d'anar a AQUELLA llista i no a un lloc que hagis de triar després.
+   El marge negatiu és perquè un botó de 44 px no faci créixer la capçalera: el
+   que ha de fer 44 és on poses el dit, no la barra. */
+.caixa-mes {
+  flex: none; align-self: center;
+  width: 44px; height: 44px; margin: -8px -6px -8px 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra);
+}
+.caixa-mes .ic { width: 15px; height: 15px; }
+.caixa-mes:active { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .caixa-mes:hover { color: var(--utm); }
+}
+
+/* El camp d'apuntar, dins la caixa: hi escrius i prems Enter. Es queda obert
+   després d'apuntar-ne una, que és com s'apunten tres coses seguides. */
+.caixa-nova { padding: 0 var(--e3) var(--e2); }
+.caixa-nova input {
+  width: 100%; min-height: 40px; padding: 0 var(--e2);
+  font: inherit; font-size: .875rem;
+  background: var(--paper); color: var(--ink);
+  border: 1px solid var(--utm); border-radius: var(--r);
+}
+.caixa-nova[data-esperant="1"] input { opacity: .6; }
+
+/* Acabada d'apuntar i encara no ha tornat del compte de l'escola. */
+.caixa-coses li[data-esperant="1"] { position: relative; opacity: .55; overflow: hidden; }
+.caixa-coses li[data-esperant="1"]::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 40%;
+  background: var(--ink-suau); animation: esperant-va 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caixa-coses li[data-esperant="1"]::after { animation: none; width: 100%; opacity: .4; }
+}
+
 /* Dues columnes tan bon punt hi caben: amb sis llistes, una sola columna
    t'obliga a baixar per veure què tens. */
 @media (min-width: 560px) {

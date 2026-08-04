@@ -69,6 +69,7 @@ const MOCK = `
   var INICI       = ${j(D.nucliInici())};
   var SEGUIMENT   = ${j(D.segPantalla())};
   var ESCOLA      = ${j(D.escPantalla())};
+  var ESC_VIU     = ${j(D.escPantalla().dia.pendents.filter((x) => x.llista))};
   var DIA_BASE    = ${j(D.elDia({}))};
   var DIA_PAGINA  = function (p) {
     var d = copia(DIA_BASE);
@@ -163,6 +164,22 @@ const MOCK = `
           '.\\n\\nAqui no hi ha cap escola al darrere.' };
       }
       if (accio === 'digues') return { text: 'Fet (mirall).' };
+
+      /* Els pendents d'ara mateix i apuntar-ne un de nou. Al mirall no hi ha
+         cap escola al darrere, o sigui que la llista viva es guarda aqui i
+         creix quan hi apuntes: si no, no es pot provar que la caixa es refaci.
+         Es triga a posta mig segon: al mòbil, això és un viatge a un altre
+         compte de Google i s'ha de veure què passa mentrestant. */
+      if (accio === 'pendentsViu') return { pendents: copia(ESC_VIU) };
+
+      if (accio === 'creaTasca') {
+        var quina = String(p.llista || '');
+        if (!ESC_VIU.some(function (x) { return x.llista === quina; })) {
+          throw new Error('No tens cap llista que es digui «' + quina + '».');
+        }
+        ESC_VIU.push({ llista: quina, que: String(p.titol || '') });
+        return { tasca: { titol: p.titol, llista: quina }, pendents: copia(ESC_VIU) };
+      }
     }
 
     if (modul === 'seguiment') {

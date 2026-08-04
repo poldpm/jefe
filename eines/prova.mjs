@@ -2235,7 +2235,9 @@ console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor 
      plana, la llista separada del servidor no serveix de res. */
   const vista = fs.readFileSync('apps-script/vista_escola.html', 'utf8');
   cal('la pantalla pinta caixes per llista, no una tirallonga',
-      vista.indexOf('caixesPendents(dia.pendents)') !== -1);
+      vista.indexOf('caixesPendents(llista, true)') !== -1);
+  cal('i el «+» d\'apuntar només surt si hi ha pont amb l\'escola',
+      /potAfegir = ambAfegir && d && d\.pont/.test(vista));
   cal('i la resposta de la comanda «Pendents» es capsa igual',
       vista.indexOf('trossos.push(caixesPendents(cua))') !== -1);
 
