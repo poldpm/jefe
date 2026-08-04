@@ -74,16 +74,18 @@ function MODUL_CALENDARI() {
       treu:       function (p) { return Calendari.treu(p.id, p.calendari); }
     },
 
-    resumInici: function () {
-      var d = Calendari.dia(Utils.avui());
-      var queden = d.esdeveniments.filter(function (e) { return !e.passat; });
-      return {
-        etiqueta: queden.length ? 'El següent' : 'Res al calendari',
-        valor: queden.length ? (queden[0].totElDia ? queden[0].titol : queden[0].hora) : '—',
-        urgent: false,
-        accio: 'calendari'
-      };
-    },
+    /* LA TARGETA D'INICI NO POT COSTAR SIS SEGONS I MIG.
+       És una línia —«el següent: 12:30»— i era el que feia que obrir l'app
+       trigués entre 8 i 16 segons: si la finestra no estava desada, la muntava
+       allà mateix, i muntar-la vol dir tres mesos de totes les agendes més una
+       volta a l'script de l'escola.
+       Ara no construeix mai res: agafa el que hi ha desat i, si no hi ha res,
+       torna l'última targeta que es va poder fer. Qui la refà és el trigger
+       d'escalfar, cada quart d'hora i sense que tu esperis. */
+    resumInici: function () { return Calendari.targeta(); },
+
+    /** El que es fa en segon pla perquè les teves peticions no ho paguin. */
+    escalfa: function () { return Calendari.escalfa(); },
 
     elDia: function (data) {
       var d = Calendari.dia(data);
@@ -202,7 +204,18 @@ function MODUL_CALENDARI() {
 var Calendari = (function () {
 
   var CAU = 'cal_';           // prefix de la memòria cau dels mesos
-  var VIDA_CAU = 180;         // 3 minuts: prou per navegar, poc per mentir
+
+  /* QUANT DURA LA FINESTRA DESADA, i per què ja no són tres minuts.
+     Llegir-la costa 6,5 segons —mesurat: tres mesos per totes les agendes més
+     una volta sencera a l'script de l'escola—. Amb tres minuts, cada obertura
+     de l'app en pagava una de nova, i per això obrir JEFE trigava entre 8 i 16
+     segons. Ara dura un quart d'hora i qui la refà és un trigger cada deu
+     minuts, en segon pla: quan tu obres, ja hi és.
+     No menteix més que abans: el que escrius des d'aquí la tomba tota sola
+     —vegeu `buidaCau`—, i el que canviïs des del mòbil hi entra a la següent
+     passada, com passava abans amb tres minuts. */
+  var VIDA_CAU = 1500;        // 25 minuts; el trigger la refà cada 15
+  var VIDA_TARGETA = 21600;   // la targeta d'inici, 6 h: val més vella que cap
 
   // ------------------------------------------------------- els teus calendaris
 
@@ -390,38 +403,41 @@ var Calendari = (function () {
    * de tornar a preguntar-ho tot cada cop.
    */
   function rang(desde, fins) {
-    var tz = Config.zonaHoraria();
-
-    var cau = null;
-    try { cau = CacheService.getScriptCache(); } catch (e) {}
-
     /* UNA SOLA FINESTRA DESADA, I AMPLA.
        Cada resposta a una pregunta demanava el seu tros exacte —avui, demà,
        aquest mes— i com que la clau era el tros, cap d'elles servia per a la
        següent: tres preguntes seguides sobre el mateix dia eren tres voltes
        senceres per tots els calendaris i pel pont de l'escola.
-       Ara es llegeix sempre com a mínim un mes de marge a banda i banda i es
-       desa la finestra sencera. Qualsevol tros que hi càpiga a dins ja no
-       torna a preguntar res, i el que costa de més és transport, no viatges. */
+       Ara es llegeix sempre amb un mes de marge a banda i banda i es desa la
+       finestra sencera. Qualsevol tros que hi càpiga a dins ja no torna a
+       preguntar res, i el que costa de més és transport, no viatges. */
     var volDesde = desde, volFins = fins;      // el que ha demanat qui crida
     var talla = function (l) {
       return l.filter(function (e) { return e.dataFi >= volDesde && e.data <= volFins; });
     };
 
-    var clau = CAU + versioCau_() + '_finestra';
-    if (cau) {
-      var desat = cau.get(clau);
-      if (desat) {
-        try {
-          var f = JSON.parse(desat);
-          if (f.desde <= volDesde && f.fins >= volFins) return talla(f.events);
-        } catch (e) {}
-      }
-      // El que es demana surt de la finestra: se n'agafa una de nova, amb marge.
-      desde = mesAmunt_(desde, -1);
-      fins = mesAmunt_(fins, 1);
-    }
+    var f = finestraDesada_();
+    if (f && f.desde <= volDesde && f.fins >= volFins) return talla(f.events);
 
+    // El que es demana surt de la finestra: se n'agafa una de nova, amb marge.
+    desde = mesAmunt_(desde, -1);
+    fins = mesAmunt_(fins, 1);
+
+    var out = llegeix_(desde, fins);
+    desaFinestra_(desde, fins, out);
+    return talla(out);
+  }
+
+  /**
+   * LLEGIR DE GOOGLE, sense mirar ni tocar el que hi ha desat.
+   *
+   * Va a part perquè hi ha dos qui la criden i volen coses diferents: `rang`
+   * només hi ve quan el que li demanen no és a la finestra, i `escalfa` hi ve
+   * SEMPRE —si mirés el que hi ha desat, no refaria mai res i la finestra
+   * caducaria a les mans de qui obrís l'app.
+   */
+  function llegeix_(desde, fins) {
+    var tz = Config.zonaHoraria();
     var inici = Utils.aData(desde);
     var final = Utils.aData(fins);
     if (!inici || !final) throw new Error('Rang de dates no vàlid.');
@@ -492,17 +508,19 @@ var Calendari = (function () {
       return String(a.hora).localeCompare(String(b.hora));
     });
 
-    /* La memòria cau d'Apps Script no admet més de 100 kB per clau. Si la
-       finestra no hi cap, es deixa de desar i prou: val més tornar a llegir
-       que petar. Es mira abans d'escriure perquè `put` no avisa de res. */
-    if (cau) {
-      try {
-        var paquet = JSON.stringify({ desde: desde, fins: fins, events: out });
-        if (paquet.length < 95000) cau.put(clau, paquet, VIDA_CAU);
-      } catch (e) {}
-    }
-    // Es llegeix ample, però es torna només el que t'han demanat.
-    return talla(out);
+    return out;
+  }
+
+  /* La memòria cau d'Apps Script no admet més de 100 kB per clau. Si la
+     finestra no hi cap, es deixa de desar i prou: val més tornar a llegir que
+     petar. Es mira abans d'escriure perquè `put` no avisa de res. */
+  function desaFinestra_(desde, fins, events) {
+    try {
+      var paquet = JSON.stringify({ desde: desde, fins: fins, events: events });
+      if (paquet.length < 95000) {
+        CacheService.getScriptCache().put(CAU + versioCau_() + '_finestra', paquet, VIDA_CAU);
+      }
+    } catch (e) {}
   }
 
   /** El mateix dia, n mesos amunt o avall. */
@@ -531,6 +549,81 @@ var Calendari = (function () {
     data = Utils.esDataValida(data) ? data : Utils.avui();
     var idx = perDies_(rang(data, data));
     return { data: data, esAvui: data === Utils.avui(), esdeveniments: idx[data] || [] };
+  }
+
+  // ------------------------------------------ la targeta d'inici i l'escalfor
+
+  /* La finestra desada, o res. NO en munta cap: aquesta és tota la gràcia.
+     Qui la munta és `escalfa()`, en segon pla. */
+  function finestraDesada_() {
+    try {
+      var cau = CacheService.getScriptCache();
+      var desat = cau.get(CAU + versioCau_() + '_finestra');
+      if (!desat) return null;
+      return JSON.parse(desat);
+    } catch (e) { return null; }
+  }
+
+  function fesLaTargeta_(events, avui) {
+    var idx = perDies_(events);
+    var dAvui = idx[avui] || [];
+    var queden = dAvui.filter(function (e) { return !e.passat; });
+    return {
+      etiqueta: queden.length ? 'El següent' : 'Res al calendari',
+      valor: queden.length ? (queden[0].totElDia ? queden[0].titol : queden[0].hora) : '—',
+      urgent: false,
+      accio: 'calendari'
+    };
+  }
+
+  /**
+   * La targeta d'inici SENSE CONSTRUIR RES.
+   *
+   * Ordre: el que hi ha a la finestra desada; si no n'hi ha, l'última targeta
+   * que es va poder fer; si tampoc, una que no diu res. El que no farà mai és
+   * posar-se a llegir tres mesos d'agendes mentre tu mires la pantalla en
+   * blanc, que és el que feia.
+   */
+  function targeta() {
+    var avui = Utils.avui();
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) {}
+
+    var f = finestraDesada_();
+    if (f && f.desde <= avui && f.fins >= avui) {
+      var t = fesLaTargeta_(f.events.filter(function (e) {
+        return e.dataFi >= avui && e.data <= avui;
+      }), avui);
+      if (cau) { try { cau.put(CAU + 'targeta', JSON.stringify(t), VIDA_TARGETA); } catch (e) {} }
+      return t;
+    }
+
+    if (cau) {
+      try {
+        var vella = cau.get(CAU + 'targeta');
+        if (vella) return JSON.parse(vella);
+      } catch (e) {}
+    }
+    return { etiqueta: 'Calendari', valor: '—', urgent: false, accio: 'calendari' };
+  }
+
+  /**
+   * Muntar la finestra i deixar-la desada. Va des d'un trigger, no des d'una
+   * petició teva: aquí és on van els segons que abans pagaves tu.
+   *
+   * PREPARA EXACTAMENT EL QUE DEMANA LA PANTALLA, ni més ni menys, i això és
+   * tota la gràcia. Escalfar-ne tres mesos quan la pantalla en demana cinc no
+   * servia de res: no li encaixava, tornava a llegir-ho tot amb marge i obrir
+   * el calendari passava a costar 23 segons —mesurat—. Menys tampoc serviria,
+   * i més seria pagar cada quart d'hora per mesos que no mires.
+   */
+  function escalfa() {
+    var t0 = Date.now();
+    var f = finestraDeLaPantalla_();
+    var events = llegeix_(f.desde, f.fins);
+    desaFinestra_(f.desde, f.fins, events);
+    var t = targeta();
+    return { ms: Date.now() - t0, events: events.length, targeta: t.valor };
   }
 
   /**
@@ -627,6 +720,18 @@ var Calendari = (function () {
    * això sí que són bytes. Cinc cobreix de sobres el que es passeja d'un cop.
    */
   var VOLTANT = 2;
+
+  /* El tram exacte que demana `pantalla` per al mes d'avui. El fa servir
+     `escalfa` per preparar-lo, i per això ha de ser LA MATEIXA COMPTA que hi
+     ha a sota: si les dues fórmules es separen, la finestra deixa d'encaixar i
+     obrir el calendari torna a costar vint segons sense que ningú ho vegi. */
+  function finestraDeLaPantalla_() {
+    var quin = Utils.avui().slice(0, 7);
+    return {
+      desde: marcDelMes_(mouMes_(quin, -VOLTANT)).inici,
+      fins: marcDelMes_(mouMes_(quin, VOLTANT)).fi
+    };
+  }
 
   function pantalla(p) {
     p = p || {};
@@ -952,6 +1057,8 @@ var Calendari = (function () {
     mes: mes,
     dia: dia,
     rang: rang,
+    targeta: targeta,
+    escalfa: escalfa,
     compta: compta,
     calendaris: calendaris,
     sincronitzaCalendaris: sincronitzaCalendaris,

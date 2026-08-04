@@ -134,6 +134,11 @@ function instalaTriggers() {
      Val més una pantalla freda de tant en tant que quedar-se sense avisos. */
   ScriptApp.newTrigger('triggerEscalfa').timeBased().everyMinutes(5).create();
 
+  /* I el que es llegeix de FORA —calendari, tasques, pendents de l'escola—,
+     cada quart d'hora: costa dotze segons per passada i a cinc minuts es
+     menjaria mig pot diari d'automatismes. Vegeu `triggerEscalfaFora`. */
+  ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(15).create();
+
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */
   ScriptApp.newTrigger('triggerAgendaDelDia')
@@ -1449,6 +1454,109 @@ function preparaTasques() {
 }
 
 
+/**
+ * ON SE'N VA EL TEMPS. Cronòmetre de tot el que fa una petició.
+ *
+ * No escriu cap dada teva: només llegeix i compta. Executa-la i enganxa'm el
+ * registre sencer.
+ *
+ * El que ja sé sense executar res: una petició a l'app, encara que el servidor
+ * la rebutgi abans de fer res, triga entre 2 i 4 segons. Això és el transport
+ * d'Apps Script i no es pot arreglar amb codi nostre; el que sí que es pot és
+ * no fer-te'l esperar i no fer-ne dues on n'hi ha prou amb una. Això d'aquí
+ * mesura l'altra meitat: què hi afegim nosaltres.
+ */
+function mesuraLaLentitud() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+  function crono(nom, fn) {
+    var t0 = Date.now();
+    var r = null, err = null;
+    try { r = fn(); } catch (e) { err = e.message; }
+    var ms = Date.now() - t0;
+    a('  ' + (String(ms) + ' ms').padStart(9) + '   ' + nom + (err ? '   ✗ ' + err : ''));
+    return { ms: ms, r: r };
+  }
+
+  a('=== ON SE\'N VA EL TEMPS ===');
+  a('');
+  a('OBRIR EL FULL');
+  var full = crono('SpreadsheetApp.openById', function () { return Config.full(); }).r;
+
+  a('');
+  a('LLEGIR CADA PESTANYA (files × columnes)');
+  if (full) {
+    full.getSheets().forEach(function (f) {
+      var nom = f.getName();
+      crono(nom + '  (' + f.getLastRow() + '×' + f.getLastColumn() + ')', function () {
+        return f.getDataRange().getValues().length;
+      });
+    });
+  }
+
+  a('');
+  a('CADA MÒDUL, LA SEVA TARGETA D\'INICI (amb la memòria cau tal com està)');
+  var mods = Moduls.actius();
+  mods.forEach(function (m) {
+    if (typeof m.resumInici !== 'function') return;
+    crono(m.id, function () { return m.resumInici(); });
+  });
+
+  a('');
+  a('CADA MÒDUL, EL SEU TROS DE LA PÀGINA DEL DIA');
+  var avui = Utils.avui();
+  mods.forEach(function (m) {
+    if (typeof m.elDia !== 'function') return;
+    crono(m.id, function () { return m.elDia(avui); });
+  });
+
+  a('');
+  a('CADA MÒDUL, LA SEVA PANTALLA SENCERA');
+  mods.forEach(function (m) {
+    if (!m.accions || typeof m.accions.pantalla !== 'function') return;
+    crono(m.id, function () { return m.accions.pantalla({}); });
+  });
+
+  a('');
+  a('LES DUES PANTALLES QUE SUMEN TOTS ELS MÒDULS');
+  crono('inici  (totes les targetes)', function () { return Moduls.resumInici(); });
+  crono('el dia (tots els blocs)', function () { return Moduls.elDia(avui); });
+
+  a('');
+  a('EL QUE SURT D\'AQUEST COMPTE (cada un és una altra volta sencera)');
+  crono('calendari · el mes que mires', function () {
+    return Calendari.pantalla({ periode: 'mes' });
+  });
+  if (typeof EscolaPont !== 'undefined' && EscolaPont.hiEs()) {
+    crono('escola · pont: pendents en directe', function () { return Escola.pendentsDelPont(); });
+  }
+  if (typeof Tasques !== 'undefined' && Tasques.serveiHiEs()) {
+    crono('tasques · Google Tasks', function () { return Tasques.pantalla({}); });
+  }
+
+  a('');
+  a('LA MATEIXA PANTALLA UNA SEGONA VEGADA (això diu si la memòria cau serveix)');
+  mods.forEach(function (m) {
+    if (!m.accions || typeof m.accions.pantalla !== 'function') return;
+    crono(m.id + '  (2a vegada)', function () { return m.accions.pantalla({}); });
+  });
+
+  a('');
+  a('EL QUE JA S\'HAVIA QUEIXAT ELL SOL (peticions de més de 8 segons)');
+  try {
+    var lents = Dades.llegeix('_Registre', function (f) {
+      return String(f.origen || '').indexOf('api.lent') !== -1;
+    }).slice(-15);
+    if (!lents.length) a('  cap');
+    lents.forEach(function (x) {
+      a('  ' + String(x.marca_temps).slice(0, 16) + '  ' + x.missatge);
+    });
+  } catch (e) { a('  no he pogut llegir el registre: ' + e.message); }
+
+  return l.join('\n');
+}
+
+
 function perQueNoMHasAvisat() {
   var l = ['=== L\'AVÍS DE LES CALORIES CREMADES ==='];
   function a(t) { l.push(t); Logger.log(t); }
@@ -2445,10 +2553,11 @@ function triggerEscalfa() {
     var id = m[i].id;
     var accions = m[i].accions || {};
 
-    /* El que no surt d'un full no s'escalfa: el calendari es llegeix de Google
-       i té la seva pròpia finestra de tres minuts, o sigui que escalfar-lo
-       cada quart d'hora seria anar-hi noranta-sis vegades al dia per res —i
-       les de l'escola passen pel pont de l'altre compte. */
+    /* El que no surt d'un full no s'escalfa AQUÍ, que és cada cinc minuts:
+       el calendari, les tasques i l'escola es llegeixen de fora i costen
+       segons, no mil·lisegons. Van a `triggerEscalfaFora`, cada quart d'hora.
+       Aquesta ratlla, però, era la que feia que obrir l'app trigués entre 8 i
+       16 segons: se'ls saltava i no els escalfava ningú. */
     if (m[i].volatil) continue;
 
     // Les targetes de la pantalla d'inici també, que és la primera que veus.
@@ -2479,6 +2588,56 @@ function triggerEscalfa() {
     Log.avis('escalfa', 'Alguna pantalla no s\'ha pogut escalfar', { fallats: fallats, ms: ms });
   } else {
     Log.info('escalfa', 'Pantalles a punt', { quantes: fets.length, ms: ms });
+  }
+  return fets.join(', ') + '  ·  ' + ms + ' ms';
+}
+
+
+/**
+ * EL QUE ES LLEGEIX DE FORA, ESCALFAT A PART.
+ *
+ * El calendari, les tasques i els pendents de l'escola no surten del full: van
+ * a Google Calendar, a Google Tasks i a l'altre script d'Apps Script. Mesurat
+ * el 4 d'agost del 2026: 6,5 s el calendari, 2 s les tasques, 3,6 s l'escola.
+ * Sumats, són els 8 a 16 segons que trigava obrir l'app, perquè la targeta
+ * d'inici de cadascun els construïa allà mateix mentre tu miraves.
+ *
+ * Ara les targetes no construeixen res: agafen el que hi ha desat. Qui ho desa
+ * és això, i va a part de `triggerEscalfa` per una raó de comptes:
+ *
+ *   - `triggerEscalfa` va cada 5 min i costa uns pocs segons: són fulls.
+ *   - això va cada 15 i costa uns dotze segons: són viatges a fora.
+ *
+ * A cinc minuts, això sol serien 57 minuts diaris del pot de 90 que té aquest
+ * compte per a TOTS els automatismes. A quinze, i dormint de nit, en són uns
+ * catorze. La diferència per a tu és zero: el que es desa dura 25 minuts.
+ */
+function triggerEscalfaFora() {
+  /* De matinada no s'escalfa res. Ningú obre JEFE a les tres i mitja, i cada
+     passada que no es fa és pot que queda per als avisos. */
+  var hora = Number(Utilities.formatDate(new Date(), Config.zonaHoraria(), 'H'));
+  if (hora < 6) return 'de nit no escalfo res';
+
+  var t0 = Date.now();
+  var fets = [], fallats = [];
+
+  var m = Moduls.actius();
+  for (var i = 0; i < m.length; i++) {
+    if (typeof m[i].escalfa !== 'function') continue;
+    try {
+      var r = m[i].escalfa();
+      fets.push(m[i].id + (r && r.ms ? ' ' + r.ms + 'ms' : ''));
+    } catch (err) {
+      fallats.push(m[i].id + ': ' + err.message);
+    }
+  }
+
+  var ms = Date.now() - t0;
+  if (fallats.length) {
+    Log.avis('escalfa.fora', 'Alguna cosa de fora no s\'ha pogut escalfar',
+             { fallats: fallats, ms: ms });
+  } else {
+    Log.info('escalfa.fora', 'El de fora, a punt', { quantes: fets.length, ms: ms });
   }
   return fets.join(', ') + '  ·  ' + ms + ' ms';
 }

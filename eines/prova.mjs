@@ -2423,5 +2423,86 @@ console.log('\nLes tasques: Google mana, i el full només hi posa el que ell no 
       ctx.MODUL_TASQUES().elDia(AVUI) === null);
 }
 
+// ---------------------- obrir l'app no pot construir res que costi segons
+/* Mesurat el 4 d'agost del 2026 a l'app d'en Pol: `nucli.inici` trigava entre
+   8 i 16 segons, i el registre en tenia quinze de seguits. D'aquells, 6,5 s
+   eren la targeta del calendari i 2 s la de tasques: cadascuna construïa allà
+   mateix el que necessitava —tres mesos de totes les agendes, una volta a
+   l'API de Tasks per llista— mentre ell mirava la pantalla.
+   Ara les targetes NO construeixen res: agafen el que hi ha desat i, si no hi
+   ha res, tornen l'última que es va poder fer. Qui ho munta és el trigger.
+   Això comprova precisament això: amb la memòria cau buida, demanar la targeta
+   no pot tocar ni Google Calendar ni Google Tasks. */
+console.log('\nObrir l\'app: les targetes no poden anar a buscar res a Google');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Utils.avui = () => '2026-08-04';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d };
+
+  // Una memòria cau buida que apunta tot el que li demanen.
+  const desat = {};
+  ctx.CacheService = { getScriptCache: () => ({
+    get: (k) => (desat[k] === undefined ? null : desat[k]),
+    put: (k, v) => { desat[k] = v; },
+    remove: (k) => { delete desat[k]; }
+  }) };
+
+  // Si algú toca Google, ho sabrem.
+  let tocatCalendar = 0, tocatTasks = 0;
+  ctx.CalendarApp = {
+    getAllCalendars: () => { tocatCalendar++; return []; },
+    getCalendarById: () => { tocatCalendar++; return null; },
+    getDefaultCalendar: () => { tocatCalendar++; return { getId: () => 'x' }; }
+  };
+  ctx.Tasks = {
+    Tasklists: { list: () => { tocatTasks++; return { items: [] }; },
+                 get: () => { tocatTasks++; return { id: 'x' }; } },
+    Tasks: { list: () => { tocatTasks++; return { items: [] }; } }
+  };
+  ctx.Dades = {
+    llegeix: () => [], un: () => null, perId: () => null,
+    insereix: (f, x) => x, actualitza: () => null
+  };
+  ctx.CalendariPont = { hiEs: () => false };
+  ctx.EscolaPont = { hiEs: () => false };
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+
+  const tCal = ctx.MODUL_CALENDARI().resumInici();
+  cal('amb la memòria cau buida, la targeta del calendari no truca a Google',
+      tocatCalendar === 0, 'l\'ha tocat ' + tocatCalendar + ' vegades');
+  cal('i tot i així torna una targeta que es pot pintar',
+      !!tCal && tCal.accio === 'calendari', JSON.stringify(tCal));
+
+  const tTas = ctx.MODUL_TASQUES().resumInici();
+  cal('amb la memòria cau buida, la targeta de tasques no truca a Google',
+      tocatTasks === 0, 'l\'ha tocat ' + tocatTasks + ' vegades');
+  cal('i tot i així torna una targeta que es pot pintar',
+      !!tTas && tTas.accio === 'tasques', JSON.stringify(tTas));
+
+  /* I qui SÍ que hi va és l'escalfor, que corre des d'un trigger. Si això
+     deixés d'anar-hi, les targetes es quedarien velles per sempre i ningú se
+     n'assabentaria: per això es comprova que hi vagi. */
+  ctx.MODUL_CALENDARI().escalfa();
+  cal('l\'escalfor sí que va a buscar el calendari', tocatCalendar > 0);
+  ctx.MODUL_TASQUES().escalfa();
+  cal('i les tasques també', tocatTasks > 0);
+
+  /* El trigger no pot saltar-se cap mòdul que sàpiga escalfar-se: era
+     exactament el que passava —`triggerEscalfa` es saltava els volàtils, que
+     són els cars—, i per això obrir l'app trigava el que trigava. */
+  const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  cal('hi ha un trigger per al que es llegeix de fora',
+      /function triggerEscalfaFora\(\)/.test(inst));
+  cal('i s\'instal·la sol amb els altres',
+      /newTrigger\('triggerEscalfaFora'\)/.test(inst));
+
+  const capEscalfa = ['40_Mod_Calendari.gs', '40_Mod_Tasques.gs', '40_Mod_Escola.gs']
+    .filter((f) => !/escalfa: function/.test(fs.readFileSync('apps-script/' + f, 'utf8')));
+  cal('i els tres mòduls que llegeixen de fora saben escalfar-se',
+      capEscalfa.length === 0, capEscalfa.join(', '));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

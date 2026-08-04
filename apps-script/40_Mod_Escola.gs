@@ -71,14 +71,17 @@ function MODUL_ESCOLA() {
 
       /* APUNTAR A UNA LLISTA DE L'ESCOLA. Torna els pendents d'ara mateix,
          perquè la caixa s'ha de veure com queda i no com estava. */
+      escalfa: function () { return Escola.escalfa(); },
+
       creaTasca: function (p) {
         var r = EscolaPont.creaTasca(p.llista, p.titol);
+        Escola.oblidaPendents();      // el que hi ha desat ja no és el que hi ha
         /* La tasca JA ESTÀ CREADA. Si el segon viatge —el de tornar la llista
            al dia— falla, això no pot dir que hagi fallat: diria que no s'ha
            apuntat una cosa que sí que s'ha apuntat, i la tornaries a apuntar.
            Es torna sense llista i la pantalla se'n surt igual. */
         var ara = null;
-        try { ara = Escola.pendentsDelPont(); }
+        try { ara = Escola.pendentsDelPontAraMateix(); }
         catch (err) { Log.avis('escola', 'tasca creada, però no puc rellegir els pendents', err.message); }
         return { tasca: r, pendents: ara };
       }
@@ -141,6 +144,9 @@ function MODUL_ESCOLA() {
 var Escola = (function () {
 
   var MAX_COS = 4000;          // el que cap a una cel·la sense fer-la impossible
+
+  var CAU_PENDENTS = 'esc_pendents';
+  var VIDA_PENDENTS = 1500;    // 25 min; el trigger d'escalfar els refà cada 15
 
   /* Com es diu cada mena al títol de la notificació. Curtes a posta: el títol
      són dues paraules i la segona ja és aquesta. */
@@ -357,8 +363,41 @@ var Escola = (function () {
    * pantalla en obrir-se: es demana després, i la caixa es refà quan arriba.
    */
   function pendentsDelPont() {
+    /* DESAT UN QUART D'HORA. Anar-hi costa 3,6 segons —mesurat—: és una volta
+       sencera a un altre script d'Apps Script, i el transport ja val dos
+       segons abans de fer res. Obrir Escola no pot valer això cada cop. Qui el
+       refà és el trigger d'escalfar, cada quart d'hora; i apuntar-hi una tasca
+       el tomba, que és quan de debò ha canviat. */
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) {}
+    if (cau) {
+      try {
+        var desat = cau.get(CAU_PENDENTS);
+        if (desat) return JSON.parse(desat);
+      } catch (e) {}
+    }
+    return pendentsDelPontAraMateix();
+  }
+
+  /** Sense mirar el que hi ha desat: va a l'escola i el torna a desar. */
+  function pendentsDelPontAraMateix() {
     var r = EscolaPont.comanda('pendents');
-    return pendentsDeText_(String(r && r.text || ''));
+    var l = pendentsDeText_(String(r && r.text || ''));
+    try {
+      CacheService.getScriptCache().put(CAU_PENDENTS, JSON.stringify(l), VIDA_PENDENTS);
+    } catch (e) {}
+    return l;
+  }
+
+  function oblidaPendents() {
+    try { CacheService.getScriptCache().remove(CAU_PENDENTS); } catch (e) {}
+  }
+
+  function escalfa() {
+    if (!EscolaPont.hiEs()) return { ms: 0, saltat: 'sense pont' };
+    var t0 = Date.now();
+    var l = pendentsDelPontAraMateix();
+    return { ms: Date.now() - t0, pendents: l.length };
   }
 
   /* «• [Tutoria] Corregir els controls» → { llista: 'Tutoria', que: '...' }.
@@ -481,7 +520,9 @@ var Escola = (function () {
   return {
     rebre: rebre, elDia: elDia, desglossa: desglossa_, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
     pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA,
-    pendentsDelPont: pendentsDelPont, pendentsDeText: pendentsDeText_
+    pendentsDelPont: pendentsDelPont, pendentsDeText: pendentsDeText_,
+    pendentsDelPontAraMateix: pendentsDelPontAraMateix, oblidaPendents: oblidaPendents,
+    escalfa: escalfa
   };
 })();
 

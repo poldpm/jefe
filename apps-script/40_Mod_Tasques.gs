@@ -90,15 +90,13 @@ function MODUL_TASQUES() {
       mostra:      function (p) { return Tasques.mostra(p.id, p.mostra); }
     },
 
-    resumInici: function () {
-      var r = Tasques.compte();
-      return {
-        etiqueta: r.vencudes ? 'Tasques vençudes' : 'Tasques per fer',
-        valor: r.vencudes || r.perFer,
-        urgent: r.vencudes > 0,
-        accio: 'tasques'
-      };
-    },
+    /* Igual que el calendari: la targeta no va a preguntar-ho a Google. Cada
+       llista és una volta a l'API de Tasks i eren 2 segons de la teva
+       obertura per dir-te un número. Ara agafa el que hi ha desat i qui ho
+       desa és el trigger d'escalfar, cada quart d'hora. */
+    resumInici: function () { return Tasques.targeta(); },
+
+    escalfa: function () { return Tasques.escalfa(); },
 
     resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
 
@@ -239,7 +237,12 @@ function MODUL_TASQUES() {
 var Tasques = (function () {
 
   var CAU = 'tasq_';
-  var QUANT = 90;             // segons que dura la còpia de les llistes llegides
+
+  /* Quant dura la còpia de les llistes llegides. Eren 90 segons i cada
+     obertura de l'app en pagava una de nova —dos segons, una volta a l'API per
+     llista—. Ara dura un quart d'hora i qui la refà és el trigger d'escalfar
+     cada deu minuts. El que marquis des d'aquí la tomba igualment. */
+  var QUANT = 1500;
 
   // ------------------------------------------------------------ el servei
 
@@ -543,6 +546,70 @@ var Tasques = (function () {
     };
   }
 
+  // ------------------------------------------ la targeta d'inici i l'escalfor
+
+  var CAU_TARGETA = CAU + 'targeta';
+  var VIDA_TARGETA = 21600;   // 6 h: val més una xifra d'abans que cap xifra
+
+  function fesLaTargeta_(r) {
+    return {
+      etiqueta: r.vencudes ? 'Tasques vençudes' : 'Tasques per fer',
+      valor: r.vencudes || r.perFer,
+      urgent: r.vencudes > 0,
+      accio: 'tasques'
+    };
+  }
+
+  /**
+   * La targeta d'inici sense trucar a Google.
+   *
+   * Cada llista de tasques és una volta a l'API, i eren dos segons de la teva
+   * obertura per dir-te un número. Si les llistes ja estan desades —les desa
+   * `escalfa()` cada deu minuts—, es fa la xifra amb elles i no costa res; si
+   * no, es torna l'última que es va poder fer.
+   */
+  function targeta() {
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) {}
+
+    if (serveiHiEs() && totDesat_()) {
+      var t = fesLaTargeta_(compte());
+      if (cau) { try { cau.put(CAU_TARGETA, JSON.stringify(t), VIDA_TARGETA); } catch (e) {} }
+      return t;
+    }
+    if (cau) {
+      try {
+        var vella = cau.get(CAU_TARGETA);
+        if (vella) return JSON.parse(vella);
+      } catch (e) {}
+    }
+    return { etiqueta: 'Tasques', valor: '—', urgent: false, accio: 'tasques' };
+  }
+
+  /* ¿Hi ha totes les llistes que mires desades? Si en falta una, muntar la
+     xifra vol dir trucar a Google, i això no ho fa una petició teva. */
+  function totDesat_() {
+    var cau = null;
+    try { cau = CacheService.getScriptCache(); } catch (e) { return false; }
+    if (!cau) return false;
+    var v = versioCau_();
+    var mires = queMires_();
+    if (!mires.length) return false;
+    for (var i = 0; i < mires.length; i++) {
+      if (!cau.get(CAU + v + '_p_' + mires[i].id)) return false;
+    }
+    return true;
+  }
+
+  function escalfa() {
+    if (!serveiHiEs()) return { ms: 0, saltat: 'sense servei' };
+    var t0 = Date.now();
+    var d = pantalla({});
+    var t = fesLaTargeta_({ perFer: d.tasques.length, vencudes: d.vencudes });
+    try { CacheService.getScriptCache().put(CAU_TARGETA, JSON.stringify(t), VIDA_TARGETA); } catch (e) {}
+    return { ms: Date.now() - t0, pendents: d.tasques.length };
+  }
+
   /**
    * Què ha passat entre dues dates. Per a la revisió setmanal.
    *
@@ -773,6 +840,8 @@ var Tasques = (function () {
 
   return {
     serveiHiEs: serveiHiEs,
+    targeta: targeta,
+    escalfa: escalfa,
     sincronitzaLlistes: sincronitzaLlistes,
     llistes: llistes,
     mostra: mostra,
