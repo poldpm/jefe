@@ -287,7 +287,12 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
       resumPeriode: () => [{ modul: 'habits', titol: 'Hàbits', linies: ['Córrer: 4 de 7 dies'] }]
     },
     IA: { disponible: () => false, genera: () => { throw new Error('no hauria de cridar-se'); } },
-    Notifica: { envia: (titol, cos) => { notificacions.push({ titol, cos }); return { enviades: 1 }; } }
+    /* `junta` no es dobla: és la que decideix com queda el cos, i doblar-la
+       voldria dir comprovar una cosa que no és la que arriba al telèfon. */
+    Notifica: {
+      junta: (a, b) => (!a ? b : !b ? a : a + (/[.!?:;·…]$/.test(a) ? ' ' : '. ') + b),
+      envia: (titol, cos) => { notificacions.push({ titol, cos }); return { enviades: 1 }; }
+    }
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
@@ -323,8 +328,12 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
   const r = ctx.Diari.generaDiari(AVUI);
   cal('el resum es fa igual sense IA', r.text.indexOf('Hàbits pendents: 2') !== -1, r.text);
   cal('i ho diu, que no n\'hi ha hagut', r.ambIA === false, String(r.ambIA));
-  cal('el títol de l\'avís diu de què va, no «JEFE»',
-      notificacions.length === 1 && /hàbits pendents/i.test(notificacions[0].titol),
+  /* Abans es demanava que el títol portés què queda pendent. Ara això va al
+     COS i el títol diu d'on ve: el que no pot ser és que els dos diguin el
+     mateix, que és el que passava al calendari amb una sola cita. */
+  cal('el títol diu d\'on ve i el cos què queda pendent',
+      notificacions.length === 1 && notificacions[0].titol === 'Resum del dia' &&
+      /hàbits pendents/i.test(notificacions[0].cos),
       JSON.stringify(notificacions[0]));
 
   // Repetir-lo no n'acumula un segon.
@@ -378,9 +387,14 @@ console.log("\nL'avís de les sis: només si hi ha alguna cosa");
   ];
   ctx.triggerAgendaDelDia();
   cal("amb cites, envia", enviats.length === 1, String(enviats.length));
-  cal("el títol diu l'hora i què és, no «JEFE»",
-      /^09:00 Claustre de mestres/.test(enviats[0].titol), enviats[0].titol);
-  cal("i diu quantes més n'hi ha", /i 2 més/.test(enviats[0].titol), enviats[0].titol);
+  /* Aquestes tres comprovaven la regla contrària —que el títol portés l'hora i
+     el nom de la cita— i han saltat quan es va canviar. És el que havien de
+     fer. La regla nova: el títol diu d'on ve, i el cos què hi ha; amb una sola
+     cita, abans el títol i el cos deien el mateix. */
+  cal("el títol diu d'on ve, no què hi ha",
+      /^Calendari/.test(enviats[0].titol), enviats[0].titol);
+  cal("i diu quantes n'hi ha, que és el que cap en dues paraules",
+      /3 cites/.test(enviats[0].titol), enviats[0].titol);
   cal("el cos les porta totes, amb el de tot el dia identificat",
       enviats[0].cos.split('\n').length === 3 && /tot el dia · Aniversari/.test(enviats[0].cos),
       JSON.stringify(enviats[0].cos));
@@ -389,7 +403,9 @@ console.log("\nL'avís de les sis: només si hi ha alguna cosa");
   events = [{ titol: 'Festa major', hora: '', horaFi: '', totElDia: true, lloc: '' }];
   enviats.length = 0;
   ctx.triggerAgendaDelDia();
-  cal("només de tot el dia: el títol és el títol", enviats[0].titol === 'Festa major', enviats[0].titol);
+  cal("amb una sola cita, el títol NO la repeteix",
+      enviats[0].titol === 'Calendari' && enviats[0].titol !== enviats[0].cos,
+      enviats[0].titol + '  /  ' + enviats[0].cos);
 
   cal("l'avís de les sis és a la llista de triggers",
       ctx.TRIGGERS.indexOf('triggerAgendaDelDia') !== -1, ctx.TRIGGERS.join(' '));
@@ -1774,7 +1790,11 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
   ctx.ambBloqueig_ = (f) => f();
 
   let enviades = [];
-  ctx.Notifica = { envia: (t, c, o) => { enviades.push({ titol: t, url: o.url }); return {}; } };
+  /* `junta` és de debò i no un doble: és el que ajunta el que diu el mòdul amb
+     el cos, i si es doblés no es comprovaria el que arriba de veritat. */
+  const juntaDeDebo = (a, b) => (!a ? b : !b ? a : a + (/[.!?:;·…]$/.test(a) ? ' ' : '. ') + b);
+  ctx.Notifica = { junta: juntaDeDebo,
+                   envia: (t, c, o) => { enviades.push({ titol: t, cos: c, url: o.url }); return {}; } };
 
   ctx.instalaTriggers();
   const seus = triggers.filter((t) => t.fn === 'triggerAvisos');
@@ -1980,6 +2000,43 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
   });
   cal('cap notificació porta a una pantalla que no existeix',
       dolents.length === 0, dolents.map((d) => d.on + ' → ' + d.url).join(' · '));
+
+
+  /* EL TÍTOL NO POT DIR EL MATEIX QUE EL COS. Amb una sola cita al calendari
+     sortia «Montgrony 7:00-15:00» de títol i «Montgrony 7:00-15:00» de cos:
+     una notificació que es repeteix a si mateixa no diu res dues vegades, no
+     diu res una. La regla és que el títol digui d'on ve i el cos què passa. */
+  const junta = (function () {
+    const c2 = { String, RegExp };
+    vm.createContext(c2);
+    vm.runInContext(src.slice(src.indexOf('function junta_'), src.indexOf('function capOn_')) +
+                    '\nvar __j = junta_;', c2);
+    return c2.__j;
+  })();
+
+  cal('el que deia el títol s\'enganxa al cos amb un punt',
+      junta('Control setmanal', 'Ara, en dejú') === 'Control setmanal. Ara, en dejú',
+      junta('Control setmanal', 'Ara, en dejú'));
+  cal('i sense doble puntuació quan ja n\'hi ha',
+      junta('Bon dia, Pol!', '09:00 Claustre') === 'Bon dia, Pol! 09:00 Claustre',
+      junta('Bon dia, Pol!', '09:00 Claustre'));
+
+  /* Els títols escrits al codi han de ser curts. Un títol de sis paraules és
+     una frase, i una frase al títol vol dir que el cos la repetirà. */
+  const titols = [];
+  fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).forEach((f) => {
+    const t = fs.readFileSync('apps-script/' + f, 'utf8');
+    let i = 0;
+    while ((i = t.indexOf('Notifica.envia(', i)) !== -1) {
+      const m = t.slice(i, i + 220).match(/Notifica\.envia\(\s*'([^']+)'/);
+      if (m) titols.push({ on: f, titol: m[1] });
+      i += 15;
+    }
+  });
+  cal('es troben els títols escrits al codi', titols.length >= 4, titols.length + ' trobats');
+  const llargs = titols.filter((t) => t.titol.split(/\s+/).length > 3);
+  cal('cap títol és una frase', llargs.length === 0,
+      llargs.map((t) => t.on + ': «' + t.titol + '»').join(' · '));
 
   /* I la còpia del treballador de servei ha de dir el mateix: és la que mana
      quan la notificació ja és al telèfon i l'app està tancada. */

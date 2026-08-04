@@ -408,10 +408,10 @@ function triggerAgendaDelDia() {
 
     /* El títol ha de servir sol des de la pantalla blocada: la primera cosa
        de debò i a quina hora, que és el que et fa aixecar o no córrer. */
-    var titol = ambHora.length
-      ? ambHora[0].hora + ' ' + Utils.talla(ambHora[0].titol, 40)
-      : Utils.talla(e[0].titol, 48);
-    if (e.length > 1) titol += '  ·  i ' + (e.length - 1) + ' més';
+    /* El títol era la primera cita i el cos la llista de cites: amb una de
+       sola, la notificació es deia dues vegades el mateix. Ara el títol diu
+       d'on ve i quantes n'hi ha, i el cos les diu. */
+    var titol = 'Calendari' + (e.length > 1 ? ' · ' + e.length + ' cites' : '');
 
     var cos = e.map(function (x) {
       return (x.totElDia ? 'tot el dia' : x.hora) + ' · ' + x.titol +
@@ -467,10 +467,10 @@ function triggerTancamentNutricio() {
     }
 
     var r = Notifica.envia(
-      'Falten les calories cremades',
-      'Portes ' + Math.round(d.totals.ingerides) + ' kcal i ' +
-        Nutricio.r1(d.totals.proteina) + ' g de proteïna. Entra el que has cremat ' +
-        'i el dia queda tancat.',
+      'Nutrició',
+      'Falten les calories cremades. Portes ' + Math.round(d.totals.ingerides) +
+        ' kcal i ' + Nutricio.r1(d.totals.proteina) + ' g de proteïna: entra el que ' +
+        'has cremat i el dia queda tancat.',
       { etiqueta: 'nutricio-tancament', url: './#nutricio', urgent: true }
     );
 
@@ -522,8 +522,9 @@ function triggerBanc() {
     }
 
     Notifica.envia(
-      r.perRevisar + (r.perRevisar === 1 ? ' moviment per classificar' : ' moviments per classificar'),
-      'Han entrat ' + r.nous + ' moviments del banc' +
+      'Banc',
+      r.perRevisar + (r.perRevisar === 1 ? ' moviment per classificar' : ' moviments per classificar') +
+        '. Han entrat ' + r.nous + ' moviments' +
         (r.jaSabuts ? ' i ' + r.jaSabuts + ' ja sabia què eren' : '') + '.',
       { etiqueta: 'finances-banc', url: './#finances' }
     );
@@ -563,9 +564,10 @@ function triggerPatrimoni() {
     }).join(', ');
 
     Notifica.envia(
-      vells.length === 1 ? 'Actualitza ' + vells[0].nom
-                         : vells.length + ' valors del patrimoni per actualitzar',
-      detall + '. Ara mateix tens anotat ' + Finances.eur(p.total) + '.',
+      'Patrimoni',
+      (vells.length === 1 ? 'Toca actualitzar ' + vells[0].nom
+                          : vells.length + ' valors per actualitzar') + ': ' +
+        detall + '. Ara mateix tens anotat ' + Finances.eur(p.total) + '.',
       { etiqueta: 'patrimoni', url: './#finances' }
     );
     Log.info('trigger.patrimoni', 'Recordatori enviat', { vells: vells.length });
@@ -864,7 +866,7 @@ function provaNotificacio() {
   }
 
   var r = Notifica.envia(
-    'Prova de notificacions',
+    'Prova',
     'La cadena funciona de punta a punta: JEFE et pot escriure amb l\'app tancada.',
     { etiqueta: 'prova', url: './' }
   );
@@ -2245,10 +2247,16 @@ function triggerAvisos() {
          un avís que pica cada setmana tant si passa alguna cosa com si no
          deixa de voler dir res al cap de tres setmanes. */
       if (!r || !r.titol) return;
-      Notifica.envia(r.titol, r.cos || '', {
-        url: r.url || a.modul,
-        etiqueta: 'avis-' + a.modul + '-' + a.id
-      });
+      /* EL TÍTOL ÉS EL NOM DEL MÒDUL, no el que digui l'avís.
+         El mòdul escriu què passa; d'on ve ho sap el nucli, que és qui té el
+         registre. Així cap mòdul no s'ha de recordar de la regla, i el que
+         escrigui al `titol` no es perd: encapçala el cos. */
+      var m = Moduls.perId(a.modul);
+      Notifica.envia(
+        (m && m.nom) || a.modul,
+        Notifica.junta(r.titol, r.cos),
+        { url: r.url || a.modul, etiqueta: 'avis-' + a.modul + '-' + a.id }
+      );
       enviats++;
     } catch (err) {
       Log.error('trigger.avisos', 'Avís ' + a.modul + '.' + a.id + ': ' + err.message);

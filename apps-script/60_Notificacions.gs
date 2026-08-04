@@ -157,11 +157,21 @@ var Notifica = (function () {
    *
    * EL TÍTOL HA DE DIR DE QUÈ VA L'AVÍS, i mai «JEFE». Android ja escriu el
    * nom de l'app a la capçalera, i no el podem treure: un títol que repeteix
-   * el nom gasta l'única línia que es llegeix des de la pantalla bloquejada.
-   *   BÉ    «3 hàbits pendents»          + «Encara ets a temps: ...»
-   *   MALAMENT  «JEFE»                   + «Tens 3 hàbits pendents»
+   * EL TÍTOL DIU D'ON VE. EL COS DIU QUÈ PASSA.
    *
-   * El cos explica i dona el següent pas. El títol sol ja ha de servir.
+   * Aquí hi havia la regla contrària —que el títol havia de portar la
+   * informació— i el resultat era que amb una sola cita del dia et sortia
+   * «Montgrony 7:00-15:00» de títol i «Montgrony 7:00-15:00» de cos. Una
+   * notificació que es repeteix a si mateixa no diu res dues vegades: no diu
+   * res una.
+   *
+   *   BÉ        «Calendari»   + «07:00 · Montgrony (Ripollès)»
+   *   MALAMENT  «Montgrony 7:00-15:00» + «07:00 · Montgrony»
+   *   MALAMENT  «JEFE»        + qualsevol cosa
+   *
+   * El títol són una o dues paraules i han de dir DE QUÈ va —i, de propina,
+   * on et porta en tocar-la, perquè el destí és el mateix apartat. El cos és
+   * on hi ha el contingut i el següent pas.
    *
    * opcions: { url, etiqueta, urgent }
    *   url      — on va en tocar-la (relativa a l'app)
@@ -189,6 +199,22 @@ var Notifica = (function () {
    *   '#habits'       →  './#habits'
    *   './'  o buit    →  './'               (l'arrel, sense pantalla)
    */
+  /**
+   * EL QUE DEIA EL TÍTOL, POSAT AL DAVANT DEL COS.
+   *
+   * Ara que el títol és el nom de l'apartat, el que abans hi anava —què passa—
+   * ha d'encapçalar el cos i no perdre's. Amb un punt pel mig, tret que ja
+   * n'hi hagi un: «Bon dia, Pol!. 09:00 Claustre» es llegeix malament i és el
+   * primer que va sortir en provar-ho.
+   */
+  function junta_(davant, darrere) {
+    var a = String(davant || '').trim();
+    var b = String(darrere || '').trim();
+    if (!a) return b;
+    if (!b) return a;
+    return a + (/[.!?:;·…]$/.test(a) ? ' ' : '. ') + b;
+  }
+
   function capOn_(url) {
     var u = String(url === undefined || url === null ? '' : url).trim();
     if (!u || u === './' || u === '.' || u === '/') return './';
@@ -267,6 +293,7 @@ var Notifica = (function () {
 
   return {
     capOn: capOn_,
+    junta: junta_,
     disponible: disponible,
     motiu: motiu,
     registra: registra,

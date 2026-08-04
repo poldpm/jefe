@@ -344,16 +344,18 @@ var Diari = (function () {
 
     desaGenerat_(data, 'resum', text);
 
-    // La notificació: el títol ja ha de servir sol des de la pantalla blocada.
-    var titol = pendents.length
+    /* El títol diu d'on ve; el que abans hi anava —què queda pendent— passa a
+       encapçalar el cos, que és on es llegeix un cop has vist de què va. */
+    var quePassa = pendents.length
       ? pendents.map(function (t) { return t.etiqueta.toLowerCase() + ': ' + t.valor; }).join(' · ')
       : 'Dia tancat, res pendent';
-    if (titol.length > 60) titol = pendents.length + ' coses pendents abans d\'anar a dormir';
+    if (quePassa.length > 90) quePassa = pendents.length + ' coses pendents abans d\'anar a dormir';
+    quePassa = quePassa.charAt(0).toUpperCase() + quePassa.slice(1);
 
     try {
       Notifica.envia(
-        titol.charAt(0).toUpperCase() + titol.slice(1),
-        comentari || fets.join(' · '),
+        'Resum del dia',
+        Notifica.junta(quePassa, comentari || fets.join(' · ')),
         { url: 'diari', etiqueta: 'resum-diari' });
     } catch (err) {
       Log.error('diari.notifica', err);
@@ -431,7 +433,7 @@ var Diari = (function () {
 
     desaGenerat_(fins, 'revisio', text);
     try {
-      Notifica.envia('Revisió de la setmana',
+      Notifica.envia('Revisió setmanal',
         comentari || (blocs.length + ' apartats amb novetats. Obre-la per veure-la.'),
         { url: 'diari', etiqueta: 'revisio-setmanal' });
     } catch (err) {

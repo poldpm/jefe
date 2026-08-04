@@ -122,6 +122,13 @@ var Escola = (function () {
 
   var MAX_COS = 4000;          // el que cap a una cel·la sense fer-la impossible
 
+  /* Com es diu cada mena al títol de la notificació. Curtes a posta: el títol
+     són dues paraules i la segona ja és aquesta. */
+  var MENA_CURTA = {
+    acta: 'acta', tasca: 'tasca', event: 'cita', drive: 'Drive',
+    resum: 'resum', resposta: 'resposta', avis: ''
+  };
+
   function num_(v, sino) {
     var n = parseInt(v, 10);
     return isFinite(n) ? n : sino;
@@ -163,7 +170,12 @@ var Escola = (function () {
     try {
       if (p.notifica === false) { motiu = 'no demanada'; }
       else {
-        var r = Notifica.envia(titol, Utils.talla(cos, 220), {
+        /* «Escola · acta», «Escola · resum». El títol diu d'on ve i de quina
+           de les set feines de l'automatisme; el contingut sencer va al cos,
+           títol inclòs, que si no el perdries. */
+        var mena = MENA_CURTA[p.mena] || '';
+        var r = Notifica.envia('Escola' + (mena ? ' · ' + mena : ''),
+          Utils.talla(Notifica.junta(titol, cos), 220), {
           url: 'escola', etiqueta: 'escola-' + (p.mena || 'avis')
         });
         avisat = !!(r && r.enviades);
