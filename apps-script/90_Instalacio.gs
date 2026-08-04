@@ -137,7 +137,7 @@ function instalaTriggers() {
   /* I el que es llegeix de FORA —calendari, tasques, pendents de l'escola—,
      cada quart d'hora: costa dotze segons per passada i a cinc minuts es
      menjaria mig pot diari d'automatismes. Vegeu `triggerEscalfaFora`. */
-  ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(15).create();
+  ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(30).create();
 
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */

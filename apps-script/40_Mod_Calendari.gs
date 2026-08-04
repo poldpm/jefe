@@ -214,7 +214,7 @@ var Calendari = (function () {
      No menteix més que abans: el que escrius des d'aquí la tomba tota sola
      —vegeu `buidaCau`—, i el que canviïs des del mòbil hi entra a la següent
      passada, com passava abans amb tres minuts. */
-  var VIDA_CAU = 1500;        // 25 minuts; el trigger la refà cada 15
+  var VIDA_CAU = 2400;        // 40 minuts; el trigger la refà cada 30
   var VIDA_TARGETA = 21600;   // la targeta d'inici, 6 h: val més vella que cap
 
   // ------------------------------------------------------- els teus calendaris
