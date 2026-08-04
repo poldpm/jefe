@@ -1542,6 +1542,17 @@ function mesuraLaLentitud() {
   });
 
   a('');
+  a('PARLAR AMB JEFE (sense comptar el model, que és una altra història)');
+  crono('la fitxa que li llegeix, tal com està', function () {
+    return Moduls.contextIA({ compacte: true }).length + ' caràcters';
+  });
+  crono('la mateixa fitxa, feta de zero', function () {
+    Moduls.invalidaContext();
+    return Moduls.contextIA({ compacte: true }).length + ' caràcters';
+  });
+  crono('la pantalla de la conversa', function () { return Conversa.estat({}); });
+
+  a('');
   a('EL QUE JA S\'HAVIA QUEIXAT ELL SOL (peticions de més de 8 segons)');
   try {
     var lents = Dades.llegeix('_Registre', function (f) {
@@ -2579,6 +2590,15 @@ function triggerEscalfa() {
       escalfa(id, (function (a) { return function () { a({}); }; })(accions.dia));
     }
   }
+
+  /* LA FITXA QUE LLEGEIX LA IA, TAMBÉ.
+     Cada cosa que li dius a JEFE —escrita o de veu— es prepara amb el que
+     tenen a dir tots els mòduls. Es desa mitja hora, però no l'escalfava
+     ningú: la primera pregunta de cada estona la pagava ell, i just abans de
+     posar-se a esperar el model, que ja triga per si sol. Aquí no costa gairebé
+     res perquè el que la fitxa mira ja acaba de quedar calent tres línies més
+     amunt. */
+  escalfa('fitxa de la IA', function () { Moduls.contextIA({ compacte: true }); });
 
   /* Es deixa dit quant ha trigat. Aquest automatisme s'executa unes tres-centes
      vegades al dia i el pot d'automatismes és de noranta minuts: si un dia
