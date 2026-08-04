@@ -84,6 +84,9 @@ function MODUL_DIARI() {
     },
 
     elDia: function (data) {
+      /* Igual: «encara no has escrit res» d'un dia que no ha arribat no és cap
+         informació, és una obvietat. */
+      if (data > Utils.avui()) return null;
       var e = Diari.entrada(data);
       return {
         titol: 'Diari', accio: 'diari',

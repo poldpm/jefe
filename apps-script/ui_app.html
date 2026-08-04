@@ -319,10 +319,13 @@ var Jefe = (function () {
       // L'única excepció és una destinació demanada explícitament a l'adreça,
       // que és com arriben les notificacions: tocar «falten les cremades» ha
       // de dur a Nutrició i no a la conversa. Es consumeix i prou: no es desa.
-      var demanada = String(location.hash || '').replace(/^#/, '');
-      if (demanada && App.vistes[demanada]) {
+      /* EL HASH POT PORTAR UNA DATA: «#dia:2026-08-05».
+         Sense això, el resum de les onze i mitja —que parla de demà— t'obria
+         la pàgina d'avui, que és justament el dia del qual no et parlava. */
+      var d = App.deLAdreca(String(location.hash || ''));
+      if (d.vista && App.vistes[d.vista]) {
         try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-        App.ves(demanada);
+        App.ves(d.vista, d.params);
       } else {
         App.ves(App.vistes.conversa ? 'conversa' : 'inici');
       }
@@ -340,14 +343,15 @@ var Jefe = (function () {
         navigator.serviceWorker.addEventListener('message', function (ev) {
           var m = ev && ev.data;
           if (!m || m.jefe !== 'ves') return;
-          if (m.vista && App.vistes[m.vista]) App.ves(m.vista);
+          var y = App.deLAdreca('#' + String(m.vista || ''));
+          if (y.vista && App.vistes[y.vista]) App.ves(y.vista, y.params);
         });
       }
       window.addEventListener('hashchange', function () {
-        var v = String(location.hash || '').replace(/^#/, '');
-        if (!v || !App.vistes[v]) return;
+        var x = App.deLAdreca(String(location.hash || ''));
+        if (!x.vista || !App.vistes[x.vista]) return;
         try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-        if (App.actual !== v) App.ves(v);
+        App.ves(x.vista, x.params);
       });
 
       Cua.envia();
@@ -359,6 +363,26 @@ var Jefe = (function () {
           App.moduls = d.moduls; App.pintaNav();
         }
       }).catch(function () { /* sense connexió: seguim amb la cau */ });
+    },
+
+    /**
+     * QUÈ DEMANA UNA ADREÇA. «#dia» o «#dia:2026-08-05».
+     *
+     * Els dos punts i no una interrogació a posta: el hash no és una consulta
+     * i posar-hi «?» faria pensar que ho és. Una data i prou, que és l'únic
+     * que cal —si algun dia en calen dos, ja es veurà, però no s'inventa ara.
+     */
+    deLAdreca: function (hash) {
+      var t = String(hash || '').replace(/^#/, '').trim();
+      if (!t) return { vista: '', params: {} };
+      var i = t.indexOf(':');
+      if (i === -1) return { vista: t, params: {} };
+      var vista = t.slice(0, i);
+      var valor = t.slice(i + 1);
+      return {
+        vista: vista,
+        params: /^\d{4}-\d{2}-\d{2}$/.test(valor) ? { data: valor } : {}
+      };
     },
 
     ves: function (id, params, sensePila) {

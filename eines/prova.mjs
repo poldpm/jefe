@@ -1995,7 +1995,11 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
   cal('es troben les notificacions del codi', destins.length >= 7, destins.length + ' trobades');
 
   const dolents = destins.filter((d) => {
-    const v = capOn(d.url).replace('./#', '').replace('./', '');
+    /* El destí pot portar una data: «./#dia:2026-08-07». Es talla pels dos
+       punts, igual que fa `App.deLAdreca` al navegador. Aquesta prova va
+       saltar el dia que el repàs de la nit va estrenar aquesta forma, i
+       tenia raó a preguntar-ho. */
+    const v = capOn(d.url).replace('./#', '').replace('./', '').split(':')[0];
     return v && !vistes.has(v);
   });
   cal('cap notificació porta a una pantalla que no existeix',
@@ -2076,6 +2080,81 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
       oberta.navegat === arrel + '#escola', oberta.navegat);
   cal('i a més li ho diu per missatge, que és instantani',
       (oberta.missatges[0] || {}).vista === 'escola', JSON.stringify(oberta.missatges));
+}
+
+
+// ------------------------------------------------ el repàs de demà, a les 23:30
+/* No inventa res: demana als mòduls el mateix que la pàgina del dia però amb
+   la data de demà. Per això el que s'ha de comprovar és que pregunti pel dia
+   bo, que un mòdul nou hi surti sol, i que si demà no hi ha res no piqui. */
+console.log('\nEl repàs de demà: què tens i què no cal dir-te');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d };
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.avui = () => '2026-08-06';
+
+  let enviades = [];
+  ctx.Notifica = { junta: (a, b) => a + b, disponible: () => true, motiu: () => '',
+                   dispositius: () => [{}],
+                   envia: (t, c, o) => { enviades.push({ t, c, url: o.url }); return { enviades: 1 }; } };
+
+  ctx.Moduls = { elDia: (d) => { ctx.__data = d; return [
+    { titol: 'Al calendari', coses: [{ text: '09:00 Claustre' }, { text: '17:00 Reunió' }] },
+    { titol: 'Tasques', coses: [{ text: 'a' }, { text: 'b' }, { text: 'c' }, { text: 'd' }, { text: 'e' }] }
+  ]; } };
+  ctx.triggerDema();
+
+  cal('pregunta pel dia de DEMÀ, no per avui', ctx.__data === '2026-08-07', String(ctx.__data));
+  cal('el títol és una paraula', enviades.length === 1 && enviades[0].t === 'Demà',
+      JSON.stringify(enviades[0]));
+  cal('el cos porta un bloc per línia',
+      enviades[0].c.split('\n').length === 2, JSON.stringify(enviades[0].c));
+  cal('i talla les llistes llargues dient quantes en queden',
+      /i 1 més/.test(enviades[0].c), enviades[0].c);
+  cal('i tocar-la obre el dia de demà, no el d\'avui',
+      enviades[0].url === './#dia:2026-08-07', enviades[0].url);
+
+  enviades = [];
+  ctx.Moduls = { elDia: () => [] };
+  ctx.triggerDema();
+  cal('si demà no hi ha res, NO pica', enviades.length === 0, String(enviades.length));
+
+  ctx.Moduls = { elDia: () => { throw new Error('el full no hi és'); } };
+  let petat = false;
+  try { ctx.triggerDema(); } catch (e) { petat = true; }
+  cal('i si alguna cosa peta, no tomba el trigger', !petat);
+
+  /* Els mòduls que no tenen res a dir d'un dia futur han de callar ells
+     mateixos: si no, el repàs de la nit et diria «et falten 9 hàbits» cada
+     nit, que és evident i no és cap informació. */
+  const habits = fs.readFileSync('apps-script/40_Mod_Habits.gs', 'utf8');
+  const diari = fs.readFileSync('apps-script/40_Mod_Diari.gs', 'utf8');
+  const callaAlFutur = (t) => {
+    const i = t.indexOf('elDia: function (data) {');
+    return i !== -1 && t.slice(i, i + 400).indexOf('data > Utils.avui()') !== -1;
+  };
+  cal('els hàbits callen per a un dia que no ha arribat', callaAlFutur(habits));
+  cal('i el diari també', callaAlFutur(diari));
+
+  /* I que el hash sàpiga portar la data, que és el que ho lliga tot: sense
+     això la notificació t'obriria el dia d'avui, que és justament el dia del
+     qual NO et parlava. */
+  const app = fs.readFileSync('apps-script/ui_app.html', 'utf8');
+  const tros = app.slice(app.indexOf('    deLAdreca: function (hash) {'),
+                         app.indexOf('    ves: function (id, params'));
+  const c2 = { String, RegExp };
+  vm.createContext(c2);
+  vm.runInContext('var App = { ' + tros.replace(/,\s*$/, '') + ' };', c2);
+  cal('«#dia:2026-08-07» obre aquell dia',
+      c2.App.deLAdreca('#dia:2026-08-07').params.data === '2026-08-07');
+  cal('«#dia» a seques obre avui, sense inventar-se cap data',
+      c2.App.deLAdreca('#dia').params.data === undefined);
+  cal('i el que no és una data s\'ignora en comptes de petar',
+      c2.App.deLAdreca('#dia:dema').params.data === undefined &&
+      c2.App.deLAdreca('#dia:2026-8-7').params.data === undefined);
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

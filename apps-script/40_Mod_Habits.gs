@@ -126,6 +126,10 @@ function MODUL_HABITS() {
     },
 
     elDia: function (data) {
+      /* D'UN DIA QUE ENCARA NO HA ARRIBAT no hi ha res a dir: és clar que els
+         tens tots pendents. Sortia «Hàbits que et falten: 9» mirant demà a la
+         pàgina del dia, i sortiria igual al resum de la nit. */
+      if (data > Utils.avui()) return null;
       var d = Habits.dia(data);
       var falten = d.habits.filter(function (h) { return h.exigit && !h.complert; });
       if (!falten.length) return null;

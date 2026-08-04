@@ -82,7 +82,8 @@ function netejaFullPerDefecte_(ss) {
 
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
-                'triggerAgendaDelDia', 'triggerEscalfa', 'triggerAvisos'];
+                'triggerAgendaDelDia', 'triggerEscalfa', 'triggerAvisos',
+                'triggerDema'];
 
 /** Instal·la els automatismes. Esborra només els seus abans, mai els d'altri. */
 function instalaTriggers() {
@@ -155,6 +156,13 @@ function instalaTriggers() {
   // El patrimoni, el 28 al vespre: a temps de mirar-t'ho abans que acabi el mes.
   ScriptApp.newTrigger('triggerPatrimoni')
     .timeBased().onMonthDay(28).atHour(21).create();
+
+  /* EL REPÀS DE DEMÀ, abans d'anar a dormir.
+     A la mitja hora i no en punt: a les 23:00 hi ha el resum del dia, que
+     tanca el que ha passat. Aquest mira endavant, i són dues coses diferents
+     que no s'han de trepitjar. */
+  ScriptApp.newTrigger('triggerDema')
+    .timeBased().atHour(23).nearMinute(30).everyDays(1).create();
 
   /* ELS AVISOS QUE DEMANIN ELS MÒDULS.
      Una hora de trigger per cada hora que demani algú, i ni una més: si cap
@@ -2264,6 +2272,52 @@ function triggerAvisos() {
   });
 
   if (mirats) Log.info('trigger.avisos', 'Avisos mirats', { hora: hora, mirats: mirats, enviats: enviats });
+}
+
+/**
+ * QUÈ TENS DEMÀ, a les onze i mitja de la nit.
+ *
+ * No inventa res: pregunta als mòduls el mateix que la pàgina del dia, però
+ * amb la data de demà. Moduls.elDia(data) ja acceptava una data qualsevol
+ * des del primer dia; l'únic que faltava era algú que la hi demanés.
+ *
+ * Vol dir que un mòdul nou hi surt sol, sense tocar això. I que els que no
+ * tenen res a dir d'un dia que no ha arribat —els hàbits, el diari— ja callen
+ * ells mateixos.
+ *
+ * SI DEMÀ NO HI HA RES, NO PICA. Un avís que arriba cada nit tant si tens
+ * coses com si no deixa de voler dir res al cap de tres dies, i el que
+ * volies era justament no deixar-te res.
+ */
+function triggerDema() {
+  try {
+    var dema = Utils.sumaDies(Utils.avui(), 1);
+    var blocs = Moduls.elDia(dema);
+    if (!blocs || !blocs.length) {
+      Log.info('trigger.dema', 'Demà no hi ha res, cap avís', { data: dema });
+      return;
+    }
+
+    /* Un bloc per línia, amb les seves coses seguides. A la notificació no hi
+       cap una llista amb sagnats: el que ha de fer és que sàpigues si has de
+       preparar res, i obrir-la si vols el detall. */
+    var cos = blocs.map(function (b) {
+      var quines = b.coses.slice(0, 4).map(function (c) { return c.text; });
+      if (b.coses.length > 4) quines.push('i ' + (b.coses.length - 4) + ' més');
+      return b.titol + ': ' + quines.join(' · ');
+    }).join('\n');
+
+    var quantes = blocs.reduce(function (n, b) { return n + b.coses.length; }, 0);
+    var r = Notifica.envia(
+      'Demà',
+      cos,
+      { etiqueta: 'dema', url: './#dia:' + dema }
+    );
+    Log.info('trigger.dema', 'Repàs de demà enviat',
+             { data: dema, blocs: blocs.length, coses: quantes, enviades: r.enviades });
+  } catch (err) {
+    Log.error('trigger.dema', err);
+  }
 }
 
 function triggerEscalfa() {
