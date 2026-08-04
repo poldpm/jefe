@@ -62,17 +62,39 @@ if (produccio.length > 1) {
 
 const missatge = process.argv.slice(2).join(' ') || 'Actualització';
 
+/* SI NO HI HA VERSIÓ NOVA, NO S'HA DESPLEGAT RES.
+   `clasp deploy` pot fallar i acabar amb codi 0 —passa quan el projecte arriba
+   al límit de 200 versions: escriu l'error i se'n va tan tranquil—. Això feia
+   que `npm run puja` digués que tot havia anat bé i que jo li digués a en Pol
+   que ja ho tenia a l'app, quan el que servia Google seguia sent el d'abans.
+   La prova que ha anat bé és que Google hagi creat una versió. No n'hi ha
+   d'altra, i per això és aquesta la que mana. */
 for (const d of produccio) {
+  let sortida = '';
   try {
-    const r = clasp(['deploy', '-i', d.id, '-d', missatge]);
-    const versio = (r.match(/Created version (\d+)/) || [])[1];
-    console.log('\n  Aplicació web actualitzada' + (versio ? ' a la versió ' + versio : '') +
-                '  (' + d.id.slice(0, 14) + '…)');
+    sortida = clasp(['deploy', '-i', d.id, '-d', missatge]);
   } catch (err) {
-    console.error('\n  ✗ No s\'ha pogut desplegar ' + d.id.slice(0, 14) + '…');
-    console.error('    ' + String(err.stderr || err.message).trim().split('\n').pop());
+    sortida = String(err.stdout || '') + '\n' + String(err.stderr || err.message || '');
+  }
+
+  const versio = (sortida.match(/Created version (\d+)/) || [])[1];
+  if (!versio) {
+    console.error('\n  ✗ NO S\'HA DESPLEGAT ' + d.id.slice(0, 14) + '…');
+    console.error('    El que serveix l\'app segueix sent el d\'abans.');
+    console.error('');
+    String(sortida).trim().split('\n').filter(Boolean).slice(-4)
+      .forEach((l) => console.error('    ' + l.trim()));
+    if (/limit of 200 versions/i.test(sortida)) {
+      console.error('');
+      console.error('    Apps Script no en deixa fer més de 200. S\'esborren des de');
+      console.error('    l\'editor: Historial del projecte → Suprimeix versions en bloc.');
+      console.error('    Les que faci servir un desplegament actiu no hi surten.');
+    }
     process.exit(1);
   }
+
+  console.log('\n  Aplicació web actualitzada a la versió ' + versio +
+              '  (' + d.id.slice(0, 14) + '…)');
 }
 
 /* L'ADREÇA /exec, APUNTADA.
