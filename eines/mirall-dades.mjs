@@ -481,6 +481,13 @@ export function dades(AVUI, menys) {
       { text: 'Benzinera de la carretera', menut: '−18,90 € · Cotxe · per classificar' },
       { text: 'Cafè', menut: '−4,35 € · Sortides' }
     ] });
+    blocs.push({ modul: 'escola', titol: 'De l\'escola', urgent: true, accio: 'escola', coses: [
+      { text: '09:00 Claustre de mestres', menut: 'avui' },
+      { text: '17:00 Reunió de cicle', menut: 'avui' },
+      { text: 'Corregir els controls', menut: 'pendents' },
+      { text: 'Preparar les fitxes de mates', menut: 'pendents' },
+      { text: 'Substitució Medi 2nB', menut: 'fa 20 min', urgent: true }
+    ] });
     blocs.push({ modul: 'diari', titol: 'Diari', urgent: false, accio: 'diari',
       coses: [ { text: 'Escrit', menut: 'Matí a la zona del refugi. Molta gent per ser dimarts.',
                  fet: true } ] });

@@ -74,19 +74,27 @@ function MODUL_ESCOLA() {
       };
     },
 
-    /* NOMÉS QUAN HI HA ALGUNA COSA SENSE LLEGIR. Un mòdul que surt cada dia a
-       la pàgina del dia dient «res» és soroll. */
-    elDia: function (data) {
-      if (data !== Utils.avui()) return null;
-      var c = Escola.senseLlegir(4);
-      if (!c.length) return null;
-      return {
-        titol: 'De l\'escola', urgent: true, accio: 'escola',
-        coses: c.map(function (m) {
-          return { text: m.titol, menut: Utils.faQuant(m.rebut_el) };
-        })
-      };
-    },
+    /**
+     * L'ESCOLA A LA PÀGINA DEL DIA.
+     *
+     * La feina de l'escola és part del dia d'en Pol i ha de sortir on mira el
+     * dia, no només a la seva pantalla. Hi surten dues coses, i en aquest
+     * ordre:
+     *
+     *   1. El RESUM d'aquell matí, obert. L'automatisme l'envia cada dia a les
+     *      set i ja porta els events, les tasques i els correus per llegir.
+     *      O sigui que JEFE ja té el seu dia d'escola: és al full, i no cal
+     *      demanar res a ningú ni fer cap viatge de més per ensenyar-lo.
+     *   2. El que hagi arribat després i encara no hagi llegit.
+     *
+     * Els esdeveniments no s'hi repeteixen: els calendaris de l'escola ja
+     * passen pel pont i surten a «Al calendari», que és on toca.
+     *
+     * Si aquell dia no hi ha ni resum ni res pendent, no hi surt. Un mòdul que
+     * apareix cada dia dient «res» és soroll, i la pàgina del dia ja té prou
+     * coses a dir.
+     */
+    elDia: function (data) { return Escola.elDia(data); },
 
     contextIA: function () { return Escola.contextIA(); },
 
@@ -210,6 +218,67 @@ var Escola = (function () {
     return { fets: f.length };
   }
 
+  // ---------------------------------------------------------- LA PÀGINA DEL DIA
+  function elDia(data) {
+    var avui = Utils.avui();
+    if (data !== avui) return null;
+
+    var f = tots();
+    var coses = [];
+
+    /* EL RESUM DEL MATÍ, OBERT PER LÍNIES. És l'únic missatge que val la pena
+       ensenyar sencer: no és un avís d'una cosa, és el dia. Cada línia seva
+       passa a ser una cosa de la pàgina, que és com es llegeix una llista.
+       Les capçaleres del missatge —les que van entre asteriscs— es queden com
+       a text de la línia i prou. */
+    var resum = null;
+    for (var i = 0; i < f.length && !resum; i++) {
+      if (f[i].mena === 'resum' && String(f[i].rebut_el).slice(0, 10) === avui) resum = f[i];
+    }
+    if (resum) {
+      /* El missatge del matí porta seccions —«Avui:», «Pendents:», «Correus no
+         llegits: 3»— i sota cadascuna les coses amb un pic. Les seccions no es
+         pinten com a línies: passen a ser l'etiqueta de les que vénen a sota,
+         que és com es llegeix una llista i no com es llegeix un correu.
+
+         Es fa a la babalà a posta: el format d'aquell missatge és seu i pot
+         canviar. Si canvia, el pitjor que passa és que una línia surti sense
+         etiqueta, no que això peti ni que et deixi de sortir el dia. */
+      var seccio = '';
+      String(resum.cos || '').split('\n').forEach(function (l) {
+        var t = l.replace(/\*/g, '').trim();
+        if (!t) return;
+
+        var esCosa = /^[·•\-]/.test(t);
+        if (!esCosa && t.slice(-1) === ':') {
+          seccio = t.slice(0, -1).replace(/^[^\wÀ-ÿ]+/, '').trim().toLowerCase();
+          return;                                   // el títol no és cap cosa
+        }
+        coses.push({
+          text: t.replace(/^[·•\-]\s*/, ''),
+          menut: esCosa ? seccio : 'de l\'escola'
+        });
+      });
+      if (!coses.length && resum.titol) coses.push({ text: resum.titol, menut: 'resum del matí' });
+    }
+
+    // I el que hagi arribat després i encara no hagi llegit
+    var nous = f.filter(function (m) {
+      return !m.llegit_el && (!resum || m.id !== resum.id);
+    }).slice(0, 5);
+    nous.forEach(function (m) {
+      coses.push({ text: m.titol, menut: Utils.faQuant(m.rebut_el), urgent: true });
+    });
+
+    if (!coses.length) return null;
+    return {
+      titol: 'De l\'escola',
+      urgent: nous.length > 0,
+      accio: 'escola',
+      coses: coses.slice(0, 12)
+    };
+  }
+
   // ------------------------------------------------------------- CONTEXT IA
   /* Curt, com mana el contracte: què hi ha pendent i de què va. El detall el
      demana amb l'eina si li cal. */
@@ -239,7 +308,7 @@ var Escola = (function () {
   }
 
   return {
-    rebre: rebre, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
+    rebre: rebre, elDia: elDia, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
     pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA
   };
 })();
