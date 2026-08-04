@@ -194,38 +194,7 @@ function fes_(p) {
     case 'esdeveniments': {
       var ini = aData_(p.desde); ini.setHours(0, 0, 0, 0);
       var fi = aData_(p.fins); fi.setHours(23, 59, 59, 999);
-      var ara = new Date();
-      var tz = Session.getScriptTimeZone();
-      var out = [];
-
-      (p.calendaris && p.calendaris.length ? p.calendaris : meus_().map(function (c) { return c.id; }))
-        .forEach(function (id) {
-          var cal;
-          try { cal = CalendarApp.getCalendarById(id); } catch (err) { return; }
-          if (!cal) return;
-
-          var nom = cal.getName(), color = cal.getColor();
-          cal.getEvents(ini, fi).forEach(function (ev) {
-            var i = ev.getStartTime(), f = ev.getEndTime();
-            var totDia = ev.isAllDayEvent();
-            out.push({
-              id: ev.getId(), calendari: id, calendariNom: nom,
-              color: ev.getColor() || color || '',
-              titol: ev.getTitle() || '(sense títol)',
-              lloc: ev.getLocation() || '',
-              nota: String(ev.getDescription() || '').slice(0, 300),
-              data: Utilities.formatDate(i, tz, 'yyyy-MM-dd'),
-              dataFi: Utilities.formatDate(new Date(f.getTime() - (totDia ? 60000 : 0)),
-                                           tz, 'yyyy-MM-dd'),
-              totElDia: totDia,
-              hora: totDia ? '' : Utilities.formatDate(i, tz, 'HH:mm'),
-              horaFi: totDia ? '' : Utilities.formatDate(f, tz, 'HH:mm'),
-              passat: f < ara,
-              minuts: totDia ? 0 : Math.round((f - i) / 60000)
-            });
-          });
-        });
-      return out;
+      return esdeveniments_(p.calendaris, ini, fi);
     }
 
     case 'crea': {
@@ -274,6 +243,143 @@ function fes_(p) {
     default:
       throw new Error('No sé fer «' + p.accio + '».');
   }
+}
+
+
+/**
+ * LES CITES D'AQUESTS CALENDARIS, TOTES DE COP.
+ *
+ * `CalendarApp.getEvents` no és una crida a l'API: és una capa que va a buscar
+ * cada peça quan la demanes. Llegint així, aquesta resposta trigava entre 3 i
+ * 34 segons segons el dia —mesurat des de JEFE el 4 d'agost del 2026: «escola
+ * 18.385 ms»— i era tot el que quedava lent del calendari.
+ *
+ * Amb `UrlFetchApp.fetchAll` es demanen totes les agendes alhora i el que es
+ * paga és la més lenta, no la suma. No cal activar cap servei ni cap permís
+ * nou: `ScriptApp.getOAuthToken()` porta el que aquest script ja té concedit.
+ *
+ * Si no se'n surt, es llegeix com sempre. Val més trigar que no contestar.
+ */
+function esdeveniments_(ids, ini, fi) {
+  var agendes = meus_();
+  var nomDe = {}, colorDe = {};
+  agendes.forEach(function (c) { nomDe[c.id] = c.nom; colorDe[c.id] = c.color; });
+
+  var quins = (ids && ids.length) ? ids : agendes.map(function (c) { return c.id; });
+  if (!quins.length) return [];
+
+  var deCop = totesDeCop_(quins, ini, fi, nomDe, colorDe);
+  if (deCop) return deCop;
+
+  // El camí de sempre, per si l'altre no ha anat.
+  var ara = new Date();
+  var tz = Session.getScriptTimeZone();
+  var out = [];
+  quins.forEach(function (id) {
+    var cal;
+    try { cal = CalendarApp.getCalendarById(id); } catch (err) { return; }
+    if (!cal) return;
+    var nom = cal.getName(), color = cal.getColor();
+    cal.getEvents(ini, fi).forEach(function (ev) {
+      var i = ev.getStartTime(), f = ev.getEndTime();
+      var totDia = ev.isAllDayEvent();
+      out.push({
+        id: ev.getId(), calendari: id, calendariNom: nom,
+        color: ev.getColor() || color || '',
+        titol: ev.getTitle() || '(sense títol)',
+        lloc: ev.getLocation() || '',
+        nota: String(ev.getDescription() || '').slice(0, 300),
+        data: Utilities.formatDate(i, tz, 'yyyy-MM-dd'),
+        dataFi: Utilities.formatDate(new Date(f.getTime() - (totDia ? 60000 : 0)),
+                                     tz, 'yyyy-MM-dd'),
+        totElDia: totDia,
+        hora: totDia ? '' : Utilities.formatDate(i, tz, 'HH:mm'),
+        horaFi: totDia ? '' : Utilities.formatDate(f, tz, 'HH:mm'),
+        passat: f < ara,
+        minuts: totDia ? 0 : Math.round((f - i) / 60000)
+      });
+    });
+  });
+  return out;
+}
+
+
+function totesDeCop_(quins, ini, fi, nomDe, colorDe) {
+  var testimoni;
+  try { testimoni = ScriptApp.getOAuthToken(); } catch (e) { return null; }
+  if (!testimoni) return null;
+
+  var params = '?singleEvents=true&orderBy=startTime&showDeleted=false&maxResults=2500' +
+    '&timeMin=' + encodeURIComponent(ini.toISOString()) +
+    '&timeMax=' + encodeURIComponent(fi.toISOString()) +
+    '&fields=' + encodeURIComponent('items(id,summary,location,description,status,' +
+                                    'start(date,dateTime),end(date,dateTime))');
+
+  var peticions = quins.map(function (id) {
+    return {
+      url: 'https://www.googleapis.com/calendar/v3/calendars/' +
+           encodeURIComponent(id) + '/events' + params,
+      method: 'get',
+      headers: { Authorization: 'Bearer ' + testimoni },
+      muteHttpExceptions: true
+    };
+  });
+
+  var respostes;
+  try { respostes = UrlFetchApp.fetchAll(peticions); } catch (e) { return null; }
+
+  var ara = new Date();
+  var tz = Session.getScriptTimeZone();
+  var out = [];
+  var bones = 0;
+
+  for (var n = 0; n < quins.length; n++) {
+    if (respostes[n].getResponseCode() !== 200) return null;   // si en falla una, totes com sempre
+    var dades;
+    try { dades = JSON.parse(respostes[n].getContentText()); } catch (e) { return null; }
+    bones++;
+
+    (dades.items || []).forEach(function (ev) {
+      if (!ev || ev.status === 'cancelled') return;
+      var totDia = !!(ev.start && ev.start.date);
+      var i, f;
+      if (totDia) {
+        /* A l'API, el final d'un dia sencer és EXCLUSIU: una festa d'un dia
+           acaba «l'endemà». Sense restar-li un dia sortiria marcada dos cops. */
+        i = data_(ev.start.date);
+        f = data_((ev.end && ev.end.date) || ev.start.date);
+        f.setDate(f.getDate() - 1);
+      } else {
+        i = new Date(ev.start.dateTime);
+        f = new Date((ev.end && ev.end.dateTime) || ev.start.dateTime);
+      }
+      if (isNaN(i) || isNaN(f)) return;
+
+      out.push({
+        id: ev.id, calendari: quins[n], calendariNom: nomDe[quins[n]] || '',
+        color: colorDe[quins[n]] || '',
+        titol: ev.summary || '(sense títol)',
+        lloc: ev.location || '',
+        nota: String(ev.description || '').slice(0, 300),
+        data: Utilities.formatDate(i, tz, 'yyyy-MM-dd'),
+        dataFi: Utilities.formatDate(f, tz, 'yyyy-MM-dd'),
+        totElDia: totDia,
+        hora: totDia ? '' : Utilities.formatDate(i, tz, 'HH:mm'),
+        horaFi: totDia ? '' : Utilities.formatDate(f, tz, 'HH:mm'),
+        passat: totDia ? (Utilities.formatDate(f, tz, 'yyyy-MM-dd') <
+                          Utilities.formatDate(ara, tz, 'yyyy-MM-dd'))
+                       : f < ara,
+        minuts: totDia ? 0 : Math.round((f - i) / 60000)
+      });
+    });
+  }
+  return bones ? out : null;
+}
+
+
+function data_(text) {
+  var p = String(text).split('-');
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0);
 }
 
 
