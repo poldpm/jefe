@@ -2847,5 +2847,42 @@ console.log('\nEl verdicte del dia: el navegador i el servidor diuen el mateix')
       vista.indexOf("escriu('nutricio', 'activitat'"));
 }
 
+// ---------------- els comptadors, dibuixats a la pantalla d'hàbits
+/* En Pol vol veure com va el tabac SENSE entrar enlloc, i no vol la llegenda
+   de la graella —que explica com llegir una taula, cosa que s'aprèn el primer
+   dia—. Això comprova que la sèrie arribi amb el full del mes i no amb el dia:
+   el dia torna a CADA toc que fa, i noranta números per toc són noranta
+   números que ningú mira. */
+console.log('\nEls comptadors: la corba a la pantalla, i sense pagar-la a cada toc');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Habits.gs', 'utf8');
+  const vista = fs.readFileSync('apps-script/vista_habits.html', 'utf8');
+
+  cal('la pantalla demana el mes AMB els comptadors',
+      /Habits\.mes\(d, n, true\)/.test(font));
+  cal('i marcar un hàbit el demana SENSE',
+      /d\.mes = Habits\.mes\(p\.data \|\| Utils\.avui\(\), 30\);/.test(font));
+  cal('la sèrie dels comptadors es munta per dies i per mesos',
+      /function comptadors_\(/.test(font) && /mesos: mesos/.test(font));
+
+  cal('la llegenda de la graella ja no hi és', !/class="llegenda"/.test(vista));
+  cal('i al seu lloc hi ha la corba', /blocComptadors\(\)/.test(vista));
+  cal('amb les tres finestres', /\['setmana', 'Setmana'\], \['mes', 'Mes'\], \['tot', 'Tot'\]/.test(vista));
+  cal('i la finestra triada es recorda entre visites',
+      /Cau\.set\('habits\.finestraCompt'/.test(vista));
+
+  /* El zero SEMPRE a baix: una corba que arrenca la base al mínim fa que un
+     cigarro de diferència sembli una muntanya. */
+  cal('la corba té la base al zero i no al mínim',
+      /var y = function \(v\) \{ return H - marge - \(v \/ sostre\) \* \(H - marge \* 2\); \};/.test(vista));
+
+  const app = fs.readFileSync('apps-script/ui_app.html', 'utf8');
+  cal('el botó de canviar a full de dia ja no hi és enlloc',
+      !/data-tema="1"/.test(vista) &&
+      !/data-tema="1"/.test(fs.readFileSync('apps-script/vista_inici.html', 'utf8')));
+  cal('i el tema es queda fosc sense preguntar',
+      /aplicaTema: function \(\) \{/.test(app) && /temaActual: function \(\) \{ return 'fosc'; \}/.test(app));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

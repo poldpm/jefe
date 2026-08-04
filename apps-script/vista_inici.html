@@ -31,8 +31,6 @@ App.registraVista('inici', {
             '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
             '<p class="marge" style="margin:4px 0 0">JEFE</p>' +
           '</div>' +
-          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Clar o fosc">' +
-            ic('ajust') + '</button>' +
         '</div></header>' +
         '<div class="pagina">';
 
@@ -78,13 +76,6 @@ App.registraVista('inici', {
       });
       var bv = arrel.querySelector('[data-torna]');
       if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
-      var bt = arrel.querySelector('[data-tema]');
-      if (bt) bt.addEventListener('click', function () {
-        var ordre = ['fosc', 'clar'];
-        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 2];
-        App.aplicaTema(seg);
-        App.brindis('Full ' + (seg === 'clar' ? 'de dia' : 'de nit'));
-      });
     }
 
     var cau = Cau.get('inici', null);

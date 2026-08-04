@@ -521,6 +521,55 @@ h2 { font-size: 1.0625rem; }
 .compt-tira i[style*="height: 0%"] { min-height: 1px; opacity: .55; }
 .compt-tira i[data-avui="1"] { background: var(--utm); }
 
+/* ==========================================================================
+   LA CORBA D'UN COMPTADOR
+
+   Ocupa el lloc que tenia la llegenda de la graella. És un canvi de criteri:
+   la llegenda explicava com llegir una taula —cosa que s'aprèn el primer dia i
+   després sobra cada dia— i això diu com va el que estàs mirant de deixar.
+
+   Línia i no barres: el que importa és el pendent. Les barres del dia són a la
+   targeta, que és on es comparen dies solts.
+   ========================================================================== */
+
+.compt-bloc { margin-top: var(--e4); display: flex; flex-direction: column; gap: var(--e4); }
+.compt-graf { border: 1px solid var(--neatline); background: var(--paper2); padding: var(--e3); }
+.compt-graf-cap { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e2); }
+.compt-graf-cap .marge { flex: 1; min-width: 0; margin: 0; }
+
+.compt-tria { display: flex; gap: 2px; flex: none; }
+.compt-tria button {
+  /* 44 px com la resta: el dit no es fa més petit perquè el botó sigui
+     secundari. El que s'encongeix és la lletra, no l'àrea. */
+  min-height: 44px; padding: 0 var(--e2);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.compt-tria button[aria-pressed="true"] { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .compt-tria button:hover { color: var(--utm); }
+}
+
+/* `preserveAspectRatio="none"` estira el dibuix a l'amplada que hi hagi: el
+   que importa és la forma de la corba, no que els píxels siguin quadrats. */
+.corba-compt { display: block; width: 100%; height: 90px; }
+.corba-area { fill: var(--utm); opacity: .12; stroke: none; }
+.corba-linia { fill: none; stroke: var(--utm); stroke-width: 2;
+               stroke-linejoin: round; stroke-linecap: round;
+               vector-effect: non-scaling-stroke; }
+/* La mitjana de la finestra. Sense una ratlla al mig, un pic no es distingeix
+   d'un nivell alt sostingut. */
+.corba-mitjana { stroke: var(--ink-suau); stroke-width: 1; stroke-dasharray: 3 3;
+                 vector-effect: non-scaling-stroke; }
+.corba-ultim { fill: var(--utm); }
+
+.compt-graf-peu {
+  display: flex; justify-content: space-between; gap: var(--e2); margin-top: var(--e2);
+  font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
+}
+
 /* El canvi respecte la setmana passada, dit amb el número. Una fletxa sola no
    diu de quant, i un color sol no diu res a qui no el distingeix: qui porta la
    direcció és la fletxa i qui porta la mida és la xifra.

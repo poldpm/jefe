@@ -52,8 +52,23 @@ export function dades(AVUI, menys) {
   const habitsMes = () => {
     const calendari = [];
     for (let i = 29; i >= 0; i--) calendari.push(menys(i));
+    /* Els comptadors, per dibuixar-ne la corba. Inventats i irregulars a
+       posta: amb una sèrie plana, un gràfic sempre queda bé. */
+    const comptadors = HABITS.filter((h) => h.esComptador).map((h) => {
+      const dies = [];
+      for (let i = 89; i >= 0; i--) {
+        const base = 9 - Math.floor((89 - i) / 30) * 1.5;
+        const v = Math.max(0, Math.round(base + 3 * Math.sin(i / 2.3) + ((i * 7) % 5) - 2));
+        dies.push({ data: menys(i), valor: i === 0 ? h.valor : v });
+      }
+      const perMes = {};
+      dies.forEach((d) => { const m = d.data.slice(0, 7); perMes[m] = (perMes[m] || 0) + d.valor; });
+      return { id: h.id, nom: h.nom, unitat: h.unitat || '', dies,
+               mesos: Object.keys(perMes).sort().map((m) => ({ mes: m, total: perMes[m] })) };
+    });
+
     return {
-      desde: calendari[0], fins: calendari[29], avui: AVUI, calendari,
+      desde: calendari[0], fins: calendari[29], avui: AVUI, calendari, comptadors,
       habits: HABITS.filter(h => !h.esComptador).map((h, n) => ({
         id: h.id, nom: h.nom, pct30: h.pct30, ratxa: h.ratxa || 0, unitatRatxa: 'dies',
         celles: calendari.map((d, i) => {

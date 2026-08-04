@@ -549,6 +549,55 @@ h2 { font-size: 1.0625rem; }
 .compt-tira i[style*="height: 0%"] { min-height: 1px; opacity: .55; }
 .compt-tira i[data-avui="1"] { background: var(--utm); }
 
+/* ==========================================================================
+   LA CORBA D'UN COMPTADOR
+
+   Ocupa el lloc que tenia la llegenda de la graella. És un canvi de criteri:
+   la llegenda explicava com llegir una taula —cosa que s'aprèn el primer dia i
+   després sobra cada dia— i això diu com va el que estàs mirant de deixar.
+
+   Línia i no barres: el que importa és el pendent. Les barres del dia són a la
+   targeta, que és on es comparen dies solts.
+   ========================================================================== */
+
+.compt-bloc { margin-top: var(--e4); display: flex; flex-direction: column; gap: var(--e4); }
+.compt-graf { border: 1px solid var(--neatline); background: var(--paper2); padding: var(--e3); }
+.compt-graf-cap { display: flex; align-items: center; gap: var(--e2); margin-bottom: var(--e2); }
+.compt-graf-cap .marge { flex: 1; min-width: 0; margin: 0; }
+
+.compt-tria { display: flex; gap: 2px; flex: none; }
+.compt-tria button {
+  /* 44 px com la resta: el dit no es fa més petit perquè el botó sigui
+     secundari. El que s'encongeix és la lletra, no l'àrea. */
+  min-height: 44px; padding: 0 var(--e2);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.compt-tria button[aria-pressed="true"] { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .compt-tria button:hover { color: var(--utm); }
+}
+
+/* `preserveAspectRatio="none"` estira el dibuix a l'amplada que hi hagi: el
+   que importa és la forma de la corba, no que els píxels siguin quadrats. */
+.corba-compt { display: block; width: 100%; height: 90px; }
+.corba-area { fill: var(--utm); opacity: .12; stroke: none; }
+.corba-linia { fill: none; stroke: var(--utm); stroke-width: 2;
+               stroke-linejoin: round; stroke-linecap: round;
+               vector-effect: non-scaling-stroke; }
+/* La mitjana de la finestra. Sense una ratlla al mig, un pic no es distingeix
+   d'un nivell alt sostingut. */
+.corba-mitjana { stroke: var(--ink-suau); stroke-width: 1; stroke-dasharray: 3 3;
+                 vector-effect: non-scaling-stroke; }
+.corba-ultim { fill: var(--utm); }
+
+.compt-graf-peu {
+  display: flex; justify-content: space-between; gap: var(--e2); margin-top: var(--e2);
+  font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
+}
+
 /* El canvi respecte la setmana passada, dit amb el número. Una fletxa sola no
    diu de quant, i un color sol no diu res a qui no el distingeix: qui porta la
    direcció és la fletxa i qui porta la mida és la xifra.
@@ -2253,7 +2302,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-05 00:21 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-05 00:42 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2563,7 +2612,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-05 00:21 · en curs";
+window.MARCA_JEFE = "2026-08-05 00:42 · en curs";
 </script>
 
 <script>
@@ -2928,13 +2977,10 @@ var Jefe = (function () {
          cadascun la configuració, i això no és una app: són dues. La sala de
          comandament ja és fosca; la resta l'ha d'acompanyar.
 
-         Canviar el valor per defecte no n'hi ha prou: als aparells on ja s'ha
-         obert l'app hi ha un «auto» desat, i el que hi ha desat mana. Per això
-         es migra aquí. Queda el canvi manual a clar per si algun dia el sol de
-         cara ho demana, però no tornarà a decidir-ho el sistema. */
-      var tema = Cau.get('tema', 'fosc');
-      if (tema === 'auto') { tema = 'fosc'; Cau.set('tema', tema); }
-      App.aplicaTema(tema);
+         I ara ja no es tria: el botó de passar a full de dia s'ha tret. El que
+         hi hagi desat als aparells d'abans —«auto», «clar»— es migra aquí i
+         no torna a preguntar-se. */
+      App.aplicaTema();
 
       /* ELS VIGILANTS ES REGISTREN SEMPRE, i abans de res.
          Abans, si encara no hi havia clau d'accés, aquesta funció sortia aquí
@@ -3261,13 +3307,22 @@ var Jefe = (function () {
       });
     },
 
-    aplicaTema: function (tema) {
-      Cau.set('tema', tema);
-      if (tema === 'auto') document.documentElement.removeAttribute('data-tema');
-      else document.documentElement.setAttribute('data-tema', tema);
+    /**
+     * FOSC I PROU.
+     *
+     * Hi havia un botó per passar a full de dia i en Pol l'ha tret: el vol
+     * fosc sempre. La funció es queda perquè és qui posa l'atribut en
+     * arrencar, però ja no pregunta res a ningú.
+     *
+     * El full clar segueix definit a l'estil i no s'esborra: és el que fa que
+     * el fosc estigui escrit com una tria i no com l'única cosa que hi ha.
+     */
+    aplicaTema: function () {
+      Cau.set('tema', 'fosc');
+      document.documentElement.setAttribute('data-tema', 'fosc');
     },
 
-    temaActual: function () { return Cau.get('tema', 'fosc'); }
+    temaActual: function () { return 'fosc'; }
   };
 
   document.addEventListener('keydown', function (ev) {
@@ -4077,8 +4132,6 @@ App.registraVista('inici', {
             '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
             '<p class="marge" style="margin:4px 0 0">JEFE</p>' +
           '</div>' +
-          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Clar o fosc">' +
-            ic('ajust') + '</button>' +
         '</div></header>' +
         '<div class="pagina">';
 
@@ -4124,13 +4177,6 @@ App.registraVista('inici', {
       });
       var bv = arrel.querySelector('[data-torna]');
       if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
-      var bt = arrel.querySelector('[data-tema]');
-      if (bt) bt.addEventListener('click', function () {
-        var ordre = ['fosc', 'clar'];
-        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 2];
-        App.aplicaTema(seg);
-        App.brindis('Full ' + (seg === 'clar' ? 'de dia' : 'de nit'));
-      });
     }
 
     var cau = Cau.get('inici', null);
@@ -5758,8 +5804,6 @@ App.registraVista('habits', {
             '<button class="btn btn-secundari btn-icona" data-dia="1" aria-label="Dia següent"' +
               (esAvui ? ' disabled' : '') + '>' + ic('dreta') + '</button>' +
           '</div>' +
-          '<button class="btn btn-fantasma btn-icona" data-tema="1" aria-label="Clar o fosc">' +
-            ic('ajust') + '</button>' +
         '</div></header>' +
 
         '<div class="pagina"><div class="dues-columnes">' +
@@ -5952,6 +5996,126 @@ App.registraVista('habits', {
 
     // ------------------------------------------------------ el full de mes
 
+
+    /* ==================================================================
+       LA CORBA DELS COMPTADORS
+
+       Ocupa el lloc que tenia la llegenda, i és un canvi de criteri: la
+       llegenda explicava com llegir la graella —una cosa que s'aprèn el primer
+       dia i després sobra cada dia— i això diu com va el que estàs mirant de
+       deixar.
+
+       Línia i no barres: aquí el que importa és el pendent, si puja o baixa, i
+       una línia el diu d'un cop d'ull. Les barres del dia van a la targeta,
+       que és on compares dies solts.
+
+       Tres finestres, i cadascuna respon una pregunta diferent:
+         setmana  — com he anat aquests dies
+         mes      — quin és el meu nivell normal
+         tot      — de debò estic deixant-ho?
+       La de «tot» va per mesos: tres anys de dies no caben en un dibuix de
+       dos-cents píxels i tampoc es llegirien.
+       ================================================================== */
+
+    var finestraCompt = Cau.get('habits.finestraCompt', 'mes');
+
+    function puntsDe(c) {
+      if (finestraCompt === 'tot') {
+        return (c.mesos || []).map(function (m) {
+          return { etiqueta: m.mes, valor: m.total, mes: true };
+        });
+      }
+      var dies = c.dies || [];
+      var n = finestraCompt === 'setmana' ? 7 : 30;
+      return dies.slice(-n).map(function (d) {
+        return { etiqueta: d.data, valor: d.valor };
+      });
+    }
+
+    /**
+     * La línia, dibuixada a mà amb SVG.
+     *
+     * Sense cap llibreria: són quatre coordenades i una polilínia, i afegir
+     * una dependència per això seria pagar-ne el pes cada obertura.
+     *
+     * El zero SEMPRE és a baix. Una corba que arrenca la base al valor mínim
+     * fa que una diferència d'un cigarro sembli una muntanya, i això no és
+     * ensenyar-te com vas: és fer-te un ensurt.
+     */
+    function corba(c) {
+      var punts = puntsDe(c);
+      if (punts.length < 2) {
+        return '<p class="menut">Encara no hi ha prou dies per dibuixar res.</p>';
+      }
+
+      var W = 300, H = 90, marge = 4;
+      var sostre = 1;
+      punts.forEach(function (p) { if (p.valor > sostre) sostre = p.valor; });
+
+      var pas = (W - marge * 2) / (punts.length - 1);
+      var y = function (v) { return H - marge - (v / sostre) * (H - marge * 2); };
+      var coords = punts.map(function (p, i) {
+        return (marge + i * pas).toFixed(1) + ',' + y(p.valor).toFixed(1);
+      });
+
+      /* L'àrea de sota, fluixa: fa que la línia es llegeixi com un volum i no
+         com un fil perdut enmig d'un rectangle buit. */
+      var area = 'M' + marge + ',' + (H - marge) + ' L' + coords.join(' L') +
+                 ' L' + (marge + (punts.length - 1) * pas).toFixed(1) + ',' + (H - marge) + ' Z';
+
+      var ultim = punts[punts.length - 1];
+      var cx = marge + (punts.length - 1) * pas, cy = y(ultim.valor);
+
+      /* La mitjana de la finestra, com a referència. Sense una ratlla al mig,
+         un pic no es distingeix d'un nivell alt sostingut. */
+      var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+      var mitjana = suma / punts.length;
+      var ym = y(mitjana);
+
+      return '<svg class="corba-compt" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
+          ' role="img" aria-label="' + esc(c.nom + ': ' +
+            (finestraCompt === 'tot' ? 'total per mesos'
+              : 'els últims ' + punts.length + ' dies') +
+            '. Màxim ' + sostre + '. Mitjana ' + fmt.decimal(mitjana) + '.') + '">' +
+          '<path class="corba-area" d="' + area + '"/>' +
+          '<line class="corba-mitjana" x1="' + marge + '" y1="' + ym.toFixed(1) +
+            '" x2="' + (W - marge) + '" y2="' + ym.toFixed(1) + '"/>' +
+          '<polyline class="corba-linia" points="' + coords.join(' ') + '"/>' +
+          '<circle class="corba-ultim" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.5"/>' +
+        '</svg>';
+    }
+
+    function blocComptadors() {
+      var cs = (mes && mes.comptadors) || [];
+      if (!cs.length) return '';
+
+      var TRIA = [['setmana', 'Setmana'], ['mes', 'Mes'], ['tot', 'Tot']];
+
+      return '<div class="compt-bloc">' + cs.map(function (c) {
+        var punts = puntsDe(c);
+        var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+        var mitjana = punts.length ? suma / punts.length : 0;
+
+        return '<div class="compt-graf" data-graf="' + esc(c.id) + '">' +
+          '<div class="compt-graf-cap">' +
+            '<p class="marge">' + esc(c.nom) + '</p>' +
+            '<div class="compt-tria">' + TRIA.map(function (t) {
+              return '<button data-finestra="' + t[0] + '"' +
+                     (finestraCompt === t[0] ? ' aria-pressed="true"' : '') + '>' +
+                     t[1] + '</button>';
+            }).join('') + '</div>' +
+          '</div>' +
+          corba(c) +
+          '<div class="compt-graf-peu">' +
+            '<span>' + esc(finestraCompt === 'tot'
+              ? fmt.decimal(mitjana) + ' al mes de mitjana'
+              : fmt.decimal(mitjana) + ' al dia de mitjana') + '</span>' +
+            '<span>' + esc(suma + (finestraCompt === 'tot' ? ' en total' : ' en total')) + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+
     function pintaMes() {
       var col = arrel.querySelector('#col-mes');
       if (!col) return;
@@ -5992,28 +6156,17 @@ App.registraVista('habits', {
           '<div id="capa-relleu" style="position:absolute;pointer-events:none"></div>' +
         '</div></div>' +
 
-        '<div class="llegenda" style="margin-top:var(--e3)">' +
-          '<p class="marge">Llegenda</p>' +
-          '<ul>' +
-            '<li><span class="mostra" style="background:var(--fet)"></span>fet</li>' +
-            '<li><span class="mostra" style="background:var(--paper2)"></span>no fet</li>' +
-            '<li><span class="mostra" style="background:transparent"></span>no toca</li>' +
-            '<li><span class="mostra" style="background:repeating-linear-gradient(45deg,transparent 0 3px,var(--utm-suau) 3px 4px)"></span>futur</li>' +
-          '</ul>' +
-          '<p class="menut" style="margin:var(--e3) 0 var(--e1)">Corbes de nivell = compliment. ' +
-            'Les corbes es tanquen sobre les bones ratxes i s\'obren a les valls.' +
-            (ratoli ? ' Clica una casella per registrar-la.'
-                    : ' Per registrar un dia passat, fes servir les fletxes de dia o el calendari de la fitxa.') +
-          '</p>' +
-          '<div class="rampa">' +
-            '<i style="background:var(--h1)"></i><i style="background:var(--h2)"></i>' +
-            '<i style="background:var(--h3)"></i><i style="background:var(--h4)"></i>' +
-            '<i style="background:var(--h5)"></i><i style="background:var(--h6)"></i>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:space-between" class="menut"><span>vall</span><span>cim</span></div>' +
-        '</div>';
+        blocComptadors();
 
       dibuixaRelleu();
+      arrel.querySelectorAll('[data-finestra]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          finestraCompt = b.dataset.finestra;
+          Cau.set('habits.finestraCompt', finestraCompt);
+          pintaMes();
+        });
+      });
+
       arrel.querySelectorAll('[data-cella]').forEach(function (b) {
         b.addEventListener('click', function () {
           var p = b.dataset.cella.split('|');
@@ -6062,15 +6215,6 @@ App.registraVista('habits', {
       });
       var ba = arrel.querySelector('[data-avui]');
       if (ba) ba.addEventListener('click', function () { App.ves('habits', { data: fmt.avui() }); });
-      var bt = arrel.querySelector('[data-tema]');
-      if (bt) bt.addEventListener('click', function () {
-        // Sense «auto»: qui decideix el tema ets tu, no la configuració del
-        // telèfon. Si no, el mateix JEFE surt blanc en un aparell i fosc a l'altre.
-        var ordre = ['fosc', 'clar'];
-        var seg = ordre[(ordre.indexOf(App.temaActual()) + 1) % 2];
-        App.aplicaTema(seg);
-        App.brindis('Full ' + (seg === 'clar' ? 'de dia' : 'de nit'));
-      });
     }
 
     function lligaAvui() {

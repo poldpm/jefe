@@ -78,7 +78,7 @@ function MODUL_HABITS() {
         var d = p.data || Utils.avui();
         var n = p.dies || 30;
         return Memoria.recorda('habits', 'pantalla:' + d + ':' + n, function () {
-          return { dia: Habits.dia(d), mes: Habits.mes(d, n) };
+          return { dia: Habits.dia(d), mes: Habits.mes(d, n, true) };
         });
       },
 
@@ -569,7 +569,12 @@ var Habits = (function () {
    * És el que alimenta el relleu del mapa, i per això cada cel·la porta
    * un valor numèric (l'altitud) a més de l'estat.
    */
-  function mes(fins, dies) {
+  /**
+   * El full del mes.  només quan s'obre la pantalla: marcar un
+   * hàbit també torna el mes, i noranta números per toc són noranta números
+   * que ningú mira. La pantalla se'ls guarda i els va tocant ella.
+   */
+  function mes(fins, dies, ambComptadors) {
     if (!Utils.esDataValida(fins)) fins = Utils.avui();
     dies = Math.max(7, Math.min(90, Number(dies) || 30));
 
@@ -602,7 +607,63 @@ var Habits = (function () {
       };
     });
 
-    return { desde: desde, fins: fins, avui: avui, calendari: calendari, habits: files };
+    var r = { desde: desde, fins: fins, avui: avui, calendari: calendari, habits: files };
+    if (ambComptadors) r.comptadors = comptadors_(idx, avui);
+    return r;
+  }
+
+  /**
+   * ELS COMPTADORS, PER DIBUIXAR-LOS A LA PANTALLA D'HÀBITS.
+   *
+   * No van a la graella de compliment —un comptador no es compleix— però sí que
+   * han de sortir a la mateixa pàgina: el que et fa deixar una cosa és veure la
+   * ratlla, no entrar a cap fitxa a buscar-la.
+   *
+   * Van amb el full del mes i NO amb el dia a posta: el dia torna a cada toc
+   * que fas, i noranta números per toc són noranta números que no mires. El
+   * full del mes només torna quan obres la pantalla.
+   *
+   * Es donen dues coses: els dies un per un —serveixen per a la setmana i per
+   * al mes— i el total per mesos, que és l'única manera d'ensenyar «tot» sense
+   * enviar tres anys de dies.
+   */
+  function comptadors_(idx, avui) {
+    return definicions().filter(function (h) { return h.tipus === 'comptador'; })
+      .map(function (h) {
+        var regs = idx[h.id] || {};
+        var creacio = dataCreacio_(h);
+
+        var dies = [];
+        for (var i = 89; i >= 0; i--) {
+          var d = Utils.sumaDies(avui, -i);
+          if (d < creacio) continue;
+          dies.push({ data: d, valor: Number(regs[d]) || 0 });
+        }
+
+        /* Per mesos, des del primer registre. Els mesos sense res hi surten
+           amb zero: un mes que no vas fumar és el millor que hi pot haver i
+           s'ha de veure. */
+        var perMes = {}, ordre = [];
+        Object.keys(regs).forEach(function (d) {
+          var m = String(d).slice(0, 7);
+          if (perMes[m] === undefined) { perMes[m] = 0; ordre.push(m); }
+          perMes[m] += Number(regs[d]) || 0;
+        });
+        ordre.sort();
+        var mesos = [];
+        if (ordre.length) {
+          var m0 = ordre[0], mFi = avui.slice(0, 7), guarda = 0;
+          var cursor = m0;
+          while (cursor <= mFi && guarda++ < 120) {
+            mesos.push({ mes: cursor, total: perMes[cursor] || 0 });
+            var any = Number(cursor.slice(0, 4)), n = Number(cursor.slice(5, 7)) + 1;
+            if (n > 12) { n = 1; any++; }
+            cursor = any + '-' + ('0' + n).slice(-2);
+          }
+        }
+
+        return { id: h.id, nom: h.nom, unitat: h.unitat || '', dies: dies, mesos: mesos };
+      });
   }
 
   /** Històric d'un hàbit: els últims N dies més les estadístiques. */

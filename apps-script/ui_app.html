@@ -360,13 +360,10 @@ var Jefe = (function () {
          cadascun la configuració, i això no és una app: són dues. La sala de
          comandament ja és fosca; la resta l'ha d'acompanyar.
 
-         Canviar el valor per defecte no n'hi ha prou: als aparells on ja s'ha
-         obert l'app hi ha un «auto» desat, i el que hi ha desat mana. Per això
-         es migra aquí. Queda el canvi manual a clar per si algun dia el sol de
-         cara ho demana, però no tornarà a decidir-ho el sistema. */
-      var tema = Cau.get('tema', 'fosc');
-      if (tema === 'auto') { tema = 'fosc'; Cau.set('tema', tema); }
-      App.aplicaTema(tema);
+         I ara ja no es tria: el botó de passar a full de dia s'ha tret. El que
+         hi hagi desat als aparells d'abans —«auto», «clar»— es migra aquí i
+         no torna a preguntar-se. */
+      App.aplicaTema();
 
       /* ELS VIGILANTS ES REGISTREN SEMPRE, i abans de res.
          Abans, si encara no hi havia clau d'accés, aquesta funció sortia aquí
@@ -693,13 +690,22 @@ var Jefe = (function () {
       });
     },
 
-    aplicaTema: function (tema) {
-      Cau.set('tema', tema);
-      if (tema === 'auto') document.documentElement.removeAttribute('data-tema');
-      else document.documentElement.setAttribute('data-tema', tema);
+    /**
+     * FOSC I PROU.
+     *
+     * Hi havia un botó per passar a full de dia i en Pol l'ha tret: el vol
+     * fosc sempre. La funció es queda perquè és qui posa l'atribut en
+     * arrencar, però ja no pregunta res a ningú.
+     *
+     * El full clar segueix definit a l'estil i no s'esborra: és el que fa que
+     * el fosc estigui escrit com una tria i no com l'única cosa que hi ha.
+     */
+    aplicaTema: function () {
+      Cau.set('tema', 'fosc');
+      document.documentElement.setAttribute('data-tema', 'fosc');
     },
 
-    temaActual: function () { return Cau.get('tema', 'fosc'); }
+    temaActual: function () { return 'fosc'; }
   };
 
   document.addEventListener('keydown', function (ev) {
