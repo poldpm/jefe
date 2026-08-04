@@ -473,6 +473,41 @@ App.registraVista('nutricio', {
       return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + dia).slice(-2);
     }
 
+    /**
+     * EL VERDICTE DEL DIA, CALCULAT AQUÍ.
+     *
+     * TÉ UNA BESSONA al servidor —`verdicte_` a 40_Mod_Nutricio.gs— i han de
+     * dir exactament el mateix; hi ha una prova que ho comprova cas per cas.
+     *
+     * Per què es duplica, havent-hi una regla al servidor: perquè posar les
+     * calories cremades i esperar dos segons per saber si estàs en dèficit és
+     * esperar un càlcul que ja pots fer. Les dues xifres —el que has menjat i
+     * el que has cremat— són totes dues aquí; la resta és una resta.
+     */
+    function verdicteLocal(teCremades, net, objectiu) {
+      if (!teCremades) {
+        return { estat: 'sense_dades', text: 'Introdueix les calories cremades per tancar el dia.' };
+      }
+      if (net > 0 && objectiu > 0 && net >= objectiu) {
+        return { estat: 'deficit_assolit', text: 'Dèficit de ' + Math.round(net) + ' kcal — objectiu assolit' };
+      }
+      if (net > 0) {
+        return {
+          estat: 'deficit',
+          text: objectiu > 0
+            ? 'En dèficit de ' + Math.round(net) + ' kcal · falten ' + Math.round(objectiu - net) + ' per l\'objectiu'
+            : 'En dèficit de ' + Math.round(net) + ' kcal'
+        };
+      }
+      if (net === 0) {
+        return { estat: 'equilibri', text: 'En equilibri: has cremat el mateix que has ingerit.' };
+      }
+      return {
+        estat: 'superavit',
+        text: 'En superàvit de ' + Math.round(-net) + ' kcal · avui has menjat més del que has cremat'
+      };
+    }
+
     function lligaBalanc() {
       var inp = arrel.querySelector('#n-activitat');
       if (!inp) return;
@@ -480,9 +515,43 @@ App.registraVista('nutricio', {
       inp.addEventListener('change', function () {
         if (inp.value === previ) return;
         previ = inp.value;
-        escriu('nutricio', 'activitat', { data: data, kcal: num(inp.value) }, quePinto())
+        var kcal = num(inp.value);
+
+        /* PRIMER ES VEU, DESPRÉS ES DESA. La xifra és teva i el càlcul també:
+           no hi ha cap motiu per mirar dos segons una pantalla que ja sap la
+           resposta. Si el servidor diu una altra cosa, mana ell i es repinta;
+           si falla, es desfà. */
+        if (dades && dades.totals) {
+          dades.activitat = kcal;
+          dades.teActivitat = kcal > 0;
+          dades.cremades = kcal;
+          dades.teCremades = kcal > 0;
+          dades.net = kcal > 0 ? kcal - dades.totals.ingerides : null;
+          dades.verdicte = verdicteLocal(dades.teCremades, dades.net,
+                                         (dades.objectius || {}).deficit || 0);
+          /* ELS DOS BLOCS, no només el de dalt. Les tres xifres són a dalt i el
+             verdicte és a baix, amb el camp que acabes d'omplir: repintant
+             només un, la xifra de cremades canviava i el «estàs en dèficit»
+             es quedava com estava, que és pitjor que no tocar res. */
+          var dalt = arrel.querySelector('#col-dalt');
+          if (dalt) dalt.innerHTML = blocDalt(dades);
+          var tanca = arrel.querySelector('#col-tanca');
+          if (tanca) {
+            tanca.innerHTML = blocTanca(dades);
+            /* El camp s'ha tornat a pintar: torna-hi el que hi havies escrit i
+               deixa'l enfocat si hi eres. */
+            var nou = arrel.querySelector('#n-activitat');
+            if (nou) { nou.value = inp.value; }
+            lligaBalanc();
+          }
+        }
+
+        escriu('nutricio', 'activitat', { data: data, kcal: kcal }, quePinto())
           .then(function (r) { Cau.oblida('nutricio.'); aplica(r); })
-          .catch(function (err) { App.brindis(err.message, 'error'); });
+          .catch(function (err) {
+            App.brindis(err.message, 'error');
+            carrega();          // el que hi ha pintat era una promesa; se'n va
+          });
       });
     }
 

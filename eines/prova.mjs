@@ -2790,5 +2790,62 @@ console.log('\nLes agendes, demanades totes de cop');
       JSON.stringify({ soles: solesDemanades.length, quantes: l2.length }));
 }
 
+// ------ el verdicte del dia: la còpia del navegador i la del servidor
+/* Posar les calories cremades i esperar dos segons per saber si estàs en
+   dèficit és esperar un càlcul que ja es pot fer al navegador: el que has
+   menjat i el que has cremat són totes dues xifres allà, i la resta és una
+   resta. Per això n'hi ha una còpia a la vista.
+   Dues còpies deriven, i derivarien EN SILENCI: la pantalla diria una cosa i
+   la notificació de la nit una altra. Això les fa córrer totes dues sobre els
+   mateixos casos —inclosos els de vora, que són els que es fan malbé— i
+   compara el text lletra per lletra. */
+console.log('\nEl verdicte del dia: el navegador i el servidor diuen el mateix');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Nutricio.gs', 'utf8');
+  const vista = fs.readFileSync('apps-script/vista_nutricio.html', 'utf8');
+
+  const talla = (text, desde, fins) => {
+    const i0 = text.indexOf(desde);
+    const i1 = text.indexOf(fins, i0);
+    return (i0 >= 0 && i1 > i0) ? text.slice(i0, i1) : '';
+  };
+
+  const srv = talla(font, '  function verdicte_(', '\n  }\n') + '\n  }\n';
+  const cli = talla(vista, '    function verdicteLocal(', '\n    }\n') + '\n    }\n';
+  cal('es troben les dues còpies', srv.length > 100 && cli.length > 100,
+      JSON.stringify([srv.length, cli.length]));
+
+  const ctxS = { Math }; vm.createContext(ctxS);
+  vm.runInContext(srv + '\nvar __f = verdicte_;', ctxS);
+  const ctxC = { Math }; vm.createContext(ctxC);
+  vm.runInContext(cli + '\nvar __f = verdicteLocal;', ctxC);
+
+  /* Els casos de vora primer: el zero, l'objectiu clavat i el que hi passa
+     just per un. Són els que una còpia feta a mà es menja. */
+  const CASOS = [
+    [false, null, 500], [false, 300, 500],
+    [true, 500, 500], [true, 499, 500], [true, 501, 500],
+    [true, 0, 500], [true, -1, 500], [true, -350, 500],
+    [true, 700, 0], [true, 0, 0], [true, -200, 0],
+    [true, 123.4, 500], [true, 1200, 500]
+  ];
+
+  let diferents = [];
+  CASOS.forEach(([te, net, obj]) => {
+    const a = ctxS.__f(te, net, obj);
+    const b = ctxC.__f(te, net, obj);
+    if (a.estat !== b.estat || a.text !== b.text) {
+      diferents.push(JSON.stringify({ cas: [te, net, obj], servidor: a, navegador: b }));
+    }
+  });
+  cal('els ' + CASOS.length + ' casos donen el mateix estat i el mateix text',
+      diferents.length === 0, diferents.join(' | '));
+
+  cal('i la vista pinta el verdicte abans d\'enviar-lo, no després',
+      /dades\.verdicte = verdicteLocal\(/.test(vista) &&
+      vista.indexOf('dades.verdicte = verdicteLocal(') <
+      vista.indexOf("escriu('nutricio', 'activitat'"));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
