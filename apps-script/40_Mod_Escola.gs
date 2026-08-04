@@ -216,7 +216,9 @@ var Escola = (function () {
        demanava una cosa i no d'un resum. Van a la mateixa llista, que és on
        els busques. */
     f.forEach(function (m) {
-      if (m.mena === 'tasca' && !m.llegit_el) dia.pendents.push({ que: m.titol, id: m.id });
+      if (m.mena === 'tasca' && !m.llegit_el) {
+        dia.pendents.push({ llista: 'D\'un correu', que: m.titol, id: m.id });
+      }
     });
 
     return {
@@ -291,7 +293,14 @@ var Escola = (function () {
          quedant amb la secció d'abans: acabava a pendents com si fos una
          cosa a fer. Una línia sense pic tanca la secció i va a la resta. */
       if (esCosa && (seccio.indexOf('pendent') !== -1 || seccio.indexOf('tasca') !== -1)) {
-        out.pendents.push({ que: text });
+        /* LA LLISTA VA ENTRE CLAUDÀTORS: «[Tutoria] Corregir els controls».
+           L'script de l'escola llegeix TOTES les llistes de Google Tasks i hi
+           posa de quina ve cadascuna. Deixar-ho com a text pla convertia una
+           cosa ordenada en una llista llarga amb un claudàtor al davant, que
+           és exactament el que costa de llegir quan en tens moltes. */
+        var m = text.match(/^\[([^\]]+)\]\s*(.+)$/);
+        out.pendents.push(m ? { llista: m[1].trim(), que: m[2].trim() }
+                            : { llista: '', que: text });
         return;
       }
       if (!esCosa) seccio = '';
@@ -358,10 +367,16 @@ var Escola = (function () {
           seccio = t.slice(0, -1).replace(/^[^\wÀ-ÿ]+/, '').trim().toLowerCase();
           return;                                   // el títol no és cap cosa
         }
-        coses.push({
-          text: t.replace(/^[·•\-]\s*/, ''),
-          menut: esCosa ? seccio : 'de l\'escola'
-        });
+        /* Els pendents vénen amb la llista del Google Tasks entre claudàtors:
+           «[Tutoria] Corregir els controls». El claudàtor és un separador de
+           missatge de text, no una manera d'ensenyar res: aquí la llista ja té
+           el seu lloc —el text petit del costat— i el claudàtor sobra. */
+        var text = t.replace(/^[·•\-]\s*/, '');
+        var etiqueta = esCosa ? seccio : 'de l\'escola';
+        var g = text.match(/^\[([^\]]+)\]\s*(.+)$/);
+        if (g) { etiqueta = g[1].trim(); text = g[2].trim(); }
+
+        coses.push({ text: text, menut: etiqueta });
       });
       if (!coses.length && resum.titol) coses.push({ text: resum.titol, menut: 'resum del matí' });
     }

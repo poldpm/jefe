@@ -484,8 +484,10 @@ export function dades(AVUI, menys) {
     blocs.push({ modul: 'escola', titol: 'De l\'escola', urgent: true, accio: 'escola', coses: [
       { text: '09:00 Claustre de mestres', menut: 'avui' },
       { text: '17:00 Reunió de cicle', menut: 'avui' },
-      { text: 'Corregir els controls', menut: 'pendents' },
-      { text: 'Preparar les fitxes de mates', menut: 'pendents' },
+      /* Amb la llista del Google Tasks al text petit, que és on va des que
+         hem tret el claudàtor del davant. */
+      { text: 'Corregir els controls de llengua', menut: 'Tutoria' },
+      { text: 'Preparar les fitxes de mates', menut: 'Programació' },
       { text: 'Substitució Medi 2nB', menut: 'fa 20 min', urgent: true }
     ] });
     blocs.push({ modul: 'diari', titol: 'Diari', urgent: false, accio: 'diari',
@@ -512,10 +514,19 @@ export function dades(AVUI, menys) {
         { hora: '11:00', que: 'Substitució Medi 2nB' },
         { hora: '17:00', que: 'Reunió de cicle' }
       ],
+      /* Amb llista, que és com arriben: el resum del matí les porta com a
+         «[Tutoria] Corregir els controls». Se n'hi posen unes quantes i de
+         llistes desiguals perquè és el cas real —un mestre no té tres
+         tasques— i perquè així es veu si les caixes aguanten. */
       pendents: [
-        { que: 'Corregir els controls' },
-        { que: 'Preparar les fitxes de mates' },
-        { que: 'Firmar les autoritzacions' }
+        { llista: 'Tutoria', que: 'Corregir els controls de llengua' },
+        { llista: 'Tutoria', que: 'Trucar a una família' },
+        { llista: 'Tutoria', que: 'Preparar la reunió de pares' },
+        { llista: 'Programació', que: 'Preparar les fitxes de mates' },
+        { llista: 'Programació', que: 'Revisar la unitat 3 de medi' },
+        { llista: 'Coordinació', que: 'Enviar les actes del cicle' },
+        { llista: 'Meves tasques', que: 'Comprar cartolines' },
+        { llista: 'D\'un correu', que: 'Firmar les autoritzacions', id: 'esc_4' }
       ],
       altres: [{ que: 'Correus no llegits: 3' }]
     },

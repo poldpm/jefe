@@ -142,8 +142,23 @@ const MOCK = `
       if (accio === 'pantalla') return copia(ESCOLA);
       if (accio === 'marcaLlegit') return { fet: true };
       if (accio === 'llegeixTot') return { fets: 3 };
-      if (accio === 'comanda') return { text: 'Resposta inventada del mirall a /' + p.quina +
-        '.\\n\\nAqui no hi ha cap escola al darrere.' };
+      if (accio === 'comanda') {
+        /* La de pendents va amb el format de debò —«• [llista] títol»— perquè
+           el full de la resposta la capsa igual que la pantalla, i si aqui
+           poso un text qualsevol no es prova el que s hi ha fet. */
+        if (p.quina === 'pendents') return { text:
+          'Tasques pendents (8):\\n' +
+          '• [Tutoria] Corregir els controls de llengua\\n' +
+          '• [Tutoria] Trucar a una familia\\n' +
+          '• [Tutoria] Preparar la reunio de pares\\n' +
+          '• [Programacio] Preparar les fitxes de mates\\n' +
+          '• [Programacio] Revisar la unitat 3 de medi\\n' +
+          '• [Coordinacio] Enviar les actes del cicle\\n' +
+          '• [Meves tasques] Comprar cartolines\\n' +
+          '• [Meves tasques] Demanar hora al metge' };
+        return { text: 'Resposta inventada del mirall a /' + p.quina +
+          '.\\n\\nAqui no hi ha cap escola al darrere.' };
+      }
       if (accio === 'digues') return { text: 'Fet (mirall).' };
     }
 

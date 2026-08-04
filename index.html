@@ -2056,9 +2056,42 @@ input[type="checkbox"] { accent-color: var(--utm); }
   text-transform: uppercase; color: var(--gr);
 }
 
-/* ELS PENDENTS. Una línia cadascun, sense capsa: no són targetes, són una
-   llista, i una llista es llegeix de dalt a baix i no per blocs. */
-.esc-pend { display: flex; flex-direction: column; }
+/* ELS PENDENTS, UNA CAIXA PER LLISTA. Venen del Google Tasks, on ja estan
+   repartits per llistes, i allà es miren per llistes. Posats en una tirallonga
+   amb el nom entre claudàtors al davant de cada línia, el que ordena la feina
+   d'un mestre queda reduït a un caràcter enmig del text: la caixa hi torna a
+   posar l'ordre que la llista ja tenia, i el nom es diu un sol cop.
+   Res d'aquí no es marca ni es completa: qui mana és el Google Tasks. Per això
+   no hi ha rodona de casella —una casella que no es pot clicar és una mentida
+   sobre el que la pantalla sap fer. */
+.esc-grups { display: grid; gap: var(--e3); grid-template-columns: 1fr; }
+.esc-grup { border: 1px solid var(--neatline); background: var(--paper2); }
+.esc-grup-cap {
+  display: flex; align-items: baseline; gap: var(--e2);
+  margin: 0; padding: var(--e2) var(--e3);
+  border-bottom: 1px solid var(--neatline);
+  font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--ink);
+}
+.esc-grup-cap span { flex: 1; min-width: 0; }
+.esc-grup-cap b {
+  flex: none; font-family: var(--mono); font-size: .75rem; font-weight: 400;
+  color: var(--ink-suau); font-variant-numeric: tabular-nums;
+}
+/* Dins la caixa no hi ha ratlles: la caixa ja diu on comença i on acaba, i
+   una ratlla per tasca tornava a fer el soroll que hem tret. */
+.esc-grup-coses { margin: 0; padding: var(--e2) 0; list-style: none; }
+.esc-grup-coses li {
+  padding: var(--e1) var(--e3); font-size: .875rem; line-height: 1.45;
+}
+
+/* Dues columnes tan bon punt hi caben: amb sis llistes, una sola columna
+   t'obliga a baixar per veure què tens, que és el que fèiem abans. */
+@media (min-width: 560px) {
+  .esc-grups { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+}
+
+/* Les línies soltes de les respostes (agenda, correus…) segueixen sent línies:
+   allà no hi ha llistes que capsar. */
 .esc-p {
   display: flex; align-items: baseline; gap: var(--e3);
   padding: var(--e2) 0; border-bottom: 1px solid var(--neatline);
@@ -2132,7 +2165,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-04 19:04 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-04 19:25 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2442,7 +2475,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-04 19:04 · en curs";
+window.MARCA_JEFE = "2026-08-04 19:25 · en curs";
 </script>
 
 <script>
@@ -9204,6 +9237,34 @@ App.registraVista('escola', {
       return '<div class="esc-columna">' + files.join('') + '</div>';
     }
 
+    // --------------------------------------------------------- els pendents
+    /* UNA CAIXA PER LLISTA, com al Google Tasks —d'on surten—. Abans era una
+       llista llarga amb el nom de la llista entre claudàtors al davant de cada
+       línia: vint tasques seguides on el que les separa és un claudàtor no
+       s'ordenen amb la vista, s'han de llegir una per una. La caixa fa la
+       feina que feia el claudàtor, i el nom es diu un cop. */
+    function agrupa(pendents) {
+      var ordre = [], per = {};
+      (pendents || []).forEach(function (x) {
+        var k = String(x.llista || '').trim() || 'Sense llista';
+        if (!per[k]) { per[k] = []; ordre.push(k); }
+        per[k].push(x);
+      });
+      return ordre.map(function (k) { return { nom: k, coses: per[k] }; });
+    }
+
+    function caixesPendents(pendents) {
+      return '<div class="esc-grups">' + agrupa(pendents).map(function (g) {
+        return '<section class="esc-grup">' +
+          '<h3 class="esc-grup-cap"><span>' + esc(g.nom) + '</span>' +
+            '<b>' + g.coses.length + '</b></h3>' +
+          '<ul class="esc-grup-coses">' + g.coses.map(function (x) {
+            return '<li>' + esc(x.que) + '</li>';
+          }).join('') + '</ul>' +
+        '</section>';
+      }).join('') + '</div>';
+    }
+
     // ----------------------------------------------------------------- pinta
     function pinta() {
       var dia = d.dia || { hores: [], pendents: [], altres: [] };
@@ -9245,9 +9306,7 @@ App.registraVista('escola', {
           (dia.pendents.length
             ? '<section class="esc-secc">' +
                 '<p class="marge">Pendents</p>' +
-                '<div class="esc-pend">' + dia.pendents.map(function (x) {
-                  return '<div class="esc-p"><i>·</i><span>' + esc(x.que) + '</span></div>';
-                }).join('') + '</div>' +
+                caixesPendents(dia.pendents) +
               '</section>'
             : '') +
 
@@ -9333,21 +9392,43 @@ App.registraVista('escola', {
       });
     }
 
+    /* La resposta de «Pendents» arriba amb el mateix «[llista] títol» que el
+       resum del matí, o sigui que es capsa igual. Les línies amb claudàtor
+       s'acumulen i surten totes juntes en caixes; qualsevol altra cosa les
+       tanca i es pinta al seu lloc, que és com estaven. */
     function obreResposta(titol, text) {
       var linies = String(text).split('\n').filter(function (l) { return l.trim(); });
-      App.modal(titol,
-        '<div class="esc-resp">' + linies.map(function (l) {
-          var net = l.replace(/^[·•\-*]\s*/, '').trim();
-          var m = net.match(/^(\d{1,2}[:.]\d{2})\s*[·\-–]?\s*(.+)$/);
-          if (m) {
-            return '<div class="esc-p"><i class="esc-hora-p">' + esc(m[1].replace('.', ':')) +
-                   '</i><span>' + esc(m[2]) + '</span></div>';
-          }
-          if (net.slice(-1) === ':' || /^\d+$/.test(net)) {
-            return '<p class="marge" style="margin:var(--e3) 0 var(--e1)">' + esc(net.replace(/:$/, '')) + '</p>';
-          }
-          return '<div class="esc-p"><i>·</i><span>' + esc(net) + '</span></div>';
-        }).join('') + '</div>');
+      var trossos = [], cua = [];
+
+      var tancaCua = function () {
+        if (!cua.length) return;
+        trossos.push(caixesPendents(cua));
+        cua = [];
+      };
+
+      linies.forEach(function (l) {
+        var net = l.replace(/^[·•\-*]\s*/, '').trim();
+
+        var g = net.match(/^\[([^\]]+)\]\s*(.+)$/);
+        if (g) { cua.push({ llista: g[1].trim(), que: g[2].trim() }); return; }
+
+        tancaCua();
+        var m = net.match(/^(\d{1,2}[:.]\d{2})\s*[·\-–]?\s*(.+)$/);
+        if (m) {
+          trossos.push('<div class="esc-p"><i class="esc-hora-p">' + esc(m[1].replace('.', ':')) +
+                       '</i><span>' + esc(m[2]) + '</span></div>');
+          return;
+        }
+        if (net.slice(-1) === ':' || /^\d+$/.test(net)) {
+          trossos.push('<p class="marge" style="margin:var(--e3) 0 var(--e1)">' +
+                       esc(net.replace(/:$/, '')) + '</p>');
+          return;
+        }
+        trossos.push('<div class="esc-p"><i>·</i><span>' + esc(net) + '</span></div>');
+      });
+      tancaCua();
+
+      App.modal(titol, '<div class="esc-resp">' + trossos.join('') + '</div>');
     }
 
     // ------------------------------------------------------------- despatxar

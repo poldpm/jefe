@@ -124,6 +124,34 @@ App.registraVista('escola', {
       return '<div class="esc-columna">' + files.join('') + '</div>';
     }
 
+    // --------------------------------------------------------- els pendents
+    /* UNA CAIXA PER LLISTA, com al Google Tasks —d'on surten—. Abans era una
+       llista llarga amb el nom de la llista entre claudàtors al davant de cada
+       línia: vint tasques seguides on el que les separa és un claudàtor no
+       s'ordenen amb la vista, s'han de llegir una per una. La caixa fa la
+       feina que feia el claudàtor, i el nom es diu un cop. */
+    function agrupa(pendents) {
+      var ordre = [], per = {};
+      (pendents || []).forEach(function (x) {
+        var k = String(x.llista || '').trim() || 'Sense llista';
+        if (!per[k]) { per[k] = []; ordre.push(k); }
+        per[k].push(x);
+      });
+      return ordre.map(function (k) { return { nom: k, coses: per[k] }; });
+    }
+
+    function caixesPendents(pendents) {
+      return '<div class="esc-grups">' + agrupa(pendents).map(function (g) {
+        return '<section class="esc-grup">' +
+          '<h3 class="esc-grup-cap"><span>' + esc(g.nom) + '</span>' +
+            '<b>' + g.coses.length + '</b></h3>' +
+          '<ul class="esc-grup-coses">' + g.coses.map(function (x) {
+            return '<li>' + esc(x.que) + '</li>';
+          }).join('') + '</ul>' +
+        '</section>';
+      }).join('') + '</div>';
+    }
+
     // ----------------------------------------------------------------- pinta
     function pinta() {
       var dia = d.dia || { hores: [], pendents: [], altres: [] };
@@ -165,9 +193,7 @@ App.registraVista('escola', {
           (dia.pendents.length
             ? '<section class="esc-secc">' +
                 '<p class="marge">Pendents</p>' +
-                '<div class="esc-pend">' + dia.pendents.map(function (x) {
-                  return '<div class="esc-p"><i>·</i><span>' + esc(x.que) + '</span></div>';
-                }).join('') + '</div>' +
+                caixesPendents(dia.pendents) +
               '</section>'
             : '') +
 
@@ -253,21 +279,43 @@ App.registraVista('escola', {
       });
     }
 
+    /* La resposta de «Pendents» arriba amb el mateix «[llista] títol» que el
+       resum del matí, o sigui que es capsa igual. Les línies amb claudàtor
+       s'acumulen i surten totes juntes en caixes; qualsevol altra cosa les
+       tanca i es pinta al seu lloc, que és com estaven. */
     function obreResposta(titol, text) {
       var linies = String(text).split('\n').filter(function (l) { return l.trim(); });
-      App.modal(titol,
-        '<div class="esc-resp">' + linies.map(function (l) {
-          var net = l.replace(/^[·•\-*]\s*/, '').trim();
-          var m = net.match(/^(\d{1,2}[:.]\d{2})\s*[·\-–]?\s*(.+)$/);
-          if (m) {
-            return '<div class="esc-p"><i class="esc-hora-p">' + esc(m[1].replace('.', ':')) +
-                   '</i><span>' + esc(m[2]) + '</span></div>';
-          }
-          if (net.slice(-1) === ':' || /^\d+$/.test(net)) {
-            return '<p class="marge" style="margin:var(--e3) 0 var(--e1)">' + esc(net.replace(/:$/, '')) + '</p>';
-          }
-          return '<div class="esc-p"><i>·</i><span>' + esc(net) + '</span></div>';
-        }).join('') + '</div>');
+      var trossos = [], cua = [];
+
+      var tancaCua = function () {
+        if (!cua.length) return;
+        trossos.push(caixesPendents(cua));
+        cua = [];
+      };
+
+      linies.forEach(function (l) {
+        var net = l.replace(/^[·•\-*]\s*/, '').trim();
+
+        var g = net.match(/^\[([^\]]+)\]\s*(.+)$/);
+        if (g) { cua.push({ llista: g[1].trim(), que: g[2].trim() }); return; }
+
+        tancaCua();
+        var m = net.match(/^(\d{1,2}[:.]\d{2})\s*[·\-–]?\s*(.+)$/);
+        if (m) {
+          trossos.push('<div class="esc-p"><i class="esc-hora-p">' + esc(m[1].replace('.', ':')) +
+                       '</i><span>' + esc(m[2]) + '</span></div>');
+          return;
+        }
+        if (net.slice(-1) === ':' || /^\d+$/.test(net)) {
+          trossos.push('<p class="marge" style="margin:var(--e3) 0 var(--e1)">' +
+                       esc(net.replace(/:$/, '')) + '</p>');
+          return;
+        }
+        trossos.push('<div class="esc-p"><i>·</i><span>' + esc(net) + '</span></div>');
+      });
+      tancaCua();
+
+      App.modal(titol, '<div class="esc-resp">' + trossos.join('') + '</div>');
     }
 
     // ------------------------------------------------------------- despatxar

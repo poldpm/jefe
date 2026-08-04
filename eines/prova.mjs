@@ -2157,5 +2157,81 @@ console.log('\nEl repàs de demà: què tens i què no cal dir-te');
       c2.App.deLAdreca('#dia:2026-8-7').params.data === undefined);
 }
 
+// --------------------------- els pendents de l'escola, per llista i sense claudàtors
+/* El resum del matí porta les tasques com «• [Tutoria] Corregir els controls»:
+   el claudàtor és el separador d'un missatge de text, i el que hi ha a dins és
+   la llista del Google Tasks. Aquí es comprova que la llista arribi separada
+   —que és el que permet fer una caixa per llista— i, sobretot, que el claudàtor
+   no es coli mai al text que es llegeix, ni a la pantalla ni a la pàgina del dia. */
+console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor enlloc');
+{
+  const ctx = carregaTotElServidor();
+  const A = '2026-08-04';
+  const COS = [
+    '*Avui:*',
+    '• 09:00 — Claustre de mestres',
+    '',
+    '*Tasques pendents (5):*',
+    '• [Tutoria] Corregir els controls',
+    '• [Tutoria] Trucar a una família',
+    '• [Programació] Revisar la unitat 3',
+    '• [Meves tasques] Comprar cartolines',
+    '• Una tasca sense llista',
+    '',
+    '*Correus:*',
+    '• 3 sense llegir'
+  ].join('\n');
+  const FILES = [
+    { id: 'r', rebut_el: A + 'T07:02:00', mena: 'resum', llegit_el: A + 'T07:10:00',
+      titol: 'Bon dia', cos: COS },
+    { id: 't1', rebut_el: A + 'T09:15:00', mena: 'tasca', llegit_el: '',
+      titol: 'Firmar les autoritzacions', cos: '' }
+  ];
+
+  ctx.Dades = { llegeix: () => JSON.parse(JSON.stringify(FILES)) };
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.avui = () => A;
+  ctx.Utils.faQuant = () => 'fa una estona';
+  ctx.EscolaPont = { hiEs: () => true };
+
+  const mod = ctx.MODUL_ESCOLA();
+  const p = mod.accions.pantalla({});
+  const per = {};
+  p.dia.pendents.forEach((x) => { (per[x.llista || ''] = per[x.llista || ''] || []).push(x.que); });
+
+  cal('cada tasca porta la seva llista a part', (per['Tutoria'] || []).length === 2 &&
+      (per['Programació'] || []).length === 1 && (per['Meves tasques'] || []).length === 1,
+      JSON.stringify(p.dia.pendents));
+  cal('la que no en duia es queda sense llista, no se n\'hi inventa cap',
+      (per[''] || []).length === 1, JSON.stringify(per['']));
+  cal('el que ve d\'un correu també és un pendent, amb la seva llista',
+      (per['D\'un correu'] || [])[0] === 'Firmar les autoritzacions', JSON.stringify(per));
+  cal('i el claudàtor no arriba mai al text que es llegeix',
+      p.dia.pendents.every((x) => x.que.indexOf('[') === -1),
+      JSON.stringify(p.dia.pendents.map((x) => x.que)));
+  cal('les hores i la resta segueixen al seu lloc',
+      p.dia.hores.length === 1 && p.dia.altres.some((x) => /sense llegir/.test(x.que)),
+      JSON.stringify(p.dia));
+
+  const dia = mod.elDia(A);
+  cal('a la pàgina del dia tampoc hi surt cap claudàtor',
+      dia.coses.every((c) => c.text.indexOf('[') === -1),
+      JSON.stringify(dia.coses.map((c) => c.text)));
+  const corregir = dia.coses.filter((c) => /Corregir/.test(c.text))[0];
+  cal('allà la llista passa al text petit del costat',
+      corregir && corregir.menut === 'Tutoria', JSON.stringify(corregir));
+  const correus = dia.coses.filter((c) => /sense llegir/.test(c.text))[0];
+  cal('i el que no és un pendent conserva la seva secció',
+      correus && correus.menut === 'correus', JSON.stringify(correus));
+
+  /* La vista ha de fer servir les caixes: si algú torna a pintar la llista
+     plana, la llista separada del servidor no serveix de res. */
+  const vista = fs.readFileSync('apps-script/vista_escola.html', 'utf8');
+  cal('la pantalla pinta caixes per llista, no una tirallonga',
+      vista.indexOf('caixesPendents(dia.pendents)') !== -1);
+  cal('i la resposta de la comanda «Pendents» es capsa igual',
+      vista.indexOf('trossos.push(caixesPendents(cua))') !== -1);
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
