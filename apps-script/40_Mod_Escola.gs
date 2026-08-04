@@ -212,14 +212,15 @@ var Escola = (function () {
     var resum = resumDe_(avui);
     var dia = desglossa_(resum);
 
-    /* Els avisos de mena «tasca» també són pendents: venen d'un correu que
-       demanava una cosa i no d'un resum. Van a la mateixa llista, que és on
-       els busques. */
-    f.forEach(function (m) {
-      if (m.mena === 'tasca' && !m.llegit_el) {
-        dia.pendents.push({ llista: 'D\'un correu', que: m.titol, id: m.id });
-      }
-    });
+    /* ELS PENDENTS SURTEN NOMÉS DEL RESUM, i el resum surt del Google Tasks.
+       Aquí hi havia una llista «D'un correu» feta amb els avisos de mena
+       «tasca», per la idea equivocada que aquelles tasques només vivien a
+       l'avís. No: quan l'automatització troba una feina en un correu la desa
+       al Google Tasks —a la llista Automatització— i l'avís només diu que ho
+       ha fet. O sigui que la tasca ja arriba pel resum, amb la seva llista, i
+       posar-la també per l'avís era ensenyar-la dues vegades i, pitjor,
+       fer-la desaparèixer en tocar «Vist» quan qui la dóna per feta és el
+       Google Tasks. Aquí no es toca res: només s'ensenya el que ell diu. */
 
     return {
       avui: avui,

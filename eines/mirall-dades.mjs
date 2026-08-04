@@ -517,7 +517,10 @@ export function dades(AVUI, menys) {
       /* Amb llista, que és com arriben: el resum del matí les porta com a
          «[Tutoria] Corregir els controls». Se n'hi posen unes quantes i de
          llistes desiguals perquè és el cas real —un mestre no té tres
-         tasques— i perquè així es veu si les caixes aguanten. */
+         tasques— i perquè així es veu si les caixes aguanten.
+         «Automatització» és la llista on l'automatització desa el que troba
+         als correus: ve pel mateix camí que les altres, perquè és una llista
+         del Google Tasks com qualsevol. */
       pendents: [
         { llista: 'Tutoria', que: 'Corregir els controls de llengua' },
         { llista: 'Tutoria', que: 'Trucar a una família' },
@@ -526,7 +529,7 @@ export function dades(AVUI, menys) {
         { llista: 'Programació', que: 'Revisar la unitat 3 de medi' },
         { llista: 'Coordinació', que: 'Enviar les actes del cicle' },
         { llista: 'Meves tasques', que: 'Comprar cartolines' },
-        { llista: 'D\'un correu', que: 'Firmar les autoritzacions', id: 'esc_4' }
+        { llista: 'Automatització', que: 'Firmar les autoritzacions de la sortida' }
       ],
       altres: [{ que: 'Correus no llegits: 3' }]
     },

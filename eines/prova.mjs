@@ -2204,8 +2204,15 @@ console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor 
       JSON.stringify(p.dia.pendents));
   cal('la que no en duia es queda sense llista, no se n\'hi inventa cap',
       (per[''] || []).length === 1, JSON.stringify(per['']));
-  cal('el que ve d\'un correu també és un pendent, amb la seva llista',
-      (per['D\'un correu'] || [])[0] === 'Firmar les autoritzacions', JSON.stringify(per));
+  /* Quan l'automatització troba una feina en un correu, la desa al Google
+     Tasks i l'avís només diu que ho ha fet: la tasca ja torna pel resum del
+     matí amb la seva llista. Si a més la pengéssim de l'avís sortiria dues
+     vegades, i tocar «Vist» la faria fora d'una llista que no mana. */
+  cal('un avís de tasca NO afegeix cap pendent: el pendent ja ve del resum',
+      p.dia.pendents.every((x) => x.que !== 'Firmar les autoritzacions'),
+      JSON.stringify(p.dia.pendents));
+  cal('i no s\'inventa cap llista que el Google Tasks no tingui',
+      !per['D\'un correu'], JSON.stringify(Object.keys(per)));
   cal('i el claudàtor no arriba mai al text que es llegeix',
       p.dia.pendents.every((x) => x.que.indexOf('[') === -1),
       JSON.stringify(p.dia.pendents.map((x) => x.que)));

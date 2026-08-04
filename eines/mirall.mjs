@@ -155,7 +155,8 @@ const MOCK = `
           '• [Programacio] Revisar la unitat 3 de medi\\n' +
           '• [Coordinacio] Enviar les actes del cicle\\n' +
           '• [Meves tasques] Comprar cartolines\\n' +
-          '• [Meves tasques] Demanar hora al metge' };
+          '• [Meves tasques] Demanar hora al metge\\n' +
+          '• [Automatitzacio] Firmar les autoritzacions de la sortida' };
         return { text: 'Resposta inventada del mirall a /' + p.quina +
           '.\\n\\nAqui no hi ha cap escola al darrere.' };
       }
