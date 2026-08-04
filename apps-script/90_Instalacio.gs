@@ -1542,6 +1542,18 @@ function mesuraLaLentitud() {
   });
 
   a('');
+  a('ELS AUTOMATISMES QUE HI HA DONATS D\'ALTA');
+  try {
+    var tr = ScriptApp.getProjectTriggers();
+    if (!tr.length) a('  CAP. Executa instalaTriggers().');
+    tr.forEach(function (t) { a('  · ' + t.getHandlerFunction()); });
+    var noms = tr.map(function (t) { return t.getHandlerFunction(); });
+    ['triggerEscalfa', 'triggerEscalfaFora'].forEach(function (n) {
+      if (noms.indexOf(n) === -1) a('  FALTA ' + n + ' → executa instalaTriggers()');
+    });
+  } catch (e) { a('  no els he pogut llegir: ' + e.message); }
+
+  a('');
   a('PARLAR AMB JEFE (sense comptar el model, que és una altra història)');
   crono('la fitxa que li llegeix, tal com està', function () {
     return Moduls.contextIA({ compacte: true }).length + ' caràcters';
@@ -2609,7 +2621,12 @@ function triggerEscalfa() {
   } else {
     Log.info('escalfa', 'Pantalles a punt', { quantes: fets.length, ms: ms });
   }
-  return fets.join(', ') + '  ·  ' + ms + ' ms';
+  /* Al registre de l'editor també: quan l'executes a mà des d'allà, el que
+     retorna una funció no es veu enlloc, i sense això sembla que no hagi fet
+     res. Va passar. */
+  var resum = fets.join(', ') + '  ·  ' + ms + ' ms';
+  Logger.log(resum);
+  return resum;
 }
 
 
@@ -2659,5 +2676,10 @@ function triggerEscalfaFora() {
   } else {
     Log.info('escalfa.fora', 'El de fora, a punt', { quantes: fets.length, ms: ms });
   }
-  return fets.join(', ') + '  ·  ' + ms + ' ms';
+  /* Al registre de l'editor també: quan l'executes a mà des d'allà, el que
+     retorna una funció no es veu enlloc, i sense això sembla que no hagi fet
+     res. Va passar. */
+  var resum = fets.join(', ') + '  ·  ' + ms + ' ms';
+  Logger.log(resum);
+  return resum;
 }
