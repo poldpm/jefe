@@ -63,6 +63,13 @@ const MOCK = `
   var TASQUES       = ${j(D.tasquesPantalla())};
   var TASQUES_FETES = ${j(D.tasquesFetes())};
   var seguit        = 0;
+  var MEM = [
+    { id: 'mem1', fet: 'La tutora de 2nB és qui em passa les substitucions', mena: 'persona', font: 'conversa', oblidat: false },
+    { id: 'mem2', fet: 'Els dimarts a les 17h tinc claustre', mena: 'rutina', font: 'conversa', oblidat: false },
+    { id: 'mem3', fet: 'No vull avisos abans de les vuit del matí', mena: 'preferencia', font: 'app', oblidat: false },
+    { id: 'mem4', fet: 'Vaig deixar la carrera de muntanya llarga per la lesió del genoll', mena: 'decisio', font: 'conversa', oblidat: false },
+    { id: 'mem5', fet: 'Provar de llevar-me a les sis', mena: 'fet', font: 'app', oblidat: true }
+  ];
   var DIARI       = ${j(D.diariPantalla({}))};
   var CONV_ESTAT  = ${j(D.conversaEstat())};
   var CONV_HIST   = ${j(D.conversaHistorial())};
@@ -201,6 +208,39 @@ const MOCK = `
         ESC_VIU.push({ llista: quina, que: String(p.titol || '') });
         return { tasca: { titol: p.titol, llista: quina }, pendents: copia(ESC_VIU) };
       }
+    }
+
+    /* La memòria del mirall: quatre records inventats i tocables, perquè es
+       pugui provar afegir-ne, treure'n i recuperar-ne un. */
+    if (modul === 'memoria') {
+      var pinta = function (conte) {
+        var q = String(conte || '').toLowerCase();
+        var vius = MEM.filter(function (r) { return !r.oblidat; });
+        if (q) vius = vius.filter(function (r) { return r.fet.toLowerCase().indexOf(q) !== -1; });
+        var menes = ['persona', 'preferencia', 'decisio', 'rutina', 'fet'];
+        return {
+          quants: vius.length,
+          blocs: menes.map(function (m) {
+            return { mena: m, records: vius.filter(function (r) { return r.mena === m; }) };
+          }).filter(function (b) { return b.records.length; }),
+          oblidats: MEM.filter(function (r) { return r.oblidat; })
+        };
+      };
+      if (accio === 'pantalla') return copia(pinta(p.conte));
+      if (accio === 'recorda') {
+        MEM.push({ id: 'mem' + (++seguit), fet: String(p.fet || ''), mena: 'fet',
+                   font: 'app', oblidat: false });
+        return copia(pinta(''));
+      }
+      if (accio === 'oblida') {
+        MEM.forEach(function (r) { if (r.id === p.id) r.oblidat = true; });
+        return copia(pinta(p.conte));
+      }
+      if (accio === 'recupera') {
+        MEM.forEach(function (r) { if (r.id === p.id) r.oblidat = false; });
+        return copia(pinta(p.conte));
+      }
+      return copia(pinta(''));
     }
 
     if (modul === 'seguiment') {

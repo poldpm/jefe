@@ -2999,5 +2999,86 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
       /newTrigger\('triggerSenyals'\)/.test(inst) && /'triggerSenyals'\]/.test(inst));
 }
 
+// ------------------------------------ la memòria: el que sap d'ell perquè li ha dit
+/* La fitxa que llegeix la IA es refà cada dia dels fulls: serveix per saber com
+   està, no per saber qui és. Això és l'altra meitat.
+   El que es prova aquí és el que fa que serveixi: que dir dues vegades la
+   mateixa cosa no en deixi dues de guardades —amb dues, una és vella i no se
+   sap quina—, que oblidar no esborri mai la fila, i que el que sap arribi de
+   debò a la fitxa. */
+console.log('\nLa memòria: una cosa per fila, i res que no es pugui desdir');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Utils.avui = () => '2026-08-05';
+  ctx.Utils.ara = () => '2026-08-05T10:00:00+02:00';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+
+  let files = [], seguit = 0;
+  ctx.Dades = {
+    llegeix: (full, filtre) => files.filter((f) => !filtre || filtre(f)),
+    un: (full, q) => files.filter((f) => Object.keys(q).every((k) => f[k] === q[k]))[0] || null,
+    insereix: (full, fila, prefix) => {
+      const f = Object.assign({ id: (prefix || 'x') + (++seguit) }, fila);
+      files.push(f); return f;
+    },
+    actualitza: (full, id, canvis) => {
+      const f = files.filter((x) => x.id === id)[0];
+      if (f) Object.assign(f, canvis);
+      return f || null;
+    }
+  };
+
+  const R = ctx.Records;
+
+  R.recorda('La Marta és la tutora de 2nB', 'persona', 'conversa');
+  R.recorda('Els dimarts a les 17h tinc claustre', 'rutina', 'conversa');
+  cal('desa el que li dius', files.length === 2, String(files.length));
+
+  /* La mateixa cosa dita d'una altra manera: ha d'actualitzar, no duplicar. */
+  const r = R.recorda('la marta es la tutora de 2n B', 'persona', 'conversa');
+  cal('dir la mateixa cosa dues vegades no en deixa dues de guardades',
+      files.length === 2 && r.actualitzat === true,
+      JSON.stringify(files.map((f) => f.fet)));
+
+  /* Una de diferent de debò sí que és nova. */
+  R.recorda('No vull que m\'avisi de res abans de les vuit', 'preferencia', 'conversa');
+  cal('i una de diferent sí que hi entra', files.length === 3);
+
+  const p = R.pantalla({});
+  cal('la pantalla les agrupa per menes', p.blocs.length === 3, JSON.stringify(p.blocs.map((b) => b.mena)));
+  cal('i en compta tres', p.quants === 3);
+
+  /* Oblidar no esborra: la fila es queda amb data. */
+  const quin = files.filter((f) => /claustre/.test(f.fet))[0];
+  R.oblida(quin.id);
+  cal('oblidar no esborra la fila', files.length === 3 && !!quin.oblidat_el);
+  cal('i deixa de comptar', R.pantalla({}).quants === 2);
+  cal('però es pot recuperar', (R.recupera(quin.id), R.pantalla({}).quants === 3));
+
+  /* Si el torna a dir després d'oblidar-lo, mana el que diu ara. */
+  R.oblida(quin.id);
+  const tornat = R.recorda('Els dimarts a les 17h tinc claustre', 'rutina', 'conversa');
+  cal('i si el torna a dir, torna a valer', tornat.recuperat === true && !quin.oblidat_el);
+
+  const fitxa = R.contextIA();
+  cal('el que sap arriba a la fitxa de la IA',
+      /marta/i.test(fitxa) && /claustre/.test(fitxa) && /abans de les vuit/.test(fitxa), fitxa);
+  cal('i hi arriba agrupat, no com una llista plana',
+      /Persones:/.test(fitxa) && /Rutines fixes:/.test(fitxa), fitxa);
+
+  /* Buscar-hi sense accents ni majúscules: ell escriu com parla. */
+  cal('la cerca no depèn dels accents',
+      R.pantalla({ conte: 'MARTA' }).quants === 1 &&
+      R.consultaIA({ conte: 'claustre' }).quants === 1);
+
+  /* I el nom no pot xocar amb el `Memoria` del nucli, que és una altra cosa. */
+  const font = fs.readFileSync('apps-script/40_Mod_Memoria.gs', 'utf8');
+  cal('l\'objecte no es diu com el del nucli',
+      /var Records = \(function/.test(font) && !/^var Memoria = /m.test(font));
+
+  const idx = fs.readFileSync('apps-script/ui_index.html', 'utf8');
+  cal('i la seva pantalla està muntada a l\'app', /include\('vista_memoria'\)/.test(idx));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

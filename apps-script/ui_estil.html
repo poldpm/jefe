@@ -2016,6 +2016,38 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LA MEMÒRIA
+
+   Files de text amb una creu. Res més: el que hi ha aquí es llegeix i, de tant
+   en tant, se'n treu una. La creu no crida —treure un record no és una acció
+   destructiva, la fila es queda al full— però es veu, perquè el valor d'això
+   és poder dir-li coses sabent que les pots desdir.
+   ========================================================================== */
+
+.mem-fila { display: flex; align-items: flex-start; gap: var(--e2); padding: var(--e1) var(--e3); }
+.mem-fila > span { flex: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
+.mem-fila[data-fora="1"] { opacity: .35; }
+
+.mem-fora {
+  flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra);
+}
+.mem-fora .ic { width: 12px; height: 12px; }
+.mem-fora:active { color: var(--gr); }
+@media (hover: hover) and (pointer: fine) { .mem-fora:hover { color: var(--gr); } }
+
+.mem-vell > span { color: var(--ink-suau); text-decoration: line-through; }
+.mem-torna {
+  flex: none; min-height: 32px; padding: 0 var(--e2);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .08em; text-transform: uppercase;
+}
+.mem-torna:active { color: var(--utm); border-color: var(--utm); }
+
+
+/* ==========================================================================
    ESCOLA — la safata de l'automatització
 
    Substitueix una finestra de Telegram, però NO és un xat: el que hi arriba

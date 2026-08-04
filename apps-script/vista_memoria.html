@@ -1,0 +1,196 @@
+<script>
+/* JEFE — MÒDUL · La memòria
+
+   QUÈ ÉS AQUESTA PANTALLA: tot el que JEFE sap de tu perquè li has dit tu.
+   No hi ha res deduït ni endevinat, i per això es pot llegir sencera i
+   entendre-la sense explicacions.
+
+   L'ORDRE MANA: primer el camp per afegir-ne un, perquè el 90% de les vegades
+   que entres aquí és per afegir o per treure una cosa concreta, no per llegir.
+   Després els records per menes, i al final els oblidats, plegats: no s'esborra
+   res mai i el que has tret ha de ser recuperable sense demanar-ho a ningú.
+
+   Les caixes són les mateixes que a Escola i a Tasques. Tres pantalles que
+   ensenyen llistes agrupades no poden veure's de tres maneres. */
+
+App.registraVista('memoria', {
+  render: function (arrel) {
+
+    var d = null;
+    var veureOblidats = false;
+    var filtre = '';
+
+    var NOM = {
+      persona: 'Persones',
+      preferencia: 'Com m\'agraden les coses',
+      decisio: 'Decisions',
+      rutina: 'Rutines',
+      fet: 'Altres'
+    };
+
+    function capcalera() {
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:1.0625rem;margin:0">Memòria</h1>' +
+          '<p class="marge" style="margin:2px 0 0">' +
+            (d ? d.quants + (d.quants === 1 ? ' cosa que sé de tu' : ' coses que sé de tu') : '') +
+          '</p>' +
+        '</div>' +
+      '</div></header>';
+    }
+
+    function pinta() {
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+
+          '<section>' +
+            '<label class="camp-captura">' +
+              '<span class="marge">Què vols que recordi</span>' +
+              '<div class="captura-fila">' +
+                '<input id="m-nou" placeholder="La Marta és la tutora de 2nB" autocomplete="off">' +
+                '<button class="btn btn-primari" data-desa>' + ic('mes') + '</button>' +
+              '</div>' +
+            '</label>' +
+            '<p class="menut" style="margin-top:var(--e2)">També pots dir-li-ho parlant: ' +
+              '«recorda que els dimarts tinc claustre».</p>' +
+          '</section>' +
+
+          (d.quants > 6
+            ? '<section class="secc">' +
+                '<label class="camp-captura">' +
+                  '<div class="captura-fila">' +
+                    '<input id="m-cerca" placeholder="Buscar" autocomplete="off" value="' +
+                      esc(filtre) + '">' +
+                  '</div>' +
+                '</label>' +
+              '</section>'
+            : '') +
+
+          '<section class="secc">' +
+            (d.blocs.length
+              ? '<div class="caixes">' + d.blocs.map(function (b) {
+                  return '<section class="caixa">' +
+                    '<h3 class="caixa-cap"><span>' + esc(NOM[b.mena] || b.mena) + '</span></h3>' +
+                    '<ul class="caixa-coses">' + b.records.map(function (r) {
+                      return '<li class="mem-fila">' +
+                        '<span>' + esc(r.fet) + '</span>' +
+                        '<button class="mem-fora" data-oblida="' + esc(r.id) + '"' +
+                          ' aria-label="Oblida: ' + esc(r.fet) + '">' + ic('tancar', 'ic-p') + '</button>' +
+                      '</li>';
+                    }).join('') + '</ul>' +
+                  '</section>';
+                }).join('') + '</div>'
+              : '<p class="menut">' + (filtre
+                  ? 'Res que digui això.'
+                  : 'Encara no sé res de tu. El primer que li diguis ja no caldrà repetir-l\'hi.') +
+                '</p>') +
+          '</section>' +
+
+          (d.oblidats.length
+            ? '<section class="secc">' +
+                '<button class="desplega" data-oblidats="1" aria-expanded="' +
+                  (veureOblidats ? 'true' : 'false') + '">' +
+                  ic('dreta', 'ic-p') + '<span>' +
+                  (veureOblidats ? 'Amaga' : 'Veure') +
+                  (d.oblidats.length === 1 ? ' el que has tret'
+                                           : ' els ' + d.oblidats.length + ' que has tret') +
+                  '</span></button>' +
+                (veureOblidats
+                  ? '<div class="caixes"><section class="caixa"><ul class="caixa-coses">' +
+                      d.oblidats.map(function (r) {
+                        return '<li class="mem-fila mem-vell">' +
+                          '<span>' + esc(r.fet) + '</span>' +
+                          '<button class="mem-torna" data-recupera="' + esc(r.id) + '">Torna-hi</button>' +
+                        '</li>';
+                      }).join('') +
+                    '</ul></section></div>'
+                  : '') +
+              '</section>'
+            : '') +
+        '</div>';
+
+      lliga();
+    }
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      var camp = arrel.querySelector('#m-nou');
+      var desa = function () {
+        var text = camp.value.trim();
+        if (!text) return;
+        camp.value = '';
+        escriu('memoria', 'recorda', { fet: text }, {})
+          .then(function (r) { d = r; App.brindis('Recordat'); App.mantenintLaVista(pinta); })
+          .catch(function (err) { camp.value = text; App.brindis(err.message, 'error'); });
+      };
+      arrel.querySelector('[data-desa]').addEventListener('click', desa);
+      camp.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); desa(); }
+      });
+
+      /* La cerca és local: tot el que hi ha ja és al navegador i anar-ho a
+         preguntar seria esperar dos segons per filtrar trenta línies. */
+      var cerca = arrel.querySelector('#m-cerca');
+      if (cerca) {
+        cerca.addEventListener('input', function () {
+          filtre = cerca.value;
+          crida('memoria', 'pantalla', { conte: filtre }).then(function (r) {
+            d = r;
+            App.mantenintLaVista(function () {
+              pinta();
+              var c = arrel.querySelector('#m-cerca');
+              if (c) { c.focus(); c.setSelectionRange(c.value.length, c.value.length); }
+            });
+          });
+        });
+      }
+
+      var ov = arrel.querySelector('[data-oblidats]');
+      if (ov) ov.addEventListener('click', function () {
+        veureOblidats = !veureOblidats;
+        App.mantenintLaVista(pinta);
+      });
+
+      arrel.querySelectorAll('[data-oblida]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var fila = b.closest('.mem-fila');
+          fila.dataset.fora = '1';
+          escriu('memoria', 'oblida', { id: b.dataset.oblida }, { conte: filtre })
+            .then(function (r) { d = r; App.mantenintLaVista(pinta); })
+            .catch(function (err) { fila.removeAttribute('data-fora'); App.brindis(err.message, 'error'); });
+        });
+      });
+
+      arrel.querySelectorAll('[data-recupera]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          escriu('memoria', 'recupera', { id: b.dataset.recupera }, { conte: filtre })
+            .then(function (r) { d = r; App.brindis('Hi torna a ser'); App.mantenintLaVista(pinta); })
+            .catch(function (err) { App.brindis(err.message, 'error'); });
+        });
+      });
+    }
+
+    function carrega() {
+      var cau = Cau.get('memoria', null);
+      if (cau) { d = cau; pinta(); }
+      else arrel.innerHTML = Comp.carregant(3);
+
+      crida('memoria', 'pantalla', {}).then(function (r) {
+        d = r; Cau.set('memoria', r);
+        App.mantenintLaVista(pinta);
+      }).catch(function (err) {
+        if (d) return;
+        arrel.innerHTML = Comp.error(err, true);
+        var b = arrel.querySelector('[data-reintenta]');
+        if (b) b.addEventListener('click', function () { App.ves('memoria'); });
+      });
+    }
+
+    carrega();
+  }
+});
+</script>
