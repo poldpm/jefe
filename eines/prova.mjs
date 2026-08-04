@@ -1923,5 +1923,103 @@ console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mat
       regles(gros, 1).indexOf('trail_gros') !== -1, JSON.stringify(regles(gros, 1)));
 }
 
+
+// ------------------------------------------ on va cada notificació en tocar-la
+/* Quatre de les nou notificacions obrien una pàgina 404, i cap prova ho veia:
+   totes passaven, perquè el destí era una cadena i ningú comprovava que fos
+   una pantalla de debò. Això ho mira, i mira TOTES les que hi hagi al codi:
+   una de nova que s'equivoqui igual, es trobarà aquesta prova al davant. */
+console.log('\nNotificacions: totes han de portar a una pantalla que existeixi');
+{
+  const src = fs.readFileSync('apps-script/60_Notificacions.gs', 'utf8');
+  const cos = src.slice(src.indexOf('function capOn_(url) {'), src.indexOf('function envia(titol'));
+  const ctx = { String };
+  vm.createContext(ctx);
+  vm.runInContext(cos + '\nvar __c = capOn_;', ctx);
+  const capOn = ctx.__c;
+
+  cal('un nom de pantalla a seques es converteix en hash',
+      capOn('escola') === './#escola', capOn('escola'));
+  cal('el que ja estava bé no es toca',
+      capOn('./#finances') === './#finances', capOn('./#finances'));
+  cal('l\'arrel es queda com l\'arrel',
+      capOn('./') === './' && capOn('') === './');
+
+  /* I que `envia` la FACI SERVIR. Sense això, la prova de dalt passava amb la
+     normalització desconnectada: comprovava una funció que no cridava ningú.
+     Ho he vist perquè he tornat a trencar-ho a posta per veure si saltava. */
+  cal('i que envia() la faci servir a la notificació i a l\'enllaç',
+      /url:\s*capOn_\(/.test(src) && /link:\s*capOn_\(/.test(src));
+
+  /* Les pantalles que existeixen de debò, llegides d'on es registren. */
+  const vistes = new Set();
+  fs.readdirSync('apps-script').filter((f) => f.startsWith('vista_')).forEach((f) => {
+    const t = fs.readFileSync('apps-script/' + f, 'utf8');
+    const m = t.match(/App\.registraVista\(\s*'([a-z0-9_]+)'/g) || [];
+    m.forEach((x) => vistes.add(x.match(/'([a-z0-9_]+)'/)[1]));
+  });
+  cal('es troben les pantalles registrades', vistes.size >= 8, [...vistes].join(', '));
+
+  /* Cada `url:` que surti al costat d'un `Notifica.envia`. */
+  const destins = [];
+  fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).forEach((f) => {
+    const t = fs.readFileSync('apps-script/' + f, 'utf8');
+    let i = 0;
+    while ((i = t.indexOf('Notifica.envia(', i)) !== -1) {
+      const tros = t.slice(i, i + 500);
+      const m = tros.match(/url:\s*'([^']*)'/);
+      if (m) destins.push({ on: f, url: m[1] });
+      i += 15;
+    }
+  });
+  cal('es troben les notificacions del codi', destins.length >= 7, destins.length + ' trobades');
+
+  const dolents = destins.filter((d) => {
+    const v = capOn(d.url).replace('./#', '').replace('./', '');
+    return v && !vistes.has(v);
+  });
+  cal('cap notificació porta a una pantalla que no existeix',
+      dolents.length === 0, dolents.map((d) => d.on + ' → ' + d.url).join(' · '));
+
+  /* I la còpia del treballador de servei ha de dir el mateix: és la que mana
+     quan la notificació ja és al telèfon i l'app està tancada. */
+  const sw = fs.readFileSync('firebase-messaging-sw.js', 'utf8');
+  const bloc = sw.slice(sw.indexOf("self.addEventListener('notificationclick'"),
+                        sw.indexOf('// Que una versió nova'));
+  const arrel = 'https://exemple.test/jefe/';
+  /* El treballador contesta amb una promesa —`matchAll` ho és— i la primera
+     versió d'aquesta prova llegia el resultat abans que hi fos. Fallava la
+     prova, no el codi. `waitUntil` és per on el treballador diu «encara no he
+     acabat»: aquí s'agafa i s'espera, que és el que fa el navegador. */
+  const obre = async (url, jaOberta) => {
+    let obertes = [], navegat = null, missatges = [], guardat = null;
+    const finestra = { url: arrel, focus: () => finestra,
+                       navigate: (u) => { navegat = u; return Promise.resolve(finestra); },
+                       postMessage: (m) => missatges.push(m) };
+    const c = { String, Promise,
+      self: { registration: { scope: arrel },
+              clients: { matchAll: () => Promise.resolve(jaOberta ? [finestra] : []),
+                         openWindow: (u) => { obertes.push(u); return Promise.resolve(); } },
+              addEventListener: (n, f) => { c.__f = f; } } };
+    c.self.self = c.self;
+    vm.createContext(c);
+    vm.runInContext(bloc, c);
+    c.__f({ notification: { close: () => {}, data: { url } },
+            waitUntil: (pr) => { guardat = pr; } });
+    await guardat;
+    return { obertes, navegat, missatges };
+  };
+
+  const tancada = await obre('escola', false);
+  cal('el treballador obre l\'adreça sencera, no la relativa',
+      tancada.obertes[0] === arrel + '#escola', tancada.obertes[0]);
+
+  const oberta = await obre('escola', true);
+  cal('i amb l\'app ja oberta hi navega en comptes de deixar-te on eres',
+      oberta.navegat === arrel + '#escola', oberta.navegat);
+  cal('i a més li ho diu per missatge, que és instantani',
+      (oberta.missatges[0] || {}).vista === 'escola', JSON.stringify(oberta.missatges));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

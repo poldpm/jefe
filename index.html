@@ -2018,7 +2018,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-04 17:49 · 3eff00a";</script>
+<script>window.MARCA_JEFE = "2026-08-04 18:02 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2319,7 +2319,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-04 17:49 · 3eff00a";
+window.MARCA_JEFE = "2026-08-04 18:02 · en curs";
 </script>
 
 <script>
@@ -2650,6 +2650,29 @@ var Jefe = (function () {
       } else {
         App.ves(App.vistes.conversa ? 'conversa' : 'inici');
       }
+
+      /* TOCAR UNA NOTIFICACIÓ AMB L'APP JA OBERTA.
+         Aquest és el cas més habitual i era el que pitjor anava: el
+         treballador de servei li feia el focus a la finestra i s'acabava
+         aquí, o sigui que la notificació et deixava exactament on ja eres.
+         Ara el treballador diu on has d'anar i s'hi va sense recarregar res:
+         és instantani i no perds el que tinguessis obert.
+
+         El `hashchange` és la xarxa de seguretat per si el missatge no
+         arriba: el treballador també canvia l'adreça. */
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener('message', function (ev) {
+          var m = ev && ev.data;
+          if (!m || m.jefe !== 'ves') return;
+          if (m.vista && App.vistes[m.vista]) App.ves(m.vista);
+        });
+      }
+      window.addEventListener('hashchange', function () {
+        var v = String(location.hash || '').replace(/^#/, '');
+        if (!v || !App.vistes[v]) return;
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+        if (App.actual !== v) App.ves(v);
+      });
 
       Cua.envia();
 

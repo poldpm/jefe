@@ -169,6 +169,36 @@ var Notifica = (function () {
    *              en comptes d'acumular-se. Sense això, set recordatoris
    *              d'hàbits deixarien set línies a la barra.
    */
+  /**
+   * ON HA D'ANAR UNA NOTIFICACIÓ EN TOCAR-LA.
+   *
+   * Això existeix perquè quatre de les nou notificacions d'aquesta app obrien
+   * una pàgina 404, i totes quatre per la mateixa raó: enviaven el nom del
+   * mòdul a seques —«escola», «diari», «seguiment»— i el treballador de
+   * servei ho resolia contra la seva pròpia carpeta. A GitHub Pages l'app viu
+   * a /jefe/, o sigui que «escola» es convertia en /jefe/escola, que no és
+   * enlloc. L'app tria pantalla amb el HASH: ha de ser «./#escola».
+   *
+   * Es normalitza AQUÍ i no a cada crida a posta: qui envia una notificació
+   * ha de poder escriure el nom de la pantalla i prou. Si això depengués de
+   * recordar-se'n a cada lloc, tornaria a fallar el dia que algú n'afegeixi
+   * una —que és exactament com han fallat aquestes quatre.
+   *
+   *   'escola'        →  './#escola'
+   *   './#finances'   →  './#finances'      (ja estava bé)
+   *   '#habits'       →  './#habits'
+   *   './'  o buit    →  './'               (l'arrel, sense pantalla)
+   */
+  function capOn_(url) {
+    var u = String(url === undefined || url === null ? '' : url).trim();
+    if (!u || u === './' || u === '.' || u === '/') return './';
+    if (u.indexOf('http') === 0) return u;              // absoluta: qui la posa sap què fa
+    if (u.indexOf('./#') === 0) return u;               // ja és la bona
+    if (u.charAt(0) === '#') return './' + u;
+    // Un nom de pantalla a seques, que és el cas que fallava
+    return './#' + u.replace(/^\.?\/*/, '').replace(/^#/, '');
+  }
+
   function envia(titol, cos, opcions) {
     opcions = opcions || {};
 
@@ -200,12 +230,12 @@ var Notifica = (function () {
           data: {
             titol: String(titol),
             cos: String(cos || ''),
-            url: String(opcions.url || './'),
+            url: capOn_(opcions.url),
             etiqueta: String(opcions.etiqueta || 'jefe')
           },
           webpush: {
             headers: { Urgency: opcions.urgent ? 'high' : 'normal', TTL: '86400' },
-            fcm_options: { link: String(opcions.url || './') }
+            fcm_options: { link: capOn_(opcions.url) }
           }
         }
       };
@@ -236,6 +266,7 @@ var Notifica = (function () {
   }
 
   return {
+    capOn: capOn_,
     disponible: disponible,
     motiu: motiu,
     registra: registra,
