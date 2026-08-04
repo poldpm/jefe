@@ -806,7 +806,14 @@ App.registraVista('habits', {
       });
     }
 
+    /* LA CÒPIA DESADA S'HA DE MIRAR ABANS DE PINTAR-LA.
+       Aquesta pantalla desa NOMÉS el dia sota la seva clau —el full del mes va
+       a part—, i una precàrrega que hi va desar la resposta sencera la feia
+       petar en obrir: «Cannot read properties of undefined». Un dia sense
+       hàbits a dins no és un dia, sigui quin sigui el motiu; es llença i
+       s'espera el servidor, que és el que passava abans que hi hagués còpia. */
     var cau = Cau.get('habits.' + data, null);
+    if (cau && !Array.isArray(cau.habits)) cau = null;
     mes = Cau.get('habits.mes', null);
     if (cau) pinta(cau, true);
     else arrel.innerHTML = '<div class="pagina"><div class="terreny">' +

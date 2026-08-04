@@ -146,7 +146,7 @@ var Escola = (function () {
   var MAX_COS = 4000;          // el que cap a una cel·la sense fer-la impossible
 
   var CAU_PENDENTS = 'esc_pendents';
-  var VIDA_PENDENTS = 2400;    // 40 min; el trigger d'escalfar els refà cada 30
+  var VIDA_PENDENTS = 1500;    // 25 min; el trigger d'escalfar els refà cada 15
 
   /* Com es diu cada mena al títol de la notificació. Curtes a posta: el títol
      són dues paraules i la segona ja és aquesta. */

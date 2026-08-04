@@ -2216,7 +2216,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-04 23:19 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-04 23:23 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2526,7 +2526,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-04 23:19 · en curs";
+window.MARCA_JEFE = "2026-08-04 23:23 · en curs";
 </script>
 
 <script>
@@ -2752,6 +2752,28 @@ var Jefe = (function () {
       }
     },
 
+    /**
+     * QUÈ ES DESA, no només on.
+     *
+     * Gairebé totes les vistes es desen la resposta sencera, però els hàbits
+     * no: la seva resposta porta dues coses —el dia i el full del mes— i cada
+     * una va a la seva clau. Desar-hi el paquet sencer feia que la vista es
+     * pensés que allò era el dia, i petava en obrir amb «Cannot read properties
+     * of undefined». Va passar la primera nit que va existir això.
+     *
+     * Per això aquí es diu com es desa cada mòdul i no només sota quina clau:
+     * si una vista parteix la seva resposta, s'ha de partir igual.
+     */
+    desa: function (modul, dades, avui) {
+      if (modul === 'habits') {
+        if (dades.dia) Cau.set('habits.' + avui, dades.dia);
+        if (dades.mes) Cau.set('habits.mes', dades.mes);
+        return;
+      }
+      var clau = this.clauDe(modul, avui);
+      if (clau) Cau.set(clau, dades);
+    },
+
     omple: function () {
       /* Un cop per obertura i prou. Tornar-hi cada vegada que canvies
          d'apartat seria fer feina per no guanyar res: el que hi ha desat es
@@ -2770,12 +2792,7 @@ var Jefe = (function () {
             var dades = r.pantalles[id];
             if (!dades) return;
             if (id === '_dia') { Cau.set('dia.' + avui, dades); return; }
-            var clau = jo.clauDe(id, avui);
-            if (clau) Cau.set(clau, dades);
-            /* Els hàbits porten el mes a la mateixa resposta i la seva vista
-               el busca a part: si no es desa aquí, la graella del mes seria
-               l'única cosa que encara esperaria. */
-            if (id === 'habits' && dades.mes) Cau.set('habits.mes', dades.mes);
+            jo.desa(id, dades, avui);
           });
         }).catch(function () {
           /* Si falla, no passa res de res: cada pantalla sap demanar la seva. */
@@ -6475,7 +6492,14 @@ App.registraVista('habits', {
       });
     }
 
+    /* LA CÒPIA DESADA S'HA DE MIRAR ABANS DE PINTAR-LA.
+       Aquesta pantalla desa NOMÉS el dia sota la seva clau —el full del mes va
+       a part—, i una precàrrega que hi va desar la resposta sencera la feia
+       petar en obrir: «Cannot read properties of undefined». Un dia sense
+       hàbits a dins no és un dia, sigui quin sigui el motiu; es llença i
+       s'espera el servidor, que és el que passava abans que hi hagués còpia. */
     var cau = Cau.get('habits.' + data, null);
+    if (cau && !Array.isArray(cau.habits)) cau = null;
     mes = Cau.get('habits.mes', null);
     if (cau) pinta(cau, true);
     else arrel.innerHTML = '<div class="pagina"><div class="terreny">' +

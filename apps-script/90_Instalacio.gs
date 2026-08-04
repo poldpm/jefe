@@ -149,9 +149,16 @@ function instalaTriggers() {
   ScriptApp.newTrigger('triggerEscalfa').timeBased().everyMinutes(5).create();
 
   /* I el que es llegeix de FORA —calendari, tasques, pendents de l'escola—,
-     cada quart d'hora: costa dotze segons per passada i a cinc minuts es
-     menjaria mig pot diari d'automatismes. Vegeu `triggerEscalfaFora`. */
-  ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(30).create();
+     cada quart d'hora.
+
+     AQUEST NÚMERO VA CANVIAR DUES VEGADES EN UNA NIT, i val la pena saber per
+     què. Amb `CalendarApp`, una passada costava 40 segons i cada quart d'hora
+     eren 48 minuts diaris dels 90 que té el compte: es va haver de baixar a
+     mitja hora per no quedar-nos sense avisos. Llegint per l'API i demanant
+     totes les agendes de cop, la passada costa 7 segons i el quart d'hora en
+     surt per 9 minuts diaris. O sigui que no és que ara ens hi arrisquem més:
+     és que ara costa cinc vegades menys. Vegeu `triggerEscalfaFora`. */
+  ScriptApp.newTrigger('triggerEscalfaFora').timeBased().everyMinutes(15).create();
 
   /* L'agenda del dia, a les sis del matí. Abans d'aixecar-te: el que has de
      saber d'avui, per saber-ho abans de començar-lo i no a mig matí. */

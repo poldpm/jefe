@@ -242,7 +242,7 @@ var Tasques = (function () {
      obertura de l'app en pagava una de nova —dos segons, una volta a l'API per
      llista—. Ara dura un quart d'hora i qui la refà és el trigger d'escalfar
      cada deu minuts. El que marquis des d'aquí la tomba igualment. */
-  var QUANT = 2400;
+  var QUANT = 1500;
 
   // ------------------------------------------------------------ el servei
 

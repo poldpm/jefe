@@ -2546,6 +2546,21 @@ console.log('\nLa precàrrega desa on cada pantalla mirarà');
         clau(m) === esperat[m], clau(m) + ' ≠ ' + esperat[m]);
   });
 
+  /* ELS HÀBITS ES DESEN PARTITS. La seva resposta porta el dia i el full del
+     mes, i cadascun va a la seva clau. La precàrrega hi va desar la resposta
+     sencera i la pantalla petava en obrir-la: «Cannot read properties of
+     undefined». Aquí es comprova que la precàrrega ho parteixi igual, i que la
+     vista no es refiï del que hi trobi. */
+  const desa = app.slice(app.indexOf('    desa: function (modul, dades, avui) {'),
+                         app.indexOf('  var Cua = {'));
+  cal('la precàrrega desa el dia dels hàbits, no la resposta sencera',
+      /Cau\.set\('habits\.' \+ avui, dades\.dia\)/.test(desa));
+  cal('i el full del mes a la seva clau',
+      /Cau\.set\('habits\.mes', dades\.mes\)/.test(desa));
+  const vh = fs.readFileSync('apps-script/vista_habits.html', 'utf8');
+  cal('i la vista no pinta una còpia desada que no sigui un dia',
+      /if \(cau && !Array\.isArray\(cau\.habits\)\) cau = null;/.test(vh));
+
   /* I la del calendari, a més, ha de sortir de la MATEIXA funció que fa servir
      la vista per desar i per llegir: si tornen a ser dues, torna a passar. */
   const calv = llegeix('vista_calendari.html', (s) => s);
