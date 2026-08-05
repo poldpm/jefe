@@ -3179,9 +3179,13 @@ console.log('\nLa setmana: cada cosa al seu dia, i el que no en té a la pila');
 
   /* EL SENYAL DE DIUMENGE. No pot sonar cap altre dia ni amb la pila buida. */
   const modConv = MODUL_CONVERSA();
+  ctx.Utils.ara = () => '2026-08-09T18:00:00+02:00';
   ctx.Utils.avui = () => '2026-08-05';
   cal('entre setmana no diu res de preparar la setmana', modConv.senyals().length === 0);
   ctx.Utils.avui = () => '2026-08-09';
+  ctx.Utils.ara = () => '2026-08-09T08:00:00+02:00';
+  cal('i diumenge al matí tampoc: encara no toca', modConv.senyals().length === 0);
+  ctx.Utils.ara = () => '2026-08-09T18:00:00+02:00';
   const sen = modConv.senyals();
   cal('diumenge sí', sen.length === 1 && sen[0].accio === 'setmana', JSON.stringify(sen));
   cal('i no renya: ofereix el primer pas', /Cinc minuts/.test(sen[0].text), sen[0].text);

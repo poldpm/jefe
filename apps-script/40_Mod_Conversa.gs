@@ -55,6 +55,11 @@ function MODUL_CONVERSA() {
      */
     senyals: function () {
       if (Utils.diaSetmana(Utils.avui()) !== 7) return [];
+      /* I DE TARDA. El motor mira cada tres hores i el primer cop d'un
+         diumenge cau a les vuit del matí: llavors preparar la setmana encara
+         no és res que vulguis fer, i el senyal hauria gastat un dels dos que
+         hi ha al dia per no arribar en cap bon moment. */
+      if (Number(String(Utils.ara()).slice(11, 13)) < 16) return [];
       var s;
       try { s = Conversa.laSetmana(); } catch (e) { return []; }
       if (!s.pila.length) return [];
