@@ -2444,7 +2444,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-05 18:42 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-05 19:02 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2711,6 +2711,16 @@ input[type="checkbox"] { accent-color: var(--utm); }
     <path d="M12 7.6v.01"/>
   </symbol>
 
+  <!-- La setmana: una fila de dies. No la reixeta del calendari —que ja és la
+       del mòdul de calendari i a 22 píxels no se n'hi distingiria cap— sinó
+       set marques seguides sobre una línia, que és exactament el que ensenya
+       aquella pantalla: set dies l'un al costat de l'altre. La del mig és més
+       alta perquè la fila tingui un centre i no sembli un pinta. -->
+  <symbol id="ic-setmana" viewBox="0 0 24 24">
+    <path d="M2.8 17.6h18.4"/>
+    <path d="M4.2 13.2v2.8M6.8 11.2v4.8M9.4 13.8v2.2M12 7.4v8.6M14.6 12.2v3.8M17.2 14v2M19.8 10.4v5.6"/>
+  </symbol>
+
   <!-- Dutxar-se: les gotes. -->
   <symbol id="ic-h-dutxa" viewBox="0 0 24 24">
     <path d="M12 2.8c0 0-3.3 3.9-3.3 6a3.3 3.3 0 0 0 6.6 0c0-2.1-3.3-6-3.3-6z"/>
@@ -2754,7 +2764,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-05 18:42 · en curs";
+window.MARCA_JEFE = "2026-08-05 19:02 · en curs";
 </script>
 
 <script>
@@ -4622,6 +4632,13 @@ App.registraVista('inici', {
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .apartat-ample { grid-column: 1 / -1; flex-direction: row; align-items: center; min-height: 60px; }
+/* La fila del dia i la setmana. Ocupa l amplada sencera i la parteix en dos:
+   aixi es veuen de costat tant si a sota hi ha dues columnes com quatre, i el
+   dia no s encongeix a mesura que la pantalla creix. */
+.apartats-quan {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2);
+}
 .apartat .ic { width: 22px; height: 22px; color: var(--utm); }
 .apartat span { font-size: .875rem; font-weight: 600; line-height: 1.2; }
 .apartat:active { background: var(--utm-suau); transform: scale(.98); }
@@ -5719,11 +5736,17 @@ App.registraVista('conversa', {
        tocar aquesta pantalla. Es el mateix contracte que tenia la fila. */
     function reixaApartats(items) {
       return '<div class="reixa-apartats">' +
-        /* La pagina del dia va PRIMERA i ocupa tota l amplada: no es un modul,
-           es on va la majoria de vegades, i abans no tenia boto enlloc —nomes
-           s hi arribava per la data de l inici. */
-        '<button class="apartat viu apartat-ample" data-ves="dia">' +
-          ic('dia') + '<span>El dia</span></button>' +
+        /* EL DIA I LA SETMANA VAN PRIMER, i van junts en una fila seva.
+           Cap dels dos es un modul: son les dues respostes a la mateixa
+           pregunta a dues distancies —«que he de tenir en compte ara» i «quan
+           ho fare»— i per aixo es miren de costat i no barrejats amb els
+           apartats, que son llocs on vas a treballar. */
+        '<div class="apartats-quan">' +
+          '<button class="apartat viu apartat-ample" data-ves="dia">' +
+            ic('dia') + '<span>El dia</span></button>' +
+          '<button class="apartat viu apartat-ample" data-ves="setmana">' +
+            ic('setmana') + '<span>La setmana</span></button>' +
+        '</div>' +
         items.map(function (m) {
           return '<button class="apartat viu" data-ves="' + esc(m.id) + '">' +
             ic(m.icona || 'modul') +

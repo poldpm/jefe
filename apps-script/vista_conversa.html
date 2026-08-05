@@ -281,6 +281,13 @@
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .apartat-ample { grid-column: 1 / -1; flex-direction: row; align-items: center; min-height: 60px; }
+/* La fila del dia i la setmana. Ocupa l amplada sencera i la parteix en dos:
+   aixi es veuen de costat tant si a sota hi ha dues columnes com quatre, i el
+   dia no s encongeix a mesura que la pantalla creix. */
+.apartats-quan {
+  grid-column: 1 / -1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2);
+}
 .apartat .ic { width: 22px; height: 22px; color: var(--utm); }
 .apartat span { font-size: .875rem; font-weight: 600; line-height: 1.2; }
 .apartat:active { background: var(--utm-suau); transform: scale(.98); }
@@ -1378,11 +1385,17 @@ App.registraVista('conversa', {
        tocar aquesta pantalla. Es el mateix contracte que tenia la fila. */
     function reixaApartats(items) {
       return '<div class="reixa-apartats">' +
-        /* La pagina del dia va PRIMERA i ocupa tota l amplada: no es un modul,
-           es on va la majoria de vegades, i abans no tenia boto enlloc —nomes
-           s hi arribava per la data de l inici. */
-        '<button class="apartat viu apartat-ample" data-ves="dia">' +
-          ic('dia') + '<span>El dia</span></button>' +
+        /* EL DIA I LA SETMANA VAN PRIMER, i van junts en una fila seva.
+           Cap dels dos es un modul: son les dues respostes a la mateixa
+           pregunta a dues distancies —«que he de tenir en compte ara» i «quan
+           ho fare»— i per aixo es miren de costat i no barrejats amb els
+           apartats, que son llocs on vas a treballar. */
+        '<div class="apartats-quan">' +
+          '<button class="apartat viu apartat-ample" data-ves="dia">' +
+            ic('dia') + '<span>El dia</span></button>' +
+          '<button class="apartat viu apartat-ample" data-ves="setmana">' +
+            ic('setmana') + '<span>La setmana</span></button>' +
+        '</div>' +
         items.map(function (m) {
           return '<button class="apartat viu" data-ves="' + esc(m.id) + '">' +
             ic(m.icona || 'modul') +

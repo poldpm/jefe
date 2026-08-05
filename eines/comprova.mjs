@@ -108,6 +108,35 @@ for (const f of fitxers.filter(x => /^40_Mod_.*\.gs$/.test(x))) {
   }
 }
 
+// ---- 7. Cada icona que es demana existeix al full de símbols ---------------
+/* Un `ic('setmana')` sense el seu `<symbol id="ic-setmana">` no peta enlloc:
+   el navegador dibuixa un buit i el botó es queda sense res. Ja va passar
+   —la icona de Seguiment es va perdre en una neteja i ningú se'n va adonar
+   fins que es va mirar la pantalla. Aquí es veu abans de pujar. */
+{
+  const sprite = fs.existsSync(path.join(DIR, 'ui_icones.html'))
+    ? fs.readFileSync(path.join(DIR, 'ui_icones.html'), 'utf8') : '';
+  const teQui = new Set();
+  (sprite.match(/id="ic-([a-z0-9-]+)"/g) || []).forEach((x) => {
+    teQui.add(x.match(/id="ic-([a-z0-9-]+)"/)[1]);
+  });
+
+  for (const f of fitxers.filter((x) => x.endsWith('.html') && x !== 'ui_icones.html')) {
+    const src = fs.readFileSync(path.join(DIR, f), 'utf8');
+    /* El nom s'agafa sencer i no per un joc de caràcters: amb `[a-z0-9-]+`,
+       un `ic('setmanaXX')` no encaixava del tot i la comprovació el saltava
+       sense dir res. Ho he sabut trencant-ho a posta per veure si saltava. */
+    const re = /\bic\(\s*'([^']*)'/g;
+    let m3;
+    while ((m3 = re.exec(src))) {
+      if (!teQui.has(m3[1])) {
+        error(f, 'demana la icona `' + m3[1] + '` i no hi ha cap <symbol id="ic-' +
+                 m3[1] + '"> a ui_icones.html.');
+      }
+    }
+  }
+}
+
 // ---- Informe ---------------------------------------------------------------
 if (avisos.length) {
   console.log('\nAvisos:');

@@ -721,6 +721,11 @@ export function dades(AVUI, menys) {
       { id: 'finances', nom: 'Finances', icona: 'finances', ordre: 30, teVista: true },
       { id: 'calendari', nom: 'Calendari', icona: 'calendari', ordre: 5, teVista: true },
       { id: 'seguiment', nom: 'Seguiment FitFat', icona: 'seguiment', ordre: 25, teVista: true },
+      /* Escola hi faltava. No ho havia trencat res: senzillament no s'havia
+         afegit mai a la llista, i per això el tauler d'apartats del mirall
+         ensenyava vuit botons on l'app en té nou. Justament el tauler és on
+         es veuen totes les icones alhora. */
+      { id: 'escola', nom: 'Escola', icona: 'escola', ordre: 35, teVista: true },
       { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true }
     ],
     targetes: [
