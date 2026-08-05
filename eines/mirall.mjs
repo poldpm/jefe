@@ -308,13 +308,6 @@ const MOCK = `
             ? (h.complert ? 0 : h.objectiu) : p.valor;
           h.registrat = true;
           h.complert = h.esComptador ? false : h.valor >= h.objectiu;
-
-          /* La sèrie dels catorze dies també, que si no la barra d'avui puja
-             amb el toc i torna a baixar quan contesta això: semblaria un error
-             de la pantalla quan qui menteix és el mirall. */
-          if (h.esComptador && h.serie14 && h.serie14.length) {
-            h.serie14[h.serie14.length - 1].valor = h.valor;
-          }
         }
         var m = copia(estatDia); m.mes = HABITS_MES; return m;
       }

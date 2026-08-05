@@ -430,24 +430,18 @@ var Habits = (function () {
       canvi = Math.round((ara.mitjana - abans.mitjana) * 10) / 10;
     }
 
-    /* ELS CATORZE ÚLTIMS DIES, un per un.
-       Una xifra sola —«7 avui»— no diu si vas amunt o avall, i és justament el
-       que vol saber qui compta una cosa que vol deixar. La sèrie viatja amb la
-       pantalla perquè dibuixar-la no costi cap viatge de més: són catorze
-       números i el full ja està llegit.
-       Els dies sense res compten com a zero A POSTA: en un comptador, no haver
-       apuntat res vol dir que no n'has fet cap. */
-    var serie = [];
-    for (var i = 13; i >= 0; i--) {
-      var d = Utils.sumaDies(avui, -i);
-      serie.push({ data: d, valor: Number(regs[d]) || 0 });
-    }
+    /* AQUÍ HI HAVIA ELS CATORZE ÚLTIMS DIES, per pintar una tira de barres a
+       la targeta. La tira s'ha tret —amb la corba a la mateixa pantalla eren
+       dues maneres de dir el mateix— i la sèrie se'n va amb ella: això viatjava
+       amb el DIA, que torna a cada toc que fa. El que no es pinta no s'envia.
+       Els dies un per un segueixen existint per a la corba, però van amb el
+       full del mes: vegeu `comptadors_`. */
 
     return {
       esComptador: true,
       unitatRatxa: 'dies',
       ratxa: 0, ratxaMax: 0, pct30: null, pct7: null,
-      serie14: serie,
+
       avui: Number(regs[avui]) || 0,
       mitjana7: ara.mitjana === null ? null : Math.round(ara.mitjana * 10) / 10,
       mitjana7Previa: abans.mitjana === null ? null : Math.round(abans.mitjana * 10) / 10,
@@ -518,8 +512,8 @@ var Habits = (function () {
         esComptador: est.esComptador,
         mitjana7: est.mitjana7,
         canvi7: est.canvi7,
-        total30: est.total30,
-        serie14: est.serie14
+        total30: est.total30
+
       };
     });
 

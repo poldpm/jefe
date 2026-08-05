@@ -37,15 +37,7 @@ export function dades(AVUI, menys) {
       exigit: !h.esComptador, existiaEncara: true,
       ratxa: h.ratxa || 0, ratxaMax: (h.ratxa || 0) + 4, unitatRatxa: 'dies',
       pct30: h.esComptador ? null : h.pct30, pct7: h.esComptador ? null : h.pct30,
-      esComptador: h.esComptador, mitjana7: h.mitjana7, canvi7: h.canvi7, total30: h.total30,
-      /* Els catorze últims dies d'un comptador, per veure la tira de la
-         targeta. Inventats i desiguals a posta: amb tots iguals, un gràfic
-         sempre queda bé i no es veu si el dibuixa malament. */
-      serie14: h.esComptador
-        ? [8, 6, 9, 4, 7, 11, 5, 6, 3, 8, 5, 0, 4, h.valor].map((v, i) => ({
-            data: menys(13 - i), valor: v
-          }))
-        : undefined
+      esComptador: h.esComptador, mitjana7: h.mitjana7, canvi7: h.canvi7, total30: h.total30
     }))
   });
 

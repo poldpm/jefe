@@ -141,51 +141,12 @@ App.registraVista('habits', {
      * hàbit normal et passes de tocs, el següent torna a zero; aquí no es pot
      * tornar a zero sense perdre el compte del dia.
      */
-    /**
-     * LA SETMANA I MITJA QUE PORTES, DIBUIXADA.
-     *
-     * Un comptador que només ensenya el número d'avui no et diu res del que
-     * importa: si puges o baixes. Set és molt o poc segons si la setmana
-     * passada en feies quatre o dotze, i aquesta és tota la pregunta de qui
-     * compta una cosa que vol deixar.
-     *
-     * Va A LA TARGETA i no dins del detall perquè el detall s'ha d'anar a
-     * obrir, i el moment en què això serveix és justament quan hi acabes de
-     * clicar. Catorze dies: dues setmanes es comparen d'un cop d'ull i caben
-     * sense fer-se il·legibles.
-     *
-     * El dia d'avui va marcat, i els zeros es dibuixen com una ratlla a terra
-     * i no com un buit: un dia sense cap no és un dia sense dada.
-     */
-    function tiraComptador(h) {
-      var s = h.serie14;
-      if (!s || !s.length) return '';
-
-      var sostre = 1;
-      s.forEach(function (d) { if (d.valor > sostre) sostre = d.valor; });
-
-      var avui = fmt.avui();
-      var barres = s.map(function (d) {
-        var alt = Math.round((d.valor / sostre) * 100);
-        return '<i style="height:' + Math.max(alt, d.valor ? 8 : 0) + '%"' +
-               (d.data === avui ? ' data-avui="1"' : '') + '></i>';
-      }).join('');
-
-      /* El canvi respecte la setmana anterior, dit amb paraules. La fletxa
-         sola no diu de quant, i «−1,2 al dia» sí. */
-      var diu = '';
-      if (h.canvi7 !== null && h.canvi7 !== undefined && h.canvi7 !== 0) {
-        diu = (h.canvi7 < 0 ? '▾ ' : '▴ ') + fmt.decimal(Math.abs(h.canvi7)) + ' al dia';
-      } else if (h.mitjana7 !== null && h.mitjana7 !== undefined) {
-        diu = fmt.decimal(h.mitjana7) + ' al dia';
-      }
-
-      return '<span class="compt-tira" role="img" aria-label="' +
-          esc('Els últims 14 dies. ' + (h.mitjana7 !== null && h.mitjana7 !== undefined
-              ? 'Mitjana de ' + fmt.decimal(h.mitjana7) + ' al dia.' : '')) + '">' + barres + '</span>' +
-        (diu ? '<span class="compt-diu">' + esc(diu) + '</span>' : '');
-    }
-
+    /* LA TARGETA ENSENYA LA XIFRA I PROU.
+       Hi va haver una tira de barres dels últims catorze dies i el canvi
+       respecte la setmana passada, aquí mateix. Fora: amb la corba a la
+       mateixa pantalla, eren tres maneres de dir el mateix a dos dits de
+       distància, i tres lectures d'una sola cosa és soroll per bones que
+       siguin cadascuna. La xifra diu on ets; la corba, cap on vas. */
     function franjaComptador(h) {
       var n = h.valor || 0;
       return '<div class="franja-fila" data-h="' + esc(h.id) + '" data-comptador="1">' +
@@ -197,7 +158,6 @@ App.registraVista('habits', {
              «cigarros» retallat a «ciga» no és informació, és brossa. */
           '<span class="franja-peu">' +
             '<span class="compt-xifra"><span class="n">' + n + '</span></span>' +
-            tiraComptador(h) +
           '</span>' +
         '</button>' +
         (ordenant ? '' :
@@ -237,8 +197,8 @@ App.registraVista('habits', {
        deixar.
 
        Línia i no barres: aquí el que importa és el pendent, si puja o baixa, i
-       una línia el diu d'un cop d'ull. Les barres del dia van a la targeta,
-       que és on compares dies solts.
+       una línia el diu d'un cop d'ull. És l'únic dibuix de la pantalla: la
+       targeta diu la xifra d'avui i prou, i aquí es veu cap on va.
 
        Tres finestres, i cadascuna respon una pregunta diferent:
          setmana  — com he anat aquests dies
@@ -568,16 +528,6 @@ App.registraVista('habits', {
       h.valor = nou;
       h.registrat = true;
       h.complert = h.esComptador ? false : nou >= h.objectiu;
-
-      /* La barra d'avui puja amb el toc, no d'aquí a dos segons. La mitjana i
-         el «respecte la setmana passada» sí que esperen el servidor: són el
-         mateix càlcul que fa ell i no vull dues respostes que es contradiguin
-         mentre parpelleges. */
-      if (h.esComptador && h.serie14) {
-        for (var s = 0; s < h.serie14.length; s++) {
-          if (h.serie14[s].data === data) { h.serie14[s].valor = nou; break; }
-        }
-      }
 
       Cau.set('habits.' + data, dades);
       repintaFranja(h);

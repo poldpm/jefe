@@ -498,29 +498,6 @@ h2 { font-size: 1.0625rem; }
 .compt-xifra .u { font-size: .5625rem; letter-spacing: .08em; text-transform: uppercase;
                   color: var(--ink-suau); }
 
-/* ELS CATORZE ÚLTIMS DIES, A LA MATEIXA TARGETA.
-   Set cigarros no vol dir res tot sol: vol dir molt si la setmana passada en
-   feies quatre i vol dir bé si en feies dotze. La xifra diu ON ETS i la tira
-   diu CAP ON VAS, que és el que fa que comptar serveixi d'alguna cosa.
-   Va aquí i no dins del detall perquè el detall s'ha d'anar a obrir, i el
-   moment en què això serveix és el mateix en què acabes de tocar el botó. */
-.compt-tira {
-  display: flex; align-items: flex-end; gap: 2px;
-  height: 22px; margin-top: var(--e2); width: 100%;
-}
-/* SENSE OPACITAT. A .55 les barres quedaven a 2,25:1 en fosc i a 1,73 en clar
-   —mesurat—, i una barra que no es veu no és un gràfic, és una decoració. El
-   que separa el dia d'avui de la resta és el color, no que les altres siguin
-   fluixes. */
-.compt-tira i {
-  flex: 1; min-width: 2px; min-height: 1px;
-  background: var(--ink-suau);
-  transition: height .18s var(--entra);
-}
-/* Un dia sense cap no és un dia sense dada: es dibuixa a terra i es veu. */
-.compt-tira i[style*="height: 0%"] { min-height: 1px; opacity: .55; }
-.compt-tira i[data-avui="1"] { background: var(--utm); }
-
 /* ==========================================================================
    LA CORBA D'UN COMPTADOR
 
@@ -528,8 +505,13 @@ h2 { font-size: 1.0625rem; }
    la llegenda explicava com llegir una taula —cosa que s'aprèn el primer dia i
    després sobra cada dia— i això diu com va el que estàs mirant de deixar.
 
-   Línia i no barres: el que importa és el pendent. Les barres del dia són a la
-   targeta, que és on es comparen dies solts.
+   És l'ÚNIC dibuix de la pantalla. Hi va haver, a la targeta, una tira de
+   barres dels catorze últims dies i el canvi respecte la setmana passada
+   escrit al costat: tres maneres de dir el mateix a dos dits de distància.
+   Ara la targeta diu la xifra —on ets— i la corba diu el pendent —cap on vas—
+   i no hi ha res més a mirar.
+
+   Línia i no barres: el que importa és el pendent.
    ========================================================================== */
 
 .compt-bloc { margin-top: var(--e4); display: flex; flex-direction: column; gap: var(--e4); }
@@ -568,20 +550,6 @@ h2 { font-size: 1.0625rem; }
 .compt-graf-peu {
   display: flex; justify-content: space-between; gap: var(--e2); margin-top: var(--e2);
   font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
-}
-
-/* El canvi respecte la setmana passada, dit amb el número. Una fletxa sola no
-   diu de quant, i un color sol no diu res a qui no el distingeix: qui porta la
-   direcció és la fletxa i qui porta la mida és la xifra.
-   El vaig provar acolorit —cian avall, taronja amunt— i en tema clar el text
-   es quedava a 3,47:1. Un gràfic pot viure amb això; un text, no. */
-.compt-diu {
-  font-family: var(--mono); font-size: .6875rem; letter-spacing: .04em;
-  color: var(--ink-suau); margin-top: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .compt-tira i { transition: none; }
 }
 
 /* El botó de restar. Un comptador és l'únic que no es pot desfer sol —tornant
