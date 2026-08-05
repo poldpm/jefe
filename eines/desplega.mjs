@@ -31,6 +31,29 @@ function clasp(args) {
   });
 }
 
+/* PRIMER PUJA EL CODI, SEMPRE.
+   ------------------------------------------------------------------------
+   Aquest fitxer crea una versió NOVA A PARTIR DEL QUE HI HA A L'EDITOR
+   d'Apps Script. Si el codi no s'hi ha pujat abans, fa una versió del codi
+   VELL i la publica dient que tot ha anat bé.
+
+   Va passar: quatre desplegaments seguits —214, 215, 216— fets sobre el codi
+   de la nit anterior. L'app es va quedar demanant una acció que al servidor no
+   existia i des de fora semblava que el desplegament estigués trencat.
+
+   L'avís no n'hi havia prou. Ara `clasp push` és part de desplegar i el
+   descuit ja no és possible: no es pot publicar el que no s'ha pujat. */
+try {
+  const p = clasp(['push', '-f']);
+  const quants = (p.match(/Pushed (\d+) files/) || [])[1];
+  console.log('\n  Codi pujat a l\'editor' + (quants ? ' (' + quants + ' fitxers)' : ''));
+} catch (err) {
+  console.error('\n  ✗ No s\'ha pogut pujar el codi a Apps Script.');
+  console.error('    ' + String(err.stderr || err.message).trim().split('\n').pop());
+  console.error('    Sense això, desplegar publicaria el codi antic.\n');
+  process.exit(1);
+}
+
 let sortida;
 try {
   sortida = clasp(['deployments']);
