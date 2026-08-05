@@ -117,4 +117,26 @@ fs.writeFileSync('apps-script/03_Adreca.gs', [
 ].join('\n'));
 console.log('  Adreça apuntada a 03_Adreca.gs');
 
-console.log('  El que hi ha a l\'editor i el que serveix l\'app ja són el mateix.\n');
+console.log('  El que hi ha a l\'editor i el que serveix l\'app ja són el mateix.');
+
+/* I LA MEITAT DE DAVANT, QUE NO ÉS AQUÍ.
+   L'app que en Pol obre la serveix GitHub Pages: l'`index.html` de l'arrel.
+   Apps Script només hi posa les dades. Desplegar aquí i no fer `git push`
+   deixa el servidor nou i la pantalla vella, i des de fora es veu com si no
+   s'hagués fet res —va passar: una tarda sencera de canvis desplegats i ell
+   mirant la versió del matí. Ara es diu. */
+try {
+  const { execSync } = await import('child_process');
+  const q = (c) => execSync(c, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const enrere = q('git rev-list --count origin/main..HEAD');
+  const brut = q('git status --porcelain -- index.html sw.js manifest.webmanifest');
+  if (Number(enrere) > 0 || brut) {
+    console.log('\n  ⚠ LA PANTALLA ENCARA ÉS LA VELLA.');
+    if (Number(enrere) > 0) console.log('    ' + enrere + ' commit(s) sense pujar a GitHub Pages.');
+    if (brut) console.log('    I hi ha canvis del frontal sense desar.');
+    console.log('    L\'app la serveix GitHub Pages, no Apps Script:');
+    console.log('      git push origin main');
+  }
+} catch (e) { /* sense git o sense remot: no és cap error de desplegament */ }
+
+console.log('');
