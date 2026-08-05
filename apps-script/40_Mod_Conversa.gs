@@ -37,7 +37,35 @@ function MODUL_CONVERSA() {
       enviaVeu:  function (p) { return Conversa.enviaVeu(p); },
       nova:      function ()  { return Conversa.nova(); },
       confirma:  function (p) { return Conversa.confirma(p.eina, p.args); },
-      elDia:     function (p) { return Conversa.elDia(p.data); }
+      elDia:     function (p) { return Conversa.elDia(p.data); },
+      laSetmana: function (p) { return Conversa.laSetmana(p.desde); }
+    },
+
+    /**
+     * DIUMENGE A LA TARDA, UN COP.
+     *
+     * És l'únic senyal que no surt de res que hagi passat: surt del calendari,
+     * i és a posta. La pantalla de la setmana només val si t'hi asseus, i
+     * ningú s'hi asseu perquè existeixi un botó. El senyal és la meitat de la
+     * feina —el motor ja només en deixa passar dos al dia i cap de nit, i si
+     * un diumenge no toca, no toca.
+     *
+     * Si no hi ha res a repartir, no diu res: convidar-te a preparar una
+     * setmana buida és fer-te perdre cinc minuts amb la meva cara.
+     */
+    senyals: function () {
+      if (Utils.diaSetmana(Utils.avui()) !== 7) return [];
+      var s;
+      try { s = Conversa.laSetmana(); } catch (e) { return []; }
+      if (!s.pila.length) return [];
+      return [{
+        id: 'prepara_setmana:' + s.desde,
+        titol: 'La setmana que ve',
+        text: s.pila.length + (s.pila.length === 1 ? ' cosa espera' : ' coses esperen') +
+              ' sense dia. Cinc minuts ara i dilluns ja saps per on comences.',
+        urgencia: 1,
+        accio: 'setmana'
+      }];
     },
 
     /**
@@ -58,6 +86,11 @@ function MODUL_CONVERSA() {
       vista: 'dia',
       frases: ['pagina del dia', 'pagina d avui', 'full del dia', 'dashboard del dia',
                'la pagina de avui', 'el dia d avui']
+    }, {
+      vista: 'setmana',
+      frases: ['la setmana', 'prepara la setmana', 'prepara m la setmana',
+               'com tinc la setmana', 'com tinc la setmana que ve',
+               'la setmana que ve', 'pagina de la setmana', 'vista de la setmana']
     }],
 
     einesIA: [{
@@ -75,6 +108,24 @@ function MODUL_CONVERSA() {
         }
       },
       executa: function (a) { return Conversa.elDiaIA(a); }
+    }, {
+      nom: 'prepara_la_setmana',
+      descripcio: 'Ensenya a en Pol la pantalla de la setmana: els set dies amb les hores ' +
+                  'que ja té ocupades i la pila del que espera sense dia. Fes-la servir ' +
+                  'quan pregunti com té la setmana, quan vulgui preparar-la o repartir ' +
+                  'feina, o quan digui que no sap per on començar. Un cop cridada ja té ' +
+                  'la pantalla al davant: no li repeteixis la llista sencera, digues-li ' +
+                  'el que hi veus de diferent —quin dia va ple i quin té lloc.',
+      obre: 'setmana',
+      esquema: {
+        type: 'object',
+        properties: {
+          desde: { type: 'string',
+                   description: 'Un dia qualsevol de la setmana que vol veure, AAAA-MM-DD. ' +
+                                'Si s\'omet: aquesta setmana, o la que ve si és cap de setmana.' }
+        }
+      },
+      executa: function (a) { return Conversa.laSetmanaIA(a); }
     }],
 
     vista: 'vista_conversa'
@@ -369,6 +420,112 @@ var Conversa = (function () {
     });
   }
 
+  // --------------------------------------------------------- la setmana
+
+  /**
+   * LA SETMANA: set dies, les hores que ja tens ocupades i la pila del que
+   * espera sense dia.
+   *
+   * Per què no és la pàgina del dia set vegades: la pàgina del dia respon
+   * «què he de tenir en compte ara», i respondre-la set cops seguits no dona
+   * cap resposta nova, dona set llistes. Aquí la pregunta és una altra —«quan
+   * ho faré»— i només es pot contestar veient a la vegada on són les hores
+   * ocupades i què és el que encara no té lloc. Per això la pila és mitja
+   * pantalla i no una nota al peu.
+   *
+   * QUINA SETMANA S'OBRE, si no en demanes cap:
+   *   dilluns a divendres → la d'aquesta setmana, que és la que estàs vivint
+   *   dissabte i diumenge → la que ve
+   * No és una floritura: la feina de seure a repartir la setmana es fa el cap
+   * de setmana, i llavors la setmana que t'importa ja no és la que s'acaba.
+   */
+  function laSetmana(desde) {
+    var avui = Utils.avui();
+    var dl;
+    if (Utils.esDataValida(desde)) {
+      dl = Utils.dillunsDe(desde);
+    } else {
+      dl = Utils.dillunsDe(avui);
+      if (Utils.diaSetmana(avui) >= 6) dl = Utils.sumaDies(dl, 7);
+    }
+    var fins = Utils.sumaDies(dl, 6);
+
+    return Memoria.recordaComu('laSetmana:' + dl, function () {
+      var blocs = Moduls.laSetmana(dl, fins);
+
+      var dies = [], perData = {};
+      for (var i = 0; i < 7; i++) {
+        var d = Utils.sumaDies(dl, i);
+        var x = {
+          data: d, diaSetmana: i + 1,
+          esAvui: d === avui, esPassat: d < avui,
+          minuts: 0, coses: []
+        };
+        dies.push(x); perData[d] = x;
+      }
+
+      var pila = [];
+      blocs.forEach(function (b) {
+        (b.coses || []).forEach(function (c) {
+          var cosa = {
+            modul: b.modul, titol: b.titol, accio: b.accio,
+            text: c.text, menut: c.menut || '', hora: c.hora || '',
+            urgent: !!c.urgent, fet: !!c.fet, mou: c.mou || null
+          };
+          /* A LA PILA HI VA EL QUE NO TÉ DIA, no el que té un dia que no
+             estic ensenyant. Una cita d'aquí tres setmanes hi queia i es
+             llegia com una cosa que t'espera sense data: seria mentida, i a
+             més la posaries en un dia d'aquesta setmana quan ja en té un. */
+          if (!c.data) { pila.push(cosa); return; }
+          var on = perData[c.data];
+          if (!on) return;                  // té dia, però no és d'aquesta setmana
+          on.coses.push(cosa);
+          on.minuts += Number(c.minuts) || 0;
+        });
+      });
+
+      /* Les hores del dia més ple. Serveixen per comparar dins de la setmana i
+         no amb cap ideal: el que vols saber és quin dia va carregat COMPARAT
+         AMB ELS ALTRES SIS, no si vuit hores són moltes. */
+      var ple = 0;
+      dies.forEach(function (x) {
+        x.coses.sort(function (a, b) {
+          if (!a.hora !== !b.hora) return a.hora ? 1 : -1;   // sense hora, a dalt
+          return a.hora < b.hora ? -1 : (a.hora > b.hora ? 1 : 0);
+        });
+        if (x.minuts > ple) ple = x.minuts;
+      });
+
+      return {
+        desde: dl, fins: fins, avui: avui,
+        esAquesta: dl === Utils.dillunsDe(avui),
+        dies: dies, pila: pila, minutsPle: ple,
+        quantes: dies.reduce(function (s, x) { return s + x.coses.length; }, 0) + pila.length
+      };
+    });
+  }
+
+  /** Per a la conversa: el mateix, dit amb paraules i obrint la pantalla. */
+  function laSetmanaIA(a) {
+    var s = laSetmana(a && a.desde);
+    var NOMS = ['dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge'];
+    return {
+      _params: { desde: s.desde },
+      pantalla: 'oberta',
+      setmana: s.desde + ' → ' + s.fins,
+      dies: s.dies.map(function (d, i) {
+        return NOMS[i] + ' ' + d.data + ': ' +
+               (d.coses.length
+                 ? Math.round(d.minuts / 6) / 10 + ' h ocupades · ' +
+                   d.coses.map(function (c) {
+                     return (c.hora ? c.hora + ' ' : '') + c.text;
+                   }).join('; ')
+                 : 'res');
+      }),
+      pila: s.pila.map(function (c) { return c.text + (c.menut ? ' (' + c.menut + ')' : ''); })
+    };
+  }
+
   /**
    * El mateix, per a la conversa. Torna `_params` perquè el client sàpiga
    * quin dia ha d'obrir, i el contingut en text perquè JEFE en pugui parlar
@@ -393,6 +550,7 @@ var Conversa = (function () {
     estat: estat, historial: historial, envia: envia,
     nova: nova, confirma: confirma,
     enviaVeu: enviaVeu,
-    elDia: elDia, elDiaIA: elDiaIA
+    elDia: elDia, elDiaIA: elDiaIA,
+    laSetmana: laSetmana, laSetmanaIA: laSetmanaIA
   };
 })();

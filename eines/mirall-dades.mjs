@@ -536,6 +536,91 @@ export function dades(AVUI, menys) {
              quantes: blocs.reduce((s, b) => s + b.coses.length, 0) };
   };
 
+  // -------------------------------------------------------------- la setmana
+
+  /* Els set dies amb les hores ocupades i la pila del que espera. Es munta
+     amb les mateixes cites i les mateixes tasques que la resta del mirall:
+     si el calendari inventat diu que dijous hi ha claustre, aquí també.
+
+     LA PILA HI ÉS AMB GRUIX A POSTA. És la meitat de la pantalla i la que té
+     la interacció —posar-hi dia—, i una pila de dues coses no ensenya si
+     vint files seguides amb el seu botó encara es llegeixen. */
+  const laSetmana = (p) => {
+    const dl = (() => {
+      let d = new Date(AVUI + 'T12:00:00');
+      if (p && p.desde) d = new Date(p.desde + 'T12:00:00');
+      else if (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 7);
+      const cap = (d.getDay() === 0 ? 7 : d.getDay()) - 1;
+      d.setDate(d.getDate() - cap);
+      return d.toISOString().slice(0, 10);
+    })();
+    const suma = (t, n) => {
+      const d = new Date(t + 'T12:00:00'); d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const fins = suma(dl, 6);
+
+    const cites = calendariPantalla({}).dades.tots
+      .filter((e) => e.data >= dl && e.data <= fins);
+    const tt = tasquesPantalla().tasques;
+
+    const dies = [];
+    for (let i = 0; i < 7; i++) {
+      const data = suma(dl, i);
+      const coses = [];
+      cites.filter((e) => e.data === data).forEach((e) => {
+        coses.push({ modul: 'calendari', titol: 'Al calendari', accio: 'calendari',
+          text: e.titol, hora: e.totElDia ? '' : e.hora,
+          menut: e.totElDia ? 'tot el dia'
+                            : e.hora + (e.horaFi ? '–' + e.horaFi : '') + (e.lloc ? ' · ' + e.lloc : ''),
+          urgent: false, fet: !!e.passat, mou: null });
+      });
+      tt.filter((t) => t.vencEl === data && !t.vencuda).forEach((t) => {
+        coses.push({ modul: 'tasques', titol: 'Tasques', accio: 'tasques',
+          text: t.text, hora: '', menut: t.llistaNom,
+          urgent: t.prioritat === 'alta', fet: false,
+          mou: { accio: 'edita', camp: 'venc_el', params: { id: t.id, llista: t.llista } } });
+      });
+      const minuts = cites.filter((e) => e.data === data && !e.totElDia)
+        .reduce((s, e) => s + (e.minuts || 0), 0);
+      dies.push({ data, diaSetmana: i + 1, esAvui: data === AVUI, esPassat: data < AVUI,
+                  minuts, coses });
+    }
+
+    const pila = [];
+    tt.filter((t) => t.vencuda).forEach((t) => {
+      pila.push({ modul: 'tasques', titol: 'Tasques', accio: 'tasques',
+        text: t.text, hora: '', menut: 'fa 4 dies que vencia', urgent: true, fet: false,
+        mou: { accio: 'edita', camp: 'venc_el', params: { id: t.id, llista: t.llista } } });
+    });
+    [['Mirar el pressupost de la sortida de tercer', 't1', 'lst_1', 'Meves tasques', 22],
+     ['Canviar les rodes del tot terreny', 't5', 'lst_3', 'Agent rural', 18],
+     ['Trucar al taller', 't2', 'lst_1', 'Meves tasques', 14],
+     ['Preparar la reunió de pares', 't8', 'lst_2', 'Docència', 11]
+    ].forEach(([text, id, llista, nom, dies_]) => {
+      pila.push({ modul: 'tasques', titol: 'Tasques', accio: 'tasques',
+        text, hora: '', menut: dies_ + ' dies sense moure\'s · ' + nom,
+        urgent: false, fet: false,
+        mou: { accio: 'edita', camp: 'venc_el', params: { id, llista } } });
+    });
+    [['Corregir els controls de llengua', 'Tutoria'],
+     ['Preparar les fitxes de mates', 'Programació'],
+     ['Firmar les autoritzacions de la sortida', 'Tutoria'],
+     ['Passar la llista de material a secretaria', 'Coordinació']
+    ].forEach(([text, llista]) => {
+      pila.push({ modul: 'escola', titol: 'De l\'escola', accio: 'escola',
+        text, hora: '', menut: llista, urgent: false, fet: false, mou: null });
+    });
+
+    return {
+      desde: dl, fins, avui: AVUI,
+      esAquesta: dl <= AVUI && AVUI <= fins,
+      dies, pila,
+      minutsPle: dies.reduce((m, x) => Math.max(m, x.minuts), 0),
+      quantes: dies.reduce((s, x) => s + x.coses.length, 0) + pila.length
+    };
+  };
+
 
 
   // ---------------------------------------------------------------- escola
@@ -650,7 +735,7 @@ export function dades(AVUI, menys) {
   });
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
-           CALENDARIS, calendariPantalla, elDia,
+           CALENDARIS, calendariPantalla, elDia, laSetmana,
            CATEGORIES, finPantalla, tasquesPantalla, tasquesFetes, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
 }

@@ -119,6 +119,24 @@ function MODUL_ESCOLA() {
      */
     elDia: function (data) { return Escola.elDia(data); },
 
+    /* DE L'ESCOLA, A LA SETMANA NOMÉS HI VA LA PILA.
+       El que té dia i hora —classes, claustres, sortides— ja hi és pel
+       calendari, que és on l'escola l'escriu; posar-lo també per aquí seria
+       ensenyar-ho dues vegades. El que no hi és enlloc és el que t'espera
+       sense data, i és justament el que diumenge has de repartir.
+       Sense `mou`: aquestes tasques viuen al compte de l'escola i el pont
+       encara no sap posar-los data. Es veuen per pesar la setmana. */
+    laSetmana: function () {
+      var p = Escola.pendentsDelPont();
+      if (!p || !p.length) return null;
+      return {
+        titol: 'De l\'escola', accio: 'escola',
+        coses: p.slice(0, 20).map(function (x) {
+          return { data: null, text: x.que, menut: x.llista };
+        })
+      };
+    },
+
     /**
      * Els avisos de l'escola que fa dies que són allà sense llegir. L'escola
      * no torna a enviar res: si no els obres, es queden.

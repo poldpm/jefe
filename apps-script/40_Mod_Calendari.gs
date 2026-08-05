@@ -103,6 +103,33 @@ function MODUL_CALENDARI() {
       };
     },
 
+    /* EL CALENDARI ÉS QUI PORTA LES HORES, i per això és l'únic que omple
+       `minuts`: la resta de mòduls diuen coses que has de fer, i aquest diu
+       les que ja no pots moure. Sense ell, la setmana seria una llista de
+       feina sense saber on cap. */
+    laSetmana: function (desde, fins) {
+      var e = Calendari.rangPerDies(desde, fins);
+      if (!e.length) return null;
+      return {
+        titol: 'Al calendari', accio: 'calendari',
+        coses: e.map(function (x) {
+          return {
+            data: x.dia,
+            text: x.titol,
+            hora: x.totElDia ? '' : x.hora,
+            menut: x.totElDia ? 'tot el dia'
+                              : x.hora + (x.horaFi ? '–' + x.horaFi : '') +
+                                (x.lloc ? ' · ' + x.lloc : ''),
+            /* Els minuts van al dia on cau el tros, no sencers a cada dia
+               d'un esdeveniment de tres: si no, una sortida de dos dies
+               semblaria vuit hores dilluns I vuit hores dimarts. */
+            minuts: x.minuts,
+            fet: x.passat
+          };
+        })
+      };
+    },
+
     contextIA: function () {
       var avui = Utils.avui();
       var l = [];
@@ -670,6 +697,39 @@ var Calendari = (function () {
                        : fi < ara,
       minuts: totElDia ? 0 : Math.round((fi - ini) / 60000)
     };
+  }
+
+  /**
+   * El rang, però amb una entrada per dia i esdeveniment, ja ordenada.
+   *
+   * `perDies_` fa el mateix per dins però torna un índex per pintar un mes.
+   * Aquí el que es vol és una llista plana amb el dia enganxat a cada cosa,
+   * que és el que demana el contracte de la setmana.
+   *
+   * ELS MINUTS NOMÉS COMPTEN EL DIA QUE COMENÇA. Un esdeveniment de tres
+   * dies amb hores comptaria tres vegades les mateixes hores i faria semblar
+   * plena tota la setmana. Els de tot el dia no compten minuts mai: bloquen
+   * el dia, no les hores, i qui ho ha de dir és el text.
+   */
+  function rangPerDies(desde, fins) {
+    var out = [];
+    rang(desde, fins).forEach(function (e) {
+      var d = e.data < desde ? desde : e.data;
+      var ultim = e.dataFi > fins ? fins : e.dataFi;
+      var guarda = 0;
+      while (d <= ultim && guarda++ < 60) {
+        var c = { dia: d };
+        for (var k in e) if (Object.prototype.hasOwnProperty.call(e, k)) c[k] = e[k];
+        if (d !== e.data) { c.minuts = 0; c.hora = ''; c.horaFi = ''; c.totElDia = true; }
+        out.push(c);
+        d = Utils.sumaDies(d, 1);
+      }
+    });
+    return out.sort(function (a, b) {
+      if (a.dia !== b.dia) return a.dia < b.dia ? -1 : 1;
+      if (a.totElDia !== b.totElDia) return a.totElDia ? -1 : 1;
+      return String(a.hora) < String(b.hora) ? -1 : 1;
+    });
   }
 
   function novaData_(text) {
@@ -1269,6 +1329,7 @@ var Calendari = (function () {
     mes: mes,
     dia: dia,
     rang: rang,
+    rangPerDies: rangPerDies,
     targeta: targeta,
     escalfa: escalfa,
     compta: compta,

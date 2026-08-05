@@ -1,0 +1,254 @@
+<script>
+/* JEFE — LA SETMANA
+
+   QUÈ RESPON, I PER QUÈ NO ÉS LA PÀGINA DEL DIA SET VEGADES.
+   La pàgina del dia respon «què he de tenir en compte ara». Repetir-la set
+   cops no dona cap resposta nova: dona set llistes. Aquí la pregunta és una
+   altra —QUAN HO FARÉ— i només es contesta veient alhora dues coses que fins
+   ara no s'havien vist mai juntes: on són les hores que ja tens ocupades, i
+   què és el que t'espera sense dia.
+
+   PER AIXÒ LA PILA ÉS MITJA PANTALLA. El que arrossegues no té data justament
+   perquè encara no has decidit quan, i decidir-ho és tota la feina d'aquesta
+   pantalla. Cada cosa de la pila es pot deixar en un dia amb dos tocs.
+
+   NO ÉS UN MÒDUL I NO TÉ BOTÓ, com la pàgina del dia. S'hi arriba demanant-la
+   —«prepara'm la setmana»— o pel senyal de diumenge a la tarda, que és quan
+   això serveix. Un botó més a la fila de sota seria una decisió més cada cop
+   que obres l'app, per una pantalla on entres un cop la setmana. */
+
+App.registraVista('setmana', {
+  render: function (arrel, params) {
+
+    var desde = params.desde || null;
+    var d = null;
+    var obert = null;                 // quina fila de la pila té els dies oberts
+
+    var DIES = ['dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge'];
+    var DIES_C = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'];
+
+    /* Les hores dites com les diries tu: «5 h», «1 h 30». Els minuts sols no
+       existeixen en una setmana —ningú diu que dijous té 310 minuts— i el
+       decimal («5,2 h») és una xifra de full de càlcul. */
+    function hores(min) {
+      if (!min) return '';
+      var h = Math.floor(min / 60), m = min % 60;
+      if (!h) return m + ' min';
+      return h + ' h' + (m >= 10 ? ' ' + m : '');
+    }
+
+    function capcalera() {
+      var quan = d
+        ? (d.esAquesta ? 'Aquesta setmana' : fmt.relativa(d.desde) + ' → ' + fmt.relativa(d.fins))
+        : '';
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-mou="-7" aria-label="La setmana abans">' +
+          ic('esquerra', 'ic-p') + '</button>' +
+        '<span class="titol-periode" style="cursor:default">' +
+          '<b>' + esc(quan) + '</b>' +
+          '<span>' + (d ? esc(fmt.llarga(d.desde).replace(/^\w+, /, '') + ' — ' +
+                             fmt.llarga(d.fins).replace(/^\w+, /, '')) : '') + '</span>' +
+        '</span>' +
+        '<button class="btn btn-fantasma btn-icona" data-mou="7" aria-label="La setmana següent">' +
+          ic('dreta', 'ic-p') + '</button>' +
+      '</div></header>';
+    }
+
+    /* Un dia. La capçalera porta el nom, el número i les hores ocupades; sota,
+       les coses. La barra compara amb el dia més ple DE LA SETMANA i no amb
+       cap ideal: el que vols saber és quin dia va carregat comparat amb els
+       altres sis, no si vuit hores són moltes. */
+    function dia(x, i) {
+      var pct = d.minutsPle ? Math.round((x.minuts / d.minutsPle) * 100) : 0;
+      return '<section class="caixa set-dia"' +
+          (x.esAvui ? ' data-avui="1"' : '') + (x.esPassat ? ' data-passat="1"' : '') + '>' +
+        /* La capçalera del dia obre la pàgina d'aquell dia. Aquí es veu la
+           forma de la setmana; quan un dia et crida l'atenció, el que vols
+           després és aquell dia sencer, i ja existeix una pantalla que el diu. */
+        '<h3 class="caixa-cap"><button class="set-cap" data-dia="' + esc(x.data) + '"' +
+          ' aria-label="Obre ' + DIES[i] + ' ' + fmt.diaNumero(x.data) + '">' +
+          '<span>' + DIES_C[i] + ' ' + fmt.diaNumero(x.data) + '</span>' +
+          (x.minuts ? '<em class="set-hores">' + esc(hores(x.minuts)) + '</em>' : '') +
+        '</button></h3>' +
+        (d.minutsPle
+          ? '<div class="set-carrega" role="img" aria-label="' +
+              (x.minuts ? esc(hores(x.minuts)) + ' ocupades' : 'sense res al calendari') + '">' +
+              '<i style="width:' + pct + '%"></i></div>'
+          : '') +
+        (x.coses.length
+          ? '<ul class="caixa-coses">' + x.coses.map(cosa).join('') + '</ul>'
+          : '<p class="set-buit">' + (x.esPassat ? '—' : 'Lliure') + '</p>') +
+      '</section>';
+    }
+
+    function cosa(c) {
+      return '<li class="set-cosa"' + (c.fet ? ' data-fet="1"' : '') +
+             (c.urgent ? ' data-urgent="1"' : '') + '>' +
+        '<span class="set-hora">' + esc(c.hora || '·') + '</span>' +
+        '<span class="set-text">' + esc(c.text) + '</span>' +
+      '</li>';
+    }
+
+    /* LA PILA. Cada cosa porta d'on surt —tasca teva, cosa de l'escola— i, si
+       es pot moure, el botó de posar-hi dia. Les que no es poden moure hi són
+       igualment: pesen la setmana encara que avui no les puguis repartir. */
+    function pila() {
+      if (!d.pila.length) {
+        return '<section class="secc"><div class="estat">' + ic('tasques', 'ic-g') +
+          '<h2>No arrossegues res</h2>' +
+          '<p>Tot el que tens apuntat té dia. Passa poc.</p></div></section>';
+      }
+      return '<section class="secc">' +
+        '<div class="caixes"><section class="caixa">' +
+          '<h3 class="caixa-cap"><span>El que espera</span>' +
+            '<em class="set-hores">' + d.pila.length + '</em></h3>' +
+          '<ul class="caixa-coses">' + d.pila.map(function (c, i) {
+            var pot = !!c.mou;
+            return '<li class="pila-fila"' + (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<div class="pila-cap">' +
+                '<span class="pila-text">' + esc(c.text) + '</span>' +
+                (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
+                (pot
+                  ? '<button class="pila-quan" data-obre="' + i + '"' +
+                      ' aria-expanded="' + (obert === i ? 'true' : 'false') + '"' +
+                      ' aria-label="Posa dia a: ' + esc(c.text) + '">' +
+                      ic('calendari', 'ic-p') + '</button>'
+                  : '') +
+              '</div>' +
+              (pot && obert === i ? tria(i) : '') +
+            '</li>';
+          }).join('') + '</ul>' +
+        '</section></div>' +
+      '</section>';
+    }
+
+    /* Els set dies, per triar-ne un. Set caselles i no un calendari: la
+       decisió és «quin dia d'aquesta setmana», i un calendari sencer seria
+       demanar-te que triïs entre tres-cents seixanta-cinc quan en vols set. */
+    function tria(i) {
+      return '<div class="pila-tria">' + d.dies.map(function (x, j) {
+        return '<button data-posa="' + i + '" data-data="' + esc(x.data) + '"' +
+          (x.esPassat ? ' disabled' : '') +
+          ' aria-label="' + DIES[j] + ' ' + fmt.diaNumero(x.data) + '">' +
+          DIES_C[j] + '<b>' + fmt.diaNumero(x.data) + '</b></button>';
+      }).join('') + '</div>';
+    }
+
+    function pinta() {
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+          '<section><div class="set-dies">' +
+            d.dies.map(dia).join('') +
+          '</div></section>' +
+          pila() +
+        '</div>';
+      lliga();
+    }
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-mou]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          desde = fmt.suma(d.desde, Number(b.dataset.mou));
+          obert = null;
+          carrega();
+        });
+      });
+
+      arrel.querySelectorAll('[data-dia]').forEach(function (b) {
+        b.addEventListener('click', function () { App.ves('dia', { data: b.dataset.dia }); });
+      });
+
+      arrel.querySelectorAll('[data-obre]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = Number(b.dataset.obre);
+          obert = (obert === i) ? null : i;
+          App.mantenintLaVista(pinta);
+        });
+      });
+
+      arrel.querySelectorAll('[data-posa]').forEach(function (b) {
+        b.addEventListener('click', function () { posa(Number(b.dataset.posa), b.dataset.data); });
+      });
+    }
+
+    /* POSAR DIA. El client no espera el servidor per ensenyar-ho: la cosa surt
+       de la pila i entra al dia abans que Google contesti, perquè el que
+       acabes de decidir ja el saps tu. Si falla, torna on era i t'ho diu —una
+       cosa que desapareix i reapareix sola és pitjor que un error. */
+    function posa(i, data) {
+      var c = d.pila[i];
+      if (!c || !c.mou) return;
+
+      var abans = { pila: d.pila.slice(), dies: d.dies.map(function (x) {
+        return { data: x.data, diaSetmana: x.diaSetmana, esAvui: x.esAvui,
+                 esPassat: x.esPassat, minuts: x.minuts, coses: x.coses.slice() };
+      }) };
+
+      d.pila.splice(i, 1);
+      for (var j = 0; j < d.dies.length; j++) {
+        if (d.dies[j].data !== data) continue;
+        var mogut = {};
+        for (var k in c) if (Object.prototype.hasOwnProperty.call(c, k)) mogut[k] = c[k];
+        mogut.menut = c.menut && /vencia/.test(c.menut) ? 'ho has posat aquí' : c.menut;
+        mogut.urgent = false;
+        d.dies[j].coses.push(mogut);
+        break;
+      }
+      obert = null;
+      App.mantenintLaVista(pinta);
+
+      var p = {};
+      for (var q in c.mou.params) if (Object.prototype.hasOwnProperty.call(c.mou.params, q)) {
+        p[q] = c.mou.params[q];
+      }
+      p[c.mou.camp] = data;
+
+      /* `crida` i no `escriu`: `escriu` demana de passada la pantalla del
+         mòdul que ha canviat, i aquí la pantalla del mòdul no la mira ningú.
+         Serien tres-centes tasques de Google llegides per res. */
+      crida(c.modul, c.mou.accio, p)
+        .then(function () {
+          /* El que acaba de canviar ja no és el que hi ha desat al telèfon:
+             ni aquesta setmana, ni les tasques, ni la pàgina del dia. */
+          Cau.oblida('setmana');
+          Cau.oblida('tasques');
+          Cau.oblida('dia.');
+          App.brindis(fmt.relativa(data));
+        })
+        .catch(function (err) {
+          d.pila = abans.pila; d.dies = abans.dies;
+          App.mantenintLaVista(pinta);
+          App.brindis(err.message, 'error');
+        });
+    }
+
+    function carrega() {
+      var clau = 'setmana.' + (desde || 'ara');
+      var cau = Cau.get(clau, null);
+      if (cau) { d = cau; pinta(); }
+      else arrel.innerHTML = Comp.carregant(3);
+
+      crida('conversa', 'laSetmana', desde ? { desde: desde } : {})
+        .then(function (r) {
+          d = r;
+          Cau.set(clau, r);
+          if (desde) Cau.set('setmana.' + r.desde, r);
+          App.mantenintLaVista(pinta);
+        })
+        .catch(function (err) {
+          if (d) { App.brindis(err.message, 'error'); return; }
+          arrel.innerHTML = Comp.error(err, true);
+          var b = arrel.querySelector('[data-reintenta]');
+          if (b) b.addEventListener('click', function () { App.ves('setmana'); });
+        });
+    }
+
+    carrega();
+  }
+});
+</script>

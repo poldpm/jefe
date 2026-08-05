@@ -114,6 +114,8 @@ function MODUL_TASQUES() {
 
     resumPeriode: function (desde, fins) { return Tasques.resumPeriode(desde, fins); },
 
+    laSetmana: function (desde, fins) { return Tasques.laSetmana(desde, fins); },
+
     elDia: function (data) {
       /* Del futur no en diu res: «et falten quatre tasques» d'aquí a tres
          dies és evident i no és cap informació. */
@@ -779,6 +781,77 @@ var Tasques = (function () {
    */
   var ENCALLADA = 10;
 
+  /* Quantes coses de la pila caben abans que la pila deixi de servir. Vint és
+     el que es llegeix d'una passada; a partir d'aquí, ensenyar-ho tot no és
+     ser complet, és tornar a l'apartat de tasques amb més passos. */
+  var PILA_MAX = 20;
+
+  /**
+   * LA SETMANA. Les tasques hi surten de dues maneres, i la diferència importa:
+   *
+   *   les que TENEN DIA van al seu dia, al costat de les hores que ja hi ha.
+   *     Serveixen per veure si dijous cap el que hi has posat.
+   *
+   *   les que NO EN TENEN van a la pila, i cadascuna porta com posar-s'hi.
+   *     Aquesta és la feina de diumenge: mirar què t'espera, mirar on hi ha
+   *     lloc, i donar-los dia. La pantalla no decideix res per tu.
+   *
+   * Les vençudes van a la pila encara que tinguin data: la data que porten és
+   * d'abans i el que cal fer amb elles és exactament el mateix, tornar-los-en
+   * a posar una. Surten primer, i dient de quan són.
+   */
+  function laSetmana(desde, fins) {
+    if (!serveiHiEs()) return null;
+    var d;
+    try { d = pantalla({}); } catch (e) { return null; }
+    if (!d.hiHaServei) return null;
+
+    var avui = Utils.avui();
+    var coses = [];
+
+    var mouA = function (t) {
+      return { accio: 'edita', camp: 'venc_el', params: { id: t.id, llista: t.llista } };
+    };
+
+    // 1. Les que cauen dins de la setmana, cadascuna al seu dia.
+    d.tasques.forEach(function (t) {
+      if (!t.vencEl || t.vencEl < desde || t.vencEl > fins) return;
+      if (t.vencEl < avui) return;               // vençuda: va a la pila
+      coses.push({
+        data: t.vencEl, text: t.text, menut: t.llistaNom,
+        urgent: t.prioritat === 'alta', mou: mouA(t)
+      });
+    });
+
+    // 2. La pila: primer les vençudes, després les encallades sense data.
+    var pila = [];
+    d.tasques.forEach(function (t) {
+      if (!t.vencuda) return;
+      pila.push({
+        data: null, text: t.text,
+        menut: Utils.faQuant(t.vencEl) + ' que vencia',
+        urgent: true, ordre: 0, quan: t.vencEl, mou: mouA(t)
+      });
+    });
+    d.tasques.forEach(function (t) {
+      if (t.vencEl || !t.tocadaEl) return;
+      if (Utils.diesEntre(t.tocadaEl, avui) < ENCALLADA) return;
+      pila.push({
+        data: null, text: t.text,
+        menut: Utils.diesEntre(t.tocadaEl, avui) + ' dies sense moure\'s · ' + t.llistaNom,
+        ordre: 1, quan: t.tocadaEl, mou: mouA(t)
+      });
+    });
+    pila.sort(function (a, b) {
+      if (a.ordre !== b.ordre) return a.ordre - b.ordre;
+      return a.quan < b.quan ? -1 : 1;           // la més antiga, primer
+    });
+    coses = coses.concat(pila.slice(0, PILA_MAX));
+
+    if (!coses.length) return null;
+    return { titol: 'Tasques', accio: 'tasques', coses: coses };
+  }
+
   function senyals() {
     if (!serveiHiEs()) return [];
     var d;
@@ -909,6 +982,7 @@ var Tasques = (function () {
   return {
     serveiHiEs: serveiHiEs,
     senyals: senyals,
+    laSetmana: laSetmana,
     targeta: targeta,
     escalfa: escalfa,
     sincronitzaLlistes: sincronitzaLlistes,

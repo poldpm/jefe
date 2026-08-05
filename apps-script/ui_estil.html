@@ -1984,6 +1984,148 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LA SETMANA
+
+   Set caixes iguals i, sota, la pila. Les caixes són les mateixes d'Escola,
+   Tasques i Memòria: quatre pantalles que ensenyen llistes agrupades no poden
+   veure's de quatre maneres.
+
+   EL QUE AQUESTA PANTALLA HI AFEGEIX és una sola cosa: una barra sota el nom
+   de cada dia amb les hores que ja tens ocupades, comparades amb el dia més
+   ple de la setmana. Sense ella, set llistes de text no diuen quin dia va
+   carregat —les has de comptar—, i comptar és exactament el que has vingut a
+   no fer.
+   ========================================================================== */
+
+/* SET COLUMNES QUAN HI CABEN, i quan no, les que hi càpiguen. La setmana es
+   llegeix d'esquerra a dreta si la pantalla dona; al mòbil es llegeix avall,
+   que és com es llegeix tot al mòbil. */
+.set-dies {
+  display: grid; gap: var(--e2);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 560px)  { .set-dies { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 860px)  { .set-dies { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1180px) { .set-dies { grid-template-columns: repeat(7, 1fr); } }
+
+.set-dia { display: flex; flex-direction: column; }
+/* El dia d'avui, amb el fil. És la mateixa marca que el «ara» d'Escola: si a
+   una pantalla el present es diu amb una ratlla, a l'altra també. */
+.set-dia[data-avui="1"] { border-color: var(--utm); }
+.set-dia[data-avui="1"] .caixa-cap { color: var(--utm); }
+
+/* UN DIA QUE JA HA PASSAT ES QUEDA ENRERE, PERÒ NO S'ESBORRA: encara vols
+   veure que dilluns vas tenir sis hores quan mires on posar el que
+   arrossegues.
+   El vaig fer amb `opacity: .5` i el vaig treure: mesurat, el text del dia
+   passat queia de 4,77:1 a 2,2:1 i deixava de ser llegible. La mateixa
+   errada que ja vam corregir a les barres del comptador. Qui diu «això ja ha
+   passat» és la capçalera —perd el tint i es queda plana— i la barra, que es
+   dibuixa en gris en comptes del color viu. El text no s'hi juga res. */
+.set-dia[data-passat="1"] .caixa-cap { background: transparent; }
+.set-dia[data-passat="1"] .set-carrega i { background: var(--ink-suau); }
+
+/* Les hores del dia van amb la lletra plena, no amb la fluixa. Sobre el fons
+   tenyit de la capçalera, `--ink-suau` es queda a 3,95:1 —mesurat— i això
+   són onze píxels: per sota del mínim. I a més no és cap etiqueta, és el
+   número que has vingut a mirar. */
+.set-hores {
+  flex: none; font-style: normal; font-family: var(--mono);
+  font-size: .6875rem; letter-spacing: .04em; color: var(--ink);
+}
+
+/* La capçalera del dia és un botó, però no ha de semblar-ne un altre: hereta
+   la lletra de `.caixa-cap` i ocupa exactament el seu lloc. El que canvia en
+   tocar-la és el color, com a tot arreu. */
+.set-cap {
+  /* 44 px, com tota la resta. Amb el padding de `.caixa-cap` es quedava a 32
+     i el dit no es fa més petit perquè el botó sigui secundari. */
+  flex: 1; min-width: 0; min-height: 44px;
+  display: flex; align-items: center; gap: var(--e2);
+  margin: calc(var(--e2) * -1) calc(var(--e3) * -1);
+  padding: var(--e2) var(--e3);
+  border: 0; background: transparent; color: inherit;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left;
+  transition: color .16s var(--entra);
+}
+.set-cap > span { flex: 1; min-width: 0; }
+.set-cap:active { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .set-cap:hover { color: var(--utm); } }
+
+/* La porta a la setmana, al peu de la pàgina del dia. */
+.dia-cap-setmana {
+  display: flex; align-items: center; justify-content: center; gap: var(--e2);
+  width: 100%; min-height: 44px; margin-top: var(--e4); padding: var(--e2) var(--e3);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .75rem; letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.dia-cap-setmana:active { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .dia-cap-setmana:hover { color: var(--utm); border-color: var(--utm); }
+}
+
+.set-carrega { height: 3px; background: var(--neatline); }
+.set-carrega i { display: block; height: 100%; background: var(--utm); }
+
+.set-cosa { display: flex; gap: var(--e2); align-items: baseline; }
+/* L'hora sempre a la mateixa amplada perquè la columna quadri i l'ull hi
+   pugui baixar sense tornar enrere. Sense hora, un punt: la cosa és d'aquell
+   dia però no d'una hora, i deixar el buit faria semblar que falta una dada. */
+.set-hora {
+  flex: none; width: 2.6em; font-family: var(--mono);
+  font-size: .6875rem; color: var(--ink-suau);
+}
+.set-text { flex: 1; min-width: 0; }
+.set-cosa[data-fet="1"] .set-text { color: var(--ink-suau); }
+.set-cosa[data-urgent="1"] .set-hora { color: var(--gr); }
+
+.set-buit {
+  margin: 0; padding: var(--e2) var(--e3);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-suau);
+}
+
+/* --------------------------------------------------------------- la pila */
+
+.pila-fila { padding: var(--e2) var(--e3); }
+.pila-cap { display: flex; align-items: center; gap: var(--e2); }
+.pila-text { flex: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
+.pila-fila .menut { flex: none; }
+.pila-fila[data-urgent="1"] .menut { color: var(--gr); }
+
+.pila-quan {
+  flex: none; width: 44px; height: 44px; margin: -10px -10px -10px 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra);
+}
+.pila-quan[aria-expanded="true"] { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .pila-quan:hover { color: var(--utm); } }
+
+/* Set caselles i no un calendari: la decisió és «quin dia d'aquesta setmana»,
+   i un calendari sencer seria demanar-li que triï entre tres-cents seixanta-
+   cinc dies quan en vol set. */
+.pila-tria { display: flex; gap: 2px; margin-top: var(--e2); }
+.pila-tria button {
+  flex: 1; min-height: 44px; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.pila-tria button b { font-size: .8125rem; color: var(--ink); }
+.pila-tria button:disabled { opacity: .35; }
+.pila-tria button:not(:disabled):active { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .pila-tria button:not(:disabled):hover { color: var(--utm); border-color: var(--utm); }
+}
+
+
+/* ==========================================================================
    LA MEMÒRIA
 
    Files de text amb una creu. Res més: el que hi ha aquí es llegeix i, de tant

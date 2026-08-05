@@ -526,29 +526,6 @@ h2 { font-size: 1.0625rem; }
 .compt-xifra .u { font-size: .5625rem; letter-spacing: .08em; text-transform: uppercase;
                   color: var(--ink-suau); }
 
-/* ELS CATORZE ÚLTIMS DIES, A LA MATEIXA TARGETA.
-   Set cigarros no vol dir res tot sol: vol dir molt si la setmana passada en
-   feies quatre i vol dir bé si en feies dotze. La xifra diu ON ETS i la tira
-   diu CAP ON VAS, que és el que fa que comptar serveixi d'alguna cosa.
-   Va aquí i no dins del detall perquè el detall s'ha d'anar a obrir, i el
-   moment en què això serveix és el mateix en què acabes de tocar el botó. */
-.compt-tira {
-  display: flex; align-items: flex-end; gap: 2px;
-  height: 22px; margin-top: var(--e2); width: 100%;
-}
-/* SENSE OPACITAT. A .55 les barres quedaven a 2,25:1 en fosc i a 1,73 en clar
-   —mesurat—, i una barra que no es veu no és un gràfic, és una decoració. El
-   que separa el dia d'avui de la resta és el color, no que les altres siguin
-   fluixes. */
-.compt-tira i {
-  flex: 1; min-width: 2px; min-height: 1px;
-  background: var(--ink-suau);
-  transition: height .18s var(--entra);
-}
-/* Un dia sense cap no és un dia sense dada: es dibuixa a terra i es veu. */
-.compt-tira i[style*="height: 0%"] { min-height: 1px; opacity: .55; }
-.compt-tira i[data-avui="1"] { background: var(--utm); }
-
 /* ==========================================================================
    LA CORBA D'UN COMPTADOR
 
@@ -556,8 +533,13 @@ h2 { font-size: 1.0625rem; }
    la llegenda explicava com llegir una taula —cosa que s'aprèn el primer dia i
    després sobra cada dia— i això diu com va el que estàs mirant de deixar.
 
-   Línia i no barres: el que importa és el pendent. Les barres del dia són a la
-   targeta, que és on es comparen dies solts.
+   És l'ÚNIC dibuix de la pantalla. Hi va haver, a la targeta, una tira de
+   barres dels catorze últims dies i el canvi respecte la setmana passada
+   escrit al costat: tres maneres de dir el mateix a dos dits de distància.
+   Ara la targeta diu la xifra —on ets— i la corba diu el pendent —cap on vas—
+   i no hi ha res més a mirar.
+
+   Línia i no barres: el que importa és el pendent.
    ========================================================================== */
 
 .compt-bloc { margin-top: var(--e4); display: flex; flex-direction: column; gap: var(--e4); }
@@ -596,20 +578,6 @@ h2 { font-size: 1.0625rem; }
 .compt-graf-peu {
   display: flex; justify-content: space-between; gap: var(--e2); margin-top: var(--e2);
   font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
-}
-
-/* El canvi respecte la setmana passada, dit amb el número. Una fletxa sola no
-   diu de quant, i un color sol no diu res a qui no el distingeix: qui porta la
-   direcció és la fletxa i qui porta la mida és la xifra.
-   El vaig provar acolorit —cian avall, taronja amunt— i en tema clar el text
-   es quedava a 3,47:1. Un gràfic pot viure amb això; un text, no. */
-.compt-diu {
-  font-family: var(--mono); font-size: .6875rem; letter-spacing: .04em;
-  color: var(--ink-suau); margin-top: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .compt-tira i { transition: none; }
 }
 
 /* El botó de restar. Un comptador és l'únic que no es pot desfer sol —tornant
@@ -2044,6 +2012,148 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LA SETMANA
+
+   Set caixes iguals i, sota, la pila. Les caixes són les mateixes d'Escola,
+   Tasques i Memòria: quatre pantalles que ensenyen llistes agrupades no poden
+   veure's de quatre maneres.
+
+   EL QUE AQUESTA PANTALLA HI AFEGEIX és una sola cosa: una barra sota el nom
+   de cada dia amb les hores que ja tens ocupades, comparades amb el dia més
+   ple de la setmana. Sense ella, set llistes de text no diuen quin dia va
+   carregat —les has de comptar—, i comptar és exactament el que has vingut a
+   no fer.
+   ========================================================================== */
+
+/* SET COLUMNES QUAN HI CABEN, i quan no, les que hi càpiguen. La setmana es
+   llegeix d'esquerra a dreta si la pantalla dona; al mòbil es llegeix avall,
+   que és com es llegeix tot al mòbil. */
+.set-dies {
+  display: grid; gap: var(--e2);
+  grid-template-columns: 1fr;
+}
+@media (min-width: 560px)  { .set-dies { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 860px)  { .set-dies { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1180px) { .set-dies { grid-template-columns: repeat(7, 1fr); } }
+
+.set-dia { display: flex; flex-direction: column; }
+/* El dia d'avui, amb el fil. És la mateixa marca que el «ara» d'Escola: si a
+   una pantalla el present es diu amb una ratlla, a l'altra també. */
+.set-dia[data-avui="1"] { border-color: var(--utm); }
+.set-dia[data-avui="1"] .caixa-cap { color: var(--utm); }
+
+/* UN DIA QUE JA HA PASSAT ES QUEDA ENRERE, PERÒ NO S'ESBORRA: encara vols
+   veure que dilluns vas tenir sis hores quan mires on posar el que
+   arrossegues.
+   El vaig fer amb `opacity: .5` i el vaig treure: mesurat, el text del dia
+   passat queia de 4,77:1 a 2,2:1 i deixava de ser llegible. La mateixa
+   errada que ja vam corregir a les barres del comptador. Qui diu «això ja ha
+   passat» és la capçalera —perd el tint i es queda plana— i la barra, que es
+   dibuixa en gris en comptes del color viu. El text no s'hi juga res. */
+.set-dia[data-passat="1"] .caixa-cap { background: transparent; }
+.set-dia[data-passat="1"] .set-carrega i { background: var(--ink-suau); }
+
+/* Les hores del dia van amb la lletra plena, no amb la fluixa. Sobre el fons
+   tenyit de la capçalera, `--ink-suau` es queda a 3,95:1 —mesurat— i això
+   són onze píxels: per sota del mínim. I a més no és cap etiqueta, és el
+   número que has vingut a mirar. */
+.set-hores {
+  flex: none; font-style: normal; font-family: var(--mono);
+  font-size: .6875rem; letter-spacing: .04em; color: var(--ink);
+}
+
+/* La capçalera del dia és un botó, però no ha de semblar-ne un altre: hereta
+   la lletra de `.caixa-cap` i ocupa exactament el seu lloc. El que canvia en
+   tocar-la és el color, com a tot arreu. */
+.set-cap {
+  /* 44 px, com tota la resta. Amb el padding de `.caixa-cap` es quedava a 32
+     i el dit no es fa més petit perquè el botó sigui secundari. */
+  flex: 1; min-width: 0; min-height: 44px;
+  display: flex; align-items: center; gap: var(--e2);
+  margin: calc(var(--e2) * -1) calc(var(--e3) * -1);
+  padding: var(--e2) var(--e3);
+  border: 0; background: transparent; color: inherit;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; text-align: left;
+  transition: color .16s var(--entra);
+}
+.set-cap > span { flex: 1; min-width: 0; }
+.set-cap:active { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .set-cap:hover { color: var(--utm); } }
+
+/* La porta a la setmana, al peu de la pàgina del dia. */
+.dia-cap-setmana {
+  display: flex; align-items: center; justify-content: center; gap: var(--e2);
+  width: 100%; min-height: 44px; margin-top: var(--e4); padding: var(--e2) var(--e3);
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .75rem; letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.dia-cap-setmana:active { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .dia-cap-setmana:hover { color: var(--utm); border-color: var(--utm); }
+}
+
+.set-carrega { height: 3px; background: var(--neatline); }
+.set-carrega i { display: block; height: 100%; background: var(--utm); }
+
+.set-cosa { display: flex; gap: var(--e2); align-items: baseline; }
+/* L'hora sempre a la mateixa amplada perquè la columna quadri i l'ull hi
+   pugui baixar sense tornar enrere. Sense hora, un punt: la cosa és d'aquell
+   dia però no d'una hora, i deixar el buit faria semblar que falta una dada. */
+.set-hora {
+  flex: none; width: 2.6em; font-family: var(--mono);
+  font-size: .6875rem; color: var(--ink-suau);
+}
+.set-text { flex: 1; min-width: 0; }
+.set-cosa[data-fet="1"] .set-text { color: var(--ink-suau); }
+.set-cosa[data-urgent="1"] .set-hora { color: var(--gr); }
+
+.set-buit {
+  margin: 0; padding: var(--e2) var(--e3);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-suau);
+}
+
+/* --------------------------------------------------------------- la pila */
+
+.pila-fila { padding: var(--e2) var(--e3); }
+.pila-cap { display: flex; align-items: center; gap: var(--e2); }
+.pila-text { flex: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
+.pila-fila .menut { flex: none; }
+.pila-fila[data-urgent="1"] .menut { color: var(--gr); }
+
+.pila-quan {
+  flex: none; width: 44px; height: 44px; margin: -10px -10px -10px 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra);
+}
+.pila-quan[aria-expanded="true"] { color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .pila-quan:hover { color: var(--utm); } }
+
+/* Set caselles i no un calendari: la decisió és «quin dia d'aquesta setmana»,
+   i un calendari sencer seria demanar-li que triï entre tres-cents seixanta-
+   cinc dies quan en vol set. */
+.pila-tria { display: flex; gap: 2px; margin-top: var(--e2); }
+.pila-tria button {
+  flex: 1; min-height: 44px; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-family: var(--mono); font-size: .625rem; letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.pila-tria button b { font-size: .8125rem; color: var(--ink); }
+.pila-tria button:disabled { opacity: .35; }
+.pila-tria button:not(:disabled):active { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .pila-tria button:not(:disabled):hover { color: var(--utm); border-color: var(--utm); }
+}
+
+
+/* ==========================================================================
    LA MEMÒRIA
 
    Files de text amb una creu. Res més: el que hi ha aquí es llegeix i, de tant
@@ -2334,7 +2444,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-05 01:06 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-05 18:42 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2644,7 +2754,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-05 01:06 · en curs";
+window.MARCA_JEFE = "2026-08-05 18:42 · en curs";
 </script>
 
 <script>
@@ -5942,51 +6052,12 @@ App.registraVista('habits', {
      * hàbit normal et passes de tocs, el següent torna a zero; aquí no es pot
      * tornar a zero sense perdre el compte del dia.
      */
-    /**
-     * LA SETMANA I MITJA QUE PORTES, DIBUIXADA.
-     *
-     * Un comptador que només ensenya el número d'avui no et diu res del que
-     * importa: si puges o baixes. Set és molt o poc segons si la setmana
-     * passada en feies quatre o dotze, i aquesta és tota la pregunta de qui
-     * compta una cosa que vol deixar.
-     *
-     * Va A LA TARGETA i no dins del detall perquè el detall s'ha d'anar a
-     * obrir, i el moment en què això serveix és justament quan hi acabes de
-     * clicar. Catorze dies: dues setmanes es comparen d'un cop d'ull i caben
-     * sense fer-se il·legibles.
-     *
-     * El dia d'avui va marcat, i els zeros es dibuixen com una ratlla a terra
-     * i no com un buit: un dia sense cap no és un dia sense dada.
-     */
-    function tiraComptador(h) {
-      var s = h.serie14;
-      if (!s || !s.length) return '';
-
-      var sostre = 1;
-      s.forEach(function (d) { if (d.valor > sostre) sostre = d.valor; });
-
-      var avui = fmt.avui();
-      var barres = s.map(function (d) {
-        var alt = Math.round((d.valor / sostre) * 100);
-        return '<i style="height:' + Math.max(alt, d.valor ? 8 : 0) + '%"' +
-               (d.data === avui ? ' data-avui="1"' : '') + '></i>';
-      }).join('');
-
-      /* El canvi respecte la setmana anterior, dit amb paraules. La fletxa
-         sola no diu de quant, i «−1,2 al dia» sí. */
-      var diu = '';
-      if (h.canvi7 !== null && h.canvi7 !== undefined && h.canvi7 !== 0) {
-        diu = (h.canvi7 < 0 ? '▾ ' : '▴ ') + fmt.decimal(Math.abs(h.canvi7)) + ' al dia';
-      } else if (h.mitjana7 !== null && h.mitjana7 !== undefined) {
-        diu = fmt.decimal(h.mitjana7) + ' al dia';
-      }
-
-      return '<span class="compt-tira" role="img" aria-label="' +
-          esc('Els últims 14 dies. ' + (h.mitjana7 !== null && h.mitjana7 !== undefined
-              ? 'Mitjana de ' + fmt.decimal(h.mitjana7) + ' al dia.' : '')) + '">' + barres + '</span>' +
-        (diu ? '<span class="compt-diu">' + esc(diu) + '</span>' : '');
-    }
-
+    /* LA TARGETA ENSENYA LA XIFRA I PROU.
+       Hi va haver una tira de barres dels últims catorze dies i el canvi
+       respecte la setmana passada, aquí mateix. Fora: amb la corba a la
+       mateixa pantalla, eren tres maneres de dir el mateix a dos dits de
+       distància, i tres lectures d'una sola cosa és soroll per bones que
+       siguin cadascuna. La xifra diu on ets; la corba, cap on vas. */
     function franjaComptador(h) {
       var n = h.valor || 0;
       return '<div class="franja-fila" data-h="' + esc(h.id) + '" data-comptador="1">' +
@@ -5998,7 +6069,6 @@ App.registraVista('habits', {
              «cigarros» retallat a «ciga» no és informació, és brossa. */
           '<span class="franja-peu">' +
             '<span class="compt-xifra"><span class="n">' + n + '</span></span>' +
-            tiraComptador(h) +
           '</span>' +
         '</button>' +
         (ordenant ? '' :
@@ -6038,8 +6108,8 @@ App.registraVista('habits', {
        deixar.
 
        Línia i no barres: aquí el que importa és el pendent, si puja o baixa, i
-       una línia el diu d'un cop d'ull. Les barres del dia van a la targeta,
-       que és on compares dies solts.
+       una línia el diu d'un cop d'ull. És l'únic dibuix de la pantalla: la
+       targeta diu la xifra d'avui i prou, i aquí es veu cap on va.
 
        Tres finestres, i cadascuna respon una pregunta diferent:
          setmana  — com he anat aquests dies
@@ -6369,16 +6439,6 @@ App.registraVista('habits', {
       h.valor = nou;
       h.registrat = true;
       h.complert = h.esComptador ? false : nou >= h.objectiu;
-
-      /* La barra d'avui puja amb el toc, no d'aquí a dos segons. La mitjana i
-         el «respecte la setmana passada» sí que esperen el servidor: són el
-         mateix càlcul que fa ell i no vull dues respostes que es contradiguin
-         mentre parpelleges. */
-      if (h.esComptador && h.serie14) {
-        for (var s = 0; s < h.serie14.length; s++) {
-          if (h.serie14[s].data === data) { h.serie14[s].valor = nou; break; }
-        }
-      }
 
       Cau.set('habits.' + data, dades);
       repintaFranja(h);
@@ -11715,6 +11775,13 @@ App.registraVista('dia', {
               '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
             : nucli(d, pct, totes, fetes) +
               '<div class="dia-graella">' + d.blocs.map(bloc).join('') + '</div>') +
+          /* LA PORTA A LA SETMANA VA AL PEU, no a la capçalera.
+             La pregunta «i la resta de la setmana?» surt DESPRÉS d'haver
+             llegit el dia, no abans; posar-la a dalt seria oferir-li una
+             sortida just quan acaba d'entrar. */
+          '<button class="dia-cap-setmana" data-ves="setmana">' +
+            '<span>Com tinc la setmana</span>' + ic('dreta', 'ic-p') +
+          '</button>' +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
@@ -11828,6 +11895,261 @@ App.registraVista('dia', {
        prou; el que es veu aquí porta escrit de quan és. */
 
     arrel.innerHTML = Comp.carregant(3);
+    carrega();
+  }
+});
+</script>
+
+<script>
+/* JEFE — LA SETMANA
+
+   QUÈ RESPON, I PER QUÈ NO ÉS LA PÀGINA DEL DIA SET VEGADES.
+   La pàgina del dia respon «què he de tenir en compte ara». Repetir-la set
+   cops no dona cap resposta nova: dona set llistes. Aquí la pregunta és una
+   altra —QUAN HO FARÉ— i només es contesta veient alhora dues coses que fins
+   ara no s'havien vist mai juntes: on són les hores que ja tens ocupades, i
+   què és el que t'espera sense dia.
+
+   PER AIXÒ LA PILA ÉS MITJA PANTALLA. El que arrossegues no té data justament
+   perquè encara no has decidit quan, i decidir-ho és tota la feina d'aquesta
+   pantalla. Cada cosa de la pila es pot deixar en un dia amb dos tocs.
+
+   NO ÉS UN MÒDUL I NO TÉ BOTÓ, com la pàgina del dia. S'hi arriba demanant-la
+   —«prepara'm la setmana»— o pel senyal de diumenge a la tarda, que és quan
+   això serveix. Un botó més a la fila de sota seria una decisió més cada cop
+   que obres l'app, per una pantalla on entres un cop la setmana. */
+
+App.registraVista('setmana', {
+  render: function (arrel, params) {
+
+    var desde = params.desde || null;
+    var d = null;
+    var obert = null;                 // quina fila de la pila té els dies oberts
+
+    var DIES = ['dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge'];
+    var DIES_C = ['dl', 'dt', 'dc', 'dj', 'dv', 'ds', 'dg'];
+
+    /* Les hores dites com les diries tu: «5 h», «1 h 30». Els minuts sols no
+       existeixen en una setmana —ningú diu que dijous té 310 minuts— i el
+       decimal («5,2 h») és una xifra de full de càlcul. */
+    function hores(min) {
+      if (!min) return '';
+      var h = Math.floor(min / 60), m = min % 60;
+      if (!h) return m + ' min';
+      return h + ' h' + (m >= 10 ? ' ' + m : '');
+    }
+
+    function capcalera() {
+      var quan = d
+        ? (d.esAquesta ? 'Aquesta setmana' : fmt.relativa(d.desde) + ' → ' + fmt.relativa(d.fins))
+        : '';
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-mou="-7" aria-label="La setmana abans">' +
+          ic('esquerra', 'ic-p') + '</button>' +
+        '<span class="titol-periode" style="cursor:default">' +
+          '<b>' + esc(quan) + '</b>' +
+          '<span>' + (d ? esc(fmt.llarga(d.desde).replace(/^\w+, /, '') + ' — ' +
+                             fmt.llarga(d.fins).replace(/^\w+, /, '')) : '') + '</span>' +
+        '</span>' +
+        '<button class="btn btn-fantasma btn-icona" data-mou="7" aria-label="La setmana següent">' +
+          ic('dreta', 'ic-p') + '</button>' +
+      '</div></header>';
+    }
+
+    /* Un dia. La capçalera porta el nom, el número i les hores ocupades; sota,
+       les coses. La barra compara amb el dia més ple DE LA SETMANA i no amb
+       cap ideal: el que vols saber és quin dia va carregat comparat amb els
+       altres sis, no si vuit hores són moltes. */
+    function dia(x, i) {
+      var pct = d.minutsPle ? Math.round((x.minuts / d.minutsPle) * 100) : 0;
+      return '<section class="caixa set-dia"' +
+          (x.esAvui ? ' data-avui="1"' : '') + (x.esPassat ? ' data-passat="1"' : '') + '>' +
+        /* La capçalera del dia obre la pàgina d'aquell dia. Aquí es veu la
+           forma de la setmana; quan un dia et crida l'atenció, el que vols
+           després és aquell dia sencer, i ja existeix una pantalla que el diu. */
+        '<h3 class="caixa-cap"><button class="set-cap" data-dia="' + esc(x.data) + '"' +
+          ' aria-label="Obre ' + DIES[i] + ' ' + fmt.diaNumero(x.data) + '">' +
+          '<span>' + DIES_C[i] + ' ' + fmt.diaNumero(x.data) + '</span>' +
+          (x.minuts ? '<em class="set-hores">' + esc(hores(x.minuts)) + '</em>' : '') +
+        '</button></h3>' +
+        (d.minutsPle
+          ? '<div class="set-carrega" role="img" aria-label="' +
+              (x.minuts ? esc(hores(x.minuts)) + ' ocupades' : 'sense res al calendari') + '">' +
+              '<i style="width:' + pct + '%"></i></div>'
+          : '') +
+        (x.coses.length
+          ? '<ul class="caixa-coses">' + x.coses.map(cosa).join('') + '</ul>'
+          : '<p class="set-buit">' + (x.esPassat ? '—' : 'Lliure') + '</p>') +
+      '</section>';
+    }
+
+    function cosa(c) {
+      return '<li class="set-cosa"' + (c.fet ? ' data-fet="1"' : '') +
+             (c.urgent ? ' data-urgent="1"' : '') + '>' +
+        '<span class="set-hora">' + esc(c.hora || '·') + '</span>' +
+        '<span class="set-text">' + esc(c.text) + '</span>' +
+      '</li>';
+    }
+
+    /* LA PILA. Cada cosa porta d'on surt —tasca teva, cosa de l'escola— i, si
+       es pot moure, el botó de posar-hi dia. Les que no es poden moure hi són
+       igualment: pesen la setmana encara que avui no les puguis repartir. */
+    function pila() {
+      if (!d.pila.length) {
+        return '<section class="secc"><div class="estat">' + ic('tasques', 'ic-g') +
+          '<h2>No arrossegues res</h2>' +
+          '<p>Tot el que tens apuntat té dia. Passa poc.</p></div></section>';
+      }
+      return '<section class="secc">' +
+        '<div class="caixes"><section class="caixa">' +
+          '<h3 class="caixa-cap"><span>El que espera</span>' +
+            '<em class="set-hores">' + d.pila.length + '</em></h3>' +
+          '<ul class="caixa-coses">' + d.pila.map(function (c, i) {
+            var pot = !!c.mou;
+            return '<li class="pila-fila"' + (c.urgent ? ' data-urgent="1"' : '') + '>' +
+              '<div class="pila-cap">' +
+                '<span class="pila-text">' + esc(c.text) + '</span>' +
+                (c.menut ? '<span class="menut">' + esc(c.menut) + '</span>' : '') +
+                (pot
+                  ? '<button class="pila-quan" data-obre="' + i + '"' +
+                      ' aria-expanded="' + (obert === i ? 'true' : 'false') + '"' +
+                      ' aria-label="Posa dia a: ' + esc(c.text) + '">' +
+                      ic('calendari', 'ic-p') + '</button>'
+                  : '') +
+              '</div>' +
+              (pot && obert === i ? tria(i) : '') +
+            '</li>';
+          }).join('') + '</ul>' +
+        '</section></div>' +
+      '</section>';
+    }
+
+    /* Els set dies, per triar-ne un. Set caselles i no un calendari: la
+       decisió és «quin dia d'aquesta setmana», i un calendari sencer seria
+       demanar-te que triïs entre tres-cents seixanta-cinc quan en vols set. */
+    function tria(i) {
+      return '<div class="pila-tria">' + d.dies.map(function (x, j) {
+        return '<button data-posa="' + i + '" data-data="' + esc(x.data) + '"' +
+          (x.esPassat ? ' disabled' : '') +
+          ' aria-label="' + DIES[j] + ' ' + fmt.diaNumero(x.data) + '">' +
+          DIES_C[j] + '<b>' + fmt.diaNumero(x.data) + '</b></button>';
+      }).join('') + '</div>';
+    }
+
+    function pinta() {
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+          '<section><div class="set-dies">' +
+            d.dies.map(dia).join('') +
+          '</div></section>' +
+          pila() +
+        '</div>';
+      lliga();
+    }
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-mou]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          desde = fmt.suma(d.desde, Number(b.dataset.mou));
+          obert = null;
+          carrega();
+        });
+      });
+
+      arrel.querySelectorAll('[data-dia]').forEach(function (b) {
+        b.addEventListener('click', function () { App.ves('dia', { data: b.dataset.dia }); });
+      });
+
+      arrel.querySelectorAll('[data-obre]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = Number(b.dataset.obre);
+          obert = (obert === i) ? null : i;
+          App.mantenintLaVista(pinta);
+        });
+      });
+
+      arrel.querySelectorAll('[data-posa]').forEach(function (b) {
+        b.addEventListener('click', function () { posa(Number(b.dataset.posa), b.dataset.data); });
+      });
+    }
+
+    /* POSAR DIA. El client no espera el servidor per ensenyar-ho: la cosa surt
+       de la pila i entra al dia abans que Google contesti, perquè el que
+       acabes de decidir ja el saps tu. Si falla, torna on era i t'ho diu —una
+       cosa que desapareix i reapareix sola és pitjor que un error. */
+    function posa(i, data) {
+      var c = d.pila[i];
+      if (!c || !c.mou) return;
+
+      var abans = { pila: d.pila.slice(), dies: d.dies.map(function (x) {
+        return { data: x.data, diaSetmana: x.diaSetmana, esAvui: x.esAvui,
+                 esPassat: x.esPassat, minuts: x.minuts, coses: x.coses.slice() };
+      }) };
+
+      d.pila.splice(i, 1);
+      for (var j = 0; j < d.dies.length; j++) {
+        if (d.dies[j].data !== data) continue;
+        var mogut = {};
+        for (var k in c) if (Object.prototype.hasOwnProperty.call(c, k)) mogut[k] = c[k];
+        mogut.menut = c.menut && /vencia/.test(c.menut) ? 'ho has posat aquí' : c.menut;
+        mogut.urgent = false;
+        d.dies[j].coses.push(mogut);
+        break;
+      }
+      obert = null;
+      App.mantenintLaVista(pinta);
+
+      var p = {};
+      for (var q in c.mou.params) if (Object.prototype.hasOwnProperty.call(c.mou.params, q)) {
+        p[q] = c.mou.params[q];
+      }
+      p[c.mou.camp] = data;
+
+      /* `crida` i no `escriu`: `escriu` demana de passada la pantalla del
+         mòdul que ha canviat, i aquí la pantalla del mòdul no la mira ningú.
+         Serien tres-centes tasques de Google llegides per res. */
+      crida(c.modul, c.mou.accio, p)
+        .then(function () {
+          /* El que acaba de canviar ja no és el que hi ha desat al telèfon:
+             ni aquesta setmana, ni les tasques, ni la pàgina del dia. */
+          Cau.oblida('setmana');
+          Cau.oblida('tasques');
+          Cau.oblida('dia.');
+          App.brindis(fmt.relativa(data));
+        })
+        .catch(function (err) {
+          d.pila = abans.pila; d.dies = abans.dies;
+          App.mantenintLaVista(pinta);
+          App.brindis(err.message, 'error');
+        });
+    }
+
+    function carrega() {
+      var clau = 'setmana.' + (desde || 'ara');
+      var cau = Cau.get(clau, null);
+      if (cau) { d = cau; pinta(); }
+      else arrel.innerHTML = Comp.carregant(3);
+
+      crida('conversa', 'laSetmana', desde ? { desde: desde } : {})
+        .then(function (r) {
+          d = r;
+          Cau.set(clau, r);
+          if (desde) Cau.set('setmana.' + r.desde, r);
+          App.mantenintLaVista(pinta);
+        })
+        .catch(function (err) {
+          if (d) { App.brindis(err.message, 'error'); return; }
+          arrel.innerHTML = Comp.error(err, true);
+          var b = arrel.querySelector('[data-reintenta]');
+          if (b) b.addEventListener('click', function () { App.ves('setmana'); });
+        });
+    }
+
     carrega();
   }
 });

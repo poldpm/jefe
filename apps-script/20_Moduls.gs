@@ -165,6 +165,57 @@ var Moduls = (function () {
    * Retorna [{ modul, titol, urgent, accio, coses: [{ text, menut, fet }] }].
    */
   /**
+   * QUÈ VE AQUESTA SETMANA, segons cada mòdul.
+   *
+   * Germana d'`elDia`, i la diferència no és la mida de la finestra: `elDia`
+   * mira ENRERE i cap a ara —què portes fet, què t'has deixat—, i això mira
+   * ENDAVANT. La pregunta que respon no és «què he de fer» sinó «quan ho
+   * faré», que només es pot contestar veient alhora on hi ha les hores
+   * ocupades i què és el que espera.
+   *
+   * FORMA DE CADA COSA:
+   *
+   *     { data, text, menut, hora, minuts, urgent, fet, mou }
+   *
+   *   `data`   el dia on va. **En null, va a la pila**: coses que t'esperen
+   *            i no tenen dia. La pila és la meitat de la pantalla, i és a
+   *            posta —el que arrossegues no té data justament perquè encara
+   *            no has decidit quan.
+   *   `minuts` quant ocupa. Només ho sap qui té hores (el calendari), i
+   *            serveix per dir quin dia és ple sense comptar res.
+   *   `mou`    { accio, params, camp } — que aquesta cosa es pot posar en un
+   *            dia. Qui sap com moure's és el mòdul; la pantalla només envia
+   *            `params` més `camp: data`. Sense això, la pantalla hauria de
+   *            saber què és una tasca de Google, i llavors ja no seria una
+   *            pantalla del nucli.
+   *
+   * És OPCIONAL, com totes. Un mòdul que no la implementi no hi surt.
+   *
+   * Retorna [{ modul, titol, accio, coses: [...] }].
+   */
+  function laSetmana(desde, fins) {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (typeof m[i].laSetmana !== 'function') continue;
+      try {
+        var r = m[i].laSetmana(desde, fins);
+        if (r && r.coses && r.coses.length) {
+          out.push({
+            modul: m[i].id,
+            titol: r.titol || m[i].nom,
+            accio: r.accio || m[i].id,
+            coses: r.coses
+          });
+        }
+      } catch (err) {
+        Log.error('moduls.laSetmana', 'Mòdul ' + m[i].id + ': ' + err.message);
+      }
+    }
+    return out;
+  }
+
+  /**
    * ELS AVISOS PROGRAMATS DELS MÒDULS.
    *
    * Fins ara els automatismes eren tots del nucli i amb nom fix, i per tant un
@@ -453,6 +504,7 @@ var Moduls = (function () {
     sincronitzaFull: sincronitzaFull,
     resumInici: resumInici,
     resumPeriode: resumPeriode,
+    laSetmana: laSetmana,
     elDia: elDia,
     avisos: avisos,
     contextIA: contextIA,

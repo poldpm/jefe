@@ -72,6 +72,7 @@ Tot és opcional excepte `id`, `nom` i `ordre`.
 | `resumInici` | funció | Una línia per a la pantalla d'inici. Ha de ser barata. |
 | `resumPeriode` | funció | `(desde, fins)` → `{titol, linies: []}`. Què ha passat entre dues dates. Ho fa servir la revisió setmanal. Retorna `null` si no hi ha res a dir. |
 | `elDia` | funció | `(data)` → `{titol, urgent, accio, coses: [{text, menut, fet, urgent}]}`. Què hi ha d'aquell dia, per ensenyar-ho. Ho fa servir la pàgina del dia. Retorna `null` si no hi ha res. |
+| `laSetmana` | funció | `(desde, fins)` → `{titol, accio, coses: [{data, text, menut, hora, minuts, urgent, fet, mou}]}`. Què ve aquesta setmana. `data` en `null` vol dir «espera i no té dia»: va a la pila. `minuts` només el posa qui té hores. `mou` diu com donar-li dia: `{accio, camp, params}`. Ho fa servir la pantalla de la setmana. Retorna `null` si no hi ha res. |
 | `contextIA` | funció | Fitxa curta per a la conversa. **Mai el full sencer.** |
 | `einesIA` | array | Consultes que la IA pot fer per demanar-ne més dades. |
 | `avisos` | array | Avisos programats. El nucli crea els automatismes i els reparteix. Vegeu §3.1. |
@@ -283,6 +284,7 @@ App.registraVista('lectures', {
 - [ ] Cap acció esborra res: s'arxiva
 - [ ] Si té números que valgui la pena mirar cada setmana, implementa `resumPeriode()` i sortirà sol a la revisió del diumenge
 - [ ] Si té coses que has de tenir en compte un dia concret, implementa `elDia()` i sortirà sol a la pàgina del dia
+- [ ] Si té coses que vénen —amb dia o esperant-ne un—, implementa `laSetmana()` i sortiran soles a la pantalla de la setmana. Si es poden moure de dia, posa-hi `mou` i es podran repartir des d'allà sense que la pantalla sàpiga què són
 - [ ] Si alguna eina seva ha d'obrir una pantalla en comptes de només contestar, posa-li `obre: 'nomDeLaVista'`
 - [ ] Has executat `configuraJefe()` perquè el nucli li creï els fulls
 - [ ] Si té pantalla, l'has afegida a `ui_index.html` amb `include()`

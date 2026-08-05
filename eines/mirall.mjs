@@ -83,6 +83,19 @@ const MOCK = `
     if (p && p.data && p.data !== AVUI) { d.data = p.data; d.esAvui = false; }
     return d;
   };
+  /* LA SETMANA, cinc de fetes. Al mirall no hi ha servidor que en pugui
+     calcular una de nova quan toques la fletxa, i una pantalla on les fletxes
+     no van no serveix per provar-la: es cuinen aquí cinc setmanes seguides i
+     el mirall en tria una per dilluns. */
+  var SETMANES    = ${j(Object.fromEntries(
+       [-2, -1, 0, 1, 2].map(n => {
+         const d = new Date(AVUI + 'T12:00:00');
+         d.setDate(d.getDate() + n * 7);
+         const s = D.laSetmana({ desde: d.toISOString().slice(0, 10) });
+         return [s.desde, s];
+       })))};
+  var SETMANA_ARA = ${j(D.laSetmana({}).desde)};
+
   var CAL         = { calendaris: ${j(D.CALENDARIS)} , fets: [], trets: [] };
   var CAL_MESOS   = ${j(Object.fromEntries(
        [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6].map(n => {
@@ -260,6 +273,19 @@ const MOCK = `
       if (accio === 'historial') return copia(CONV_HIST);
       if (accio === 'nova') return { id_conversa: 'cnv_nou', missatges: [] };
       if (accio === 'elDia') return DIA_PAGINA(p);
+      if (accio === 'laSetmana') {
+        var dl = SETMANA_ARA;
+        if (p && p.desde) {
+          /* El dilluns del que demani. Les claus són dilluns; qualsevol dia
+             de la setmana ha de trobar la seva. */
+          var claus = Object.keys(SETMANES).sort();
+          dl = claus[0];
+          for (var ci = 0; ci < claus.length; ci++) if (claus[ci] <= p.desde) dl = claus[ci];
+        }
+        var s = SETMANES[dl];
+        if (!s) throw new Error('El mirall només té cinc setmanes cuinades.');
+        return copia(s);
+      }
       if (accio === 'enviaVeu') {
         /* El mirall no pensa, però sí que diu QUÈ li ha arribat. És l'única
            manera de comprovar que el so surt d'aquí sencer i ben format sense
@@ -645,7 +671,8 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
-const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances', 'seguiment', 'escola', 'diari'];
+const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances',
+                'seguiment', 'escola', 'diari', 'dia', 'setmana', 'memoria'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>
 <style>

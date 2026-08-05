@@ -3080,5 +3080,167 @@ console.log('\nLa memòria: una cosa per fila, i res que no es pugui desdir');
   cal('i la seva pantalla està muntada a l\'app', /include\('vista_memoria'\)/.test(idx));
 }
 
+// -------------------------------------------------------------------- setmana
+console.log('\nLa setmana: cada cosa al seu dia, i el que no en té a la pila');
+{
+  const ctx = carregaTotElServidor();
+  const AVUI = '2026-08-05';                     // dimecres
+  ctx.Utils.avui = () => AVUI;
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d };
+  /* El formatador ha de formatar de debò: `dillunsDe` fa servir `sumaDies`, i
+     amb un fals que torni sempre el mateix dia la regla del cap de setmana no
+     es podria comprovar mai. */
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  ctx.Memoria = { recordaComu: (clau, fes) => fes(), recorda: (m, c, fes) => fes() };
+
+  /* Els mòduls de debò fora i quatre d'inventats a dins. Es fa pel registre
+     —els `MODUL_*` del global— i no falsejant `Moduls.actius`, perquè el que
+     es vol provar és justament el repartidor del nucli: si el falsegés, la
+     prova passaria amb el repartidor desconnectat. */
+  const MODUL_CONVERSA = ctx.MODUL_CONVERSA;
+  Object.keys(ctx).filter((k) => /^MODUL_[A-Z0-9_]+$/.test(k)).forEach((k) => { delete ctx[k]; });
+  ctx._memoModuls = null;
+  const posaModuls = (l) => {
+    Object.keys(ctx).filter((k) => /^MODUL_[A-Z0-9_]+$/.test(k)).forEach((k) => { delete ctx[k]; });
+    l.forEach((m, i) => { ctx['MODUL_P' + i] = () => m; });
+    ctx._memoModuls = null;
+  };
+
+  /* Un mòdul que contesta i un que no. El que no ha de ser invisible, no una
+     excepció: el contracte diu que és opcional. */
+  posaModuls([
+    { id: 'calendari', nom: 'Calendari', laSetmana: () => ({
+        titol: 'Al calendari', accio: 'calendari', coses: [
+          { data: '2026-08-06', text: 'Claustre', hora: '09:00', minuts: 90 },
+          { data: '2026-08-06', text: 'Reunió', hora: '17:00', minuts: 60 },
+          { data: '2026-08-04', text: 'Visita', hora: '12:00', minuts: 30 },
+          { data: '2026-08-20', text: 'Fora de la setmana', hora: '10:00', minuts: 600 }
+        ] }) },
+    { id: 'tasques', nom: 'Tasques', laSetmana: () => ({
+        titol: 'Tasques', accio: 'tasques', coses: [
+          { data: '2026-08-07', text: 'Amb dia' },
+          { data: null, text: 'Sense dia',
+            mou: { accio: 'edita', camp: 'venc_el', params: { id: 't1', llista: 'l1' } } }
+        ] }) },
+    { id: 'mut', nom: 'Mut' },
+    { id: 'peta', nom: 'Peta', laSetmana: () => { throw new Error('m\'he trencat'); } }
+  ]);
+
+  const s = ctx.Conversa.laSetmana();
+  cal('la setmana d\'un dimecres és la d\'aquest dimecres',
+      s.desde === '2026-08-03' && s.fins === '2026-08-09', s.desde + ' → ' + s.fins);
+  cal('i són set dies, ni sis ni vuit', s.dies.length === 7);
+
+  const dj = s.dies.filter((d) => d.data === '2026-08-06')[0];
+  cal('les coses van al seu dia', dj.coses.length === 2, JSON.stringify(dj.coses));
+  cal('i els minuts se sumen', dj.minuts === 150, dj.minuts);
+  cal('el dia més ple de la setmana surt comptat', s.minutsPle === 150, s.minutsPle);
+
+  cal('el que cau fora de la setmana no s\'hi cola',
+      JSON.stringify(s).indexOf('Fora de la setmana') === -1);
+
+  cal('sense data, a la pila', s.pila.length === 1 && s.pila[0].text === 'Sense dia',
+      JSON.stringify(s.pila));
+  cal('i la pila porta com moure-ho', !!s.pila[0].mou && s.pila[0].mou.camp === 'venc_el');
+  cal('la cosa de la pila sap de quin mòdul és, que si no no es pot moure',
+      s.pila[0].modul === 'tasques');
+
+  cal('un mòdul que no la implementa no fa cap soroll',
+      JSON.stringify(s).indexOf('Mut') === -1);
+  /* Quatre coses als dies —tres cites de dins i una tasca amb dia— més la de
+     la pila. La que cau fora de la setmana no compta enlloc. */
+  cal('i un que peta no s\'endú la pantalla', s.quantes === 5, s.quantes);
+
+  /* AVUI, ABANS I DESPRÉS. Sense això, la pantalla no pot dir on ets. */
+  cal('només un dia és avui', s.dies.filter((d) => d.esAvui).length === 1);
+  cal('i els d\'abans van marcats', s.dies.filter((d) => d.esPassat).length === 2,
+      s.dies.filter((d) => d.esPassat).map((d) => d.data).join(' '));
+
+  /* Dins d'un dia, les hores manen: el que no en té va a dalt i la resta en
+     ordre. Un dia desordenat no es llegeix. */
+  cal('les coses del dia surten per hora',
+      dj.coses[0].hora === '09:00' && dj.coses[1].hora === '17:00');
+
+  /* LA REGLA DEL CAP DE SETMANA. Diumenge la setmana que t'importa ja no és
+     la que s'acaba: és la que ve. */
+  ctx.Utils.avui = () => '2026-08-09';           // diumenge
+  cal('diumenge obre la setmana que ve', ctx.Conversa.laSetmana().desde === '2026-08-10',
+      ctx.Conversa.laSetmana().desde);
+  ctx.Utils.avui = () => '2026-08-08';           // dissabte
+  cal('dissabte també', ctx.Conversa.laSetmana().desde === '2026-08-10');
+  ctx.Utils.avui = () => '2026-08-07';           // divendres
+  cal('divendres encara no', ctx.Conversa.laSetmana().desde === '2026-08-03');
+
+  /* I si en demanes una, la que has demanat: qualsevol dia seu val. */
+  cal('demanant-ne una, surt la seva',
+      ctx.Conversa.laSetmana('2026-08-19').desde === '2026-08-17');
+
+  /* EL SENYAL DE DIUMENGE. No pot sonar cap altre dia ni amb la pila buida. */
+  const modConv = MODUL_CONVERSA();
+  ctx.Utils.avui = () => '2026-08-05';
+  cal('entre setmana no diu res de preparar la setmana', modConv.senyals().length === 0);
+  ctx.Utils.avui = () => '2026-08-09';
+  const sen = modConv.senyals();
+  cal('diumenge sí', sen.length === 1 && sen[0].accio === 'setmana', JSON.stringify(sen));
+  cal('i no renya: ofereix el primer pas', /Cinc minuts/.test(sen[0].text), sen[0].text);
+
+  posaModuls([{ id: 'tasques', nom: 'Tasques', laSetmana: () => null }]);
+  cal('amb la pila buida, diumenge calla', modConv.senyals().length === 0);
+
+  /* La pantalla ha d'estar muntada a l'app: sense això el senyal porta enlloc. */
+  const idxS = fs.readFileSync('apps-script/ui_index.html', 'utf8');
+  cal('i la pantalla està muntada', /include\('vista_setmana'\)/.test(idxS));
+}
+
+console.log('\nEls dies d\'un esdeveniment llarg: un per un, i les hores un sol cop');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Utils.avui = () => '2026-08-05';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, d) => d };
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+
+  /* `rangPerDies` s'alimenta de `rang`, que aquí es falseja: el que es prova
+     és el repartiment per dies, no la lectura dels calendaris. */
+  const src = fs.readFileSync('apps-script/40_Mod_Calendari.gs', 'utf8');
+  const tros = src.slice(src.indexOf('  function rangPerDies('),
+                         src.indexOf('  function novaData_('));
+  const c2 = { Utils: ctx.Utils, Object, String, Number, Math };
+  c2.rang = () => [
+    { data: '2026-08-04', dataFi: '2026-08-06', titol: 'Sortida de tres dies',
+      totElDia: true, hora: '', horaFi: '', minuts: 0 },
+    { data: '2026-08-05', dataFi: '2026-08-05', titol: 'Claustre',
+      totElDia: false, hora: '09:00', horaFi: '10:30', minuts: 90 },
+    { data: '2026-08-05', dataFi: '2026-08-05', titol: 'Tot el dia',
+      totElDia: true, hora: '', horaFi: '', minuts: 0 }
+  ];
+  vm.createContext(c2);
+  vm.runInContext(tros + '\nvar __r = rangPerDies;', c2);
+
+  const l = c2.__r('2026-08-03', '2026-08-09');
+  cal('la sortida de tres dies surt tres cops',
+      l.filter((x) => x.titol === 'Sortida de tres dies').length === 3);
+  cal('i cada cop amb el seu dia',
+      l.filter((x) => x.titol === 'Sortida de tres dies').map((x) => x.dia).join(',') ===
+      '2026-08-04,2026-08-05,2026-08-06');
+  cal('les hores del claustre només compten un cop',
+      l.filter((x) => x.minuts).length === 1 && l.filter((x) => x.minuts)[0].minuts === 90);
+
+  const cinc = l.filter((x) => x.dia === '2026-08-05');
+  cal('dins d\'un dia, el de tot el dia va primer i les hores després',
+      cinc[cinc.length - 1].titol === 'Claustre', cinc.map((x) => x.titol).join(' · '));
+
+  /* Un esdeveniment que comença abans de la finestra no ha de començar abans
+     de la finestra: si no, la pantalla rebria dies que no té on posar. */
+  c2.rang = () => [{ data: '2026-07-28', dataFi: '2026-08-04', titol: 'Vacances',
+                     totElDia: true, hora: '', horaFi: '', minuts: 0 }];
+  const l2 = c2.__r('2026-08-03', '2026-08-09');
+  cal('el que ve d\'abans es retalla per l\'esquerra',
+      l2.length === 2 && l2[0].dia === '2026-08-03', JSON.stringify(l2.map((x) => x.dia)));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

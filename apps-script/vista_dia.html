@@ -50,6 +50,13 @@ App.registraVista('dia', {
               '<p>Res al calendari, res que venci, res pendent. Passa poc.</p></div>'
             : nucli(d, pct, totes, fetes) +
               '<div class="dia-graella">' + d.blocs.map(bloc).join('') + '</div>') +
+          /* LA PORTA A LA SETMANA VA AL PEU, no a la capçalera.
+             La pregunta «i la resta de la setmana?» surt DESPRÉS d'haver
+             llegit el dia, no abans; posar-la a dalt seria oferir-li una
+             sortida just quan acaba d'entrar. */
+          '<button class="dia-cap-setmana" data-ves="setmana">' +
+            '<span>Com tinc la setmana</span>' + ic('dreta', 'ic-p') +
+          '</button>' +
           (dEnCau ? '<p class="menut">Última còpia desada al telèfon.</p>' : '') +
         '</div>';
 
