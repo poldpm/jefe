@@ -2582,7 +2582,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 23:13 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-06 23:24 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2934,7 +2934,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 23:13 · en curs";
+window.MARCA_JEFE = "2026-08-06 23:24 · en curs";
 </script>
 
 <script>
@@ -3584,6 +3584,9 @@ var Jefe = (function () {
 
     obreVisor: function (clau, params) {
       var def = App.visors[clau];
+      /* Ni aquí es parla de dins. Si algun dia s'obre un visor que no
+         existeix, el que ell ha de llegir és què li ha passat a ell, no que
+         a mi em falta una peça. */
       if (!def) { App.brindis('Això encara no ho sé ensenyar.', 'error'); return null; }
       params = params || {};
 
@@ -6618,12 +6621,17 @@ App.registraVisor('habits.comptador', {
       });
     }
 
+    /* ES DEMANA AMB COMPTADORS, i només es desa si en porten.
+       `habits.mes` el comparteix amb la pantalla d'hàbits. Desar-hi una
+       versió sense corbes feia que el gràfic del tabac aparegués i
+       desaparegués: la pantalla pintava del desat i allà no hi havia
+       comptadors, i tornava quan el servidor contestava. */
     var desat = Cau.get('habits.mes', null);
-    if (desat) pinta(desat);
+    if (desat && desat.comptadors) pinta(desat);
     else arrel.innerHTML = Comp.carregant(1);
 
-    crida('habits', 'mes', {}).then(function (m) {
-      Cau.set('habits.mes', m);
+    crida('habits', 'mes', { comptadors: true }).then(function (m) {
+      if (m && m.comptadors) Cau.set('habits.mes', m);
       pinta(m);
     }).catch(function (err) {
       if (!desat) arrel.innerHTML = Comp.error(err, false);
@@ -7067,6 +7075,20 @@ App.registraVista('habits', {
       h.registrat = true;
       h.complert = h.esComptador ? false : nou >= h.objectiu;
 
+      /* LA CORBA D'AVUI PUJA AMB EL TOC. El full del mes que torna de marcar
+         no porta les corbes —costen noranta dies de full i el toc ha de ser
+         instantani—, o sigui que les que hi ha desades es queden. Si no es
+         mogués el punt d'avui, tocaries el botó, el número pujaria i el
+         dibuix de sota diria una altra cosa. */
+      if (h.esComptador && mes && mes.comptadors) {
+        mes.comptadors.forEach(function (c) {
+          if (c.id !== h.id || !c.dies || !c.dies.length) return;
+          var ultim = c.dies[c.dies.length - 1];
+          if (ultim && ultim.data === data) ultim.valor = nou;
+        });
+        pintaMes();
+      }
+
       Cau.set('habits.' + data, dades);
       repintaFranja(h);
       if (navigator.vibrate) {
@@ -7107,8 +7129,22 @@ App.registraVista('habits', {
          el bo, i la ratxa es posarà al dia la pròxima vegada que carregui. */
       if (App.interactuant()) return;
       /* El mes ve amb la mateixa resposta de marcar: abans es demanava a part i
-         un toc valia dues anades al servidor. */
-      if (d.mes) { mes = d.mes; Cau.set('habits.mes', d.mes); }
+         un toc valia dues anades al servidor.
+
+         PERÒ AQUELL MES NO PORTA LES CORBES DELS COMPTADORS, i és a posta:
+         calcular-les a cada toc són noranta dies de full per res, i els tocs
+         són el que ha de ser instantani. El que no es podia fer és desar-lo
+         a sobre del que sí que en tenia: el gràfic del tabac desapareixia en
+         marcar qualsevol hàbit i tornava a sortir a la següent càrrega. Ara
+         les corbes que ja teníem es queden, i la d'avui es puja aquí mateix
+         perquè el dibuix no contradigui el número que acabes de tocar. */
+      if (d.mes) {
+        if (!d.mes.comptadors && mes && mes.comptadors) {
+          d.mes.comptadors = mes.comptadors;
+        }
+        mes = d.mes;
+        Cau.set('habits.mes', mes);
+      }
       pinta(d, false);
       pintaMes();
     }

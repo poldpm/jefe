@@ -88,10 +88,18 @@ function MODUL_HABITS() {
         var d = p.data || Utils.avui();
         return Memoria.recorda('habits', 'dia:' + d, function () { return Habits.dia(d); });
       },
+      /* AMB COMPTADORS O SENSE, I LA CLAU HO HA DE DIR.
+         El full del mes es pot demanar amb les corbes dels comptadors o
+         sense: la graella de compliment no les vol i el visor sí. La clau
+         del desat porta la diferència perquè, si no, el primer que passi es
+         queda desat i el segon rep el del primer —que és exactament el que
+         feia desaparèixer el gràfic del tabac de la pantalla d'hàbits: el
+         visor desava una versió sense corbes i la pantalla la pintava. */
       mes: function (p) {
         var f = p.fins || Utils.avui(), n = p.dies || 30;
-        return Memoria.recorda('habits', 'mes:' + f + ':' + n,
-                               function () { return Habits.mes(f, n); });
+        var amb = !!(p && p.comptadors);
+        return Memoria.recorda('habits', 'mes:' + f + ':' + n + (amb ? ':c' : ''),
+                               function () { return Habits.mes(f, n, amb); });
       },
       /* Marcar torna el dia I el full del mes. Abans tornava el dia i el
          client havia de demanar el mes a part: dues anades per un toc. */

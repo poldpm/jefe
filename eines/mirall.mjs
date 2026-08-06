@@ -323,7 +323,12 @@ const MOCK = `
         }
         return d;
       }
-      if (accio === 'mes') return HABITS_MES;
+      if (accio === 'mes') {
+        /* Amb corbes només si les demanen, com el servidor. */
+        var mm = copia(HABITS_MES);
+        if (!(p && p.comptadors)) delete mm.comptadors;
+        return mm;
+      }
       if (accio === 'pantalla') {
         var dd = copia(estatDia);
         if (p.data && p.data !== dd.data) {
@@ -341,7 +346,16 @@ const MOCK = `
           h.registrat = true;
           h.complert = h.esComptador ? false : h.valor >= h.objectiu;
         }
-        var m = copia(estatDia); m.mes = HABITS_MES; return m;
+        /* EL MES QUE TORNA DE MARCAR NO PORTA LES CORBES, com al servidor
+           de debò: calcular-les a cada toc són noranta dies de full per res.
+           El mirall ho tornava amb corbes i per això aquí no es veia mai el
+           problema que en Pol sí que tenia: el gràfic del tabac desapareixia
+           en marcar qualsevol hàbit. Un mirall que ensenya més del que dona
+           el servidor no és un mirall. */
+        var m = copia(estatDia);
+        m.mes = copia(HABITS_MES);
+        delete m.mes.comptadors;
+        return m;
       }
       if (accio === 'ordena') {
         var nou = [];
