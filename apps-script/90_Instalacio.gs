@@ -2771,10 +2771,18 @@ function perQueNoEmDeixaPreguntar() {
   }
 
   a('');
-  a('=== QUÈ ES POT FER ===');
-  a('  · Si el model de la 1a volta és el mateix que el de la resposta,');
-  a('    posa-hi un de més petit al full _Config (clau model_barat):');
-  a('    gemini-2.5-flash-lite té més marge i per triar una eina en té prou.');
-  a('  · `triaModels()` mira quins models tens disponibles.');
+  a('=== COM ES REPARTEIX ===');
+  if (e.modelBarat === e.modelBo) {
+    a('  ELS DOS SÓN EL MATEIX MODEL, i el límit es compta per model: cada');
+    a('  pregunta en gasta dues del mateix compte. Posa\'n un de més petit a');
+    a('  la clau model_barat del full _Config, o executa triaModels().');
+  } else {
+    a('  Van a models diferents, i com que el límit es compta per model,');
+    a('  cada pregunta gasta una petició de cadascun i no dues d\'un.');
+    a('  I si el model bo diu prou, la pregunta passa sola al petit: la');
+    a('  resposta surt una mica més justa, però surt.');
+  }
+  a('');
+  a('  `triaModels()` mira quins models tens disponibles.');
   return l.join('\n');
 }

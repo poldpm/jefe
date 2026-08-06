@@ -382,19 +382,39 @@ var IA = (function () {
               : p.model === 'barat' || !p.model ? Config.get('model_barat')
               : p.model;
 
+    /* EL LÍMIT ÉS PER MODEL, i això obre una porta.
+       Google va contestar `GenerateRequestsPerMinutePerProjectPerModel`: el
+       compte de peticions per minut es porta MODEL A MODEL. O sigui que si
+       el model bo diu prou, el petit encara té el seu compte sencer.
+       Reintentar amb el mateix model és perdre el temps —el límit no es mou
+       en quatre segons—, però passar la pregunta a l'altre model no és
+       reintentar: és fer-la per un camí que no està tancat. La resposta surt
+       una mica més justa, i la té. */
+    var altre = (p.model === 'bo') ? Config.get('model_barat') : null;
+    var canviat = false;
+
     var intents = 0;
     var espera = 1000;
     while (true) {
       try {
         var r = prov.crida(p, model);
         r.model = model;
+        if (canviat) r.rebaixat = true;      // que la pantalla ho pugui dir
         return r;
       } catch (err) {
         intents++;
-        /* La quota NO es reintenta. Un límit per minut no es recupera en
-           quatre segons: reintentar-ho només afegeix espera abans de fallar
-           igualment, i encara consumeix més quota. Es falla de seguida i
-           es diu quant s'ha d'esperar. */
+
+        if (err.quota && altre && altre !== model && !canviat) {
+          Log.avis('ia.genera', 'Quota del model bo tocada: passo al petit',
+                   { de: model, a: altre });
+          model = altre; canviat = true; intents = 0;
+          continue;
+        }
+
+        /* La quota NO es reintenta amb el mateix model. Un límit per minut no
+           es recupera en quatre segons: reintentar-ho només afegeix espera
+           abans de fallar igualment, i encara consumeix més quota. Es falla
+           de seguida i es diu quant s'ha d'esperar. */
         var recuperable = !err.quota && /no respon ara mateix/.test(err.message || '');
         if (!recuperable || intents >= 2) {
           Log.error('ia.genera', err, { model: model, intents: intents });

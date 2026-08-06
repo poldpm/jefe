@@ -3707,5 +3707,88 @@ console.log('\nEl nucli: un sol bucle viu, i els orfes es moren');
   cal('cap altre bucle d\'animació sense fre', vistes.length === 0, vistes.join(', '));
 }
 
+// ---------------------------------------------------------------- la quota
+console.log('\nLa quota és per model: si el bo diu prou, la pregunta passa al petit');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.ara = () => '2026-08-06T22:35:00+02:00';
+  ctx.Utils.avui = () => '2026-08-06';
+  ctx.Config = {
+    get: (k) => ({ model_bo: 'flash-gros', model_barat: 'flash-petit',
+                   proveidor_ia: 'gemini', ia_activa: 'SI' }[k] || null),
+    esSi: (k) => k === 'ia_activa',
+    zonaHoraria: () => 'Europe/Madrid', getNum: (k, d) => d
+  };
+  ctx.PropertiesService = { getScriptProperties: () => ({
+    getProperty: () => 'una-clau', setProperty() {} }) };
+  ctx.CacheService = { getScriptCache: () => ({ get: () => null, put() {} }) };
+  ctx.Utilities.sleep = () => {};
+
+  /* GEMINI DE MENTIDA, però pel mateix forat que el de debò: es falseja
+     `UrlFetchApp`, no cap funció interna. Així la prova passa també per la
+     lectura del 429 i per com se'n treu el temps d'espera, que és on hi
+     havia el detall que ho explicava tot. */
+  var demanats = [];
+  var tocats = { 'flash-gros': true, 'flash-petit': false };
+
+  var resposta429 = {
+    getResponseCode: function () { return 429; },
+    getContentText: function () {
+      return JSON.stringify({ error: { code: 429, message: 'Quota exceeded', details: [
+        { '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+          violations: [{ quotaId: 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' }] },
+        { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '40s' }
+      ] } });
+    }
+  };
+  var respostaBona = function (text) {
+    return {
+      getResponseCode: function () { return 200; },
+      getContentText: function () {
+        return JSON.stringify({
+          candidates: [{ content: { parts: [{ text: text }], role: 'model' }, finishReason: 'STOP' }],
+          usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 }
+        });
+      }
+    };
+  };
+
+  ctx.UrlFetchApp.fetch = function (url) {
+    var model = decodeURIComponent(String(url).split('/models/')[1].split(':')[0]);
+    demanats.push(model);
+    return tocats[model] ? resposta429 : respostaBona('contestat pel ' + model);
+  };
+
+  var r = ctx.IA.genera({ sistema: 's', missatges: [], eines: [], model: 'bo' });
+  cal('la pregunta es contesta igualment', r.text === 'contestat pel flash-petit', r.text);
+  cal('i la contesta el model petit', r.model === 'flash-petit', r.model);
+  cal('ho diu, que la resposta ve del petit', r.rebaixat === true);
+  cal('ha provat el gros primer i el petit després',
+      demanats.join(' → ') === 'flash-gros → flash-petit', demanats.join(' → '));
+
+  /* NO ES BAIXA DUES VEGADES. Si el petit també està tocat, es falla i es
+     diu; insistir només gastaria més quota per acabar igual. */
+  demanats = []; tocats['flash-petit'] = true;
+  var error = '';
+  try { ctx.IA.genera({ sistema: 's', missatges: [], eines: [], model: 'bo' }); }
+  catch (e) { error = e.message; }
+  cal('si tots dos estan tocats, es falla', /límit|Quota|quota/.test(error), error);
+  cal("i no s'hi insisteix: un intent per model i prou",
+      demanats.length === 2, demanats.join(' → '));
+  cal("i el missatge diu quant s'ha d'esperar", /40/.test(error), error);
+
+  /* Demanant el petit directament, no hi ha cap altre camí on anar. */
+  demanats = [];
+  try { ctx.IA.genera({ sistema: 's', missatges: [], eines: [], model: 'barat' }); } catch (e) {}
+  cal('des del petit no es baixa enlloc', demanats.length === 1, demanats.join(' → '));
+
+  /* I la primera volta de l'assistent ha de demanar el barat: és on se'n
+     va la meitat de les peticions, i triar una eina no vol el model bo. */
+  const font = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
+  cal('la primera volta demana el model petit',
+      /model:\s*volta === 0 \? 'barat' : 'bo'/.test(font));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
