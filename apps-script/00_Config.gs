@@ -15,10 +15,6 @@ var NOM_FULL_CALCUL = 'JEFE — Assistent';
 var PROP_ID_FULL = 'ID_FULL';
 var PROP_CLAU_IA = 'CLAU_IA';
 var PROP_CLAU_ACCES = 'CLAU_ACCES';
-/* La clau personal d'intervals.icu, que és per on entren els entrenaments.
-   Va aquí i no al full pel mateix motiu que les altres: un full es comparteix
-   amb un clic i Script Properties no. */
-var PROP_CLAU_INTERVALS = 'CLAU_INTERVALS';
 var PROP_FIREBASE   = 'FIREBASE_COMPTE';  // compte de servei: conte clau privada   // porta d'entrada des de fora d'Apps Script
 
 /**
