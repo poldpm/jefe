@@ -294,6 +294,11 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
       envia: (titol, cos) => { notificacions.push({ titol, cos }); return { enviades: 1 }; }
     }
   };
+  /* El bloqueig viu a 10_Dades.gs i aquí només es carrega el diari. Es dobla
+     amb el que fa de debò —executar el que li donen— perquè el que es prova
+     en aquest bloc és el diari, no el bloqueig; el bloqueig té la seva prova
+     al bloc de sota. */
+  ctx.ambBloqueig_ = (fn) => fn();
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/01_Utils.gs', 'utf8'), ctx);
   vm.runInContext(fs.readFileSync('apps-script/40_Mod_Diari.gs', 'utf8'), ctx);
@@ -3792,6 +3797,81 @@ console.log('\nLa quota és per model: si el bo diu prou, la pregunta passa al p
   const font = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
   cal('la primera volta demana el model petit',
       /model:\s*volta === 0 \? 'barat' : 'bo'/.test(font));
+}
+
+// ------------------------------------------------------------------- diari
+console.log('\nEl diari: dues desades alhora no poden fer dos dies');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Utils.avui = () => '2026-08-06';
+  ctx.Utils.ara = () => '2026-08-06T23:50:00+02:00';
+
+  let files = [], seguit = 0;
+  ctx.Dades = {
+    llegeix: (full, filtre) => files.filter((f) => !filtre || filtre(f))
+      .map((f) => JSON.parse(JSON.stringify(f))),
+    insereix: (full, fila, prefix) => {
+      const f = Object.assign({ id: (prefix || 'x') + (++seguit) }, fila);
+      files.push(f); return f;
+    },
+    actualitza: (full, id, canvis) => {
+      const f = files.filter((x) => x.id === id)[0];
+      if (f) Object.assign(f, canvis);
+      return f || null;
+    }
+  };
+
+  /* El bloqueig, comptat. El que es prova no és que el LockService funcioni
+     —això és de Google— sinó que l'escriptura hi passi per dins: sense això,
+     dues desades que arriben juntes fan dues files del mateix dia. */
+  let bloquejos = 0;
+  ctx.LockService = { getScriptLock: () => ({
+    tryLock: () => { bloquejos++; return true; }, releaseLock() {} }) };
+
+  ctx.Diari.escriu('2026-08-06', 'Avui dia llarg al centre', 3, 'app');
+  cal('escriure el diari passa pel bloqueig', bloquejos === 1, bloquejos);
+  cal('i ha fet una fila', files.length === 1, files.length);
+
+  /* La segona desada del mateix dia ACTUALITZA, no n'afegeix una altra. És
+     el que ja feia, i el que la cursa es saltava. */
+  ctx.Diari.escriu('2026-08-06', 'Avui dia llarg al centre, amb un cafè', 3, 'app');
+  cal('desar dos cops el mateix dia no fa dos dies', files.length === 1, files.length);
+  cal('i el text és el segon', /cafè/.test(files[0].text), files[0].text);
+
+  /* Un altre dia sí que és una fila nova. */
+  ctx.Diari.escriu('2026-08-05', 'Ahir', 2, 'app');
+  cal('un altre dia sí que n\'afegeix', files.length === 2);
+
+  /* I la neteja del que ja va quedar duplicat: es queda la més llarga i les
+     altres es marquen, no s'esborren. */
+  files.push({ id: 'dup1', data: '2026-08-04', tipus: 'entrada',
+               text: 'Text curt', anim: 3, creat_el: '2026-08-04T20:00:00+02:00' });
+  files.push({ id: 'dup2', data: '2026-08-04', tipus: 'entrada',
+               text: 'Text molt més llarg amb tot el que va passar', anim: 3,
+               creat_el: '2026-08-04T20:00:01+02:00' });
+
+  const src = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  const tros = src.slice(src.indexOf('function reparaDiari('),
+                         src.indexOf('/** El mateix, mirant i sense tocar. */'));
+  ctx.Logger = { log() {} };
+  vm.runInContext(tros, ctx);
+
+  ctx.reparaDiari(true);
+  cal('en simulació no es toca res',
+      files.filter((f) => f.esborrat_el).length === 0);
+
+  ctx.reparaDiari();
+  const vius = files.filter((f) => !f.esborrat_el && f.data === '2026-08-04');
+  cal('després de reparar en queda una', vius.length === 1, vius.length);
+  cal('i es queda la que té més text', /molt més llarg/.test(vius[0].text), vius[0].text);
+  cal('l\'altra no s\'esborra: es marca',
+      files.filter((f) => f.id === 'dup1')[0].esborrat_el !== undefined);
+
+  /* I el client no ha d'enviar dues desades a la vegada. */
+  const vd = fs.readFileSync('apps-script/vista_diari.html', 'utf8');
+  cal('el client no envia dues desades alhora', /var desant = false, pendent = null;/.test(vd));
+  cal('i la que s\'ha demanat mentrestant es fa després', /function acabaDesada\(\)/.test(vd));
 }
 
 // ------------------------------------------------------------------ el visor

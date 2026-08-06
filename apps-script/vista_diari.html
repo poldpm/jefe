@@ -200,9 +200,25 @@ App.registraVista('diari', {
       return b ? Number(b.dataset.anim) : 0;
     }
 
+    /* UNA DESADA A LA VEGADA.
+       Tocar el botó de l'ànim treu el focus del camp: salta el desat del
+       `blur` i tot seguit el del botó, i les dues peticions se'n van juntes.
+       El servidor ja no en fa dues files —hi ha un bloqueig—, però enviar-ne
+       dues segueix sent dues anades per res, i la segona pot arribar abans
+       que la primera i desar text vell.
+       Si mentre n'hi ha una en marxa se'n demana una altra, s'apunta i es fa
+       UNA sola quan torni: el que val és l'últim estat del camp, no quantes
+       vegades l'has demanat. */
+    var desant = false, pendent = null;
+
     function desa(alAcabar) {
+      if (desant) {
+        pendent = alAcabar || pendent || function () {};
+        return;
+      }
       var camp = arrel.querySelector('#d-text');
       if (!camp) { if (alAcabar) alAcabar(); return; }
+      desant = true;
 
       var text = camp.value;
       var anim = animTriat();
@@ -217,6 +233,7 @@ App.registraVista('diari', {
           if (e2) e2.textContent = 'Desat';
           aplica(r);
           if (alAcabar) alAcabar();
+          acabaDesada();
         })
         .catch(function (err) {
           brut = true;
@@ -224,7 +241,18 @@ App.registraVista('diari', {
           if (e2) e2.textContent = 'No s\'ha pogut desar';
           App.brindis(err.message, 'error');
           if (alAcabar) alAcabar();
+          acabaDesada();
         });
+    }
+
+    /* La que s'havia demanat mentre l'altra anava. Una i no les que fossin:
+       totes deien el mateix —«desa el que hi ha al camp»— i el camp és un. */
+    function acabaDesada() {
+      desant = false;
+      if (!pendent) return;
+      var seguent = pendent;
+      pendent = null;
+      desa(seguent === true ? undefined : seguent);
     }
 
     /** Abans de marxar del dia, desa el que hi hagi sense desar. */

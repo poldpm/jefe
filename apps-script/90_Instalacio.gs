@@ -2786,3 +2786,78 @@ function perQueNoEmDeixaPreguntar() {
   a('  `triaModels()` mira quins models tens disponibles.');
   return l.join('\n');
 }
+
+
+/**
+ * ELS DIES DUPLICATS DEL DIARI.
+ *
+ * Fins avui, desar el diari mirava si ja hi havia entrada d'aquell dia i
+ * després l'escrivia, sense bloqueig pel mig. Tocar el botó de l'ànim treu
+ * el focus del camp, o sigui que sortien dues desades alhora, cap veia la
+ * fila de l'altra i totes dues n'hi posaven una. El dia quedava duplicat a
+ * la línia de temps.
+ *
+ * Això ja no pot tornar a passar. Això d'aquí neteja el que va quedar.
+ *
+ * NO ESBORRA RES. Marca les sobreres amb `esborrat_el`, que és com el diari
+ * treu una entrada de tota la vida: la fila es queda al full i es pot
+ * recuperar traient-li la data a mà.
+ *
+ * Es queda la que té MÉS TEXT, i entre iguals la més nova. Si dues desades
+ * es van creuar, la bona és la que va arribar amb el text sencer.
+ *
+ * `provaDiariDuplicat()` fa el mateix però sense tocar res.
+ */
+function reparaDiari(simulacio) {
+  var l = ['=== DIES DUPLICATS AL DIARI ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+  if (simulacio) a('(simulació: no es toca res)');
+
+  var files = Dades.llegeix('Diari').filter(function (f) { return !f.esborrat_el; });
+
+  var per = {};
+  files.forEach(function (f) {
+    var clau = String(f.data) + '|' + (f.tipus || 'entrada');
+    (per[clau] = per[clau] || []).push(f);
+  });
+
+  var tocats = 0, fores = 0;
+  Object.keys(per).sort().forEach(function (clau) {
+    var g = per[clau];
+    if (g.length < 2) return;
+    tocats++;
+
+    g.sort(function (x, y) {
+      var lx = String(x.text || '').length, ly = String(y.text || '').length;
+      if (lx !== ly) return ly - lx;                       // primer la més llarga
+      return String(y.actualitzat_el || y.creat_el || '')
+        .localeCompare(String(x.actualitzat_el || x.creat_el || ''));
+    });
+
+    a('');
+    a(clau.replace('|', ' · ') + ' — ' + g.length + ' files');
+    a('  ES QUEDA: ' + Utils.talla(String(g[0].text || '(sense text)'), 60) +
+      '  (' + String(g[0].text || '').length + ' car.)');
+
+    g.slice(1).forEach(function (f) {
+      a('  fora:     ' + Utils.talla(String(f.text || '(sense text)'), 60) +
+        '  (' + String(f.text || '').length + ' car.)');
+      if (!simulacio) Dades.actualitza('Diari', f.id, { esborrat_el: Utils.ara() });
+      fores++;
+    });
+  });
+
+  a('');
+  if (!tocats) {
+    a('Cap dia duplicat. No hi ha res a fer.');
+  } else {
+    a(tocats + (tocats === 1 ? ' dia duplicat' : ' dies duplicats') + ', ' +
+      fores + (fores === 1 ? ' fila treta' : ' files tretes') + '.');
+    if (simulacio) a('Res tocat. Executa reparaDiari() sense arguments per fer-ho.');
+    else a('Les files tretes segueixen al full amb `esborrat_el` posat.');
+  }
+  return l.join('\n');
+}
+
+/** El mateix, mirant i sense tocar. */
+function provaDiariDuplicat() { return reparaDiari(true); }

@@ -297,26 +297,35 @@ var Diari = (function () {
     var a = Number(anim);
     var valorAnim = (a >= 1 && a <= 5) ? Math.round(a) : '';
 
-    var existent = vives_(function (x) {
-      return String(x.data) === data && (x.tipus || 'entrada') === 'entrada';
-    })[0];
+    /* MIRAR-HO I ESCRIURE-HO HA DE SER UNA SOLA COSA.
+       Sense bloqueig, dues desades que arriben juntes miren totes dues si ja
+       hi ha entrada d'aquell dia, cap veu la de l'altra i totes dues n'hi
+       posen una: el dia surt duplicat a la línia de temps per sempre.
+       I no és un cas rebuscat, és el normal: tocar el botó de l'ànim treu el
+       focus del camp, o sigui que salta el desat del `blur` i el del botó a
+       la vegada. */
+    return ambBloqueig_(function () {
+      var existent = vives_(function (x) {
+        return String(x.data) === data && (x.tipus || 'entrada') === 'entrada';
+      })[0];
 
-    /* Buidar-ho del tot és treure l'entrada, no desar una línia en blanc: una
-       fila buida al mig de la línia de temps no diu res i fa nosa. */
-    if (!t && !valorAnim) {
-      if (existent) Dades.actualitza('Diari', existent.id, { esborrat_el: Utils.ara() });
-      return { data: data, tret: true };
-    }
+      /* Buidar-ho del tot és treure l'entrada, no desar una línia en blanc:
+         una fila buida al mig de la línia de temps no diu res i fa nosa. */
+      if (!t && !valorAnim) {
+        if (existent) Dades.actualitza('Diari', existent.id, { esborrat_el: Utils.ara() });
+        return { data: data, tret: true };
+      }
 
-    if (existent) {
-      Dades.actualitza('Diari', existent.id, { text: t, anim: valorAnim });
-    } else {
-      Dades.insereix('Diari', {
-        data: data, tipus: 'entrada', text: t, anim: valorAnim,
-        origen: origen || 'app'
-      }, 'dia');
-    }
-    return { data: data, desat: true, caracters: t.length };
+      if (existent) {
+        Dades.actualitza('Diari', existent.id, { text: t, anim: valorAnim });
+      } else {
+        Dades.insereix('Diari', {
+          data: data, tipus: 'entrada', text: t, anim: valorAnim,
+          origen: origen || 'app'
+        }, 'dia');
+      }
+      return { data: data, desat: true, caracters: t.length };
+    }, 20);
   }
 
   function treu(id) {
