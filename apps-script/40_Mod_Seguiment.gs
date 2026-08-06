@@ -175,6 +175,24 @@ function MODUL_SEGUIMENT() {
         }
       },
       executa: function (args) { return Seguiment.perALaIA(args && args.quants); }
+    }, {
+      nom: 'ensenya_la_mesura',
+      descripcio: 'ENSENYA la gràfica d\'una mesura del seguiment físic —pes, cintura, ' +
+                  'força o trail— en un plafó a sobre de la conversa. Fes-la servir ' +
+                  'sempre que et demani VEURE o ENSENYAR un gràfic o una evolució: ' +
+                  '«ensenya\'m el gràfic del pes», «com va la cintura?», «vull veure ' +
+                  'com he anat de pes». Un cop cridada ell ja té el dibuix al davant: ' +
+                  'no l\'hi descriguis punt per punt, digues-li com a molt una frase ' +
+                  'sobre la forma de la línia.',
+      mostra: 'seguiment.mesura',
+      esquema: {
+        type: 'object',
+        properties: {
+          quina: { type: 'string',
+                   description: 'pes, cintura, forca o trail. Si s\'omet, el pes.' }
+        }
+      },
+      executa: function (args) { return Seguiment.mesuraPerAEnsenyar(args); }
     }],
 
     vista: 'vista_seguiment'
@@ -735,6 +753,44 @@ var Seguiment = (function () {
     return { titol: 'Seguiment FitFat', linies: linies };
   }
 
+  /**
+   * Quina mesura s'ha d'ensenyar al visor.
+   *
+   * Torna `_params` perquè el client sàpiga quina obrir, i les xifres de
+   * les puntes perquè JEFE en pugui dir una frase sense demanar res més. El
+   * dibuix no es fa aquí: el fa la pantalla, que és qui el sap fer.
+   */
+  function mesuraPerAEnsenyar(a) {
+    var MESURES = {
+      pes:     { nom: 'pes',     camp: 'pes',     unitat: 'kg' },
+      cintura: { nom: 'cintura', camp: 'cintura', unitat: 'cm' },
+      forca:   { nom: 'força',   camp: 'forca',   unitat: '' },
+      trail:   { nom: 'trail',   camp: 'trail',   unitat: '' }
+    };
+    var demanat = Utils.aixafa(String((a && a.quina) || 'pes'));
+    var clau = 'pes';
+    for (var k in MESURES) {
+      if (Utils.aixafa(MESURES[k].nom) === demanat || k === demanat) { clau = k; break; }
+    }
+    var m = MESURES[clau];
+
+    var punts = controls().filter(function (c) {
+      if (c[m.camp] === null || c[m.camp] === undefined || c[m.camp] === '') return false;
+      if (clau === 'cintura' && !c.cinturaValida) return false;
+      return true;
+    });
+
+    return {
+      _params: { quina: clau },
+      pantalla: 'oberta',
+      mesura: m.nom,
+      files: punts.length,
+      primer: punts.length ? punts[0][m.camp] : null,
+      ultim: punts.length ? punts[punts.length - 1][m.camp] : null,
+      unitat: m.unitat
+    };
+  }
+
   function perALaIA(quants) {
     var h = controls();
     var n = Math.max(1, Math.min(52, Number(quants) || 12));
@@ -787,6 +843,7 @@ var Seguiment = (function () {
     resumPeriode: resumPeriode,
     seriesDiaries: seriesDiaries,
     perALaIA: perALaIA,
+    mesuraPerAEnsenyar: mesuraPerAEnsenyar,
     analitza: analitza,
     veredicte: veredicte,
     LLINDAR: LLINDAR

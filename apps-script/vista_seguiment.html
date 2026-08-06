@@ -11,6 +11,165 @@
    que canviar-ne un és canviar-lo en un sol lloc. Hi ha una prova que passa el
    mateix històric per les dues còpies i comprova que diuen el mateix. */
 
+
+/* ------------------------------------------------------------------------
+   LA GRÀFICA DEL SEGUIMENT
+
+   Viu aquí fora perquè la fan servir DOS llocs: la pantalla de Seguiment i el
+   visor, quan li demanes «ensenya'm el gràfic del pes». Dos dibuixos del
+   mateix acabarien dient coses diferents el dia que algú en toqués un.
+   ------------------------------------------------------------------------ */
+var GrafSeg = (function () {
+
+  function coma(n, dec) {
+    if (n === null || n === undefined || n === '') return '—';
+    var v = Number(n);
+    return (dec === undefined ? String(v) : v.toFixed(dec)).replace('.', ',');
+  }
+  function curta(iso) {
+    var p = String(iso).split('-');
+    return Number(p[2]) + ' ' + ['gen','feb','març','abr','maig','juny',
+      'jul','ag','set','oct','nov','des'][Number(p[1]) - 1];
+  }
+
+  /* UNA LÍNIA I PROU. El que has de veure és la forma: si baixa, si s'ha
+     aplanat, si ha rebotat. Les mesures marcades com a invàlides no hi surten
+     —la del 7 de juliol n'és una— perquè una mesura dolenta dibuixada com si
+     fos bona et fa creure una caiguda que no ha passat. */
+  function grafica(punts, unitat, dec) {
+    if (punts.length < 2) {
+      return '<p class="menut">Amb un sol punt encara no hi ha línia. ' +
+             'A partir del segon control es veurà la forma.</p>';
+    }
+    /* EL DIBUIX ES FA DESPRÉS, EN PÍXELS DE DEBÒ.
+       Amb un `viewBox` fix i `preserveAspectRatio="none"` la línia omplia
+       l'amplada però els punts sortien el·líptics: l'escala horitzontal i la
+       vertical no eren la mateixa, i un cercle estirat es veu de seguida a
+       l'escriptori. Aquí només es deixa el forat amb les dades a dins; el
+       traç es calcula amb l'amplada real quan ja és a la pàgina, i llavors
+       un cercle és un cercle a qualsevol mida. */
+    return '<svg class="seg-graf" role="img" data-graf=\'' +
+             esc(JSON.stringify(punts)) + '\' aria-label="' +
+             esc(punts.map(function (p) {
+               return curta(p.data) + ' ' + coma(p.v, dec) + ' ' + unitat; }).join(', ')) + '"></svg>' +
+      '<div class="seg-eix"><span>' + curta(punts[0].data) + '</span>' +
+        '<span>' + coma(punts[punts.length - 1].v, dec) + ' ' + unitat + '</span></div>';
+  }
+
+  /* Rep on ha de mirar: la pantalla li passa la seva arrel i el visor la
+     seva. Abans agafava `arrel` de la vista, que aquí fora no existeix. */
+  function dibuixaGrafiques(dins) {
+    (dins || document).querySelectorAll('[data-graf]').forEach(function (svg) {
+      var punts;
+      try { punts = JSON.parse(svg.getAttribute('data-graf')); } catch (e) { return; }
+      var A = Math.round(svg.clientWidth), H = Math.round(svg.clientHeight);
+      if (!A || !H) return;
+      var m = 8;
+
+      var vals = punts.map(function (p) { return p.v; });
+      var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+      var marge = (max - min) || 1;
+      min -= marge * 0.15; max += marge * 0.15;
+
+      var t0 = new Date(punts[0].data + 'T12:00:00').getTime();
+      var t1 = new Date(punts[punts.length - 1].data + 'T12:00:00').getTime();
+      var ample = (t1 - t0) || 1;
+
+      var xy = punts.map(function (p) {
+        var x = m + ((new Date(p.data + 'T12:00:00').getTime() - t0) / ample) * (A - m * 2);
+        var y = m + (1 - (p.v - min) / (max - min)) * (H - m * 2);
+        return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+      });
+      var ultim = xy[xy.length - 1];
+
+      svg.setAttribute('viewBox', '0 0 ' + A + ' ' + H);
+      svg.innerHTML =
+        '<polyline class="seg-linia" points="' +
+          xy.map(function (q) { return q.x + ',' + q.y; }).join(' ') + '"/>' +
+        xy.map(function (q) {
+          return '<circle class="seg-punt" cx="' + q.x + '" cy="' + q.y + '" r="2.5"/>';
+        }).join('') +
+        '<circle class="seg-punt seg-ara" cx="' + ultim.x + '" cy="' + ultim.y + '" r="4"/>';
+    });
+  }
+
+
+  return { html: grafica, dibuixa: dibuixaGrafiques, coma: coma, curta: curta };
+})();
+
+/* ------------------------------------------------------------------------
+   «ENSENYA'M EL GRÀFIC DEL PES»
+
+   Quatre mesures, un sol visor: el que canvia entre el pes i la cintura és
+   la columna, la unitat i els decimals, no el dibuix. Registrar-ne un per
+   mesura hauria estat el mateix codi quatre vegades.
+   ------------------------------------------------------------------------ */
+var MESURES_SEG = {
+  pes:     { nom: 'Pes',     unitat: 'kg', dec: 1, camp: 'pes' },
+  cintura: { nom: 'Cintura', unitat: 'cm', dec: 1, camp: 'cintura' },
+  forca:   { nom: 'Força',   unitat: '',   dec: 0, camp: 'forca' },
+  trail:   { nom: 'Trail',   unitat: '',   dec: 0, camp: 'trail' }
+};
+
+App.registraVisor('seguiment.mesura', {
+  titol: function (p) {
+    var m = MESURES_SEG[(p && p.quina) || 'pes'];
+    return m ? m.nom : 'Seguiment';
+  },
+
+  render: function (arrel, params) {
+    var clau = (params && params.quina) || 'pes';
+    var m = MESURES_SEG[clau] || MESURES_SEG.pes;
+
+    function pinta(d) {
+      var h = (d && d.historic) || [];
+      var punts = h.filter(function (c) {
+        if (c[m.camp] === null || c[m.camp] === undefined || c[m.camp] === '') return false;
+        /* La cintura marcada com a invàlida no hi surt: una mesura dolenta
+           dibuixada com si fos bona et fa creure una caiguda que no ha
+           passat. És el mateix criteri que a la pantalla. */
+        if (m.camp === 'cintura' && c.cinturaValida === false) return false;
+        return true;
+      }).map(function (c) { return { data: c.data, v: c[m.camp] }; });
+
+      if (punts.length < 2) {
+        arrel.innerHTML = '<p class="menut">Encara no hi ha prou controls per dibuixar ' +
+          'una línia. A partir del segon es veurà la forma.</p>';
+        return;
+      }
+
+      var primer = punts[0].v, ultim = punts[punts.length - 1].v;
+      var canvi = ultim - primer;
+
+      arrel.innerHTML = GrafSeg.html(punts, m.unitat, m.dec) +
+        '<div class="visor-peu">' +
+          '<span>' + esc(punts.length + ' controls des del ' + GrafSeg.curta(punts[0].data)) + '</span>' +
+          '<span>' + esc((canvi > 0 ? '+' : canvi < 0 ? '−' : '') +
+            GrafSeg.coma(Math.abs(canvi), m.dec) + (m.unitat ? ' ' + m.unitat : '')) + '</span>' +
+        '</div>';
+
+      /* El traç es calcula amb l'amplada real. Es dibuixa de seguida —la
+         disposició ja és feta— i es torna a dibuixar al cap d'un moment per
+         si el plafó encara s'estava obrint quan s'ha mesurat.
+         Res de `requestAnimationFrame`: si la pestanya no compon fotogrames,
+         no s'executa mai i la línia no surt. Ja m'ha passat dos cops avui. */
+      GrafSeg.dibuixa(arrel);
+      setTimeout(function () { if (arrel.isConnected) GrafSeg.dibuixa(arrel); }, 80);
+    }
+
+    var desat = Cau.get('seguiment', null);
+    if (desat) pinta(desat);
+    else arrel.innerHTML = Comp.carregant(1);
+
+    crida('seguiment', 'pantalla', {}).then(function (d) {
+      Cau.set('seguiment', d);
+      pinta(d);
+    }).catch(function (err) {
+      if (!desat) arrel.innerHTML = Comp.error(err, false);
+    });
+  }
+});
+
 App.registraVista('seguiment', {
   render: function (arrel, params) {
 
@@ -134,66 +293,6 @@ App.registraVista('seguiment', {
       }
     };
 
-    // ------------------------------------------------------------- gràfiques
-    /* UNA LÍNIA I PROU. El que has de veure és la forma: si baixa, si s'ha
-       aplanat, si ha rebotat. Les mesures marcades com a invàlides no hi surten
-       —la del 7 de juliol n'és una— perquè una mesura dolenta dibuixada com si
-       fos bona et fa creure una caiguda que no ha passat. */
-    function grafica(punts, unitat, dec) {
-      if (punts.length < 2) {
-        return '<p class="menut">Amb un sol punt encara no hi ha línia. ' +
-               'A partir del segon control es veurà la forma.</p>';
-      }
-      /* EL DIBUIX ES FA DESPRÉS, EN PÍXELS DE DEBÒ.
-         Amb un `viewBox` fix i `preserveAspectRatio="none"` la línia omplia
-         l'amplada però els punts sortien el·líptics: l'escala horitzontal i la
-         vertical no eren la mateixa, i un cercle estirat es veu de seguida a
-         l'escriptori. Aquí només es deixa el forat amb les dades a dins; el
-         traç es calcula amb l'amplada real quan ja és a la pàgina, i llavors
-         un cercle és un cercle a qualsevol mida. */
-      return '<svg class="seg-graf" role="img" data-graf=\'' +
-               esc(JSON.stringify(punts)) + '\' aria-label="' +
-               esc(punts.map(function (p) {
-                 return curta(p.data) + ' ' + coma(p.v, dec) + ' ' + unitat; }).join(', ')) + '"></svg>' +
-        '<div class="seg-eix"><span>' + curta(punts[0].data) + '</span>' +
-          '<span>' + coma(punts[punts.length - 1].v, dec) + ' ' + unitat + '</span></div>';
-    }
-
-    function dibuixaGrafiques() {
-      arrel.querySelectorAll('[data-graf]').forEach(function (svg) {
-        var punts;
-        try { punts = JSON.parse(svg.getAttribute('data-graf')); } catch (e) { return; }
-        var A = Math.round(svg.clientWidth), H = Math.round(svg.clientHeight);
-        if (!A || !H) return;
-        var m = 8;
-
-        var vals = punts.map(function (p) { return p.v; });
-        var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
-        var marge = (max - min) || 1;
-        min -= marge * 0.15; max += marge * 0.15;
-
-        var t0 = new Date(punts[0].data + 'T12:00:00').getTime();
-        var t1 = new Date(punts[punts.length - 1].data + 'T12:00:00').getTime();
-        var ample = (t1 - t0) || 1;
-
-        var xy = punts.map(function (p) {
-          var x = m + ((new Date(p.data + 'T12:00:00').getTime() - t0) / ample) * (A - m * 2);
-          var y = m + (1 - (p.v - min) / (max - min)) * (H - m * 2);
-          return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
-        });
-        var ultim = xy[xy.length - 1];
-
-        svg.setAttribute('viewBox', '0 0 ' + A + ' ' + H);
-        svg.innerHTML =
-          '<polyline class="seg-linia" points="' +
-            xy.map(function (q) { return q.x + ',' + q.y; }).join(' ') + '"/>' +
-          xy.map(function (q) {
-            return '<circle class="seg-punt" cx="' + q.x + '" cy="' + q.y + '" r="2.5"/>';
-          }).join('') +
-          '<circle class="seg-punt seg-ara" cx="' + ultim.x + '" cy="' + ultim.y + '" r="4"/>';
-      });
-    }
-
     // -------------------------------------------------------------- capçalera
     function capcalera() {
       var f = d && d.fase;
@@ -286,8 +385,8 @@ App.registraVista('seguiment', {
 
           /* Les gràfiques */
           '<section class="seg-grafiques">' +
-            '<div class="fitxa"><p class="marge">Pes</p>' + grafica(pesos, 'kg', 1) + '</div>' +
-            '<div class="fitxa"><p class="marge">Cintura</p>' + grafica(cintures, 'cm', 1) + '</div>' +
+            '<div class="fitxa"><p class="marge">Pes</p>' + GrafSeg.html(pesos, 'kg', 1) + '</div>' +
+            '<div class="fitxa"><p class="marge">Cintura</p>' + GrafSeg.html(cintures, 'cm', 1) + '</div>' +
           '</section>' +
 
           fotos(cur) +
@@ -467,12 +566,12 @@ App.registraVista('seguiment', {
 
     // ------------------------------------------------------------------ lliga
     function lliga() {
-      dibuixaGrafiques();
+      GrafSeg.dibuixa(arrel);
       /* Si canvies l'amplada —girar el telèfon, obrir-ho a l'escriptori— les
          coordenades d'abans ja no valen. Es tornen a calcular, i prou: no és
          cap animació, és el mateix dibuix a la mida nova. */
       if (!arrel._redibuixa) {
-        arrel._redibuixa = function () { dibuixaGrafiques(); };
+        arrel._redibuixa = function () { GrafSeg.dibuixa(arrel); };
         window.addEventListener('resize', arrel._redibuixa);
       }
 
