@@ -2715,3 +2715,125 @@ function triggerEscalfaFora() {
   Logger.log(resum);
   return resum;
 }
+
+
+/**
+ * MIRAR SI JEFE ARRIBA A INTERVALS.ICU, i què hi troba.
+ *
+ * Es fa abans d'escriure cap mòdul a posta: el que porta una activitat de
+ * força pujada per Gravl no ho sé, i prometre què sortirà al control de
+ * divendres sense haver-ho vist seria inventar-m'ho.
+ *
+ * NO ESCRIU RES ENLLOC. Llegeix i informa.
+ */
+function provaIntervals() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var clau = PropertiesService.getScriptProperties().getProperty(PROP_CLAU_INTERVALS);
+  if (!clau) {
+    a('No hi ha cap clau.');
+    a('');
+    a('Editor → Configuració del projecte → Propietats de l\'script →');
+    a('afegeix ' + PROP_CLAU_INTERVALS + ' amb la clau de intervals.icu');
+    a('(Settings → Developer Settings).');
+    return l.join('\n');
+  }
+  a('Clau trobada (' + clau.length + ' caràcters). No la imprimeixo.');
+
+  var cap = { Authorization: 'Basic ' + Utilities.base64Encode('API_KEY:' + clau) };
+  var atleta = Config.get('intervals_atleta') || 'i666802';
+
+  /* L'identificador el va escriure una persona i pot venir amb la i o sense.
+     Es proven les dues formes abans de dir que alguna cosa falla: fer-lo
+     perseguir un error de format seria fer-li perdre la tarda. */
+  var formes = [atleta, String(atleta).replace(/^i/, ''), 'i' + String(atleta).replace(/^i/, '')];
+  var vistes = {}, prova = [];
+  formes.forEach(function (f) { if (!vistes[f]) { vistes[f] = true; prova.push(f); } });
+
+  var bo = null, ultimError = '';
+  for (var i = 0; i < prova.length && !bo; i++) {
+    var r = UrlFetchApp.fetch('https://intervals.icu/api/v1/athlete/' + prova[i] + '/profile', {
+      headers: cap, muteHttpExceptions: true
+    });
+    if (r.getResponseCode() === 200) { bo = prova[i]; break; }
+    ultimError = prova[i] + ' → ' + r.getResponseCode() + ' ' +
+                 Utils.talla(r.getContentText(), 120);
+  }
+
+  if (!bo) {
+    a('No hi entro. Última resposta: ' + ultimError);
+    a('');
+    a('Si diu 401 o 403, la clau no és bona o s\'ha regenerat.');
+    a('Si diu 404, l\'identificador d\'atleta no és aquest.');
+    return l.join('\n');
+  }
+  a('Hi entro. Identificador bo: ' + bo);
+  if (bo !== atleta) a('(l\'he hagut d\'ajustar; el codi ja se n\'apunta la forma bona)');
+
+  // Les activitats dels últims noranta dies
+  var fins = Utils.avui();
+  var desde = Utils.sumaDies(fins, -90);
+  var res = UrlFetchApp.fetch('https://intervals.icu/api/v1/athlete/' + bo +
+      '/activities?oldest=' + desde + '&newest=' + fins,
+      { headers: cap, muteHttpExceptions: true });
+
+  if (res.getResponseCode() !== 200) {
+    a('El perfil sí, però les activitats no: ' + res.getResponseCode() + ' ' +
+      Utils.talla(res.getContentText(), 200));
+    return l.join('\n');
+  }
+
+  var acts = JSON.parse(res.getContentText());
+  a('');
+  a(acts.length + ' activitats entre ' + desde + ' i ' + fins + '.');
+  if (!acts.length) {
+    a('Cap. Si acabes de connectar Strava, dona-li una estona: la importació');
+    a('de l\'històric no és immediata.');
+    return l.join('\n');
+  }
+
+  /* Quantes de cada mena, que és el que dirà si la força de Gravl hi arriba. */
+  var menes = {};
+  acts.forEach(function (x) {
+    var t = x.type || '(sense tipus)';
+    menes[t] = (menes[t] || 0) + 1;
+  });
+  a('');
+  a('Per mena:');
+  Object.keys(menes).sort().forEach(function (t) { a('  ' + t + ': ' + menes[t]); });
+
+  a('');
+  a('Les cinc últimes:');
+  acts.slice(0, 5).forEach(function (x) {
+    a('  ' + String(x.start_date_local || '').slice(0, 16) +
+      '  ' + (x.type || '?') +
+      '  ' + (x.name || '') +
+      '  · ' + Math.round((x.moving_time || 0) / 60) + ' min' +
+      (x.distance ? '  · ' + Math.round(x.distance / 100) / 10 + ' km' : '') +
+      (x.total_elevation_gain ? '  · ' + Math.round(x.total_elevation_gain) + ' m+' : ''));
+  });
+
+  /* I QUÈ PORTA UNA DE FORÇA, camp per camp. És l'única manera de saber si
+     Gravl hi posa sèries i repeticions o només que hi ha hagut sessió. */
+  var forca = null;
+  for (var k = 0; k < acts.length && !forca; k++) {
+    if (/weight|strength|workout|training/i.test(String(acts[k].type))) forca = acts[k];
+  }
+  if (!forca) {
+    a('');
+    a('No hi ha cap activitat de força entre les de dalt. Si Gravl puja a');
+    a('Strava, potser encara no ha entrat cap sessió aquests noranta dies.');
+  } else {
+    a('');
+    a('Una de força, amb tot el que porta ple:');
+    Object.keys(forca).sort().forEach(function (c) {
+      var v = forca[c];
+      if (v === null || v === '' || v === 0 || v === false) return;
+      if (typeof v === 'object') v = Utils.talla(JSON.stringify(v), 80);
+      a('  ' + c + ': ' + Utils.talla(String(v), 90));
+    });
+  }
+
+  return l.join('\n');
+}
