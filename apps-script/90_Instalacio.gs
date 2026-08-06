@@ -2793,46 +2793,47 @@ function provaIntervals() {
     return l.join('\n');
   }
 
-  /* Quantes de cada mena, que és el que dirà si la força de Gravl hi arriba. */
-  var menes = {};
-  acts.forEach(function (x) {
-    var t = x.type || '(sense tipus)';
-    menes[t] = (menes[t] || 0) + 1;
-  });
+  /* PRIMER, COM ES DIUEN ELS CAMPS. La versió anterior d'això donava per fet
+     que serien `type` i `moving_time` —els noms de Strava— i van sortir 23
+     activitats «sense tipus» i de zero minuts. No eren buides: era jo, que
+     preguntava per uns noms que aquí no existeixen. Ara es demana la llista
+     abans de llegir-ne res. */
   a('');
-  a('Per mena:');
-  Object.keys(menes).sort().forEach(function (t) { a('  ' + t + ': ' + menes[t]); });
+  a('Els camps que porta una activitat, tal com es diuen:');
+  a('  ' + Object.keys(acts[0]).sort().join(', '));
 
-  a('');
-  a('Les cinc últimes:');
-  acts.slice(0, 5).forEach(function (x) {
-    a('  ' + String(x.start_date_local || '').slice(0, 16) +
-      '  ' + (x.type || '?') +
-      '  ' + (x.name || '') +
-      '  · ' + Math.round((x.moving_time || 0) / 60) + ' min' +
-      (x.distance ? '  · ' + Math.round(x.distance / 100) / 10 + ' km' : '') +
-      (x.total_elevation_gain ? '  · ' + Math.round(x.total_elevation_gain) + ' m+' : ''));
-  });
-
-  /* I QUÈ PORTA UNA DE FORÇA, camp per camp. És l'única manera de saber si
-     Gravl hi posa sèries i repeticions o només que hi ha hagut sessió. */
-  var forca = null;
-  for (var k = 0; k < acts.length && !forca; k++) {
-    if (/weight|strength|workout|training/i.test(String(acts[k].type))) forca = acts[k];
-  }
-  if (!forca) {
+  var ple = function (x, titol) {
     a('');
-    a('No hi ha cap activitat de força entre les de dalt. Si Gravl puja a');
-    a('Strava, potser encara no ha entrat cap sessió aquests noranta dies.');
-  } else {
-    a('');
-    a('Una de força, amb tot el que porta ple:');
-    Object.keys(forca).sort().forEach(function (c) {
-      var v = forca[c];
-      if (v === null || v === '' || v === 0 || v === false) return;
-      if (typeof v === 'object') v = Utils.talla(JSON.stringify(v), 80);
-      a('  ' + c + ': ' + Utils.talla(String(v), 90));
+    a(titol);
+    Object.keys(x).sort().forEach(function (c) {
+      var v = x[c];
+      if (v === null || v === undefined || v === '' || v === 0 || v === false) return;
+      if (typeof v === 'object') v = Utils.talla(JSON.stringify(v), 100);
+      a('  ' + c + ': ' + Utils.talla(String(v), 110));
     });
+  };
+
+  ple(acts[0], 'L\'última activitat, amb tot el que porta ple:');
+
+  /* I LA MATEIXA, DEMANADA SENCERA. La llista pot venir retallada —moltes
+     API donen un resum al llistat i el detall a part—, i abans de dir que
+     una dada no hi és cal haver-la demanat pel seu camí. */
+  var id = acts[0].id || acts[0].activity_id;
+  if (id) {
+    var una = UrlFetchApp.fetch('https://intervals.icu/api/v1/activity/' + id,
+                                { headers: cap, muteHttpExceptions: true });
+    if (una.getResponseCode() === 200) {
+      var det = JSON.parse(una.getContentText());
+      var nous = Object.keys(det).filter(function (c) {
+        return acts[0][c] === undefined;
+      });
+      a('');
+      a('Demanada sencera, hi surten ' + nous.length + ' camps més.');
+      if (nous.length) ple(det, 'La mateixa, sencera:');
+    } else {
+      a('');
+      a('El detall d\'una activitat no s\'ha pogut demanar: ' + una.getResponseCode());
+    }
   }
 
   return l.join('\n');
