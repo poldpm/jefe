@@ -173,7 +173,10 @@ function MODUL_TASQUES() {
         type: 'object',
         properties: {
           llista: { type: 'string', description: 'Nom de la llista, si en vol una de sola' },
-          nomes_vencudes: { type: 'boolean', description: 'Només les que ja han passat de data' }
+          nomes_vencudes: { type: 'boolean', description: 'Només les que ja han passat de data' },
+          ensenya: { type: 'boolean',
+                     description: 'true si t\'ha demanat VEURE o ENSENYAR les tasques. ' +
+                                  'S\'obren en un plafó i tu no les has de recitar.' }
         }
       },
       executa: function (a) { return Tasques.consultaIA(a); }
@@ -1045,13 +1048,37 @@ var Tasques = (function () {
     }
     if (a.nomes_vencudes) l = l.filter(function (t) { return t.vencuda; });
 
-    return {
+    var out = {
       quantes: l.length,
       tasques: l.slice(0, 30).map(function (t) {
         return { text: t.text, llista: t.llistaNom, venc_el: t.vencEl,
                  vencuda: t.vencuda, prioritat: t.prioritat };
       })
     };
+
+    /* I si volia VEURE-LES: la data fa de marca, i si en té un pla escrit
+       s'ensenya EL PAS i no el títol —el títol d'una tasca encallada és
+       justament el que et fa apartar la vista—. */
+    if (a.ensenya) {
+      out._visor = {
+        titol: a.nomes_vencudes ? 'Vençudes' : (a.llista || 'Tasques'),
+        mena: 'llista',
+        buit: a.nomes_vencudes ? 'No en tens cap de vençuda.' : 'Cap tasca pendent.',
+        dades: l.map(function (t) {
+          return {
+            marca: t.vencEl ? String(t.vencEl).slice(8) + '/' + String(t.vencEl).slice(5, 7) : '·',
+            text: t.primerPas || t.text,
+            menut: t.primerPas
+              ? (t.passQuan || t.text)
+              : (t.llistaNom + (t.prioritat === 'alta' ? ' · prioritària' : '')),
+            urgent: t.vencuda
+          };
+        }),
+        peu: [l.length + (l.length === 1 ? ' tasca' : ' tasques'),
+              d.vencudes ? d.vencudes + ' vençudes' : '']
+      };
+    }
+    return out;
   }
 
   function apuntaPerNom(a) {

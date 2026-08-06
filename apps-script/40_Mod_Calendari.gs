@@ -183,7 +183,11 @@ function MODUL_CALENDARI() {
           data:  { type: 'string', description: 'Un dia concret AAAA-MM-DD' },
           desde: { type: 'string', description: 'Data inicial AAAA-MM-DD' },
           fins:  { type: 'string', description: 'Data final AAAA-MM-DD' },
-          conte: { type: 'string', description: 'Només els que continguin aquest text al títol' }
+          conte: { type: 'string', description: 'Només els que continguin aquest text al títol' },
+          ensenya: { type: 'boolean',
+                     description: 'true si t\'ha demanat VEURE o ENSENYAR els esdeveniments ' +
+                                  '(«ensenya\'m què tinc demà»). S\'obren en un plafó i tu no ' +
+                                  'els has de recitar: digues-li com a molt una frase.' }
         }
       },
       executa: function (a) { return Calendari.consultaIA(a); }
@@ -1292,7 +1296,7 @@ var Calendari = (function () {
       events = events.filter(function (e) { return e.titol.toLowerCase().indexOf(conte) !== -1; });
     }
 
-    return {
+    var out = {
       files: events.length,                // el zero explícit: que no se n'inventi cap
       rang: desde + '/' + fins,
       esdeveniments: events.slice(0, 40).map(function (e) {
@@ -1305,6 +1309,44 @@ var Calendari = (function () {
         };
       })
     };
+
+    /* I si el que volia era VEURE-HO, les mateixes dades en forma de llista.
+       L'hora fa de marca: és el que busques quan mires un dia, i posada
+       sempre a la mateixa columna l'ull hi baixa sense tornar enrere. */
+    if (a.ensenya) {
+      var unSolDia = (desde === fins);
+      out._visor = {
+        titol: titolDelRang_(desde, fins),
+        mena: 'llista',
+        buit: unSolDia ? 'Aquell dia no tens res.' : 'Aquests dies no tens res al calendari.',
+        dades: events.map(function (e) {
+          var peu = [];
+          if (!unSolDia) peu.push(e.data);
+          if (e.lloc) peu.push(e.lloc);
+          return {
+            marca: e.totElDia ? '—' : e.hora,
+            text: e.titol,
+            menut: peu.join(' · '),
+            fet: e.passat
+          };
+        }),
+        peu: [events.length + (events.length === 1 ? ' cosa' : ' coses')]
+      };
+    }
+    return out;
+  }
+
+  /* Com se'n diu del que estàs mirant. «Avui» i «demà» es reconeixen sols;
+     un rang es diu amb les dues puntes. */
+  function titolDelRang_(desde, fins) {
+    var avui = Utils.avui();
+    if (desde === fins) {
+      if (desde === avui) return 'Avui';
+      if (desde === Utils.sumaDies(avui, 1)) return 'Demà';
+      if (desde === Utils.sumaDies(avui, -1)) return 'Ahir';
+      return desde;
+    }
+    return desde + ' → ' + fins;
   }
 
   /** Ve d'una proposta confirmada. */

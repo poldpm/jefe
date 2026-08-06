@@ -266,7 +266,12 @@ function MODUL_FINANCES() {
           desde:     { type: 'string', description: 'Data inicial AAAA-MM-DD' },
           fins:      { type: 'string', description: 'Data final AAAA-MM-DD' },
           categoria: { type: 'string', description: 'Nom de la categoria, tal com la veu l\'usuari' },
-          text:      { type: 'string', description: 'Text a buscar dins la descripció del moviment' }
+          text:      { type: 'string', description: 'Text a buscar dins la descripció del moviment' },
+          ensenya:   { type: 'boolean',
+                       description: 'true si t\'ha demanat VEURE o ENSENYAR les finances ' +
+                                    '(«ensenya\'m les meves finances», «on se me\'n va?»). ' +
+                                    'S\'obre un plafó amb la despesa per categories i tu no ' +
+                                    'has de recitar-la: digues-li com a molt una frase.' }
         }
       },
       executa: function (a) { return Finances.consultaIA(a); }
@@ -1429,7 +1434,7 @@ var Finances = (function () {
       if (f.tipus === 'i') ingressos += num_(f['import']); else despeses += num_(f['import']);
     });
 
-    return {
+    var out = {
       trobats: files.length,
       desde: desde, fins: fins,
       categoria: idCat ? (cats[idCat] || {}).nom : null,
@@ -1442,6 +1447,52 @@ var Finances = (function () {
                ' · ' + ((cats[f.categoria] || {}).nom || f.categoria);
       })
     };
+
+    /* I si volia VEURE-HO: la despesa per categories, de més a menys.
+       No la llista de moviments —dos-cents apunts no es miren, es
+       consulten— sinó la pregunta que de debò fa qui diu «ensenya'm les
+       finances»: on se me'n va. Si ha filtrat per una sola categoria, això
+       ja no té sentit i el que s'ensenya són els moviments. */
+    if (a.ensenya) {
+      if (idCat || text) {
+        out._visor = {
+          titol: (idCat ? ((cats[idCat] || {}).nom || 'Categoria') : 'Moviments'),
+          mena: 'llista',
+          buit: 'Cap moviment amb aquests filtres.',
+          dades: files.slice().sort(function (x, y) {
+            return String(y.data) < String(x.data) ? -1 : 1;
+          }).map(function (f) {
+            return {
+              marca: String(f.data).slice(8) + '/' + String(f.data).slice(5, 7),
+              text: f.descripcio,
+              menut: (cats[f.categoria] || {}).nom || '',
+              urgent: f.tipus !== 'i',
+              fet: f.tipus === 'i'
+            };
+          }),
+          peu: [files.length + ' moviments', eur(despeses) + ' de despesa']
+        };
+      } else {
+        var perCat = {};
+        files.forEach(function (f) {
+          if (fora[f.categoria] || f.tipus === 'i') return;
+          var nom = (cats[f.categoria] || {}).nom || 'Sense categoria';
+          perCat[nom] = (perCat[nom] || 0) + num_(f['import']);
+        });
+        var barres = Object.keys(perCat).map(function (nom) {
+          return { etiqueta: nom, v: Math.round(perCat[nom] * 100) / 100 };
+        }).sort(function (x, y) { return y.v - x.v; });
+
+        out._visor = {
+          titol: 'On se n\'ha anat' + (desde ? ' · ' + String(desde).slice(0, 7) : ''),
+          mena: 'barres', unitat: '€',
+          buit: 'Cap despesa en aquest període.',
+          dades: barres,
+          peu: [eur(despeses) + ' gastats', eur(ingressos) + ' entrats']
+        };
+      }
+    }
+    return out;
   }
 
   function resumIA_(m) {

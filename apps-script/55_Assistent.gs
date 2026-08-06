@@ -53,6 +53,39 @@ var Assistent = (function () {
     return null;
   }
 
+  /**
+   * El que va al plafó, amb un sostre.
+   *
+   * Això viatja fins al navegador a cada resposta. Una eina que torni tres
+   * mil files no ha de poder fer una resposta de mig mega: el que no hi cap
+   * es talla i es diu al peu, que és més honest que ensenyar-ne dues-centes
+   * i callar que n'hi havia mil.
+   */
+  var VISOR_MAX = 120;
+
+  function visorRetallat_(v) {
+    if (!v || typeof v !== 'object') return undefined;
+    var out = {
+      titol: String(v.titol || ''),
+      mena: v.mena || 'llista',
+      unitat: v.unitat || '',
+      peu: (v.peu || []).slice(0, 3),
+      buit: v.buit || ''
+    };
+
+    if (out.mena === 'taula') {
+      var files = (v.dades && v.dades.files) || [];
+      out.dades = { caps: (v.dades && v.dades.caps) || [], files: files.slice(0, VISOR_MAX) };
+      if (files.length > VISOR_MAX) out.peu.push('i ' + (files.length - VISOR_MAX) + ' més');
+      return out;
+    }
+
+    var d = v.dades || [];
+    out.dades = d.slice(0, VISOR_MAX);
+    if (d.length > VISOR_MAX) out.peu.push('i ' + (d.length - VISOR_MAX) + ' més');
+    return out;
+  }
+
   function retalla_(obj) {
     var s = Utils.json(obj);
     if (s.length <= MAX_RESULTAT) return obj;
@@ -220,12 +253,23 @@ var Assistent = (function () {
            corba, una setmana—. La diferència no és tècnica: canviar de
            pantalla és marxar d'on ets, i això és ensenyar-t'ho sense
            moure't. Igual que `obre`, el nucli no sap què hi ha a dins. */
+        /* I `_visor`: QUALSEVOL EINA POT ENSENYAR EL QUE HA TROBAT.
+           Aquest és el que fa que no calgui una llista de coses ensenyables.
+           L'eina no ha de saber dibuixar: torna les seves dades en una de
+           les quatre formes que el visor sap pintar —llista, línia, barres,
+           taula— i el plafó s'obre sol. Afegir-hi una cosa nova no és tocar
+           el nucli ni la pantalla: és que una eina que ja existeix ho
+           retorni.
+           Només hi va si ELL ha demanat veure-ho: les eines porten un
+           `ensenya` que el model posa quan la pregunta era «ensenya'm» i no
+           «quant». Si no, es contesta amb paraules i no s'obre res. */
         einesUsades.push({
           eina: c.nom, args: c.args || {},
           obre: eina && eina.obre ? eina.obre : undefined,
           mostra: eina && eina.mostra ? eina.mostra : undefined,
           obreAmb: (eina && (eina.obre || eina.mostra) && resultat && resultat._params)
                      ? resultat._params : undefined,
+          visor: (resultat && resultat._visor) ? visorRetallat_(resultat._visor) : undefined,
           files: (resultat && resultat.files !== undefined) ? resultat.files : null
         });
         resultats.push({ nom: c.nom, resultat: retalla_(resultat) });

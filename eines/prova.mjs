@@ -1859,8 +1859,12 @@ console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mat
   const servidor = srvCtx.Seguiment;
 
   // --- la del navegador
+  /* Es talla per on comencen les utilitats i per on s'acaben les regles. El
+     final era «gràfiques», i el dia que la gràfica va sortir de la vista
+     —perquè el visor també la fes servir— aquest tall va deixar de trobar
+     res. Ara s'agafa pel que de debò delimita el que es prova. */
   const i0 = vista.indexOf('    function coma(n, dec) {');
-  const i1 = vista.indexOf('    // ------------------------------------------------------------- gràfiques');
+  const i1 = vista.indexOf('    // -------------------------------------------------------------- capçalera');
   cal('es troba la còpia del navegador dins de la vista', i0 > 0 && i1 > i0);
   const cliCtx = { Date, Math, Number, String, JSON, Object, Array };
   vm.createContext(cliCtx);
@@ -3788,6 +3792,60 @@ console.log('\nLa quota és per model: si el bo diu prou, la pregunta passa al p
   const font = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
   cal('la primera volta demana el model petit',
       /model:\s*volta === 0 \? 'barat' : 'bo'/.test(font));
+}
+
+// ------------------------------------------------------------------ el visor
+console.log('\nEl visor: qualsevol eina pot ensenyar el que ha trobat');
+{
+  /* `visorRetallat_` viu dins de l'assistent. S'extreu i s'executa tal com és:
+     el que es prova és el sostre, que és el que evita que una eina de tres mil
+     files faci una resposta de mig mega cap al navegador. */
+  const src = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
+  const tros = src.slice(src.indexOf('  var VISOR_MAX'), src.indexOf('  function retalla_('));
+  const c = { String, Object, Array, Number, Math, JSON };
+  vm.createContext(c);
+  vm.runInContext(tros + '\nvar __r = visorRetallat_;', c);
+  const retalla = c.__r;
+
+  const moltes = [];
+  for (let i = 0; i < 400; i++) moltes.push({ text: 'cosa ' + i });
+
+  const r = retalla({ titol: 'Moltes', mena: 'llista', dades: moltes, peu: ['400 coses'] });
+  cal('es retalla pel sostre', r.dades.length === 120, r.dades.length);
+  cal('i es diu quantes se n\'han quedat fora',
+      r.peu.join(' ').indexOf('280 més') !== -1, r.peu.join(' · '));
+  cal('el que hi cap no es toca',
+      retalla({ mena: 'llista', dades: [{ text: 'una' }] }).dades.length === 1);
+
+  const t = retalla({ mena: 'taula',
+                      dades: { caps: ['a', 'b'], files: moltes.map(() => ['x', 'y']) } });
+  cal('una taula també es retalla, i per files', t.dades.files.length === 120, t.dades.files.length);
+  cal('i les capçaleres es queden', t.dades.caps.join(',') === 'a,b');
+
+  cal('sense res, no hi ha visor', retalla(null) === undefined);
+  cal('la forma per defecte és la llista', retalla({ dades: [] }).mena === 'llista');
+
+  /* I que el pas del servidor a la pantalla hi sigui de debò: sense això,
+     l'eina retorna el visor i no s'obre res mai. */
+  cal('l\'assistent el fa viatjar', /visor: \(resultat && resultat\._visor\)/.test(src));
+  const conv = fs.readFileSync('apps-script/vista_conversa.html', 'utf8');
+  cal('i la conversa l\'obre', /App\.obreVisor\('nucli\.dades', mostrador\.visor\)/.test(conv));
+  cal('però no si ja s\'obria una pantalla sencera', /if \(mostrador && !ober\)/.test(conv));
+
+  /* LES EINES QUE DIUEN QUE SABEN ENSENYAR, HO HAN DE FER.
+     No es compta quantes n'hi ha —això creixerà— sinó que cap declari
+     `ensenya` a l'esquema i després no retorni res per ensenyar: seria una
+     casella que el model marca i que no fa res. */
+  const ambEnsenya = [];
+  fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).forEach((f) => {
+    const t2 = fs.readFileSync('apps-script/' + f, 'utf8');
+    if (/ensenya:\s*\{ type: 'boolean'/.test(t2)) ambEnsenya.push([f, /_visor\s*=/.test(t2)]);
+  });
+  cal('hi ha eines que saben ensenyar', ambEnsenya.length >= 3,
+      ambEnsenya.map((x) => x[0]).join(', '));
+  cal('i totes les que ho diuen, ho fan',
+      ambEnsenya.every((x) => x[1]),
+      ambEnsenya.filter((x) => !x[1]).map((x) => x[0]).join(', ') || 'cap');
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

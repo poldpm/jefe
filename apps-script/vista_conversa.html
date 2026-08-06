@@ -961,11 +961,17 @@ App.registraVista('conversa', {
 
         /* I si el que demanava era VEURE una cosa, el plafó. Va més de pressa
            que el canvi de pantalla —600 ms i no 900— perquè aquí no marxes de
-           lloc: el que passa és que et posen una cosa al davant. */
-        var mostrador = (r.eines || []).filter(function (e) { return e.mostra; })[0];
+           lloc: el que passa és que et posen una cosa al davant.
+
+           DEMANAR UNA PÀGINA OBRE LA PÀGINA; demanar una cosa de dins d'una
+           pàgina la posa al plafó. Per això si una eina ja ha demanat obrir
+           una pantalla, el plafó no surt: seria posar-li una cosa al davant
+           just abans de canviar-lo de lloc. */
+        var mostrador = (r.eines || []).filter(function (e) { return e.mostra || e.visor; })[0];
         if (mostrador && !ober) {
           setTimeout(function () {
-            App.obreVisor(mostrador.mostra, mostrador.obreAmb || null);
+            if (mostrador.visor) App.obreVisor('nucli.dades', mostrador.visor);
+            else App.obreVisor(mostrador.mostra, mostrador.obreAmb || null);
           }, 600);
         }
       }

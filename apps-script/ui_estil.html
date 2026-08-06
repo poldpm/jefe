@@ -1685,6 +1685,51 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .visor-clau.d3 { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
 .visor-clau.d4 { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
 
+/* ---------------------------------------------------------- les quatre formes
+   Vegeu `ui_visor.html`: llista, línia, barres i taula. Amb aquestes quatre
+   s'ensenya tot el que aquesta app té, i per això no n'hi ha cap més. */
+
+.vis-llista { margin: 0; padding: 0; list-style: none; }
+.vis-llista li { display: flex; gap: var(--e2); align-items: baseline;
+                 padding: 5px 0; line-height: 1.45; }
+.vis-llista li + li { border-top: 1px solid rgba(18, 41, 58, .8); }
+/* Sempre la mateixa amplada: l'ull ha de poder baixar sense tornar enrere. */
+.vis-marca { flex: none; width: 3.1em; font-family: var(--mono); font-size: .6875rem;
+             color: #7fa3b3; }
+.vis-cos { flex: 1; min-width: 0; }
+.vis-text { display: block; font-size: .9375rem; overflow-wrap: anywhere; }
+.vis-llista .menut { display: block; margin-top: 1px; }
+.vis-llista li[data-fet="1"] .vis-text { color: #7fa3b3; }
+.vis-llista li[data-urgent="1"] .vis-marca { color: var(--alerta, #ef5f52); }
+
+.vis-linia { display: block; width: 100%; height: 112px; }
+.vis-traç { fill: none; stroke: var(--cian, #4fd6e0); stroke-width: 2;
+            stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.vis-punt { fill: #0b1c28; stroke: var(--cian, #4fd6e0); stroke-width: 1.4; }
+.vis-ara { fill: var(--cian, #4fd6e0); stroke: none; }
+.vis-eix { display: flex; justify-content: space-between; margin-top: 4px;
+           font-family: var(--mono); font-size: .625rem; color: #7fa3b3; }
+
+/* Barres horitzontals: les etiquetes són paraules, i en vertical caldria
+   girar-les. Un text girat no es llegeix, es desxifra. */
+.vis-barres { display: flex; flex-direction: column; gap: 7px; }
+.vis-barra { display: grid; grid-template-columns: 8.5em 1fr auto; gap: var(--e2);
+             align-items: center; }
+.vis-barra-nom { font-size: .8125rem; overflow: hidden; text-overflow: ellipsis;
+                 white-space: nowrap; }
+.vis-barra-riu { height: 8px; background: rgba(18, 41, 58, .9); display: block; }
+.vis-barra-riu i { display: block; height: 100%; background: var(--cian, #4fd6e0); }
+.vis-barra-val { font-family: var(--mono); font-size: .6875rem; color: #b6ccd3;
+                 font-variant-numeric: tabular-nums; }
+
+.vis-taula-fora { overflow-x: auto; }
+.vis-taula { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+.vis-taula th { text-align: left; font-family: var(--mono); font-size: .625rem;
+                letter-spacing: .1em; text-transform: uppercase; color: #7fa3b3;
+                font-weight: 400; padding: 0 var(--e2) 5px 0; }
+.vis-taula td { padding: 5px var(--e2) 5px 0; border-top: 1px solid rgba(18, 41, 58, .8);
+                font-variant-numeric: tabular-nums; }
+
 /* El peu d'un plafó: d'on surt el que veus i què n'ha canviat. Dues xifres i
    prou —una a cada punta— perquè el dibuix no quedi flotant sense context. */
 .visor-peu {
