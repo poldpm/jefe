@@ -2530,7 +2530,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 22:23 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-06 22:38 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2882,7 +2882,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 22:23 · en curs";
+window.MARCA_JEFE = "2026-08-06 22:38 · en curs";
 </script>
 
 <script>
@@ -4727,11 +4727,26 @@ App.registraVista('inici', {
   position: relative; z-index: 2; flex: 1; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--e3); padding: var(--e4) var(--e4) 0; text-align: center;
+  /* XARXA DE SEGURETAT. La fitxa es mesura i no hauria de sortir mai d'aquí,
+     però si un dia se'n surt val més que quedi tallada que no pas que passi
+     per sota de la barra d'escriure —que és el que feia— i et tapi l'última
+     línia de la resposta amb el que estàs dictant. */
+  overflow: hidden;
 }
 
 /* Sense nom a sota: el nucli ja diu qui és. La marca només repetia una
    paraula que ja saps, i li prenia lloc al que de debò mires. */
-.nucli-caixa { flex: none; width: min(82vw, 46vh); aspect-ratio: 1; }
+/* L'ESFERA CEDEIX ESPAI QUAN HI HA UNA RESPOSTA.
+   Mesurat al mòbil: amb l'esfera a mida completa quedaven 102 píxels per
+   llegir, que són quatre línies. No és que la fitxa fos petita: és que
+   l'esfera se n'estava emportant tot l'espai en el moment en què el que
+   importa és el text. Torna a créixer quan despatxes la resposta. */
+.nucli-caixa {
+  flex: none; width: min(82vw, 46vh); aspect-ratio: 1;
+  transition: width .38s var(--entra);
+}
+.hud[data-resposta="1"] .nucli-caixa { width: min(54vw, 30vh); }
+@media (prefers-reduced-motion: reduce) { .nucli-caixa { transition: none; } }
 
 /* ------------------------------------------------------------- transcripció */
 
@@ -4799,8 +4814,19 @@ App.registraVista('inici', {
 .torn-cursa::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 /* La primera línia en blanc pur: un titular sense haver-ne d'escriure cap. */
-.torn .diu { margin: 0; font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+.torn .diu { margin: 0; font-size: 1rem; line-height: 1.55; }
 .torn .diu::first-line { color: #fff; }
+/* Una línia per bloc. El `pre-wrap` es queda per si el model deixa espais
+   alineats a dins d'una línia, però els salts ja els fan els blocs. */
+.torn .diu .l { display: block; white-space: pre-wrap; }
+.torn .diu .l:empty { height: .55em; }
+/* Sagnat penjat a les llistes: quan «15:00 · Dinar amb els caçadors» dona la
+   volta, la segona part queda sota el text i no sota el pic. */
+.torn .diu .l[data-pic] { padding-left: 1.05em; text-indent: -1.05em; }
+.torn .diu .l[data-pic]::before { content: '·\00a0'; color: var(--cian); }
+.torn .diu b { font-weight: 600; color: #fff; }
+.torn .diu code { font-family: var(--mono); font-size: .875em;
+                  background: rgba(79, 214, 224, .1); padding: 0 4px; }
 
 @media (prefers-reduced-motion: reduce) {
   .fil-resposta, .torn-fitxa { animation: none; }
@@ -5044,6 +5070,17 @@ App.registraVista('conversa', {
 
     nucli = Nucli.crea(arrel.querySelector('#nucli-caixa'));
 
+    /* QUAN L'ESFERA ACABA DE CANVIAR DE MIDA. El canvas té la seva pròpia
+       resolució: si la caixa creix o s'encongeix i ningú l'hi diu, el dibuix
+       s'estira i queda borrós. I un cop sabuda la mida nova, es torna a
+       mesurar l'espai que li queda a la fitxa. */
+    arrel.querySelector('#nucli-caixa').addEventListener('transitionend', function (ev) {
+      if (ev.propertyName !== 'width') return;
+      nucli.redimensiona();
+      var c = tr.querySelector('.torn-cursa');
+      if (c) { capALaFitxa(c); marcaLaLectura(); }
+    });
+
     /* El terreny del fons es genera un sol cop: el SVG escala sol amb el
        contenidor, i la llavor és fixa perquè no balli a cada repintada. */
     arrel.querySelector('#reticula').innerHTML =
@@ -5145,11 +5182,16 @@ App.registraVista('conversa', {
         }
       }
       tr.innerHTML = ultim ? torn(ultim) : '';
+      hud.dataset.resposta = ultim ? '1' : '0';
       lligaPropostes();
       var cursa = tr.querySelector('.torn-cursa');
       if (cursa) {
         cursa.scrollTop = 0;
         cursa.addEventListener('scroll', marcaLaLectura);
+        /* Dos cops: ara, amb l'esfera encara gran —perquè la fitxa no
+           trepitgi res mentre s'encongeix— i quan ha acabat d'encongir-se,
+           que és quan es coneix l'espai de debò. */
+        capALaFitxa(cursa);
         marcaLaLectura();
       }
       pintaTelemetria();
@@ -5172,6 +5214,38 @@ App.registraVista('conversa', {
       amagaResposta();
     });
 
+    /**
+     * EL QUE ESCRIU EL MODEL, LLEGIBLE.
+     *
+     * Els models escriuen en markdown encara que els diguis que no, i sortia
+     * tal qual: «Tot el dia: **Aniversari de Mama**» amb els asteriscs a la
+     * vista. Un assistent que ensenya el codi de la negreta sembla trencat.
+     *
+     * NO S'HI POSA CAP LLIBRERIA DE MARKDOWN. D'aquí només en surten tres
+     * coses —negreta, guions de llista i alguna cursiva—, i el pes d'una
+     * dependència es pagaria a cada obertura per resoldre-les. Amb el que hi
+     * ha aquí n'hi ha prou.
+     *
+     * PRIMER S'ESCAPA I DESPRÉS ES FORMATA, mai al revés: així el que ve del
+     * model no pot escriure etiquetes. El poc HTML que hi ha el posem
+     * nosaltres, i sobre text que ja és inofensiu.
+     */
+    function formata(text) {
+      return String(text || '').split('\n').map(function (linia) {
+        var pic = /^[ \t]*[-*•·]\s+/.test(linia);
+        var cos = esc(pic ? linia.replace(/^[ \t]*[-*•·]\s+/, '') : linia)
+          /* La negreta del model. Sense saltar de línia a dins: un asterisc
+             solt enmig d'un text no ha de menjar-se mig missatge. */
+          .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+          .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:!?]|$)/g, '$1<i>$2</i>')
+          .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        /* Una línia per bloc, i les de llista amb sagnat penjat: quan una
+           línia de «15:00 · Dinar amb els caçadors» dona la volta, la segona
+           part ha de quedar sota el text i no sota el pic. */
+        return '<span class="l"' + (pic ? ' data-pic="1"' : '') + '>' + cos + '</span>';
+      }).join('');
+    }
+
     function torn(m) {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
         '<div class="fil-resposta"></div>' +
@@ -5179,7 +5253,7 @@ App.registraVista('conversa', {
           '<div class="torn-rail"></div>' +
           '<div class="torn-clau a"></div><div class="torn-clau b"></div>' +
           '<div class="torn-cursa">' +
-        '<div class="diu">' + esc(m.text) + '</div>';
+        '<div class="diu">' + formata(m.text) + '</div>';
       if ((m.eines && m.eines.length) || m.temps) {
         h += '<div class="traca">' +
           (m.eines || []).map(function (e) {
@@ -5212,6 +5286,40 @@ App.registraVista('conversa', {
         }).join('');
       }
       return h + '</div></div>';
+    }
+
+    /**
+     * FINS ON POT ARRIBAR LA FITXA, MESURAT I NO ENDEVINAT.
+     *
+     * Ho tenia posat a «40 de l'alçada de la pantalla» i era una xifra
+     * inventada: amb una resposta llarga i la barra del micròfon oberta, la
+     * fitxa passava per sota de la barra d'escriure i l'última línia quedava
+     * tapada pel que estaves dictant. Es va veure a la primera captura.
+     *
+     * Ara es mira l'espai que queda de debò —el que sobra del centre un cop
+     * hi és l'esfera— i se li resta el que la fitxa ocupa sense text: el fil,
+     * les vores, el coixí i, si n'hi ha, la proposta a confirmar. El que
+     * queda és el sostre. No hi ha cap número escrit a mà.
+     */
+    function capALaFitxa(cursa) {
+      var centre = arrel.querySelector('.jefe-centre');
+      var caixa = arrel.querySelector('.nucli-caixa');
+      var elTorn = tr.querySelector('.torn');
+      if (!centre || !caixa || !elTorn) return;
+
+      /* `clientHeight` INCLOU EL COIXÍ, i el centre en té a dalt. Sense
+         restar-lo sortien setze píxels de més: just els que feien que
+         l'última línia quedés sota la barra d'escriure. */
+      var e = window.getComputedStyle(centre);
+      var coixi = (parseFloat(e.paddingTop) || 0) + (parseFloat(e.paddingBottom) || 0);
+      var separacio = parseFloat(e.rowGap) || 12;
+      var disponible = centre.clientHeight - coixi - caixa.offsetHeight - separacio;
+
+      /* El que ocupa el torn sense comptar el text: mesurat, no calculat a
+         partir del CSS, que és on s'acumulen les errades d'un píxel. */
+      var extra = elTorn.offsetHeight - cursa.clientHeight;
+      var sostre = Math.max(88, Math.round(disponible - extra));
+      cursa.style.setProperty('--sostre', sostre + 'px');
     }
 
     /* ON S'ESVAEIX EL TEXT I QUANT EN PORTES LLEGIT.
