@@ -24,6 +24,7 @@ export function dades(AVUI, menys) {
       esComptador: true, mitjana7: 5.3, canvi7: -1.2, total30: 148 },
     { id: 'h7', nom: 'Idiomes', tipus: 'si_no', objectiu: 1, valor: 0, ratxa: 0, pct30: 8 },
     { id: 'h8', nom: 'Diari de camp', tipus: 'si_no', objectiu: 1, valor: 1, ratxa: 7, pct30: 71 },
+    { id: 'h10', nom: '10.000 passes', tipus: 'si_no', objectiu: 1, valor: 0, ratxa: 0, pct30: 55 },
     { id: 'h9', nom: 'No mirar el mòbil al llit', tipus: 'si_no', objectiu: 1, valor: 0, ratxa: 0, pct30: 33 }
   ];
 
