@@ -645,6 +645,9 @@ var Jefe = (function () {
 
     obreVisor: function (clau, params) {
       var def = App.visors[clau];
+      /* Ni aquí es parla de dins. Si algun dia s'obre un visor que no
+         existeix, el que ell ha de llegir és què li ha passat a ell, no que
+         a mi em falta una peça. */
       if (!def) { App.brindis('Això encara no ho sé ensenyar.', 'error'); return null; }
       params = params || {};
 

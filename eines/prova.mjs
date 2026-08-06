@@ -3846,6 +3846,17 @@ console.log('\nEl visor: qualsevol eina pot ensenyar el que ha trobat');
   cal('i totes les que ho diuen, ho fan',
       ambEnsenya.every((x) => x[1]),
       ambEnsenya.filter((x) => !x[1]).map((x) => x[0]).join(', ') || 'cap');
+
+  /* I QUE NO TORNI A PARLAR DE LES SEVES EINES.
+     «No tinc cap eina per a això» és explicar-li com estàs fet en comptes de
+     respondre-li, i el deixa sense saber què fer. La instrucció és al prompt,
+     i el prompt és una cosa que s'esporga sense voler. */
+  cal('se li diu que no parli mai de les seves eines',
+      /MAI PARLIS DE LES TEVES EINES/.test(src));
+  cal('amb les paraules exactes que ha de defugir',
+      /no tinc cap eina/i.test(src) && /no disposo/i.test(src), '');
+  cal('i amb què ha de fer al seu lloc: dir què sí que pot donar',
+      /què SÍ que li pots donar/.test(src));
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
