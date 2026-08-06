@@ -1,0 +1,347 @@
+<script>
+/* JEFE — MÒDUL · Focus
+
+   QUÈ ENSENYA I EN QUIN ORDRE:
+
+     1. EL RELLOTGE, gros i al mig. Mentre corre, no hi ha res més a tocar
+        que aturar-lo: una pantalla de concentrar-se plena de botons és una
+        broma.
+     2. LES DURADES, i la de deu primer. Vegeu `40_Mod_Focus.gs`: el que
+        costa és començar, i vint-i-cinc minuts són una decisió.
+     3. EN QUÈ, si vols lligar-hi una tasca. Opcional sempre: un bloc sense
+        tasca és un bloc igualment.
+     4. EL QUE PORTES AVUI, al peu i sense objectiu. Un objectiu de minuts
+        convertiria això en una altra cosa que es pot fallar.
+
+   EL RELLOTGE NO COMPTA SEGONS: MIRA L'HORA.
+   Un `setInterval` que suma un segon cada vegada es queda enrere quan
+   bloqueges el telèfon —el navegador l'atura o l'alenteix— i llavors tens
+   un temporitzador que menteix. Aquí es desa QUAN va començar i, a cada
+   repintada, es resta de l'hora d'ara. Tanca l'app, torna-la a obrir i el
+   bloc segueix on toca. */
+
+App.registraVista('focus', {
+  render: function (arrel, params) {
+
+    var d = null;
+    var estat = null;          // { inici, minuts, tasca, tasca_llista, tasca_text }
+    var tic = null;
+    var triant = false;        // el tauler de tasques, obert
+    var durada = Cau.get('focus.durada', 10);
+
+    /* El bloc en marxa viu al telèfon, no al servidor: només s'apunta quan
+       s'acaba. Així tancar l'app no perd res i obrir-la no costa una anada. */
+    function llegeixEstat() {
+      var e = Cau.get('focus.encurs', null);
+      if (!e || !e.inici || !e.minuts) return null;
+      /* Un bloc de fa hores no és un bloc: si el telèfon ha estat apagat tot
+         el matí, el que hi havia ja no corre. Es descarta passat el doble
+         del que havia de durar. */
+      if (queden(e) < -(e.minuts * 60)) { Cau.treu('focus.encurs'); return null; }
+      return e;
+    }
+
+    function queden(e) {
+      var passats = Math.floor((Date.now() - new Date(e.inici).getTime()) / 1000);
+      return (e.minuts * 60) - passats;
+    }
+
+    function rellotge(seg) {
+      var s = Math.max(0, seg);
+      var m = Math.floor(s / 60);
+      return m + ':' + ('0' + (s % 60)).slice(-2);
+    }
+
+    function horesMin(m) {
+      if (!m) return '0 min';
+      if (m < 60) return m + ' min';
+      var h = Math.floor(m / 60), r = m % 60;
+      return h + ' h' + (r ? ' ' + r : '');
+    }
+
+    // ---------------------------------------------------------------- pintar
+
+    function capcalera() {
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:1.0625rem;margin:0">Focus</h1>' +
+          '<p class="marge" style="margin:2px 0 0">' +
+            (d ? esc(horesMin(d.minutsAvui) + ' avui') : '') + '</p>' +
+        '</div>' +
+      '</div></header>';
+    }
+
+    function pinta() {
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina foc-pagina">' +
+          (estat ? corrent() : parat()) +
+          (triant ? tauler() : '') +
+          (d && d.blocs.length ? historic() : '') +
+        '</div>';
+      lliga();
+    }
+
+    /* MENTRE CORRE: el rellotge i una sola sortida. La tasca a sota, perquè
+       quan aixequis el cap sàpigues què estaves fent. */
+    function corrent() {
+      var seg = queden(estat);
+      var pct = Math.max(0, Math.min(100,
+        Math.round((1 - seg / (estat.minuts * 60)) * 100)));
+      var acabat = seg <= 0;
+
+      return '<section class="foc-centre">' +
+        '<div class="foc-anell" style="--p:' + pct + '"' +
+          (acabat ? ' data-acabat="1"' : '') +
+          ' role="timer" aria-live="off" aria-label="' +
+          esc(acabat ? 'Bloc acabat' : rellotge(seg) + ' per acabar') + '">' +
+          '<b>' + esc(acabat ? 'Fet' : rellotge(seg)) + '</b>' +
+          '<small>' + esc(acabat ? horesMin(estat.minuts) : 'de ' + horesMin(estat.minuts)) +
+          '</small>' +
+        '</div>' +
+        (estat.tasca_text
+          ? '<p class="foc-que">' + esc(estat.tasca_text) + '</p>'
+          : '<p class="foc-que foc-sense">Sense tasca</p>') +
+        '<div class="foc-accions">' +
+          (acabat
+            ? '<button class="btn btn-primari" data-tanca-bloc="1">Apunta-ho i plega</button>' +
+              '<button class="btn btn-secundari" data-mes="1">Deu minuts més</button>'
+            : '<button class="btn btn-secundari" data-atura="1">Ho deixo aquí</button>') +
+        '</div>' +
+      '</section>';
+    }
+
+    /* PARAT: triar durada, triar en què, i començar. Tres coses i cap més. */
+    function parat() {
+      var tria = params.tasca_text || null;
+      return '<section class="foc-centre">' +
+        '<div class="foc-tries">' + (d ? d.durades : [10, 25, 50]).map(function (m) {
+          return '<button class="foc-durada" data-durada="' + m + '"' +
+                 (durada === m ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+                 m + '<span>min</span></button>';
+        }).join('') + '</div>' +
+
+        '<button class="foc-en-que" data-tria="1">' +
+          (tria ? esc(tria) : 'En què? (opcional)') +
+          ic('dreta', 'ic-p') +
+        '</button>' +
+
+        '<button class="btn btn-primari foc-comenca" data-comenca="1">Comença</button>' +
+        '<p class="menut foc-nota">Deu minuts primer. Si en acabar segueixes, ja en són ' +
+          'vint-i-cinc; i si no, has fet deu que no hauries fet.</p>' +
+      '</section>';
+    }
+
+    function tauler() {
+      var l = (d && d.tasques) || [];
+      return '<section class="secc"><div class="caixes"><section class="caixa">' +
+        '<h3 class="caixa-cap"><span>En què hi treballes</span>' +
+          '<button class="foc-cap-x" data-tria="0" aria-label="Tanca">' + ic('tancar', 'ic-p') +
+          '</button></h3>' +
+        (l.length
+          ? '<ul class="caixa-coses">' +
+              '<li><button class="foc-tasca" data-sense="1">Sense tasca</button></li>' +
+              l.map(function (t) {
+                return '<li><button class="foc-tasca" data-t="' + esc(t.id) + '"' +
+                  ' data-llista="' + esc(t.llista) + '" data-text="' + esc(t.text) + '"' +
+                  (t.vencuda ? ' data-urgent="1"' : '') + '>' +
+                  '<span>' + esc(t.text) + '</span>' +
+                  (t.pas ? '<span class="foc-pas">' + esc(t.pas) + '</span>' : '') +
+                '</button></li>';
+              }).join('') +
+            '</ul>'
+          : '<p class="menut" style="padding:var(--e2) var(--e3)">Aquí no hi ha tasques. ' +
+            'El bloc pot anar sol igualment.</p>') +
+      '</section></div></section>';
+    }
+
+    /* El que portes avui. Sense objectiu i sense ratxa: només què has fet. */
+    function historic() {
+      return '<section class="secc">' +
+        '<p class="marge">Avui</p>' +
+        '<div class="caixes"><section class="caixa"><ul class="caixa-coses">' +
+          d.blocs.map(function (b) {
+            return '<li class="foc-fila">' +
+              '<span class="foc-hora">' + esc(b.hora) + '</span>' +
+              '<span class="foc-cos">' + esc(b.tasca || 'Sense tasca') + '</span>' +
+              '<span class="menut">' + b.minuts + ' min' +
+                (b.complet ? '' : ' · a mitges') + '</span>' +
+            '</li>';
+          }).join('') +
+        '</ul></section></div>' +
+      '</section>';
+    }
+
+    // ---------------------------------------------------------------- moure
+
+    function arrenca(tasca) {
+      estat = {
+        inici: new Date().toISOString(),
+        minuts: durada,
+        tasca: (tasca && tasca.id) || '',
+        tasca_llista: (tasca && tasca.llista) || '',
+        tasca_text: (tasca && tasca.text) || ''
+      };
+      Cau.set('focus.encurs', estat);
+      triant = false;
+      pinta();
+      compta();
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+    }
+
+    /* Es repinta cada segon MENTRE ES MIRA, i el número surt de l'hora, no
+       d'un comptador. Quan la pantalla no es veu, el navegador ho alenteix i
+       tant se val: en tornar-hi, el número és el bo igualment. */
+    function compta() {
+      clearTimeout(tic);
+      if (!estat) return;
+      var seg = queden(estat);
+      if (seg <= 0 && !estat.avisat) {
+        estat.avisat = true;
+        Cau.set('focus.encurs', estat);
+        avisa();
+      }
+      pinta();
+      tic = setTimeout(compta, 1000);
+    }
+
+    /* QUAN S'ACABA. No hi ha cap servidor que pugui avisar-te d'això —el
+       rellotge corre aquí—, o sigui que s'avisa amb el que el navegador
+       sap fer: vibrar i, si li has donat permís, una notificació seva. */
+    function avisa() {
+      if (navigator.vibrate) {
+        try { navigator.vibrate([180, 90, 180]); } catch (e) {}
+      }
+      try {
+        if (window.Notification && Notification.permission === 'granted' &&
+            navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(function (reg) {
+            reg.showNotification('Bloc acabat', {
+              body: estat && estat.tasca_text
+                ? estat.tasca_text + ' · ' + horesMin(estat.minuts)
+                : horesMin(estat.minuts) + ' de feina seguida',
+              tag: 'focus', icon: './icona.svg'
+            });
+          });
+        }
+      } catch (e) { /* sense permís, ja hi ha la vibració i la pantalla */ }
+    }
+
+    function tanca(complet) {
+      if (!estat) return;
+      var passats = Math.max(1, Math.round(
+        (Date.now() - new Date(estat.inici).getTime()) / 60000));
+      var minuts = complet ? estat.minuts : Math.min(passats, estat.minuts);
+
+      var enviar = {
+        inici: estat.inici, minuts: minuts, previst: estat.minuts,
+        complet: !!complet, tasca: estat.tasca,
+        tasca_llista: estat.tasca_llista, tasca_text: estat.tasca_text
+      };
+      Cau.treu('focus.encurs');
+      estat = null;
+      clearTimeout(tic);
+      pinta();
+
+      escriu('focus', 'apunta', enviar, {})
+        .then(function (r) { d = r; App.brindis(horesMin(minuts) + ' apuntats'); pinta(); })
+        .catch(function (err) { App.brindis(err.message, 'error'); });
+    }
+
+    // ---------------------------------------------------------------- lligar
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-durada]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          durada = Number(b.dataset.durada);
+          Cau.set('focus.durada', durada);
+          pinta();
+        });
+      });
+
+      arrel.querySelectorAll('[data-tria]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          triant = b.dataset.tria === '1';
+          pinta();
+        });
+      });
+
+      arrel.querySelectorAll('[data-t]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          params.tasca = b.dataset.t;
+          params.tasca_llista = b.dataset.llista;
+          params.tasca_text = b.dataset.text;
+          triant = false;
+          pinta();
+        });
+      });
+      var sense = arrel.querySelector('[data-sense]');
+      if (sense) sense.addEventListener('click', function () {
+        params.tasca = params.tasca_llista = params.tasca_text = '';
+        triant = false;
+        pinta();
+      });
+
+      var c = arrel.querySelector('[data-comenca]');
+      if (c) c.addEventListener('click', function () {
+        arrenca(params.tasca_text
+          ? { id: params.tasca, llista: params.tasca_llista, text: params.tasca_text }
+          : null);
+      });
+
+      var a = arrel.querySelector('[data-atura]');
+      if (a) a.addEventListener('click', function () { tanca(false); });
+
+      var f = arrel.querySelector('[data-tanca-bloc]');
+      if (f) f.addEventListener('click', function () { tanca(true); });
+
+      var m = arrel.querySelector('[data-mes]');
+      if (m) m.addEventListener('click', function () {
+        /* Deu minuts més NO és un bloc nou: és el mateix, allargat. El que
+           s'apunta al final és el temps de debò. */
+        estat.minuts += 10;
+        estat.avisat = false;
+        Cau.set('focus.encurs', estat);
+        compta();
+      });
+    }
+
+    // --------------------------------------------------------------- càrrega
+
+    function carrega() {
+      var cau = Cau.get('focus', null);
+      if (cau) { d = cau; pinta(); }
+      else arrel.innerHTML = Comp.carregant(2);
+
+      crida('focus', 'pantalla', {}).then(function (r) {
+        d = r; Cau.set('focus', r);
+        App.mantenintLaVista(pinta);
+      }).catch(function (err) {
+        if (d) return;
+        arrel.innerHTML = Comp.error(err, true);
+        var b = arrel.querySelector('[data-reintenta]');
+        if (b) b.addEventListener('click', function () { App.ves('focus'); });
+      });
+    }
+
+    /* Si la conversa ha demanat una durada, mana ella. */
+    if (params.minuts) durada = Number(params.minuts);
+
+    estat = llegeixEstat();
+    carrega();
+    if (estat) compta();
+
+    /* En sortir de la pantalla, el rellotge de repintar s'atura. El bloc no:
+       viu al telèfon i segueix corrent encara que miris una altra cosa. */
+    var vigila = setInterval(function () {
+      if (arrel.isConnected) return;
+      clearTimeout(tic);
+      clearInterval(vigila);
+    }, 2000);
+  }
+});
+</script>

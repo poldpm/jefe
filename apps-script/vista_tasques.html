@@ -351,13 +351,23 @@ App.registraVista('tasques', {
             '<textarea data-c="nota" rows="3">' + esc(t.nota || '') + '</textarea></label>' +
           '<p class="menut">La prioritat, el «hi estic» i el primer pas se\'ls guarda ' +
             'en JEFE: Google Tasks no els sap desar. La resta és la tasca de debò.</p>' +
-          '<button class="btn btn-primari" data-desa>Desa</button>' +
+          /* POSAR-S'HI DES D'AQUÍ. El moment en què decideixes treballar en
+             una cosa és quan la tens oberta al davant, no quan vas a buscar
+             un rellotge en una altra pantalla. */
+          '<button class="btn btn-secundari" data-focus>' + ic('focus') +
+            'Posa-t\'hi ara</button>' +
+          '<button class="btn btn-primari" data-desa style="margin-top:var(--e2)">Desa</button>' +
           '<button class="btn btn-secundari" data-esborra style="margin-top:var(--e2)">' +
             'Esborra-la de Google Tasks</button>' +
         '</div>');
 
       var camps = {};
       cos.querySelectorAll('[data-c]').forEach(function (i) { camps[i.dataset.c] = i; });
+
+      cos.querySelector('[data-focus]').addEventListener('click', function () {
+        App.tancaModal();
+        App.ves('focus', { tasca: t.id, tasca_llista: t.llista, tasca_text: t.text });
+      });
 
       cos.querySelector('[data-desa]').addEventListener('click', function () {
         var b = this;

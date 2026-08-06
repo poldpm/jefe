@@ -2241,6 +2241,96 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   FOCUS
+
+   Una pantalla per concentrar-se no pot ser una pantalla plena. Mentre el
+   bloc corre només hi ha el rellotge, en què estàs, i una sola sortida.
+   ========================================================================== */
+
+.foc-pagina { max-width: 620px; }
+.foc-centre { display: flex; flex-direction: column; align-items: center;
+              gap: var(--e4); padding: var(--e4) 0 var(--e3); }
+
+/* L'anell és el mateix llenguatge que la resta de l'app: el que té objectiu
+   s'ensenya com un anell que s'omple. Aquí el que s'omple és l'estona. */
+.foc-anell {
+  --p: 0;
+  width: min(74vw, 260px); aspect-ratio: 1; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: conic-gradient(var(--utm) calc(var(--p) * 1%), var(--neatline) 0);
+  position: relative;
+}
+.foc-anell::before {
+  content: ''; position: absolute; inset: 9px; border-radius: 50%;
+  background: var(--paper);
+}
+.foc-anell b, .foc-anell small { position: relative; z-index: 1; }
+.foc-anell b {
+  font-size: clamp(2.4rem, 13vw, 3.6rem); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.foc-anell small {
+  margin-top: 6px; font-family: var(--mono); font-size: .6875rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-suau);
+}
+/* En acabar, l'anell sencer. Sense parpelleig: ja t'ha vibrat el telèfon, i
+   una pantalla que batega mentre decideixes què fas és soroll. */
+.foc-anell[data-acabat="1"] { background: var(--utm); }
+
+.foc-que { margin: 0; font-size: 1rem; text-align: center; max-width: 30ch; }
+.foc-sense { color: var(--ink-suau); }
+
+.foc-accions { display: flex; flex-direction: column; gap: var(--e2);
+               width: 100%; max-width: 320px; }
+.foc-accions .btn { width: 100%; }
+
+/* Les durades. La primera és la de deu i surt triada: vegeu 40_Mod_Focus.gs. */
+.foc-tries { display: flex; gap: var(--e2); }
+.foc-durada {
+  min-width: 76px; min-height: 76px; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
+  font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.foc-durada span { font-family: var(--mono); font-size: .5625rem; letter-spacing: .1em;
+                   text-transform: uppercase; font-weight: 400; }
+.foc-durada[aria-pressed="true"] { color: var(--utm); border-color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .foc-durada:hover { color: var(--utm); } }
+
+.foc-en-que {
+  display: flex; align-items: center; gap: var(--e2); width: 100%; max-width: 340px;
+  min-height: 48px; padding: 0 var(--e3);
+  border: 1px solid var(--neatline); background: transparent;
+  color: var(--ink); font: inherit; font-size: .9375rem; text-align: left;
+}
+.foc-en-que .ic { margin-left: auto; flex: none; color: var(--ink-suau); }
+.foc-comenca { width: 100%; max-width: 340px; }
+.foc-nota { max-width: 34ch; text-align: center; margin: 0; }
+
+.foc-tasca {
+  display: block; width: 100%; text-align: left; padding: var(--e2) var(--e3);
+  border: 0; background: transparent; color: var(--ink); font: inherit;
+  font-size: .875rem; line-height: 1.4; min-height: 44px;
+}
+.foc-tasca[data-urgent="1"] > span:first-child { color: var(--avis); }
+.foc-tasca .foc-pas { display: block; margin-top: 2px; font-size: .8125rem; color: var(--utm); }
+@media (hover: hover) and (pointer: fine) { .foc-tasca:hover { background: var(--utm-suau); } }
+.foc-cap-x { flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
+             display: flex; align-items: center; justify-content: center;
+             border: 0; background: transparent; color: var(--ink-suau); }
+
+.foc-fila { display: flex; gap: var(--e2); align-items: baseline;
+            padding: var(--e1) var(--e3); }
+.foc-hora { flex: none; width: 3.2em; font-family: var(--mono); font-size: .6875rem;
+            color: var(--ink-suau); }
+.foc-cos { flex: 1; min-width: 0; font-size: .875rem; }
+
+@media (prefers-reduced-motion: reduce) { .foc-durada { transition: none; } }
+
+
+/* ==========================================================================
    LES RELACIONS
 
    Files de dues línies: la frase i, sota, d'on surt. La segona línia no és

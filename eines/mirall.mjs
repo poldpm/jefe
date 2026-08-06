@@ -96,6 +96,7 @@ const MOCK = `
        })))};
   var SETMANA_ARA = ${j(D.laSetmana({}).desde)};
 
+  var FOCUS       = ${j(D.focusPantalla())};
   var RELACIONS   = ${j(D.relacions())};
   var CAL         = { calendaris: ${j(D.CALENDARIS)} , fets: [], trets: [] };
   var CAL_MESOS   = ${j(Object.fromEntries(
@@ -307,6 +308,18 @@ const MOCK = `
                  temps: { total: 2600, veu: 900, ia: 1700, context: 0, eines: 0, voltes: 1 } };
       }
       if (accio === 'envia') throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
+    }
+
+    if (modul === 'focus') {
+      if (accio === 'pantalla') return copia(FOCUS);
+      if (accio === 'apunta') {
+        var f = copia(FOCUS);
+        f.blocs.push({ hora: '—', minuts: p.minuts, complet: !!p.complet,
+                       tasca: p.tasca_text || '' });
+        f.minutsAvui += p.minuts;
+        FOCUS = f;
+        return copia(f);
+      }
     }
 
     if (modul === 'relacions') {
@@ -694,7 +707,7 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
 const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances',
-                'seguiment', 'escola', 'diari', 'dia', 'setmana', 'relacions', 'memoria'];
+                'seguiment', 'escola', 'diari', 'focus', 'dia', 'setmana', 'relacions', 'memoria'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>
 <style>

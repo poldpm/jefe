@@ -742,6 +742,18 @@ export function dades(AVUI, menys) {
     ]
   });
 
+  /* Focus: dos blocs fets avui i les tasques per triar-ne una. */
+  const focusPantalla = () => ({
+    avui: AVUI, durades: [10, 25, 50], minutsAvui: 35,
+    blocs: [
+      { hora: '09:20', minuts: 25, complet: true, tasca: 'Corregir els controls' },
+      { hora: '11:05', minuts: 10, complet: false, tasca: '' }
+    ],
+    tasques: tasquesPantalla().tasques.map((t) => ({
+      id: t.id, llista: t.llista, text: t.text, pas: t.primerPas || '', vencuda: t.vencuda
+    }))
+  });
+
   const nucliInici = () => ({
     avui: AVUI,
     moduls: [
@@ -757,6 +769,7 @@ export function dades(AVUI, menys) {
          es veuen totes les icones alhora. */
       { id: 'escola', nom: 'Escola', icona: 'escola', ordre: 35, teVista: true },
       { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true },
+      { id: 'focus', nom: 'Focus', icona: 'focus', ordre: 18, teVista: true },
       { id: 'relacions', nom: 'Relacions', icona: 'relacions', ordre: 45, teVista: true }
     ],
     targetes: [
@@ -772,6 +785,6 @@ export function dades(AVUI, menys) {
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia, laSetmana,
-           CATEGORIES, finPantalla, tasquesPantalla, relacions, tasquesFetes, diariPantalla,
+           CATEGORIES, finPantalla, tasquesPantalla, relacions, focusPantalla, tasquesFetes, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
 }
