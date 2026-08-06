@@ -2269,6 +2269,36 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LA MARCA DE VERSIÓ
+
+   A la cantonada, petita i sense demanar res. No és decoració: és la
+   resposta a «el que estic veient, és el que acabes de pujar?», que aquesta
+   nit va costar hores de respondre.
+
+   `pointer-events: none` perquè no s'interposi mai entre el dit i el que hi
+   hagi a sota. I al 9 px encara es llegeix si t'hi fixes, que és tot el que
+   ha de fer: no la mires mai fins al dia que la necessites.
+   ========================================================================== */
+
+/* SENSE OPACITAT. Amb `opacity: .55` quedava a 2,25:1 —mesurat— i una marca
+   que no es llegeix no serveix de res, que és justament la feina que té.
+   Discreta vol dir petita i al marge, no esborrada. És el quart cop aquesta
+   nit que apago un text per fer-lo discret i l'he de tornar a encendre. */
+.marca-versio {
+  position: fixed; right: 8px; z-index: 4; pointer-events: none;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--mono); font-size: .5625rem; letter-spacing: .06em;
+  color: var(--ink-suau);
+}
+/* A la conversa, la cantonada de baix a la dreta és el micròfon. Es puja per
+   sobre de la barra d'escriure en comptes de quedar-hi a sota. */
+body[data-vista="conversa"] .marca-versio {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  color: #6f93a6;
+}
+
+
+/* ==========================================================================
    FOCUS
 
    Una pantalla per concentrar-se no pot ser una pantalla plena. Mentre el
@@ -2672,7 +2702,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 23:34 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-06 23:41 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3029,12 +3059,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <!-- La barra de seccions s'ha tret a petició. L'accés a la resta de vistes és
      un sol botó discret dins de la capçalera del HUD, fins que decidim el menú. -->
 
+<!-- QUINA VERSIÓ ESTÀS VEIENT, i de quan és. Aquesta nit vam perdre una
+     estona llarga perquè el codi era desplegat i la pàgina publicada era la
+     de dues hores abans, i des de fora no hi havia manera de saber-ho. Amb
+     això a la cantonada, mirar-ho és mig segon. -->
+<div id="marca-versio" class="marca-versio" aria-hidden="true"></div>
+
 <div id="fosc" class="fosc" data-obert="0"></div>
 <div id="brindis" class="brindis" role="status" aria-live="polite" data-visible="0"></div>
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 23:34 · en curs";
+window.MARCA_JEFE = "2026-08-06 23:41 · en curs";
 </script>
 
 <script>
@@ -3404,6 +3440,17 @@ var Jefe = (function () {
          no torna a preguntar-se. */
       App.aplicaTema();
 
+      /* LA MARCA DE VERSIÓ. La construcció hi deixa la data i, si el codi
+         estava net, el commit. El «· en curs» —que vol dir que es va
+         construir amb canvis sense desar— no li diu res a ningú que no sigui
+         jo, i es treu: el que ha de llegir ell és quan es va penjar això que
+         està mirant. */
+      (function () {
+        var on = document.getElementById('marca-versio');
+        if (!on || !window.MARCA_JEFE) return;
+        on.textContent = String(window.MARCA_JEFE).replace(/\s*·\s*en curs\s*$/, '');
+      })();
+
       /* ELS VIGILANTS ES REGISTREN SEMPRE, i abans de res.
          Abans, si encara no hi havia clau d'accés, aquesta funció sortia aquí
          mateix per demanar-la. Amb la sortida se n'anava tot el que ve
@@ -3524,6 +3571,10 @@ var Jefe = (function () {
       }
 
       App.actual = id;
+      /* Quina pantalla s'està veient, al `body`. De moment només ho fa servir
+         la marca de versió per apartar-se del micròfon a la conversa, però
+         qualsevol cosa que hagi de dependre de la pantalla ja té on mirar. */
+      document.body.dataset.vista = id;
 
       document.querySelectorAll('.nav a').forEach(function (a) {
         if (a.dataset.vista === id) a.setAttribute('aria-current', 'page');

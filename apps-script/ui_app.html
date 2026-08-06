@@ -365,6 +365,17 @@ var Jefe = (function () {
          no torna a preguntar-se. */
       App.aplicaTema();
 
+      /* LA MARCA DE VERSIÓ. La construcció hi deixa la data i, si el codi
+         estava net, el commit. El «· en curs» —que vol dir que es va
+         construir amb canvis sense desar— no li diu res a ningú que no sigui
+         jo, i es treu: el que ha de llegir ell és quan es va penjar això que
+         està mirant. */
+      (function () {
+        var on = document.getElementById('marca-versio');
+        if (!on || !window.MARCA_JEFE) return;
+        on.textContent = String(window.MARCA_JEFE).replace(/\s*·\s*en curs\s*$/, '');
+      })();
+
       /* ELS VIGILANTS ES REGISTREN SEMPRE, i abans de res.
          Abans, si encara no hi havia clau d'accés, aquesta funció sortia aquí
          mateix per demanar-la. Amb la sortida se n'anava tot el que ve
@@ -485,6 +496,10 @@ var Jefe = (function () {
       }
 
       App.actual = id;
+      /* Quina pantalla s'està veient, al `body`. De moment només ho fa servir
+         la marca de versió per apartar-se del micròfon a la conversa, però
+         qualsevol cosa que hagi de dependre de la pantalla ja té on mirar. */
+      document.body.dataset.vista = id;
 
       document.querySelectorAll('.nav a').forEach(function (a) {
         if (a.dataset.vista === id) a.setAttribute('aria-current', 'page');

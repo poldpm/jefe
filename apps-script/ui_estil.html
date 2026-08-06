@@ -2241,6 +2241,36 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LA MARCA DE VERSIÓ
+
+   A la cantonada, petita i sense demanar res. No és decoració: és la
+   resposta a «el que estic veient, és el que acabes de pujar?», que aquesta
+   nit va costar hores de respondre.
+
+   `pointer-events: none` perquè no s'interposi mai entre el dit i el que hi
+   hagi a sota. I al 9 px encara es llegeix si t'hi fixes, que és tot el que
+   ha de fer: no la mires mai fins al dia que la necessites.
+   ========================================================================== */
+
+/* SENSE OPACITAT. Amb `opacity: .55` quedava a 2,25:1 —mesurat— i una marca
+   que no es llegeix no serveix de res, que és justament la feina que té.
+   Discreta vol dir petita i al marge, no esborrada. És el quart cop aquesta
+   nit que apago un text per fer-lo discret i l'he de tornar a encendre. */
+.marca-versio {
+  position: fixed; right: 8px; z-index: 4; pointer-events: none;
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  font-family: var(--mono); font-size: .5625rem; letter-spacing: .06em;
+  color: var(--ink-suau);
+}
+/* A la conversa, la cantonada de baix a la dreta és el micròfon. Es puja per
+   sobre de la barra d'escriure en comptes de quedar-hi a sota. */
+body[data-vista="conversa"] .marca-versio {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  color: #6f93a6;
+}
+
+
+/* ==========================================================================
    FOCUS
 
    Una pantalla per concentrar-se no pot ser una pantalla plena. Mentre el
