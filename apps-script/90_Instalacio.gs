@@ -2838,3 +2838,113 @@ function provaIntervals() {
 
   return l.join('\n');
 }
+
+
+/**
+ * OBRIR EL ZIP DE HEALTH CONNECT I DIR QUÈ HI HA A DINS.
+ *
+ * Health Connect deixa programar una exportació diària cap a Drive. Si el que
+ * hi ha a dins es pot llegir, els entrenaments entren a JEFE sense cap app
+ * pont, sense pagar i sense instal·lar res enlloc.
+ *
+ * No ho dono per fet: hi ha qui diu que va xifrat, i encara que no ho estigui
+ * podria ser una base de dades SQLite, que Apps Script no sap obrir. Això ho
+ * mira i ho diu.
+ *
+ * NO ESCRIU RES ENLLOC, i del contingut només n'ensenya l'estructura i un
+ * tastet: el que es busca és de quina forma són les dades, no quines són.
+ */
+function provaExportSalut() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  // El fitxer, es digui com es digui i sigui a la carpeta que sigui
+  var trobats = [];
+  var vist = {};
+  var afegeix = function (it) {
+    while (it.hasNext()) {
+      var f = it.next();
+      if (vist[f.getId()]) continue;
+      vist[f.getId()] = true;
+      trobats.push(f);
+    }
+  };
+  try { afegeix(DriveApp.getFilesByName('Health Connect.zip')); } catch (e) {}
+  try { afegeix(DriveApp.searchFiles('title contains "Health Connect"')); } catch (e) {}
+
+  if (!trobats.length) {
+    a('No trobo cap fitxer que es digui «Health Connect» al Drive.');
+    a('');
+    a('Si acabes de programar l\'exportació, encara no l\'ha feta: la diària');
+    a('salta un cop al dia, no en programar-la. Torna-hi demà.');
+    a('');
+    a('I comprova a Ajustos → Health Connect → Gestionar dades → Còpia de');
+    a('seguretat que digui que la darrera exportació ha anat bé.');
+    return l.join('\n');
+  }
+
+  trobats.sort(function (x, y) { return y.getLastUpdated() - x.getLastUpdated(); });
+  a(trobats.length + (trobats.length === 1 ? ' fitxer trobat:' : ' fitxers trobats:'));
+  trobats.slice(0, 5).forEach(function (f) {
+    a('  ' + f.getName() + '  ·  ' + Math.round(f.getSize() / 1024) + ' kB  ·  ' +
+      Utilities.formatDate(f.getLastUpdated(), Config.zonaHoraria(), 'yyyy-MM-dd HH:mm'));
+  });
+
+  var fitxer = trobats[0];
+  a('');
+  a('Obrint el més recent: ' + fitxer.getName());
+
+  var peces;
+  try {
+    peces = Utilities.unzip(fitxer.getBlob().setContentType('application/zip'));
+  } catch (err) {
+    a('');
+    a('NO S\'OBRE: ' + err.message);
+    a('');
+    a('Si diu que no és un zip vàlid o demana contrasenya, va xifrat i');
+    a('aquest camí no serveix. Ho mirem per un altre costat.');
+    return l.join('\n');
+  }
+
+  a('S\'obre. Hi ha ' + peces.length + (peces.length === 1 ? ' peça:' : ' peces:'));
+  a('');
+
+  peces.forEach(function (p) {
+    var bytes = p.getBytes();
+    var mida = bytes.length;
+    a('  ' + p.getName() + '  ·  ' + Math.round(mida / 1024) + ' kB');
+
+    /* De quina mena és, mirat pels primers bytes i no pel nom: una extensió
+       la posa qui vol i els bytes no menteixen. */
+    var cap = '';
+    for (var i = 0; i < Math.min(16, mida); i++) {
+      var c = bytes[i] & 0xFF;
+      cap += (c >= 32 && c < 127) ? String.fromCharCode(c) : '.';
+    }
+    a('      comença per: ' + cap);
+
+    if (cap.indexOf('SQLite format') === 0) {
+      a('      → és una base de dades SQLite. Apps Script no la sap obrir.');
+      return;
+    }
+
+    /* Si sembla text, un tastet de les primeres línies: amb això ja es veu si
+       són JSON, CSV o una altra cosa, i quins camps porta. */
+    var textual = true;
+    for (var k = 0; k < Math.min(200, mida); k++) {
+      var b = bytes[k] & 0xFF;
+      if (b === 0 || (b < 9 && b !== 0) || (b > 13 && b < 32)) { textual = false; break; }
+    }
+    if (!textual) { a('      → no és text.'); return; }
+
+    var text;
+    try { text = p.getDataAsString(); } catch (e) { a('      → no s\'ha pogut llegir com a text.'); return; }
+    var linies = text.split('\n');
+    a('      → text, ' + linies.length + ' línies. Les tres primeres:');
+    linies.slice(0, 3).forEach(function (x) { a('        ' + Utils.talla(x, 160)); });
+  });
+
+  a('');
+  a('Enganxa\'m tot això i et dic si els entrenaments hi són i com agafar-los.');
+  return l.join('\n');
+}
