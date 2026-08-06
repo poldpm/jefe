@@ -3601,5 +3601,111 @@ console.log('\nEl primer pas: què es diu d\'una tasca encallada, i què no');
   cal('i un pas buit no es desa', /primer pas/.test(error), error);
 }
 
+// ------------------------------------------------------------------ bateria
+console.log('\nEl nucli: un sol bucle viu, i els orfes es moren');
+{
+  /* PER QUÈ AIXÒ ÉS UNA PROVA I NO UNA MIRADA AL CODI.
+     `App.ves` buida `#vista` i torna a cridar `render()` cada vegada que
+     entres en una pantalla, o sigui que cada entrada a la conversa creava un
+     nucli nou amb el seu `requestAnimationFrame` i ningú aturava l'anterior:
+     el canvas vell quedava despenjat i el seu bucle seguia dibuixant
+     tres-centes partícules seixanta cops per segon, per sempre.
+     Mesurat al mirall: cinc anades i tornades = SIS bucles vius alhora.
+     Això ho torna a comptar cada vegada que es passin les proves. */
+  const src = fs.readFileSync('apps-script/ui_nucli.html', 'utf8')
+    .replace(/^<script>/, '').replace(/<\/script>\s*$/, '');
+
+  // Un DOM de mentida, just el que el nucli toca
+  const fesElement = () => {
+    const el = {
+      isConnected: false, style: {}, width: 0, height: 0,
+      setAttribute() {}, getBoundingClientRect: () => ({ width: 200, height: 200 }),
+      getContext: () => new Proxy({}, {
+        get: (o, k) => (k === 'createRadialGradient'
+          ? () => ({ addColorStop() {} })
+          : (k === 'setTransform' || typeof k === 'string' ? () => {} : undefined))
+      })
+    };
+    return el;
+  };
+
+  let cua = [], seguent = 0;
+  const ctx = {
+    Math, Object, Array, String, Number, JSON, console,
+    requestAnimationFrame: (cb) => { cua.push(cb); return ++seguent; },
+    cancelAnimationFrame: (id) => {},
+    window: { devicePixelRatio: 1, matchMedia: () => ({ matches: false }) },
+    document: {
+      createElement: fesElement,
+      hidden: false,
+      addEventListener() {}, removeEventListener() {}
+    }
+  };
+  ctx.globalThis = ctx;
+  ctx.matchMedia = ctx.window.matchMedia;
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+
+  /* Un contenidor que «connecta» el que hi pengen, com fa el navegador. */
+  const contenidor = () => ({
+    appendChild(el) { el.isConnected = true; this.fill = el; },
+    getBoundingClientRect: () => ({ width: 200, height: 200 })
+  });
+
+  const tic = (ms) => { const ara = cua; cua = []; ara.forEach((cb) => cb(ms)); return cua.length; };
+
+  const c1 = contenidor();
+  ctx.Nucli.crea(c1);
+  cal('en crear-ne un, hi ha un bucle', tic(100) === 1, cua.length);
+
+  /* Cinc entrades més a la conversa. Cada vegada, `App.ves` s'ha endut el
+     canvas anterior: aquí es simula despenjant-lo. */
+  const caixes = [c1];
+  for (let i = 0; i < 5; i++) {
+    caixes[caixes.length - 1].fill.isConnected = false;   // el DOM se l'ha endut
+    const c = contenidor();
+    ctx.Nucli.crea(c);
+    caixes.push(c);
+  }
+
+  const vius = tic(200);
+  cal('després de cinc entrades més, segueix havent-hi UN sol bucle', vius === 1, vius);
+  cal('i al segon fotograma també', tic(233) === 1);
+  cal('els cinc canvas vells han quedat despenjats',
+      caixes.slice(0, 5).every((c) => !c.fill.isConnected));
+
+  /* I si el que queda també es despenja, no queda res corrent: sortir de la
+     conversa no pot deixar res dibuixant. */
+  caixes[caixes.length - 1].fill.isConnected = false;
+  cal('i en sortir de la conversa, no queda cap bucle', tic(300) === 0);
+
+  /* EL FRE EN REPÒS. Seixanta fotogrames per segon per a un núvol que gira
+     lent és cremar bateria per no res. */
+  const c = contenidor();
+  const n = ctx.Nucli.crea(c);
+  tic(1000);
+  let pintats = 0;
+  const original = ctx.Math.sin;
+  ctx.Math.sin = function (x) { pintats++; return original(x); };
+  for (let ms = 1016; ms <= 1116; ms += 16) tic(ms);      // ~7 fotogrames de pantalla
+  ctx.Math.sin = original;
+  cal('en repòs no dibuixa a cada fotograma', pintats > 0 && pintats < 300 * 7, pintats);
+
+  /* Que això no es torni a colar per cap altre costat: qualsevol bucle
+     d'animació de la interfície ha de mirar si encara es veu. */
+  const vistes = fs.readdirSync('apps-script')
+    .filter((f) => f.endsWith('.html'))
+    .filter((f) => {
+      const t = fs.readFileSync('apps-script/' + f, 'utf8');
+      const bucles = (t.match(/requestAnimationFrame\s*\(\s*(function|\w+)/g) || []);
+      if (!bucles.length) return false;
+      /* Un `requestAnimationFrame` d'un sol cop —per esperar una pintada— no
+         és un bucle. Els que ho són es reprogramen sols. */
+      return /corrent = requestAnimationFrame|= requestAnimationFrame\(bucle/.test(t) &&
+             !/isConnected/.test(t);
+    });
+  cal('cap altre bucle d\'animació sense fre', vistes.length === 0, vistes.join(', '));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

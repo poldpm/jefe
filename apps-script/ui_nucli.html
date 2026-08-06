@@ -139,19 +139,58 @@ var Nucli = (function () {
       }
     }
 
+    /**
+     * EL BUCLE ES MATA SOL QUAN JA NO ES VEU, i això no és una optimització:
+     * era una fuita de bateria de manual.
+     *
+     * `App.ves` buida `#vista` i torna a cridar `render()` CADA vegada que
+     * entres en una pantalla. O sigui que cada entrada a la conversa creava
+     * un nucli nou amb el seu `requestAnimationFrame`, i ningú aturava
+     * l'anterior: el canvas vell quedava despenjat del document però el seu
+     * bucle seguia dibuixant tres-centes partícules i tres degradats radials
+     * seixanta cops per segon, per sempre i sense que es veiés res.
+     *
+     * Deu anades i tornades entre la conversa i qualsevol apartat = deu
+     * bucles alhora. El comentari de dalt d'aquest fitxer deia que es pausava
+     * sol i era veritat només per a la pestanya amagada, que és un cas que al
+     * mòbil no passa mentre fas servir l'app.
+     *
+     * Es comprova `isConnected` i prou: qualsevol bucle orfe mor al primer
+     * fotograma, i no cal que ningú se'n recordi de netejar-lo.
+     */
+    var mort = false;
+
+    /* EN REPÒS, TRENTA FOTOGRAMES I NO SEIXANTA. El núvol gira lentament i
+       ningú nota la diferència; el que sí que es nota és que el telèfon no
+       es calenta mentre el mires sense dir-li res, que és el 90% del temps
+       que aquesta pantalla és oberta. Quan escolta, pensa o parla, torna a
+       anar a la velocitat que hi hagi. */
+    var ultimPintat = 0;
+
     function bucle(ara) {
+      if (!canvas.isConnected) { mata(); return; }
+      corrent = requestAnimationFrame(bucle);
+
+      var pausat = estat === 'repos' && nivellVeu < 0.01;
+      if (pausat && ara - ultimPintat < 33) return;
+      ultimPintat = ara;
+
       t = ara;
       if (nivellVeu > 0) nivellVeu *= 0.94;
       dibuixa();
-      corrent = requestAnimationFrame(bucle);
     }
 
     function arrenca() {
-      if (corrent || reduit) { if (reduit) dibuixa(); return; }
+      if (corrent || reduit || mort) { if (reduit && !mort) dibuixa(); return; }
       corrent = requestAnimationFrame(bucle);
     }
     function atura() {
       if (corrent) { cancelAnimationFrame(corrent); corrent = null; }
+    }
+    function mata() {
+      atura();
+      mort = true;
+      document.removeEventListener('visibilitychange', quanCanviaLaVista);
     }
 
     var api = {
@@ -169,18 +208,32 @@ var Nucli = (function () {
       redimensiona: function () { mida(); sembra(); if (reduit) dibuixa(); },
       atura: atura,
       arrenca: arrenca,
+      mata: mata,
       element: canvas
     };
 
     mida(); sembra(); arrenca();
 
-    document.addEventListener('visibilitychange', function () {
+    function quanCanviaLaVista() {
       document.hidden ? atura() : arrenca();
-    });
+    }
+    document.addEventListener('visibilitychange', quanCanviaLaVista);
 
     return api;
   }
 
-  return { crea: crea };
+  /* I EL DE DEBÒ ÉS UN DE SOL. `isConnected` ja mata els orfes, però ho fa al
+     fotograma següent: si en aquell moment n'hi hagués deu esperant torn,
+     serien deu dibuixades de més. Aquí es tanca l'anterior abans d'obrir el
+     nou, que és el que hauria d'haver passat sempre. */
+  var viu = null;
+
+  return {
+    crea: function (contenidor) {
+      if (viu) { try { viu.mata(); } catch (e) {} }
+      viu = crea(contenidor);
+      return viu;
+    }
+  };
 })();
 </script>
