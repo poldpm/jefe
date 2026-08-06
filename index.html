@@ -1546,6 +1546,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .tasca-text { overflow-wrap: anywhere; }
 .tasca[data-vencuda] .menut { color: var(--avis); }
 
+/* EL PRIMER PAS D'UNA TASCA ENCALLADA.
+   No és text petit d'acompanyament: quan hi és, és la línia que has de poder
+   llegir. Per això va en color viu i no en `--ink-suau` com la resta del peu
+   —el títol de la tasca és el que et fa apartar la vista, i això és el que sí
+   que pots fer ara—. La fletxa el separa del títol sense afegir cap paraula. */
+.tasca-pas {
+  display: block; margin-top: 2px;
+  font-size: .8125rem; line-height: 1.35; color: var(--utm);
+  overflow-wrap: anywhere;
+}
+.tasca-pas::before { content: '→ '; }
+
 /* Patrimoni. La data mana tant com la xifra: un valor de fa dos mesos no és el
    que tens, és el que tenies. Els que fa temps que no toques es marquen. */
 .act-fila { display: grid; grid-template-columns: minmax(0, 1fr) 56px auto;
@@ -2467,7 +2479,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 07:01 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-06 19:49 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2819,7 +2831,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 07:01 · en curs";
+window.MARCA_JEFE = "2026-08-06 19:49 · en curs";
 </script>
 
 <script>
@@ -10404,6 +10416,14 @@ App.registraVista('tasques', {
           ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
         '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
           '<span class="tasca-text">' + esc(t.text) + '</span>' +
+          /* EL PRIMER PAS VA A LA FILA, i va per sobre de la resta del text
+             petit. El títol d'una tasca encallada és justament el que fa que
+             no la miris; el primer pas és el que sí que pots fer ara. Si l'has
+             escrit, que es vegi sense haver d'obrir res. */
+          (t.primerPas
+            ? '<span class="tasca-pas">' + esc(t.primerPas) +
+              (t.passQuan ? ' · ' + esc(t.passQuan) : '') + '</span>'
+            : '') +
           (menut.length ? '<span class="menut">' + esc(menut.join(' · ')) + '</span>' : '') +
         '</button>' +
       '</div>';
@@ -10655,10 +10675,23 @@ App.registraVista('tasques', {
             (t.prioritat === 'alta' ? ' checked' : '') + '><span>Prioritària</span></label>' +
           '<label class="cat-exclou"><input type="checkbox" data-c="fent"' +
             (t.fent ? ' checked' : '') + '><span>Hi estic</span></label>' +
+          /* EL PRIMER PAS. Va aquí i no en una pantalla a part perquè el
+             moment en què serveix és quan tens la tasca oberta al davant i no
+             saps per on agafar-la.
+             Dues caselles i no una: el que fa que un pla es compleixi és que
+             digui QUÈ i QUAN. Amb el «què» sol, torna a ser una tasca. */
+          '<label><span class="marge">El primer pas, de deu minuts</span>' +
+            '<input data-c="primer_pas" value="' + esc(t.primerPas || '') + '"' +
+              ' placeholder="Obrir el document i escriure el títol" autocomplete="off"></label>' +
+          '<label><span class="marge">Quan</span>' +
+            '<input data-c="pas_quan" value="' + esc(t.passQuan || '') + '"' +
+              ' placeholder="demà després de dinar" autocomplete="off"></label>' +
+          '<p class="menut">Ha de ser tan petit que faci riure. El que costa és ' +
+            'començar, no fer-ho.</p>' +
           '<label><span class="marge">Nota</span>' +
             '<textarea data-c="nota" rows="3">' + esc(t.nota || '') + '</textarea></label>' +
-          '<p class="menut">La prioritat i el «hi estic» se\'ls guarda en JEFE: ' +
-            'Google Tasks no els sap desar. La resta és la tasca de debò.</p>' +
+          '<p class="menut">La prioritat, el «hi estic» i el primer pas se\'ls guarda ' +
+            'en JEFE: Google Tasks no els sap desar. La resta és la tasca de debò.</p>' +
           '<button class="btn btn-primari" data-desa>Desa</button>' +
           '<button class="btn btn-secundari" data-esborra style="margin-top:var(--e2)">' +
             'Esborra-la de Google Tasks</button>' +
@@ -10678,6 +10711,8 @@ App.registraVista('tasques', {
           venc_el: camps.venc_el.value,
           prioritat: camps.prioritat.checked,
           fent: camps.fent.checked,
+          primer_pas: camps.primer_pas.value,
+          pas_quan: camps.pas_quan.value,
           nota: camps.nota.value
         }).then(function (r) {
           App.tancaModal(); App.brindis('Desat');

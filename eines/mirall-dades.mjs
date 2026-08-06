@@ -323,7 +323,8 @@ export function dades(AVUI, menys) {
 
   const T = (id, llista, llistaNom, text, extra) => Object.assign({
     id, llista, llistaNom, text, nota: '', vencEl: '', vencuda: false,
-    venAvui: false, prioritat: '', fent: false, feta: false, fetEl: ''
+    venAvui: false, prioritat: '', fent: false, feta: false, fetEl: '',
+    primerPas: '', passQuan: ''
   }, extra || {});
 
   const tasquesPantalla = () => {
@@ -340,7 +341,8 @@ export function dades(AVUI, menys) {
       { id: 'lst_3', nom: 'Agent rural', tasques: [
         T('t3', 'lst_3', 'Agent rural', 'Informe de la batuda de senglar del vessant nord',
           { vencEl: menys(4), vencuda: true, prioritat: 'alta', nota: 'Amb les fotos del GPS.' }),
-        T('t5', 'lst_3', 'Agent rural', 'Canviar les rodes del tot terreny')
+        T('t5', 'lst_3', 'Agent rural', 'Canviar les rodes del tot terreny',
+          { primerPas: 'Trucar al taller i preguntar preu', passQuan: 'demà a l\'hora del pati' })
       ] }
     ];
     const totes = blocs.reduce((l, b) => l.concat(b.tasques), []);

@@ -1518,6 +1518,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .tasca-text { overflow-wrap: anywhere; }
 .tasca[data-vencuda] .menut { color: var(--avis); }
 
+/* EL PRIMER PAS D'UNA TASCA ENCALLADA.
+   No és text petit d'acompanyament: quan hi és, és la línia que has de poder
+   llegir. Per això va en color viu i no en `--ink-suau` com la resta del peu
+   —el títol de la tasca és el que et fa apartar la vista, i això és el que sí
+   que pots fer ara—. La fletxa el separa del títol sense afegir cap paraula. */
+.tasca-pas {
+  display: block; margin-top: 2px;
+  font-size: .8125rem; line-height: 1.35; color: var(--utm);
+  overflow-wrap: anywhere;
+}
+.tasca-pas::before { content: '→ '; }
+
 /* Patrimoni. La data mana tant com la xifra: un valor de fa dos mesos no és el
    que tens, és el que tenies. Els que fa temps que no toques es marquen. */
 .act-fila { display: grid; grid-template-columns: minmax(0, 1fr) 56px auto;

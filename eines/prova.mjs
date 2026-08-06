@@ -3468,5 +3468,138 @@ console.log('\nCreuar dades: una relació de veritat enmig de soroll');
   cal('la pantalla està muntada a l\'app', /include\('vista_relacions'\)/.test(idxR));
 }
 
+// ------------------------------------------------------------ procrastinació
+console.log('\nEl primer pas: què es diu d\'una tasca encallada, i què no');
+{
+  const ctx = carregaTotElServidor();
+  const AVUI = '2026-08-06';
+  ctx.Utils.avui = () => AVUI;
+  ctx.Utils.faQuant = () => 'fa uns dies';
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.CacheService = { getScriptCache: () => ({ get: () => null, put() {} }) };
+
+  const fulls = { LlistesTasques: [], TasquesMarques: [] };
+  let seguit = 0;
+  ctx.Dades = {
+    llegeix: (full) => JSON.parse(JSON.stringify(fulls[full] || [])),
+    un: (full, q) => (fulls[full] || []).filter(
+      (f) => Object.keys(q).every((k) => f[k] === q[k]))[0] || null,
+    perId: (full, id) => (fulls[full] || []).filter((f) => f.id === id)[0] || null,
+    insereix: (full, fila, prefix) => {
+      const f = Object.assign({ id: fila.id || (prefix || 'x') + (++seguit) }, fila);
+      fulls[full].push(f); return f;
+    },
+    actualitza: (full, id, canvis) => {
+      const f = (fulls[full] || []).filter((x) => x.id === id)[0];
+      if (f) Object.assign(f, canvis);
+      return f || null;
+    }
+  };
+
+  /* Tres tasques sense data: una de fa dotze dies, una de fa cinquanta i una
+     de fa dos. Els dies els porta `updated`, que és el que dona Google. */
+  const fa = (n) => {
+    const d = new Date(AVUI + 'T12:00:00'); d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10) + 'T09:00:00.000Z';
+  };
+  const tasques = { L1: [
+    { id: 'g1', title: 'Informe de la batuda', status: 'needsAction', updated: fa(12) },
+    { id: 'g2', title: 'Demanar hora al dentista', status: 'needsAction', updated: fa(50) },
+    { id: 'g3', title: 'Comprar pinso', status: 'needsAction', updated: fa(2) }
+  ] };
+  ctx.Tasks = {
+    Tasklists: { list: () => ({ items: [{ id: 'L1', title: 'Meves tasques' }] }) },
+    Tasks: {
+      list: (ll, p) => ({ items: (tasques[ll] || []).filter(
+        (t) => (p && p.showCompleted) || t.status !== 'completed') }),
+      get: (ll, id) => JSON.parse(JSON.stringify((tasques[ll] || []).filter((x) => x.id === id)[0])),
+      update: (t, ll, id) => { tasques[ll] = tasques[ll].map((x) => (x.id === id ? t : x)); return t; }
+    }
+  };
+  ctx.Tasques.sincronitzaLlistes();
+
+  const senyalDe = (quin) => {
+    const s = ctx.Tasques.senyals().filter((x) => x.id.indexOf(quin) === 0)[0];
+    return s || null;
+  };
+
+  /* NOMÉS EN SURT UNA, la més antiga: és una regla que ja hi era —dir-li que
+     en té set és donar-li set motius per no obrir res—. Per això cada cas es
+     prova amb la seva tasca sola. */
+  const totes = tasques.L1.slice();
+  const nomes = function (id) {
+    tasques.L1 = totes.filter(function (t) { return t.id === id; });
+  };
+
+  // --- 1. La de dotze dies: demana el pas, no la feina
+  nomes('g1');
+  let s = senyalDe('tasca_encallada:g1');
+  cal('la de dotze dies surt', !!s, JSON.stringify(ctx.Tasques.senyals()));
+  cal('i no demana que la faci: demana el primer pas',
+      /primers deu minuts/.test(s.text) && /i quan/.test(s.text), s.text);
+
+  nomes('g3');
+  cal('la de dos dies no surt: la vida va així',
+      !/Comprar pinso/.test(JSON.stringify(ctx.Tasques.senyals())));
+  tasques.L1 = totes.slice();
+
+  /* CAP SENYAL POT RENYAR NI COMPTAR FRACASSOS. És la regla que fa que això
+     serveixi: sentir-se malament amb una tasca és el que fa que l'apartis. */
+  const totsElsTextos = () => ctx.Tasques.senyals().map((x) => x.text).join(' § ');
+  cal('cap senyal fa retret',
+      !/hauries|per fi|encara no|una altra vegada|ja va sent hora|vergony/i.test(totsElsTextos()),
+      totsElsTextos());
+
+  // --- 2. Passat un mes, canvia de to i no diu els dies
+  nomes('g2');
+  s = senyalDe('tasca_encallada:g2');
+  cal('passat un mes, ja no compta els dies', !/50 dies|\d+ dies/.test(s.text), s.text);
+  cal('i diu que això passa, que és el que redueix la següent vegada',
+      /no passa res/.test(s.text), s.text);
+  cal('i ofereix la sortida honesta: si no la faràs, treu-la',
+      /treu-la/.test(s.text), s.text);
+
+  // --- 3. Amb pla escrit, el senyal el recorda en comptes de demanar-ne un
+  ctx.Tasques.edita({ id: 'g2', llista: 'L1',
+                      primer_pas: 'Buscar el telèfon del dentista i apuntar-lo',
+                      pas_quan: 'demà després de dinar' });
+  const marca = fulls.TasquesMarques.filter((f) => f.tasca === 'g2')[0];
+  cal('el pla es desa a JEFE, no a Google',
+      !!marca && marca.primer_pas === 'Buscar el telèfon del dentista i apuntar-lo' &&
+      marca.pas_quan === 'demà després de dinar', JSON.stringify(marca));
+  cal('i Google Tasks no se n\'assabenta',
+      !/dentista i apuntar/.test(JSON.stringify(tasques)));
+
+  const ambPla = ctx.Tasques.senyals().filter((x) => x.id.indexOf('tasca_pla:') === 0)[0];
+  cal('amb pla, el senyal el recorda', !!ambPla, JSON.stringify(ctx.Tasques.senyals()));
+  cal('i el recorda sencer: què i quan',
+      /Buscar el telèfon/.test(ambPla.text) && /després de dinar/.test(ambPla.text),
+      ambPla.text);
+  cal('i ja no en demana cap altre', !/primers deu minuts/.test(ambPla.text), ambPla.text);
+
+  // --- 4. La pantalla el porta, i la pila de la setmana també
+  const p = ctx.Tasques.pantalla({});
+  const t2 = p.tasques.filter((x) => x.id === 'g2')[0];
+  cal('la pantalla porta el pas i el quan',
+      t2.primerPas === 'Buscar el telèfon del dentista i apuntar-lo' &&
+      t2.passQuan === 'demà després de dinar');
+
+  const set = ctx.Tasques.laSetmana('2026-08-03', '2026-08-09');
+  const aLaPila = set.coses.filter((c) => c.data === null)[0];
+  cal('a la pila de la setmana hi surt el pas i no els dies que fa',
+      /Buscar el telèfon/.test(aLaPila.menut) && !/dies sense moure/.test(aLaPila.menut),
+      aLaPila.menut);
+
+  // --- 5. Dit parlant
+  ctx.Tasques.primerPasPerNom({ text: 'dentista', pas: 'Obrir el web i mirar els horaris',
+                                quan: 'dilluns al matí' });
+  const m2 = fulls.TasquesMarques.filter((f) => f.tasca === 'g2')[0];
+  cal('també es pot apuntar parlant-hi', m2.primer_pas === 'Obrir el web i mirar els horaris');
+  let error = '';
+  try { ctx.Tasques.primerPasPerNom({ text: 'dentista', pas: '  ' }); }
+  catch (e) { error = e.message; }
+  cal('i un pas buit no es desa', /primer pas/.test(error), error);
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

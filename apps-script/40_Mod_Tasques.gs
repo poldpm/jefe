@@ -72,6 +72,13 @@ function MODUL_TASQUES() {
           { nom: 'llista',          tipus: 'text' },
           { nom: 'prioritat',       tipus: 'text', valors: ['', 'alta'] },
           { nom: 'fent',            tipus: 'text', valors: ['', 'SI'] },
+          /* EL PRIMER PAS I QUAN. Vegeu la nota sobre procrastinació més
+             avall: el que desencalla una tasca no és tornar-la a llegir, és
+             tenir escrit què faràs exactament i en quin moment. Va aquí i no
+             a les notes de Google perquè les notes són seves i sobreescriure
+             una cosa que ha escrit ell seria prendre-li-la. */
+          { nom: 'primer_pas',      tipus: 'text' },
+          { nom: 'pas_quan',        tipus: 'text' },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }
         ]
@@ -243,6 +250,34 @@ function MODUL_TASQUES() {
       },
       etiqueta: function (a) { return 'ESBORRAR de Google Tasks «' + (a.text || '?') + '»'; },
       executa: function (a) { return Tasques.treuPerNom(a); }
+    }, {
+      nom: 'apunta_el_primer_pas',
+      descripcio: 'Desa el pla per desencallar una tasca: QUÈ farà exactament els ' +
+                  'primers deu minuts i EN QUIN MOMENT. Fes-la servir quan et digui ' +
+                  'que una cosa se li fa muntanya, que no sap per on començar o que ' +
+                  'fa dies que l\'arrossega.\n' +
+                  'ABANS DE CRIDAR-LA, proposa-li tu dos o tres primers passos i deixa ' +
+                  'que en triï un. Han de ser ABSURDAMENT PETITS —«obrir el document i ' +
+                  'escriure el títol», «buscar el telèfon i apuntar-lo»—: el que costa ' +
+                  'és començar, no fer. Un pas que sigui la tasca sencera no serveix.\n' +
+                  'El «quan» ha de ser un moment reconeixible del seu dia («demà després ' +
+                  'de dinar», «dilluns en arribar a l\'escola»), no una hora exacta.\n' +
+                  'NO el renyis mai per haver-ho ajornat, i no comptis quants dies fa.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Part del text de la tasca' },
+          pas:  { type: 'string', description: 'Què farà exactament els primers deu minuts' },
+          quan: { type: 'string', description: 'En quin moment. Un moment del dia, no una hora.' }
+        },
+        required: ['text', 'pas']
+      },
+      etiqueta: function (a) {
+        return 'Primer pas de «' + (a.text || '?') + '»: ' + (a.pas || '') +
+               (a.quan ? ' (' + a.quan + ')' : '');
+      },
+      executa: function (a) { return Tasques.primerPasPerNom(a); }
     }],
 
     vista: 'vista_tasques'
@@ -396,7 +431,8 @@ var Tasques = (function () {
   function posaMarca_(tascaId, llistaId, canvis) {
     var m = Dades.un('TasquesMarques', { tasca: tascaId });
     if (m) return Dades.actualitza('TasquesMarques', m.id, canvis);
-    var nova = { tasca: tascaId, llista: llistaId, prioritat: '', fent: '' };
+    var nova = { tasca: tascaId, llista: llistaId, prioritat: '', fent: '',
+                 primer_pas: '', pas_quan: '' };
     for (var k in canvis) nova[k] = canvis[k];
     return Dades.insereix('TasquesMarques', nova, 'tmk');
   }
@@ -462,6 +498,8 @@ var Tasques = (function () {
       venAvui: venc === avui,
       prioritat: marca && marca.prioritat === 'alta' ? 'alta' : '',
       fent: !!(marca && String(marca.fent).toUpperCase() === 'SI'),
+      primerPas: (marca && marca.primer_pas) || '',
+      passQuan: (marca && marca.pas_quan) || '',
       /* L'última vegada que algú la va tocar. Google no diu quan es va crear,
          però sí quan es va modificar per últim cop, i per saber si una cosa
          s'ha encallat això és fins i tot millor: no és «quan la vaig apuntar»,
@@ -726,10 +764,13 @@ var Tasques = (function () {
       id = nova.id; llista = p.llistaNova;
     }
 
-    if (p.prioritat !== undefined || p.fent !== undefined) {
+    if (p.prioritat !== undefined || p.fent !== undefined ||
+        p.primer_pas !== undefined || p.pas_quan !== undefined) {
       var canvis = {};
       if (p.prioritat !== undefined) canvis.prioritat = p.prioritat ? 'alta' : '';
       if (p.fent !== undefined) canvis.fent = p.fent ? 'SI' : '';
+      if (p.primer_pas !== undefined) canvis.primer_pas = String(p.primer_pas || '').trim();
+      if (p.pas_quan !== undefined) canvis.pas_quan = String(p.pas_quan || '').trim();
       posaMarca_(id, llista, canvis);
     }
 
@@ -838,7 +879,13 @@ var Tasques = (function () {
       if (Utils.diesEntre(t.tocadaEl, avui) < ENCALLADA) return;
       pila.push({
         data: null, text: t.text,
-        menut: Utils.diesEntre(t.tocadaEl, avui) + ' dies sense moure\'s · ' + t.llistaNom,
+        /* SI HI HA PLA, EL PLA. Els dies que fa que l'arrossegues no et diuen
+           res que no sàpigues i sí que hi posen culpa, que és justament el que
+           fa que costi més mirar-la. El primer pas, en canvi, és el que pots
+           fer ara. */
+        menut: t.primerPas
+          ? t.primerPas + (t.passQuan ? ' · ' + t.passQuan : '')
+          : Utils.diesEntre(t.tocadaEl, avui) + ' dies sense moure\'s · ' + t.llistaNom,
         ordre: 1, quan: t.tocadaEl, mou: mouA(t)
       });
     });
@@ -887,18 +934,85 @@ var Tasques = (function () {
       if (Utils.diesEntre(t.tocadaEl, avui) < ENCALLADA) return;
       if (!vella || t.tocadaEl < vella.tocadaEl) vella = t;
     });
-    if (vella) {
-      out.push({
-        id: 'tasca_encallada:' + vella.id,
-        titol: 'Encallada',
-        text: '«' + vella.text + '» fa ' + Utils.diesEntre(vella.tocadaEl, avui) +
-              ' dies que hi és i no s\'ha mogut. Quin seria el primer pas de deu minuts?',
-        urgencia: 2,
-        accio: 'tasques'
-      });
-    }
+    if (vella) out.push(senyalEncallada_(vella, Utils.diesEntre(vella.tocadaEl, avui)));
 
     return out;
+  }
+
+  /**
+   * ══════════════════════════════════════════════════════════════════════
+   * QUÈ ES DIU D'UNA TASCA ENCALLADA, I PER QUÈ AIXÒ IMPORTA TANT
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Una tasca que fa vint dies que és allà no hi és perquè no tinguis temps
+   * ni perquè no la vegis. Hi és perquè mirar-la fa una cosa desagradable
+   * —avorriment, angúnia, por de fer-la malament— i ajornar-la la treu de
+   * sobre a l'instant. La recerca ho diu així: procrastinar no és un
+   * problema d'organitzar-se, és una manera de regular l'estat d'ànim a
+   * curt termini (Sirois i Pychyl).
+   *
+   * D'AQUÍ EN SURTEN TRES REGLES, i les tres van contra el que fan la
+   * majoria d'apps:
+   *
+   *   1. NO ES COMPTEN ELS FRACASSOS. Res de «l'has ajornada 5 cops». Fer
+   *      sentir malament per haver ajornat és el combustible del cicle:
+   *      com pitjor et sents amb la tasca, més la vols treure del davant.
+   *
+   *   2. QUAN FA MOLT, ES PERDONA. No és amabilitat: perdonar-se a un mateix
+   *      haver procrastinat REDUEIX la procrastinació següent, i ho fa
+   *      justament perquè baixa l'emoció negativa (Wohl, Pychyl i Bennett,
+   *      2010). Per això, passat un mes, el senyal deixa de dir quants dies
+   *      fa i diu que això passa.
+   *
+   *   3. NO ES DEMANA QUE LA FACIS: ES DEMANA EL PRIMER PAS I QUAN. Un pla
+   *      del tipus «quan passi X, faré Y» multiplica les possibilitats que
+   *      allò es faci —la metaanàlisi de Gollwitzer i Sheeran dona un efecte
+   *      de d=0,65, i és més gran quan el pla té forma de «si… llavors» i
+   *      quan es reescriu—. Per això aquí es demanen dues coses i no una:
+   *      QUÈ faràs exactament, i EN QUIN MOMENT.
+   *
+   * I una de sola frase: el primer pas ha de ser tan petit que faci riure.
+   * L'aversió és a COMENÇAR, no a fer; un cop obert el document, la cosa
+   * canvia. «Obrir el document i escriure el títol» és una feina de deu
+   * minuts que no fa por, i «l'informe de la batuda» no.
+   */
+  function senyalEncallada_(t, dies) {
+    /* JA TÉ PLA: no se li'n demana un altre. El que fa falta és recordar-lo,
+       que és exactament el que la recerca diu que reforça l'efecte. */
+    if (t.primerPas) {
+      return {
+        id: 'tasca_pla:' + t.id,
+        titol: 'Ja tens el pas escrit',
+        text: '«' + t.text + '»: ' + t.primerPas +
+              (t.passQuan ? ' — ' + t.passQuan : '') + '.',
+        urgencia: 2,
+        accio: 'tasques'
+      };
+    }
+
+    /* PASSAT UN MES, ES CANVIA DE TO. Dir «fa 47 dies» a algú que ja ho sap
+       només serveix per afegir-hi culpa, i la culpa és el que fa que la
+       tasca sigui encara més difícil de mirar. */
+    if (dies >= 30) {
+      return {
+        id: 'tasca_encallada:' + t.id,
+        titol: 'Fa temps',
+        text: '«' + t.text + '» fa setmanes que hi és, i no passa res: ' +
+              'les que costen són sempre les mateixes. Si no la faràs, treu-la. ' +
+              'I si la faràs, escriu només què faries els primers deu minuts.',
+        urgencia: 2,
+        accio: 'tasques'
+      };
+    }
+
+    return {
+      id: 'tasca_encallada:' + t.id,
+      titol: 'Encallada',
+      text: '«' + t.text + '» fa ' + dies + ' dies que hi és i no s\'ha mogut. ' +
+            'No cal que la facis: escriu què faries els primers deu minuts, i quan.',
+      urgencia: 2,
+      accio: 'tasques'
+    };
   }
 
   // ------------------------------------------------------------- per a la IA
@@ -956,6 +1070,17 @@ var Tasques = (function () {
     return { fet: true, text: t.text };
   }
 
+  /** El pla d'una tasca, dit parlant. Vegeu `senyalEncallada_` per al perquè. */
+  function primerPasPerNom(a) {
+    a = a || {};
+    var t = troba_(a.text);
+    if (!t) throw new Error('No trobo cap tasca que digui «' + (a.text || '') + '».');
+    var pas = String(a.pas || '').trim();
+    if (!pas) throw new Error('Falta dir quin és el primer pas.');
+    edita({ id: t.id, llista: t.llista, primer_pas: pas, pas_quan: String(a.quan || '').trim() });
+    return { fet: true, text: t.text, pas: pas, quan: a.quan || '' };
+  }
+
   function classificaPerNom(a) {
     a = a || {};
     var t = troba_(a.text);
@@ -1000,6 +1125,7 @@ var Tasques = (function () {
     apuntaPerNom: apuntaPerNom,
     completaPerNom: completaPerNom,
     classificaPerNom: classificaPerNom,
+    primerPasPerNom: primerPasPerNom,
     treuPerNom: treuPerNom,
     buidaCau: buidaCau
   };

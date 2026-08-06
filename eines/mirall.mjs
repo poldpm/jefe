@@ -490,6 +490,8 @@ const MOCK = `
           }
           if (p.prioritat !== undefined) t3.prioritat = p.prioritat ? 'alta' : '';
           if (p.fent !== undefined) t3.fent = !!p.fent;
+          if (p.primer_pas !== undefined) t3.primerPas = String(p.primer_pas || '').trim();
+          if (p.pas_quan !== undefined) t3.passQuan = String(p.pas_quan || '').trim();
           if (p.llistaNova) {
             var nova = TASQUES.llistes.filter(function (l) { return l.id === p.llistaNova; })[0];
             if (nova) {
