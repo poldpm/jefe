@@ -151,7 +151,15 @@ var Assistent = (function () {
         sistema: instruccions,
         missatges: conversa,
         eines: llistaEines,
-        model: 'bo',
+        /* LA PRIMERA VOLTA NO ESCRIU RES: TRIA UNA EINA.
+           Cada volta és una petició sencera, i totes dues anaven al model bo:
+           dues peticions per pregunta del model amb el límit més estret, i
+           amb cinc preguntes seguides la quota se n'anava.
+           Triar una eina d'una llista i omplir-ne els arguments és
+           exactament el que fa bé un model petit; escriure la resposta amb
+           les dades al davant, no. Aquí es reparteix segons la feina, i de
+           passada la primera volta va més de pressa. */
+        model: volta === 0 ? 'barat' : 'bo',
         maxTokens: 1200,
         temperatura: 0
       });

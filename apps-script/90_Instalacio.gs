@@ -2715,3 +2715,66 @@ function triggerEscalfaFora() {
   Logger.log(resum);
   return resum;
 }
+
+
+/**
+ * PER QUÈ NO EM DEIXA PREGUNTAR.
+ *
+ * Quan Gemini diu que s'ha acabat la quota, diu TAMBÉ quina i quant s'ha
+ * d'esperar, i JEFE ho apunta. Sense mirar-ho, un límit per minut i un límit
+ * per dia són indistingibles des de fora —«no puc contestar»— i tenen
+ * solucions oposades: un s'espera seixanta segons i l'altre no es soluciona
+ * esperant.
+ *
+ * No gasta cap petició: només llegeix el que ja hi ha apuntat.
+ */
+function perQueNoEmDeixaPreguntar() {
+  var l = [];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var e = IA.estat();
+  a('=== ELS MODELS QUE FA SERVIR ===');
+  a('  triar l\'eina (1a volta):  ' + e.modelBarat);
+  a('  escriure la resposta:     ' + e.modelBo);
+  a('');
+  a('Cada pregunta que necessita dades gasta DUES peticions: una per triar');
+  a('l\'eina i una per escriure la resposta amb el que hagi sortit. Les que');
+  a('no necessiten dades en gasten una.');
+
+  var lim = IA.consum();
+  a('');
+  a('=== L\'ÚLTIM LÍMIT ===');
+  a('  Peticions comptades avui: ' + lim.avui);
+  if (!lim || (lim.faSegons === null || lim.faSegons === undefined)) {
+    a('  No en tinc cap d\'apuntat. O no n\'has tocat cap des de l\'última');
+    a('  neteja, o l\'error venia d\'una altra banda.');
+  } else {
+    a('  Fa ' + lim.faSegons + ' segons que el vas tocar.');
+    a('  Quota: ' + (lim.quota || '(Google no la va dir)'));
+    a('  Espera que demanava: ' + (lim.esperaSegons ? lim.esperaSegons + ' s' : '(no la va dir)'));
+    a('  Encara actiu: ' + (lim.tocat ? 'SÍ' : 'no'));
+    a('');
+    var q = String(lim.quota || '');
+    if (/PerDay|per_day|Daily/i.test(q)) {
+      a('  ÉS UN LÍMIT DIARI. Esperar no serveix: es reinicia a mitjanit');
+      a('  hora del Pacífic. Si passa sovint, el que toca és fer servir un');
+      a('  model amb més marge per a la primera volta.');
+    } else if (/PerMinute|per_minute/i.test(q)) {
+      a('  ÉS UN LÍMIT PER MINUT. Amb un minut d\'espera torna sol.');
+    } else if (/Token/i.test(q)) {
+      a('  ÉS UN LÍMIT DE TOKENS, no de preguntes: el que pesa és la mida');
+      a('  del que s\'envia, no quantes vegades. La fitxa que se li dona pot');
+      a('  ser massa grossa.');
+    } else {
+      a('  Digue\'m aquest text de «Quota» i et diré què vol dir.');
+    }
+  }
+
+  a('');
+  a('=== QUÈ ES POT FER ===');
+  a('  · Si el model de la 1a volta és el mateix que el de la resposta,');
+  a('    posa-hi un de més petit al full _Config (clau model_barat):');
+  a('    gemini-2.5-flash-lite té més marge i per triar una eina en té prou.');
+  a('  · `triaModels()` mira quins models tens disponibles.');
+  return l.join('\n');
+}
