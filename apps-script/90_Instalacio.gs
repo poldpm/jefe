@@ -2854,32 +2854,49 @@ function provaIntervals() {
  * NO ESCRIU RES ENLLOC, i del contingut només n'ensenya l'estructura i un
  * tastet: el que es busca és de quina forma són les dades, no quines són.
  */
-function provaExportSalut() {
+function provaExportSalut(nom) {
   var l = [];
   function a(t) { l.push(t); Logger.log(t); }
 
-  // El fitxer, es digui com es digui i sigui a la carpeta que sigui
+  /* EL NOM DEL FITXER EL POSA EL TELÈFON, I EN LA SEVA LLENGUA.
+     El buscava com a «Health Connect.zip» i al mòbil d'en Pol es diu «Salut
+     connectada.zip». Buscar per un nom concret és fer dependre això de
+     l'idioma del telèfon, que no té res a veure amb el que volem saber.
+     Ara es busca pel que sí que és estable: un ZIP, recent, al Drive. */
   var trobats = [];
   var vist = {};
-  var afegeix = function (it) {
-    while (it.hasNext()) {
+  var afegeix = function (it, max) {
+    var n = 0;
+    while (it.hasNext() && n++ < (max || 50)) {
       var f = it.next();
       if (vist[f.getId()]) continue;
       vist[f.getId()] = true;
       trobats.push(f);
     }
   };
-  try { afegeix(DriveApp.getFilesByName('Health Connect.zip')); } catch (e) {}
-  try { afegeix(DriveApp.searchFiles('title contains "Health Connect"')); } catch (e) {}
+
+  if (nom) {
+    try { afegeix(DriveApp.getFilesByName(nom)); } catch (e) {}
+    if (!trobats.length) {
+      try { afegeix(DriveApp.searchFiles('title contains "' + String(nom).replace(/"/g, '') + '"')); }
+      catch (e) {}
+    }
+  } else {
+    try { afegeix(DriveApp.searchFiles('mimeType = "application/zip"')); } catch (e) {}
+    try { afegeix(DriveApp.searchFiles('title contains ".zip"')); } catch (e) {}
+  }
 
   if (!trobats.length) {
-    a('No trobo cap fitxer que es digui «Health Connect» al Drive.');
+    a('No trobo cap ZIP al Drive' + (nom ? ' que es digui «' + nom + '»' : '') + '.');
     a('');
     a('Si acabes de programar l\'exportació, encara no l\'ha feta: la diària');
     a('salta un cop al dia, no en programar-la. Torna-hi demà.');
     a('');
     a('I comprova a Ajustos → Health Connect → Gestionar dades → Còpia de');
     a('seguretat que digui que la darrera exportació ha anat bé.');
+    a('');
+    a('Si el fitxer hi és però no el veig, passa\'m el nom exacte:');
+    a('    provaExportSalut(\'Salut connectada.zip\')');
     return l.join('\n');
   }
 
@@ -2890,9 +2907,14 @@ function provaExportSalut() {
       Utilities.formatDate(f.getLastUpdated(), Config.zonaHoraria(), 'yyyy-MM-dd HH:mm'));
   });
 
-  var fitxer = trobats[0];
+  /* Si n'hi ha uns quants, es tria el que sona a salut abans que el més
+     recent: al Drive hi pot haver ZIPs d'altres coses i obrir el que no toca
+     només serviria per dir que no hi ha entrenaments allà on no n'hi havia
+     d'haver. Les paraules són les de les llengües que pot tenir el telèfon. */
+  var SONA = /salut|salud|health|sant[eé]|sa[uú]de|gesundheit|conect|connect/i;
+  var fitxer = trobats.filter(function (f) { return SONA.test(f.getName()); })[0] || trobats[0];
   a('');
-  a('Obrint el més recent: ' + fitxer.getName());
+  a('Obrint: ' + fitxer.getName());
 
   var peces;
   try {
