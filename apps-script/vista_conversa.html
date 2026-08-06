@@ -63,6 +63,15 @@
                              white-space: nowrap; }
 }
 .hud-cap .creix { flex: 1; }
+/* L'etiqueta d'estat és un botó, però no ha de semblar-ne un: el que fa és
+   secundari i el que diu és informació. El que canvia en encendre el mode
+   tècnic és el color, com a tota la resta de l'app. */
+.bt-estat {
+  border: 0; background: transparent; color: inherit; font: inherit;
+  letter-spacing: inherit; text-transform: inherit; padding: 6px 0; margin: -6px 0;
+  cursor: pointer; transition: color .16s var(--entra);
+}
+.bt-estat[aria-pressed="true"] { color: var(--cian); }
 .llum { width: 7px; height: 7px; border-radius: 50%; background: var(--apagat); flex: none; }
 .hud[data-estat="repos"]     .llum { background: var(--cian); box-shadow: 0 0 8px var(--cian); }
 .hud[data-estat="pensant"]   .llum { background: var(--cian); box-shadow: 0 0 14px var(--cian); animation: bat .8s infinite; }
@@ -120,7 +129,11 @@
    files, quants tokens—, no farciment decoratiu. Petita i al marge, però
    llegible: al 9 px ja és prou discreta sense haver de rebaixar-ne el
    contrast fins a fer-la endevinable. */
-.telemetria {
+/* Els blocs de cantonada van amb la traça: números per diagnosticar, no per
+   llegir. Es tornen a encendre pel mateix interruptor. */
+.telemetria { display: none; }
+.hud[data-tecnic="1"] .telemetria {
+  display: block;
   position: absolute; top: 64px; z-index: 1; pointer-events: none;
   font-family: var(--mono); font-size: .5625rem; line-height: 1.75;
   color: var(--apagat); letter-spacing: .04em; max-width: 34%;
@@ -149,23 +162,86 @@
 
 /* ------------------------------------------------------------- transcripció */
 
-/* Només l'última resposta, i només mentre serveix de res. */
+/* Només l'última resposta, i només mentre serveix de res.
+   NO ÉS ELL QUI FA SCROLL: qui es mou és el text de dins de la fitxa. */
 .transcripcio {
-  width: 100%; max-width: 62ch; margin: 0 auto; min-height: 0;
-  overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left;
+  width: 100%; margin: 0 auto; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; text-align: left;
 }
 .transcripcio:empty { display: none; }
-.torn { max-width: 70ch; }
-.torn .qui { font-family: var(--mono); font-size: .5625rem; letter-spacing: .22em;
-             text-transform: uppercase; color: var(--apagat); margin-bottom: 5px; display: block; }
-.torn .diu { font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
-.torn[data-rol="usuari"] { align-self: flex-end; text-align: right; }
-.torn[data-rol="usuari"] .qui { color: var(--blau); }
-.torn[data-rol="usuari"] .diu { display: inline-block; text-align: left; color: var(--apagat); }
-.torn[data-rol="assistent"] .qui { color: var(--cian); }
+.torn { width: 100%; display: flex; flex-direction: column; align-items: center; }
 
-.traca { margin-top: var(--e2); font-family: var(--mono); font-size: .625rem;
-         color: var(--apagat); display: flex; flex-wrap: wrap; gap: var(--e2); }
+/* EL FIL. Baixa del centre de l'esfera fins a la fitxa: la resposta SURT
+   d'ella, no hi és al costat. Ha estat la manera de treure l'etiqueta «JEFE»
+   sense que la resposta quedi surant: qui parla ja ho diu el nucli, i
+   repetir-ho amb text gastava la línia més visible de la pantalla. */
+.fil-resposta {
+  flex: none; width: 1px; height: 16px; transform-origin: top;
+  background: linear-gradient(var(--cian), rgba(79, 214, 224, .25));
+  animation: baixa .28s var(--sortida) both;
+}
+@keyframes baixa { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* LA FITXA. És un instrument d'aquesta consola i no un globus de xat: les
+   claus de cantonada que emmarquen la pantalla entren a emmarcar la resposta,
+   i la superfície és un panell més. */
+.torn-fitxa {
+  position: relative; width: 100%; max-width: 58ch;
+  padding: var(--e3) var(--e3) var(--e3) calc(var(--e3) + 2px);
+  background: linear-gradient(180deg, rgba(10, 26, 38, .92), rgba(7, 16, 25, .78));
+  border: 1px solid var(--linia);
+  animation: entra-fitxa .3s var(--sortida) both;
+}
+@keyframes entra-fitxa { from { transform: translateY(-4px); } to { transform: none; } }
+
+/* EL RAIL DIU QUANT EN PORTES LLEGIT. Amb tot a la vista va ple —ho tens
+   tot—; si no, creix mentre baixes. És el que substitueix la barra de scroll,
+   i diu una cosa que la barra no deia: no on ets, sinó quant te'n queda.
+   S'anima amb `transform` i no amb `height`: una alçada animada obliga el
+   navegador a recalcular la disposició a cada fotograma. */
+.torn-rail {
+  position: absolute; left: -1px; top: -1px; bottom: -1px; width: 2px;
+  background: var(--cian); transform: scaleY(0); transform-origin: top;
+  transition: transform .45s var(--entra) .1s;
+}
+.torn-clau { position: absolute; width: 9px; height: 9px; border: 0 solid var(--cian); }
+.torn-clau.a { top: -1px; right: -1px; border-top-width: 1px; border-right-width: 1px; }
+.torn-clau.b { bottom: -1px; right: -1px; border-bottom-width: 1px; border-right-width: 1px; }
+
+/* EL SCROLL VA A DINS I NO TÉ BARRA.
+   Una barra de scroll és un tros de finestra dins d'una consola. Es treu i el
+   text es mou igual amb el dit i amb la roda; el que cal llavors és dir que
+   n'hi ha més, perquè un text tallat en sec sembla un text que s'ha acabat.
+   Ho diu el TEXT ESVAINT-SE pel marge on queda cosa. No és una capa pintada a
+   sobre —el fons de la fitxa és mig transparent i es notaria—: és una màscara
+   sobre el contingut, o sigui que el que s'esvaeix és la lletra. */
+.torn-cursa {
+  max-height: var(--sostre, 40vh); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
+                      #000 var(--m2, 100%), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
+              #000 var(--m2, 100%), transparent 100%);
+}
+.torn-cursa::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* La primera línia en blanc pur: un titular sense haver-ne d'escriure cap. */
+.torn .diu { margin: 0; font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+.torn .diu::first-line { color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fil-resposta, .torn-fitxa { animation: none; }
+  .torn-rail { transition: none; }
+}
+
+/* LA TELEMETRIA NO ES VEU, PERÒ NO S'HA PERDUT.
+   Quantes files ha llegit cada eina i on se n'ha anat el temps m'interessen a
+   mi per saber per què una cosa va lenta; a ell, mentre llegeix una resposta,
+   li són soroll al mig. Es guarden igual al full de converses i es poden
+   tornar a ensenyar tocant la capçalera. */
+.traca { display: none; margin-top: var(--e2); font-family: var(--mono);
+         font-size: .625rem; color: var(--apagat); flex-wrap: wrap; gap: var(--e2); }
+.hud[data-tecnic="1"] .traca { display: flex; }
 .traca span { border: 1px solid var(--linia); padding: 2px 7px; }
 .traca b { color: var(--cian); font-weight: 400; }
 
@@ -328,7 +404,13 @@ App.registraVista('conversa', {
 
         '<div class="hud-cap">' +
           '<span class="llum"></span>' +
-          '<span id="etiqueta-estat">iniciant</span>' +
+          /* L'ETIQUETA D'ESTAT ÉS L'INTERRUPTOR DEL MODE TÈCNIC.
+             Els números de què ha consultat i quant ha trigat serveixen per
+             saber per què una cosa va lenta, no per llegir una resposta. Van
+             amagats, i es tornen a ensenyar tocant aquí: no calia cap botó
+             nou per a una cosa que es fa dos cops l'any. */
+          '<button class="bt-estat" id="etiqueta-estat" aria-pressed="false"' +
+            ' aria-label="Ensenya o amaga els números tècnics">iniciant</button>' +
           '<span class="creix"></span>' +
           (potParlar ? '<button class="bt bt-p" id="b-veu" aria-pressed="false" aria-label="Llegir en veu alta">' +
             ic('veu', 'ic-p') + '</button>' : '') +
@@ -395,6 +477,22 @@ App.registraVista('conversa', {
       // Més marcades que abans: ara viuen al marge il·luminat, no darrere del
       // nucli, i allà una línia al 16% no s'arriba a veure.
       Relleu.fons(1000, 1000, { color: 'rgba(79,214,224,.30)', gruix: 1, nivells: 14 });
+
+    /* EL MODE TÈCNIC, recordat entre visites. Si l'encén per ensenyar-me una
+       lentitud, no ha de tornar-lo a encendre cada cop que entra. */
+    (function () {
+      var boto = arrel.querySelector('#etiqueta-estat');
+      var posa = function (si) {
+        hud.dataset.tecnic = si ? '1' : '0';
+        boto.setAttribute('aria-pressed', si ? 'true' : 'false');
+      };
+      posa(Cau.get('conversa.tecnic', false));
+      boto.addEventListener('click', function () {
+        var nou = hud.dataset.tecnic !== '1';
+        Cau.set('conversa.tecnic', nou);
+        posa(nou);
+      });
+    })();
 
     function posaEstat(e, etiqueta) {
       hud.dataset.estat = e;
@@ -475,7 +573,12 @@ App.registraVista('conversa', {
       }
       tr.innerHTML = ultim ? torn(ultim) : '';
       lligaPropostes();
-      tr.scrollTop = 0;
+      var cursa = tr.querySelector('.torn-cursa');
+      if (cursa) {
+        cursa.scrollTop = 0;
+        cursa.addEventListener('scroll', marcaLaLectura);
+        marcaLaLectura();
+      }
       pintaTelemetria();
     }
 
@@ -498,7 +601,11 @@ App.registraVista('conversa', {
 
     function torn(m) {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
-        '<span class="qui">' + (m.rol === 'usuari' ? 'TU' : 'JEFE') + '</span>' +
+        '<div class="fil-resposta"></div>' +
+        '<div class="torn-fitxa">' +
+          '<div class="torn-rail"></div>' +
+          '<div class="torn-clau a"></div><div class="torn-clau b"></div>' +
+          '<div class="torn-cursa">' +
         '<div class="diu">' + esc(m.text) + '</div>';
       if ((m.eines && m.eines.length) || m.temps) {
         h += '<div class="traca">' +
@@ -519,6 +626,11 @@ App.registraVista('conversa', {
              '</span>' : '') +
         '</div>';
       }
+      /* Aquí s'acaba el que fa scroll. LES PROPOSTES QUEDEN FORA:
+         una escriptura per confirmar no pot quedar amagada sota el text ni
+         esvaïda pel marge —hi ha un botó que has de poder prémer—, i per això
+         viu sota la fitxa i sempre a la vista. */
+      h += '</div>';
       if (m.propostes && m.propostes.length) {
         h += m.propostes.map(function (p, i) {
           return '<div class="proposta" data-proposta="' + i + '"><p>' + esc(p.etiqueta) + '</p>' +
@@ -526,7 +638,26 @@ App.registraVista('conversa', {
             '<button data-no="1">Deixa-ho</button></div></div>';
         }).join('');
       }
-      return h + '</div>';
+      return h + '</div></div>';
+    }
+
+    /* ON S'ESVAEIX EL TEXT I QUANT EN PORTES LLEGIT.
+       Es fa aquí i no amb CSS sol perquè les dues coses depenen d'una mesura:
+       quant sobra i on ets. Sense scroll possible, no s'esvaeix per enlloc i
+       el rail va ple: un text sencer no s'ha d'esvair per res. */
+    function marcaLaLectura() {
+      var c = tr.querySelector('.torn-cursa');
+      var rail = tr.querySelector('.torn-rail');
+      if (!c || !rail) return;
+
+      var sobra = c.scrollHeight - c.clientHeight;
+      var dalt = sobra > 1 && c.scrollTop > 2;
+      var baix = sobra > 1 && c.scrollTop < sobra - 2;
+      c.style.setProperty('--m1', dalt ? '22px' : '0px');
+      c.style.setProperty('--m2', baix ? 'calc(100% - 22px)' : '100%');
+
+      var f = sobra <= 1 ? 1 : Math.min(1, (c.scrollTop + c.clientHeight) / c.scrollHeight);
+      rail.style.transform = 'scaleY(' + f + ')';
     }
 
     function lligaPropostes() {
@@ -718,6 +849,16 @@ App.registraVista('conversa', {
           setTimeout(function () {
             if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
           }, 900);
+        }
+
+        /* I si el que demanava era VEURE una cosa, el plafó. Va més de pressa
+           que el canvi de pantalla —600 ms i no 900— perquè aquí no marxes de
+           lloc: el que passa és que et posen una cosa al davant. */
+        var mostrador = (r.eines || []).filter(function (e) { return e.mostra; })[0];
+        if (mostrador && !ober) {
+          setTimeout(function () {
+            App.obreVisor(mostrador.mostra, mostrador.obreAmb || null);
+          }, 600);
         }
       }
       Cau.set('conversa.missatges', missatges.slice(-40));

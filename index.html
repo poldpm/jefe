@@ -1667,6 +1667,57 @@ input[type="checkbox"] { accent-color: var(--utm); }
   .modal { border-bottom: 1.5px solid var(--neatline); max-height: 84vh; }
 }
 
+/* ==========================================================================
+   EL VISOR
+
+   Quan li demanes una cosa que es POT ENSENYAR —«ensenya'm la gràfica del
+   tabac»—, contestar-la amb text seria descriure-la en comptes de donar-la.
+   S'obre un plafó a sobre i allà hi ha la cosa.
+
+   No és un modal nou: és el de sempre, vestit de consola. Reaprofita el que
+   ja estava fet i provat —el focus que hi entra i torna, el fons que tanca,
+   la tecla d'escapada— i només canvia com es veu. Un segon sistema de
+   finestres seria un segon lloc on arreglar els mateixos errors.
+   ========================================================================== */
+
+.modal[data-visor="1"] {
+  max-width: 420px;
+  background: linear-gradient(180deg, #0b1c28, #071019);
+  border: 1px solid #1d4459; border-bottom: 1px solid #1d4459;
+  color: #dff6f9;
+  padding: var(--e3) var(--e3) calc(var(--e4) + env(safe-area-inset-bottom, 0px));
+  /* Entra creixent i pujant. Res no apareix mai del no-res: una cosa que
+     surt de mida zero no s'assembla a res que passi al món. */
+  transform: translateY(14px) scale(.96);
+  transition: transform .3s var(--sortida), opacity .22s var(--sortida);
+  opacity: 0;
+}
+.fosc[data-obert="1"] .modal[data-visor="1"] { transform: none; opacity: 1; }
+
+.modal[data-visor="1"] .modal-cap {
+  border-bottom: 1px solid #12293a; margin-bottom: var(--e3); padding-bottom: var(--e2);
+}
+.modal[data-visor="1"] .modal-cap h2 {
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .16em;
+  text-transform: uppercase; font-weight: 400; color: #dff6f9;
+}
+.modal[data-visor="1"] .btn-fantasma { color: #6f93a6; }
+
+/* Les claus de la consola, i s'encenen DESPRÉS del plafó: primer arriba, i
+   llavors es reconeix com a part d'aquesta màquina. */
+.visor-clau { position: absolute; width: 12px; height: 12px; border: 0 solid var(--cian, #4fd6e0);
+              opacity: 0; transition: opacity .3s var(--sortida) .16s; }
+.fosc[data-obert="1"] .visor-clau { opacity: 1; }
+.visor-clau.d1 { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+.visor-clau.d2 { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
+.visor-clau.d3 { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
+.visor-clau.d4 { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal[data-visor="1"] { transition: none; }
+  .visor-clau { transition: none; }
+}
+
 .selector-data { display: flex; align-items: center; gap: var(--e2); }
 .selector-data .data { flex: 1; text-align: center; }
 
@@ -2479,7 +2530,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 20:48 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-06 22:23 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2831,7 +2882,7 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 20:48 · en curs";
+window.MARCA_JEFE = "2026-08-06 22:23 · en curs";
 </script>
 
 <script>
@@ -3455,6 +3506,52 @@ var Jefe = (function () {
       var primer = fosc.querySelector('input, select, textarea, button:not([data-tanca])');
       if (primer && primer.type !== 'button') setTimeout(function () { primer.focus(); }, 320);
       return fosc.querySelector('.modal');
+    },
+
+    /* ------------------------------------------------------------------
+       EL VISOR: coses que es poden ENSENYAR
+
+       Una pantalla declara què sap ensenyar i amb quin nom:
+
+           App.registraVisor('habits.comptador', {
+             titol: function (p) { return 'Cigarros'; },
+             render: function (arrel, params) { ... }
+           });
+
+       I una eina de la IA diu `mostra: 'habits.comptador'`. Quan en Pol li
+       demana «ensenya'm la gràfica del tabac», JEFE obre el plafó amb allò
+       en comptes de contestar-li amb una descripció.
+
+       AFEGIR-NE UN ÉS UNA LÍNIA AL FITXER D'AQUELLA PANTALLA. El nucli no
+       sap què és una corba ni una setmana: només sap obrir el que li han
+       registrat, igual que amb les vistes.
+       ------------------------------------------------------------------ */
+    visors: {},
+
+    registraVisor: function (clau, def) { App.visors[clau] = def; },
+
+    obreVisor: function (clau, params) {
+      var def = App.visors[clau];
+      if (!def) { App.brindis('Això encara no ho sé ensenyar.', 'error'); return null; }
+      params = params || {};
+
+      var titol = typeof def.titol === 'function' ? def.titol(params) : (def.titol || '');
+      var cos = App.modal(titol, '<div class="visor-cos"></div>');
+      var modal = cos;
+      modal.dataset.visor = '1';
+      /* Les claus van dins del plafó i no al marc del modal: han de sortir
+         a les seves cantonades, i el marc no és seu. */
+      ['d1', 'd2', 'd3', 'd4'].forEach(function (c) {
+        var e = document.createElement('span');
+        e.className = 'visor-clau ' + c;
+        modal.appendChild(e);
+      });
+
+      try { def.render(modal.querySelector('.visor-cos'), params); }
+      catch (err) {
+        modal.querySelector('.visor-cos').innerHTML = Comp.error(err, false);
+      }
+      return modal;
     },
 
     tancaModal: function () {
@@ -4539,6 +4636,15 @@ App.registraVista('inici', {
                              white-space: nowrap; }
 }
 .hud-cap .creix { flex: 1; }
+/* L'etiqueta d'estat és un botó, però no ha de semblar-ne un: el que fa és
+   secundari i el que diu és informació. El que canvia en encendre el mode
+   tècnic és el color, com a tota la resta de l'app. */
+.bt-estat {
+  border: 0; background: transparent; color: inherit; font: inherit;
+  letter-spacing: inherit; text-transform: inherit; padding: 6px 0; margin: -6px 0;
+  cursor: pointer; transition: color .16s var(--entra);
+}
+.bt-estat[aria-pressed="true"] { color: var(--cian); }
 .llum { width: 7px; height: 7px; border-radius: 50%; background: var(--apagat); flex: none; }
 .hud[data-estat="repos"]     .llum { background: var(--cian); box-shadow: 0 0 8px var(--cian); }
 .hud[data-estat="pensant"]   .llum { background: var(--cian); box-shadow: 0 0 14px var(--cian); animation: bat .8s infinite; }
@@ -4596,7 +4702,11 @@ App.registraVista('inici', {
    files, quants tokens—, no farciment decoratiu. Petita i al marge, però
    llegible: al 9 px ja és prou discreta sense haver de rebaixar-ne el
    contrast fins a fer-la endevinable. */
-.telemetria {
+/* Els blocs de cantonada van amb la traça: números per diagnosticar, no per
+   llegir. Es tornen a encendre pel mateix interruptor. */
+.telemetria { display: none; }
+.hud[data-tecnic="1"] .telemetria {
+  display: block;
   position: absolute; top: 64px; z-index: 1; pointer-events: none;
   font-family: var(--mono); font-size: .5625rem; line-height: 1.75;
   color: var(--apagat); letter-spacing: .04em; max-width: 34%;
@@ -4625,23 +4735,86 @@ App.registraVista('inici', {
 
 /* ------------------------------------------------------------- transcripció */
 
-/* Només l'última resposta, i només mentre serveix de res. */
+/* Només l'última resposta, i només mentre serveix de res.
+   NO ÉS ELL QUI FA SCROLL: qui es mou és el text de dins de la fitxa. */
 .transcripcio {
-  width: 100%; max-width: 62ch; margin: 0 auto; min-height: 0;
-  overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left;
+  width: 100%; margin: 0 auto; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; text-align: left;
 }
 .transcripcio:empty { display: none; }
-.torn { max-width: 70ch; }
-.torn .qui { font-family: var(--mono); font-size: .5625rem; letter-spacing: .22em;
-             text-transform: uppercase; color: var(--apagat); margin-bottom: 5px; display: block; }
-.torn .diu { font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
-.torn[data-rol="usuari"] { align-self: flex-end; text-align: right; }
-.torn[data-rol="usuari"] .qui { color: var(--blau); }
-.torn[data-rol="usuari"] .diu { display: inline-block; text-align: left; color: var(--apagat); }
-.torn[data-rol="assistent"] .qui { color: var(--cian); }
+.torn { width: 100%; display: flex; flex-direction: column; align-items: center; }
 
-.traca { margin-top: var(--e2); font-family: var(--mono); font-size: .625rem;
-         color: var(--apagat); display: flex; flex-wrap: wrap; gap: var(--e2); }
+/* EL FIL. Baixa del centre de l'esfera fins a la fitxa: la resposta SURT
+   d'ella, no hi és al costat. Ha estat la manera de treure l'etiqueta «JEFE»
+   sense que la resposta quedi surant: qui parla ja ho diu el nucli, i
+   repetir-ho amb text gastava la línia més visible de la pantalla. */
+.fil-resposta {
+  flex: none; width: 1px; height: 16px; transform-origin: top;
+  background: linear-gradient(var(--cian), rgba(79, 214, 224, .25));
+  animation: baixa .28s var(--sortida) both;
+}
+@keyframes baixa { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* LA FITXA. És un instrument d'aquesta consola i no un globus de xat: les
+   claus de cantonada que emmarquen la pantalla entren a emmarcar la resposta,
+   i la superfície és un panell més. */
+.torn-fitxa {
+  position: relative; width: 100%; max-width: 58ch;
+  padding: var(--e3) var(--e3) var(--e3) calc(var(--e3) + 2px);
+  background: linear-gradient(180deg, rgba(10, 26, 38, .92), rgba(7, 16, 25, .78));
+  border: 1px solid var(--linia);
+  animation: entra-fitxa .3s var(--sortida) both;
+}
+@keyframes entra-fitxa { from { transform: translateY(-4px); } to { transform: none; } }
+
+/* EL RAIL DIU QUANT EN PORTES LLEGIT. Amb tot a la vista va ple —ho tens
+   tot—; si no, creix mentre baixes. És el que substitueix la barra de scroll,
+   i diu una cosa que la barra no deia: no on ets, sinó quant te'n queda.
+   S'anima amb `transform` i no amb `height`: una alçada animada obliga el
+   navegador a recalcular la disposició a cada fotograma. */
+.torn-rail {
+  position: absolute; left: -1px; top: -1px; bottom: -1px; width: 2px;
+  background: var(--cian); transform: scaleY(0); transform-origin: top;
+  transition: transform .45s var(--entra) .1s;
+}
+.torn-clau { position: absolute; width: 9px; height: 9px; border: 0 solid var(--cian); }
+.torn-clau.a { top: -1px; right: -1px; border-top-width: 1px; border-right-width: 1px; }
+.torn-clau.b { bottom: -1px; right: -1px; border-bottom-width: 1px; border-right-width: 1px; }
+
+/* EL SCROLL VA A DINS I NO TÉ BARRA.
+   Una barra de scroll és un tros de finestra dins d'una consola. Es treu i el
+   text es mou igual amb el dit i amb la roda; el que cal llavors és dir que
+   n'hi ha més, perquè un text tallat en sec sembla un text que s'ha acabat.
+   Ho diu el TEXT ESVAINT-SE pel marge on queda cosa. No és una capa pintada a
+   sobre —el fons de la fitxa és mig transparent i es notaria—: és una màscara
+   sobre el contingut, o sigui que el que s'esvaeix és la lletra. */
+.torn-cursa {
+  max-height: var(--sostre, 40vh); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
+                      #000 var(--m2, 100%), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
+              #000 var(--m2, 100%), transparent 100%);
+}
+.torn-cursa::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* La primera línia en blanc pur: un titular sense haver-ne d'escriure cap. */
+.torn .diu { margin: 0; font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+.torn .diu::first-line { color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fil-resposta, .torn-fitxa { animation: none; }
+  .torn-rail { transition: none; }
+}
+
+/* LA TELEMETRIA NO ES VEU, PERÒ NO S'HA PERDUT.
+   Quantes files ha llegit cada eina i on se n'ha anat el temps m'interessen a
+   mi per saber per què una cosa va lenta; a ell, mentre llegeix una resposta,
+   li són soroll al mig. Es guarden igual al full de converses i es poden
+   tornar a ensenyar tocant la capçalera. */
+.traca { display: none; margin-top: var(--e2); font-family: var(--mono);
+         font-size: .625rem; color: var(--apagat); flex-wrap: wrap; gap: var(--e2); }
+.hud[data-tecnic="1"] .traca { display: flex; }
 .traca span { border: 1px solid var(--linia); padding: 2px 7px; }
 .traca b { color: var(--cian); font-weight: 400; }
 
@@ -4804,7 +4977,13 @@ App.registraVista('conversa', {
 
         '<div class="hud-cap">' +
           '<span class="llum"></span>' +
-          '<span id="etiqueta-estat">iniciant</span>' +
+          /* L'ETIQUETA D'ESTAT ÉS L'INTERRUPTOR DEL MODE TÈCNIC.
+             Els números de què ha consultat i quant ha trigat serveixen per
+             saber per què una cosa va lenta, no per llegir una resposta. Van
+             amagats, i es tornen a ensenyar tocant aquí: no calia cap botó
+             nou per a una cosa que es fa dos cops l'any. */
+          '<button class="bt-estat" id="etiqueta-estat" aria-pressed="false"' +
+            ' aria-label="Ensenya o amaga els números tècnics">iniciant</button>' +
           '<span class="creix"></span>' +
           (potParlar ? '<button class="bt bt-p" id="b-veu" aria-pressed="false" aria-label="Llegir en veu alta">' +
             ic('veu', 'ic-p') + '</button>' : '') +
@@ -4871,6 +5050,22 @@ App.registraVista('conversa', {
       // Més marcades que abans: ara viuen al marge il·luminat, no darrere del
       // nucli, i allà una línia al 16% no s'arriba a veure.
       Relleu.fons(1000, 1000, { color: 'rgba(79,214,224,.30)', gruix: 1, nivells: 14 });
+
+    /* EL MODE TÈCNIC, recordat entre visites. Si l'encén per ensenyar-me una
+       lentitud, no ha de tornar-lo a encendre cada cop que entra. */
+    (function () {
+      var boto = arrel.querySelector('#etiqueta-estat');
+      var posa = function (si) {
+        hud.dataset.tecnic = si ? '1' : '0';
+        boto.setAttribute('aria-pressed', si ? 'true' : 'false');
+      };
+      posa(Cau.get('conversa.tecnic', false));
+      boto.addEventListener('click', function () {
+        var nou = hud.dataset.tecnic !== '1';
+        Cau.set('conversa.tecnic', nou);
+        posa(nou);
+      });
+    })();
 
     function posaEstat(e, etiqueta) {
       hud.dataset.estat = e;
@@ -4951,7 +5146,12 @@ App.registraVista('conversa', {
       }
       tr.innerHTML = ultim ? torn(ultim) : '';
       lligaPropostes();
-      tr.scrollTop = 0;
+      var cursa = tr.querySelector('.torn-cursa');
+      if (cursa) {
+        cursa.scrollTop = 0;
+        cursa.addEventListener('scroll', marcaLaLectura);
+        marcaLaLectura();
+      }
       pintaTelemetria();
     }
 
@@ -4974,7 +5174,11 @@ App.registraVista('conversa', {
 
     function torn(m) {
       var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
-        '<span class="qui">' + (m.rol === 'usuari' ? 'TU' : 'JEFE') + '</span>' +
+        '<div class="fil-resposta"></div>' +
+        '<div class="torn-fitxa">' +
+          '<div class="torn-rail"></div>' +
+          '<div class="torn-clau a"></div><div class="torn-clau b"></div>' +
+          '<div class="torn-cursa">' +
         '<div class="diu">' + esc(m.text) + '</div>';
       if ((m.eines && m.eines.length) || m.temps) {
         h += '<div class="traca">' +
@@ -4995,6 +5199,11 @@ App.registraVista('conversa', {
              '</span>' : '') +
         '</div>';
       }
+      /* Aquí s'acaba el que fa scroll. LES PROPOSTES QUEDEN FORA:
+         una escriptura per confirmar no pot quedar amagada sota el text ni
+         esvaïda pel marge —hi ha un botó que has de poder prémer—, i per això
+         viu sota la fitxa i sempre a la vista. */
+      h += '</div>';
       if (m.propostes && m.propostes.length) {
         h += m.propostes.map(function (p, i) {
           return '<div class="proposta" data-proposta="' + i + '"><p>' + esc(p.etiqueta) + '</p>' +
@@ -5002,7 +5211,26 @@ App.registraVista('conversa', {
             '<button data-no="1">Deixa-ho</button></div></div>';
         }).join('');
       }
-      return h + '</div>';
+      return h + '</div></div>';
+    }
+
+    /* ON S'ESVAEIX EL TEXT I QUANT EN PORTES LLEGIT.
+       Es fa aquí i no amb CSS sol perquè les dues coses depenen d'una mesura:
+       quant sobra i on ets. Sense scroll possible, no s'esvaeix per enlloc i
+       el rail va ple: un text sencer no s'ha d'esvair per res. */
+    function marcaLaLectura() {
+      var c = tr.querySelector('.torn-cursa');
+      var rail = tr.querySelector('.torn-rail');
+      if (!c || !rail) return;
+
+      var sobra = c.scrollHeight - c.clientHeight;
+      var dalt = sobra > 1 && c.scrollTop > 2;
+      var baix = sobra > 1 && c.scrollTop < sobra - 2;
+      c.style.setProperty('--m1', dalt ? '22px' : '0px');
+      c.style.setProperty('--m2', baix ? 'calc(100% - 22px)' : '100%');
+
+      var f = sobra <= 1 ? 1 : Math.min(1, (c.scrollTop + c.clientHeight) / c.scrollHeight);
+      rail.style.transform = 'scaleY(' + f + ')';
     }
 
     function lligaPropostes() {
@@ -5194,6 +5422,16 @@ App.registraVista('conversa', {
           setTimeout(function () {
             if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
           }, 900);
+        }
+
+        /* I si el que demanava era VEURE una cosa, el plafó. Va més de pressa
+           que el canvi de pantalla —600 ms i no 900— perquè aquí no marxes de
+           lloc: el que passa és que et posen una cosa al davant. */
+        var mostrador = (r.eines || []).filter(function (e) { return e.mostra; })[0];
+        if (mostrador && !ober) {
+          setTimeout(function () {
+            App.obreVisor(mostrador.mostra, mostrador.obreAmb || null);
+          }, 600);
         }
       }
       Cau.set('conversa.missatges', missatges.slice(-40));
@@ -6067,6 +6305,166 @@ App.registraVista('conversa', {
      de nivell calculades del teu compliment travessant la graella.
    El full de mes també hi és al mòbil, sota, perquè és la segona lectura. */
 
+
+var CorbaCompt = (function () {
+  function puntsDe(c, finestra) {
+    if (finestra === 'tot') {
+      return (c.mesos || []).map(function (m) {
+        return { etiqueta: m.mes, valor: m.total, mes: true };
+      });
+    }
+    var dies = c.dies || [];
+    var n = finestra === 'setmana' ? 7 : 30;
+    return dies.slice(-n).map(function (d) {
+      return { etiqueta: d.data, valor: d.valor };
+    });
+  }
+
+  /**
+   * La línia, dibuixada a mà amb SVG.
+   *
+   * Sense cap llibreria: són quatre coordenades i una polilínia, i afegir
+   * una dependència per això seria pagar-ne el pes cada obertura.
+   *
+   * El zero SEMPRE és a baix. Una corba que arrenca la base al valor mínim
+   * fa que una diferència d'un cigarro sembli una muntanya, i això no és
+   * ensenyar-te com vas: és fer-te un ensurt.
+   */
+  function corba(c, finestra) {
+    var punts = puntsDe(c, finestra);
+    if (punts.length < 2) {
+      return '<p class="menut">Encara no hi ha prou dies per dibuixar res.</p>';
+    }
+
+    var W = 300, H = 90, marge = 4;
+    var sostre = 1;
+    punts.forEach(function (p) { if (p.valor > sostre) sostre = p.valor; });
+
+    var pas = (W - marge * 2) / (punts.length - 1);
+    var y = function (v) { return H - marge - (v / sostre) * (H - marge * 2); };
+    var coords = punts.map(function (p, i) {
+      return (marge + i * pas).toFixed(1) + ',' + y(p.valor).toFixed(1);
+    });
+
+    /* L'àrea de sota, fluixa: fa que la línia es llegeixi com un volum i no
+       com un fil perdut enmig d'un rectangle buit. */
+    var area = 'M' + marge + ',' + (H - marge) + ' L' + coords.join(' L') +
+               ' L' + (marge + (punts.length - 1) * pas).toFixed(1) + ',' + (H - marge) + ' Z';
+
+    var ultim = punts[punts.length - 1];
+    var cx = marge + (punts.length - 1) * pas, cy = y(ultim.valor);
+
+    /* La mitjana de la finestra, com a referència. Sense una ratlla al mig,
+       un pic no es distingeix d'un nivell alt sostingut. */
+    var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+    var mitjana = suma / punts.length;
+    var ym = y(mitjana);
+
+    return '<svg class="corba-compt" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
+        ' role="img" aria-label="' + esc(c.nom + ': ' +
+          (finestra === 'tot' ? 'total per mesos'
+            : 'els últims ' + punts.length + ' dies') +
+          '. Màxim ' + sostre + '. Mitjana ' + fmt.decimal(mitjana) + '.') + '">' +
+        '<path class="corba-area" d="' + area + '"/>' +
+        '<line class="corba-mitjana" x1="' + marge + '" y1="' + ym.toFixed(1) +
+          '" x2="' + (W - marge) + '" y2="' + ym.toFixed(1) + '"/>' +
+        '<polyline class="corba-linia" points="' + coords.join(' ') + '"/>' +
+        '<circle class="corba-ultim" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.5"/>' +
+      '</svg>';
+  }
+
+  
+  /**
+   * UN COMPTADOR DIBUIXAT: capçalera, tria de finestra, corba i peu.
+   *
+   * Viu aquí fora i no dins de la pantalla perquè el fan servir DOS llocs:
+   * el full del mes i el visor, quan li demanes «ensenya'm la gràfica del
+   * tabac». Dos dibuixos del mateix acabarien dient coses diferents el dia
+   * que algú en toqués un.
+   */
+  function graf(c, finestra) {
+    var TRIA = [['setmana', 'Setmana'], ['mes', 'Mes'], ['tot', 'Tot']];
+    var punts = puntsDe(c, finestra);
+    var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+    var mitjana = punts.length ? suma / punts.length : 0;
+
+    return '<div class="compt-graf" data-graf="' + esc(c.id) + '">' +
+      '<div class="compt-graf-cap">' +
+        '<p class="marge">' + esc(c.nom) + '</p>' +
+        '<div class="compt-tria">' + TRIA.map(function (t) {
+          return '<button data-finestra="' + t[0] + '"' +
+                 (finestra === t[0] ? ' aria-pressed="true"' : '') + '>' +
+                 t[1] + '</button>';
+        }).join('') + '</div>' +
+      '</div>' +
+      corba(c, finestra) +
+      '<div class="compt-graf-peu">' +
+        '<span>' + esc(finestra === 'tot'
+          ? fmt.decimal(mitjana) + ' al mes de mitjana'
+          : fmt.decimal(mitjana) + ' al dia de mitjana') + '</span>' +
+        '<span>' + esc(suma + ' en total') + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  return { graf: graf };
+})();
+
+/* ------------------------------------------------------------------------
+   «ENSENYA'M LA GRÀFICA DEL TABAC»
+
+   Una pregunta que es contesta amb un dibuix no s'ha de contestar amb text.
+   Aquí es declara que aquesta pantalla en sap ensenyar un, i el nucli ja
+   sap obrir-lo: no cal que sàpiga què és una corba.
+
+   Es demana el full del mes al servidor, que és d'on surten els comptadors,
+   però primer es mira el que hi ha desat al telèfon: si acabes de ser als
+   hàbits, el plafó s'obre ple a l'instant.
+   ------------------------------------------------------------------------ */
+App.registraVisor('habits.comptador', {
+  titol: function (p) { return p && p.nom ? p.nom : 'Comptador'; },
+
+  render: function (arrel, params) {
+    var finestra = Cau.get('habits.finestraCompt', 'mes');
+
+    function pinta(mes) {
+      var cs = (mes && mes.comptadors) || [];
+      if (!cs.length) {
+        arrel.innerHTML = '<p class="menut">Aquí no hi ha cap comptador per ensenyar.</p>';
+        return;
+      }
+      /* El que demani, i si no en diu cap, el primer: amb un sol comptador
+         —que és el cas— demanar-li quin vol seria fer-li triar entre un. */
+      var com = function (t) { return String(t || '').toLowerCase().trim(); };
+      var c = cs.filter(function (x) {
+        return params && (x.id === params.id ||
+          (params.nom && com(x.nom).indexOf(com(params.nom)) !== -1));
+      })[0] || cs[0];
+
+      arrel.innerHTML = CorbaCompt.graf(c, finestra);
+
+      arrel.querySelectorAll('[data-finestra]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          finestra = b.dataset.finestra;
+          Cau.set('habits.finestraCompt', finestra);
+          pinta(mes);
+        });
+      });
+    }
+
+    var desat = Cau.get('habits.mes', null);
+    if (desat) pinta(desat);
+    else arrel.innerHTML = Comp.carregant(1);
+
+    crida('habits', 'mes', {}).then(function (m) {
+      Cau.set('habits.mes', m);
+      pinta(m);
+    }).catch(function (err) {
+      if (!desat) arrel.innerHTML = Comp.error(err, false);
+    });
+  }
+});
+
 App.registraVista('habits', {
   render: function (arrel, params) {
 
@@ -6269,100 +6667,15 @@ App.registraVista('habits', {
 
     var finestraCompt = Cau.get('habits.finestraCompt', 'mes');
 
-    function puntsDe(c) {
-      if (finestraCompt === 'tot') {
-        return (c.mesos || []).map(function (m) {
-          return { etiqueta: m.mes, valor: m.total, mes: true };
-        });
-      }
-      var dies = c.dies || [];
-      var n = finestraCompt === 'setmana' ? 7 : 30;
-      return dies.slice(-n).map(function (d) {
-        return { etiqueta: d.data, valor: d.valor };
-      });
-    }
-
-    /**
-     * La línia, dibuixada a mà amb SVG.
-     *
-     * Sense cap llibreria: són quatre coordenades i una polilínia, i afegir
-     * una dependència per això seria pagar-ne el pes cada obertura.
-     *
-     * El zero SEMPRE és a baix. Una corba que arrenca la base al valor mínim
-     * fa que una diferència d'un cigarro sembli una muntanya, i això no és
-     * ensenyar-te com vas: és fer-te un ensurt.
-     */
-    function corba(c) {
-      var punts = puntsDe(c);
-      if (punts.length < 2) {
-        return '<p class="menut">Encara no hi ha prou dies per dibuixar res.</p>';
-      }
-
-      var W = 300, H = 90, marge = 4;
-      var sostre = 1;
-      punts.forEach(function (p) { if (p.valor > sostre) sostre = p.valor; });
-
-      var pas = (W - marge * 2) / (punts.length - 1);
-      var y = function (v) { return H - marge - (v / sostre) * (H - marge * 2); };
-      var coords = punts.map(function (p, i) {
-        return (marge + i * pas).toFixed(1) + ',' + y(p.valor).toFixed(1);
-      });
-
-      /* L'àrea de sota, fluixa: fa que la línia es llegeixi com un volum i no
-         com un fil perdut enmig d'un rectangle buit. */
-      var area = 'M' + marge + ',' + (H - marge) + ' L' + coords.join(' L') +
-                 ' L' + (marge + (punts.length - 1) * pas).toFixed(1) + ',' + (H - marge) + ' Z';
-
-      var ultim = punts[punts.length - 1];
-      var cx = marge + (punts.length - 1) * pas, cy = y(ultim.valor);
-
-      /* La mitjana de la finestra, com a referència. Sense una ratlla al mig,
-         un pic no es distingeix d'un nivell alt sostingut. */
-      var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
-      var mitjana = suma / punts.length;
-      var ym = y(mitjana);
-
-      return '<svg class="corba-compt" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
-          ' role="img" aria-label="' + esc(c.nom + ': ' +
-            (finestraCompt === 'tot' ? 'total per mesos'
-              : 'els últims ' + punts.length + ' dies') +
-            '. Màxim ' + sostre + '. Mitjana ' + fmt.decimal(mitjana) + '.') + '">' +
-          '<path class="corba-area" d="' + area + '"/>' +
-          '<line class="corba-mitjana" x1="' + marge + '" y1="' + ym.toFixed(1) +
-            '" x2="' + (W - marge) + '" y2="' + ym.toFixed(1) + '"/>' +
-          '<polyline class="corba-linia" points="' + coords.join(' ') + '"/>' +
-          '<circle class="corba-ultim" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.5"/>' +
-        '</svg>';
-    }
-
+    /* Els comptadors del full de mes. El dibuix no es fa aquí: el fa
+       `CorbaCompt`, que és el mateix que fa servir el visor quan li demanes
+       «ensenya'm la gràfica del tabac». Dos dibuixos del mateix acabarien
+       dient coses diferents el dia que algú en toqués un. */
     function blocComptadors() {
       var cs = (mes && mes.comptadors) || [];
       if (!cs.length) return '';
-
-      var TRIA = [['setmana', 'Setmana'], ['mes', 'Mes'], ['tot', 'Tot']];
-
       return '<div class="compt-bloc">' + cs.map(function (c) {
-        var punts = puntsDe(c);
-        var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
-        var mitjana = punts.length ? suma / punts.length : 0;
-
-        return '<div class="compt-graf" data-graf="' + esc(c.id) + '">' +
-          '<div class="compt-graf-cap">' +
-            '<p class="marge">' + esc(c.nom) + '</p>' +
-            '<div class="compt-tria">' + TRIA.map(function (t) {
-              return '<button data-finestra="' + t[0] + '"' +
-                     (finestraCompt === t[0] ? ' aria-pressed="true"' : '') + '>' +
-                     t[1] + '</button>';
-            }).join('') + '</div>' +
-          '</div>' +
-          corba(c) +
-          '<div class="compt-graf-peu">' +
-            '<span>' + esc(finestraCompt === 'tot'
-              ? fmt.decimal(mitjana) + ' al mes de mitjana'
-              : fmt.decimal(mitjana) + ' al dia de mitjana') + '</span>' +
-            '<span>' + esc(suma + (finestraCompt === 'tot' ? ' en total' : ' en total')) + '</span>' +
-          '</div>' +
-        '</div>';
+        return CorbaCompt.graf(c, finestraCompt);
       }).join('') + '</div>';
     }
 

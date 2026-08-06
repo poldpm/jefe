@@ -241,6 +241,23 @@ function MODUL_HABITS() {
         return 'Crear l\'hàbit «' + (a.nom || '?') + '» (' + t + ')';
       },
       executa: function (a) { return Habits.creaPerNom(a); }
+    }, {
+      nom: 'ensenya_el_comptador',
+      descripcio: 'ENSENYA la gràfica d\'un comptador —els cigarros, per exemple— en un ' +
+                  'plafó a sobre de la conversa. Fes-la servir sempre que et demani VEURE ' +
+                  'o ENSENYAR una gràfica, una corba o com li va una cosa que compta: ' +
+                  '«ensenya\'m la gràfica del tabac», «com va el tabac?», «vull veure els ' +
+                  'cigarros». Un cop cridada ell ja té el dibuix al davant: no l\'hi ' +
+                  'descriguis ni li recitis els números, digues-li com a molt una frase ' +
+                  'sobre el pendent.',
+      mostra: 'habits.comptador',
+      esquema: {
+        type: 'object',
+        properties: {
+          nom: { type: 'string', description: 'Com es diu el comptador. Si s\'omet, el primer.' }
+        }
+      },
+      executa: function (a) { return Habits.comptadorPerAEnsenyar(a); }
     }],
 
     vista: 'vista_habits'
@@ -973,6 +990,35 @@ var Habits = (function () {
   }
 
   /** Ve d'una proposta confirmada. Crear un hàbit parlant. */
+  /**
+   * Quin comptador s'ha d'ensenyar al visor.
+   *
+   * Torna `_params` —el nom i l'identificador— perquè el client sàpiga quin
+   * obrir, i unes xifres perquè JEFE en pugui dir una frase sense haver de
+   * fer una segona consulta. El dibuix no es fa aquí: el dibuix el fa la
+   * pantalla, que és qui el sap fer.
+   */
+  function comptadorPerAEnsenyar(a) {
+    var cs = definicions().filter(esComptador_);
+    if (!cs.length) throw new Error('No tens cap comptador.');
+
+    var busca = Utils.aixafa(String((a && a.nom) || ''));
+    var h = busca
+      ? (cs.filter(function (x) { return Utils.aixafa(x.nom).indexOf(busca) !== -1; })[0] || cs[0])
+      : cs[0];
+
+    var est = historic(h.id, 30).estadistiques || {};
+    return {
+      _params: { id: h.id, nom: h.nom },
+      pantalla: 'oberta',
+      comptador: h.nom,
+      avui: est.avui,
+      mitjana7: est.mitjana7,
+      canvi7: est.canvi7,
+      total30: est.total30
+    };
+  }
+
   function creaPerNom(a) {
     var nou = crea({
       nom: a.nom,
@@ -1117,6 +1163,7 @@ var Habits = (function () {
     edita: edita,
     registraPerNom: registraPerNom,
     creaPerNom: creaPerNom,
+    comptadorPerAEnsenyar: comptadorPerAEnsenyar,
     arxiva: arxiva,
     reactiva: reactiva,
     ordena: ordena,

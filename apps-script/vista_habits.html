@@ -8,6 +8,166 @@
      de nivell calculades del teu compliment travessant la graella.
    El full de mes també hi és al mòbil, sota, perquè és la segona lectura. */
 
+
+var CorbaCompt = (function () {
+  function puntsDe(c, finestra) {
+    if (finestra === 'tot') {
+      return (c.mesos || []).map(function (m) {
+        return { etiqueta: m.mes, valor: m.total, mes: true };
+      });
+    }
+    var dies = c.dies || [];
+    var n = finestra === 'setmana' ? 7 : 30;
+    return dies.slice(-n).map(function (d) {
+      return { etiqueta: d.data, valor: d.valor };
+    });
+  }
+
+  /**
+   * La línia, dibuixada a mà amb SVG.
+   *
+   * Sense cap llibreria: són quatre coordenades i una polilínia, i afegir
+   * una dependència per això seria pagar-ne el pes cada obertura.
+   *
+   * El zero SEMPRE és a baix. Una corba que arrenca la base al valor mínim
+   * fa que una diferència d'un cigarro sembli una muntanya, i això no és
+   * ensenyar-te com vas: és fer-te un ensurt.
+   */
+  function corba(c, finestra) {
+    var punts = puntsDe(c, finestra);
+    if (punts.length < 2) {
+      return '<p class="menut">Encara no hi ha prou dies per dibuixar res.</p>';
+    }
+
+    var W = 300, H = 90, marge = 4;
+    var sostre = 1;
+    punts.forEach(function (p) { if (p.valor > sostre) sostre = p.valor; });
+
+    var pas = (W - marge * 2) / (punts.length - 1);
+    var y = function (v) { return H - marge - (v / sostre) * (H - marge * 2); };
+    var coords = punts.map(function (p, i) {
+      return (marge + i * pas).toFixed(1) + ',' + y(p.valor).toFixed(1);
+    });
+
+    /* L'àrea de sota, fluixa: fa que la línia es llegeixi com un volum i no
+       com un fil perdut enmig d'un rectangle buit. */
+    var area = 'M' + marge + ',' + (H - marge) + ' L' + coords.join(' L') +
+               ' L' + (marge + (punts.length - 1) * pas).toFixed(1) + ',' + (H - marge) + ' Z';
+
+    var ultim = punts[punts.length - 1];
+    var cx = marge + (punts.length - 1) * pas, cy = y(ultim.valor);
+
+    /* La mitjana de la finestra, com a referència. Sense una ratlla al mig,
+       un pic no es distingeix d'un nivell alt sostingut. */
+    var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+    var mitjana = suma / punts.length;
+    var ym = y(mitjana);
+
+    return '<svg class="corba-compt" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
+        ' role="img" aria-label="' + esc(c.nom + ': ' +
+          (finestra === 'tot' ? 'total per mesos'
+            : 'els últims ' + punts.length + ' dies') +
+          '. Màxim ' + sostre + '. Mitjana ' + fmt.decimal(mitjana) + '.') + '">' +
+        '<path class="corba-area" d="' + area + '"/>' +
+        '<line class="corba-mitjana" x1="' + marge + '" y1="' + ym.toFixed(1) +
+          '" x2="' + (W - marge) + '" y2="' + ym.toFixed(1) + '"/>' +
+        '<polyline class="corba-linia" points="' + coords.join(' ') + '"/>' +
+        '<circle class="corba-ultim" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.5"/>' +
+      '</svg>';
+  }
+
+  
+  /**
+   * UN COMPTADOR DIBUIXAT: capçalera, tria de finestra, corba i peu.
+   *
+   * Viu aquí fora i no dins de la pantalla perquè el fan servir DOS llocs:
+   * el full del mes i el visor, quan li demanes «ensenya'm la gràfica del
+   * tabac». Dos dibuixos del mateix acabarien dient coses diferents el dia
+   * que algú en toqués un.
+   */
+  function graf(c, finestra) {
+    var TRIA = [['setmana', 'Setmana'], ['mes', 'Mes'], ['tot', 'Tot']];
+    var punts = puntsDe(c, finestra);
+    var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
+    var mitjana = punts.length ? suma / punts.length : 0;
+
+    return '<div class="compt-graf" data-graf="' + esc(c.id) + '">' +
+      '<div class="compt-graf-cap">' +
+        '<p class="marge">' + esc(c.nom) + '</p>' +
+        '<div class="compt-tria">' + TRIA.map(function (t) {
+          return '<button data-finestra="' + t[0] + '"' +
+                 (finestra === t[0] ? ' aria-pressed="true"' : '') + '>' +
+                 t[1] + '</button>';
+        }).join('') + '</div>' +
+      '</div>' +
+      corba(c, finestra) +
+      '<div class="compt-graf-peu">' +
+        '<span>' + esc(finestra === 'tot'
+          ? fmt.decimal(mitjana) + ' al mes de mitjana'
+          : fmt.decimal(mitjana) + ' al dia de mitjana') + '</span>' +
+        '<span>' + esc(suma + ' en total') + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  return { graf: graf };
+})();
+
+/* ------------------------------------------------------------------------
+   «ENSENYA'M LA GRÀFICA DEL TABAC»
+
+   Una pregunta que es contesta amb un dibuix no s'ha de contestar amb text.
+   Aquí es declara que aquesta pantalla en sap ensenyar un, i el nucli ja
+   sap obrir-lo: no cal que sàpiga què és una corba.
+
+   Es demana el full del mes al servidor, que és d'on surten els comptadors,
+   però primer es mira el que hi ha desat al telèfon: si acabes de ser als
+   hàbits, el plafó s'obre ple a l'instant.
+   ------------------------------------------------------------------------ */
+App.registraVisor('habits.comptador', {
+  titol: function (p) { return p && p.nom ? p.nom : 'Comptador'; },
+
+  render: function (arrel, params) {
+    var finestra = Cau.get('habits.finestraCompt', 'mes');
+
+    function pinta(mes) {
+      var cs = (mes && mes.comptadors) || [];
+      if (!cs.length) {
+        arrel.innerHTML = '<p class="menut">Aquí no hi ha cap comptador per ensenyar.</p>';
+        return;
+      }
+      /* El que demani, i si no en diu cap, el primer: amb un sol comptador
+         —que és el cas— demanar-li quin vol seria fer-li triar entre un. */
+      var com = function (t) { return String(t || '').toLowerCase().trim(); };
+      var c = cs.filter(function (x) {
+        return params && (x.id === params.id ||
+          (params.nom && com(x.nom).indexOf(com(params.nom)) !== -1));
+      })[0] || cs[0];
+
+      arrel.innerHTML = CorbaCompt.graf(c, finestra);
+
+      arrel.querySelectorAll('[data-finestra]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          finestra = b.dataset.finestra;
+          Cau.set('habits.finestraCompt', finestra);
+          pinta(mes);
+        });
+      });
+    }
+
+    var desat = Cau.get('habits.mes', null);
+    if (desat) pinta(desat);
+    else arrel.innerHTML = Comp.carregant(1);
+
+    crida('habits', 'mes', {}).then(function (m) {
+      Cau.set('habits.mes', m);
+      pinta(m);
+    }).catch(function (err) {
+      if (!desat) arrel.innerHTML = Comp.error(err, false);
+    });
+  }
+});
+
 App.registraVista('habits', {
   render: function (arrel, params) {
 
@@ -210,100 +370,15 @@ App.registraVista('habits', {
 
     var finestraCompt = Cau.get('habits.finestraCompt', 'mes');
 
-    function puntsDe(c) {
-      if (finestraCompt === 'tot') {
-        return (c.mesos || []).map(function (m) {
-          return { etiqueta: m.mes, valor: m.total, mes: true };
-        });
-      }
-      var dies = c.dies || [];
-      var n = finestraCompt === 'setmana' ? 7 : 30;
-      return dies.slice(-n).map(function (d) {
-        return { etiqueta: d.data, valor: d.valor };
-      });
-    }
-
-    /**
-     * La línia, dibuixada a mà amb SVG.
-     *
-     * Sense cap llibreria: són quatre coordenades i una polilínia, i afegir
-     * una dependència per això seria pagar-ne el pes cada obertura.
-     *
-     * El zero SEMPRE és a baix. Una corba que arrenca la base al valor mínim
-     * fa que una diferència d'un cigarro sembli una muntanya, i això no és
-     * ensenyar-te com vas: és fer-te un ensurt.
-     */
-    function corba(c) {
-      var punts = puntsDe(c);
-      if (punts.length < 2) {
-        return '<p class="menut">Encara no hi ha prou dies per dibuixar res.</p>';
-      }
-
-      var W = 300, H = 90, marge = 4;
-      var sostre = 1;
-      punts.forEach(function (p) { if (p.valor > sostre) sostre = p.valor; });
-
-      var pas = (W - marge * 2) / (punts.length - 1);
-      var y = function (v) { return H - marge - (v / sostre) * (H - marge * 2); };
-      var coords = punts.map(function (p, i) {
-        return (marge + i * pas).toFixed(1) + ',' + y(p.valor).toFixed(1);
-      });
-
-      /* L'àrea de sota, fluixa: fa que la línia es llegeixi com un volum i no
-         com un fil perdut enmig d'un rectangle buit. */
-      var area = 'M' + marge + ',' + (H - marge) + ' L' + coords.join(' L') +
-                 ' L' + (marge + (punts.length - 1) * pas).toFixed(1) + ',' + (H - marge) + ' Z';
-
-      var ultim = punts[punts.length - 1];
-      var cx = marge + (punts.length - 1) * pas, cy = y(ultim.valor);
-
-      /* La mitjana de la finestra, com a referència. Sense una ratlla al mig,
-         un pic no es distingeix d'un nivell alt sostingut. */
-      var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
-      var mitjana = suma / punts.length;
-      var ym = y(mitjana);
-
-      return '<svg class="corba-compt" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"' +
-          ' role="img" aria-label="' + esc(c.nom + ': ' +
-            (finestraCompt === 'tot' ? 'total per mesos'
-              : 'els últims ' + punts.length + ' dies') +
-            '. Màxim ' + sostre + '. Mitjana ' + fmt.decimal(mitjana) + '.') + '">' +
-          '<path class="corba-area" d="' + area + '"/>' +
-          '<line class="corba-mitjana" x1="' + marge + '" y1="' + ym.toFixed(1) +
-            '" x2="' + (W - marge) + '" y2="' + ym.toFixed(1) + '"/>' +
-          '<polyline class="corba-linia" points="' + coords.join(' ') + '"/>' +
-          '<circle class="corba-ultim" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.5"/>' +
-        '</svg>';
-    }
-
+    /* Els comptadors del full de mes. El dibuix no es fa aquí: el fa
+       `CorbaCompt`, que és el mateix que fa servir el visor quan li demanes
+       «ensenya'm la gràfica del tabac». Dos dibuixos del mateix acabarien
+       dient coses diferents el dia que algú en toqués un. */
     function blocComptadors() {
       var cs = (mes && mes.comptadors) || [];
       if (!cs.length) return '';
-
-      var TRIA = [['setmana', 'Setmana'], ['mes', 'Mes'], ['tot', 'Tot']];
-
       return '<div class="compt-bloc">' + cs.map(function (c) {
-        var punts = puntsDe(c);
-        var suma = punts.reduce(function (a, p) { return a + p.valor; }, 0);
-        var mitjana = punts.length ? suma / punts.length : 0;
-
-        return '<div class="compt-graf" data-graf="' + esc(c.id) + '">' +
-          '<div class="compt-graf-cap">' +
-            '<p class="marge">' + esc(c.nom) + '</p>' +
-            '<div class="compt-tria">' + TRIA.map(function (t) {
-              return '<button data-finestra="' + t[0] + '"' +
-                     (finestraCompt === t[0] ? ' aria-pressed="true"' : '') + '>' +
-                     t[1] + '</button>';
-            }).join('') + '</div>' +
-          '</div>' +
-          corba(c) +
-          '<div class="compt-graf-peu">' +
-            '<span>' + esc(finestraCompt === 'tot'
-              ? fmt.decimal(mitjana) + ' al mes de mitjana'
-              : fmt.decimal(mitjana) + ' al dia de mitjana') + '</span>' +
-            '<span>' + esc(suma + (finestraCompt === 'tot' ? ' en total' : ' en total')) + '</span>' +
-          '</div>' +
-        '</div>';
+        return CorbaCompt.graf(c, finestraCompt);
       }).join('') + '</div>';
     }
 

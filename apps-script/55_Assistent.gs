@@ -207,10 +207,17 @@ var Assistent = (function () {
            que no passa per confirmació: passa pel client, que ja hi va. Ho
            porta l'eina al seu descriptor i el nucli no sap quines pantalles
            hi ha ni li cal saber-ho. */
+        /* I `mostra` és el germà petit: en comptes de canviar de pantalla,
+           obre un plafó a sobre de la conversa amb una cosa concreta —una
+           corba, una setmana—. La diferència no és tècnica: canviar de
+           pantalla és marxar d'on ets, i això és ensenyar-t'ho sense
+           moure't. Igual que `obre`, el nucli no sap què hi ha a dins. */
         einesUsades.push({
           eina: c.nom, args: c.args || {},
           obre: eina && eina.obre ? eina.obre : undefined,
-          obreAmb: (eina && eina.obre && resultat && resultat._params) ? resultat._params : undefined,
+          mostra: eina && eina.mostra ? eina.mostra : undefined,
+          obreAmb: (eina && (eina.obre || eina.mostra) && resultat && resultat._params)
+                     ? resultat._params : undefined,
           files: (resultat && resultat.files !== undefined) ? resultat.files : null
         });
         resultats.push({ nom: c.nom, resultat: retalla_(resultat) });

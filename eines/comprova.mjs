@@ -137,6 +137,34 @@ for (const f of fitxers.filter(x => /^40_Mod_.*\.gs$/.test(x))) {
   }
 }
 
+// ---- 8. Cada `mostra:` d'una eina té el seu visor registrat ----------------
+/* Una eina que digui `mostra: 'habits.comptador'` sense que cap pantalla
+   l'hagi registrat no peta: obre un plafó amb un missatge d'error, i això
+   només es veu demanant-l'hi. Aquí es veu abans de pujar. */
+{
+  const registrats = new Set();
+  for (const f of fitxers.filter((x) => x.startsWith('vista_'))) {
+    const t = fs.readFileSync(path.join(DIR, f), 'utf8');
+    (t.match(/registraVisor\(\s*'([^']+)'/g) || []).forEach((x) => {
+      registrats.add(x.match(/'([^']+)'/)[1]);
+    });
+  }
+  for (const f of fitxers.filter((x) => x.endsWith('.gs'))) {
+    const src = fs.readFileSync(path.join(DIR, f), 'utf8');
+    const re = /\bmostra:\s*'([^']+)'/g;
+    let m4;
+    while ((m4 = re.exec(src))) {
+      /* `mostra` també és el nom d'una acció de calendari i de tasques
+         («mostra: function...»), i allò no és cap visor. */
+      if (!/\./.test(m4[1])) continue;
+      if (!registrats.has(m4[1])) {
+        error(f, 'una eina diu `mostra: \'' + m4[1] + '\'` i cap pantalla ' +
+                 'l\'ha registrat amb App.registraVisor().');
+      }
+    }
+  }
+}
+
 // ---- Informe ---------------------------------------------------------------
 if (avisos.length) {
   console.log('\nAvisos:');

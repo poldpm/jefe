@@ -621,6 +621,52 @@ var Jefe = (function () {
       return fosc.querySelector('.modal');
     },
 
+    /* ------------------------------------------------------------------
+       EL VISOR: coses que es poden ENSENYAR
+
+       Una pantalla declara què sap ensenyar i amb quin nom:
+
+           App.registraVisor('habits.comptador', {
+             titol: function (p) { return 'Cigarros'; },
+             render: function (arrel, params) { ... }
+           });
+
+       I una eina de la IA diu `mostra: 'habits.comptador'`. Quan en Pol li
+       demana «ensenya'm la gràfica del tabac», JEFE obre el plafó amb allò
+       en comptes de contestar-li amb una descripció.
+
+       AFEGIR-NE UN ÉS UNA LÍNIA AL FITXER D'AQUELLA PANTALLA. El nucli no
+       sap què és una corba ni una setmana: només sap obrir el que li han
+       registrat, igual que amb les vistes.
+       ------------------------------------------------------------------ */
+    visors: {},
+
+    registraVisor: function (clau, def) { App.visors[clau] = def; },
+
+    obreVisor: function (clau, params) {
+      var def = App.visors[clau];
+      if (!def) { App.brindis('Això encara no ho sé ensenyar.', 'error'); return null; }
+      params = params || {};
+
+      var titol = typeof def.titol === 'function' ? def.titol(params) : (def.titol || '');
+      var cos = App.modal(titol, '<div class="visor-cos"></div>');
+      var modal = cos;
+      modal.dataset.visor = '1';
+      /* Les claus van dins del plafó i no al marc del modal: han de sortir
+         a les seves cantonades, i el marc no és seu. */
+      ['d1', 'd2', 'd3', 'd4'].forEach(function (c) {
+        var e = document.createElement('span');
+        e.className = 'visor-clau ' + c;
+        modal.appendChild(e);
+      });
+
+      try { def.render(modal.querySelector('.visor-cos'), params); }
+      catch (err) {
+        modal.querySelector('.visor-cos').innerHTML = Comp.error(err, false);
+      }
+      return modal;
+    },
+
     tancaModal: function () {
       var fosc = document.getElementById('fosc');
       fosc.dataset.obert = '0';
