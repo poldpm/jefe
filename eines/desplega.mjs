@@ -159,6 +159,38 @@ try {
     if (brut) console.log('    I hi ha canvis del frontal sense desar.');
     console.log('    L\'app la serveix GitHub Pages, no Apps Script:');
     console.log('      git push origin main');
+  } else {
+    /* HAVER PUJAT NO ÉS HAVER PUBLICAT.
+       -------------------------------------------------------------------
+       Avui GitHub Pages es va quedar aturat set commits enrere: el codi era
+       a GitHub, `git status` deia que tot estava al dia, i en Pol seguia
+       veient l'app de feia dues hores. Comprovar el git no serveix de res
+       si el que mires no és el que ell obre.
+       Això va a buscar la pàgina publicada de debò i compara la marca de
+       construcció amb la que acabes de fer. És l'única comprovació que
+       parla del que ell veu. */
+    const marca = (fs.readFileSync('index.html', 'utf8')
+      .match(/MARCA_JEFE = "([^"]*)"/) || [])[1];
+    const url = 'https://poldpm.github.io/jefe/index.html?comprova=' + Date.now();
+    let publicada = null;
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      publicada = ((await r.text()).match(/MARCA_JEFE = "([^"]*)"/) || [])[1] || null;
+    } catch (e) { /* sense xarxa: no és cap error de desplegament */ }
+
+    if (publicada === null) {
+      console.log('\n  (No he pogut mirar la pàgina publicada. Comprova-la tu.)');
+    } else if (publicada === marca) {
+      console.log('  I la pàgina publicada ja és aquesta: ' + publicada + '.');
+    } else {
+      console.log('\n  ⚠ PUJAT, PERÒ ENCARA NO PUBLICAT.');
+      console.log('    Aquí:   ' + marca);
+      console.log('    Servit: ' + publicada);
+      console.log('');
+      console.log('    Pages triga un minut o dos. Si al cap d\'una estona segueix igual,');
+      console.log('    mira github.com/poldpm/jefe → pestanya Actions → «pages build and');
+      console.log('    deployment»: allà hi surt si la publicació ha fallat.');
+    }
   }
 } catch (e) { /* sense git o sense remot: no és cap error de desplegament */ }
 
