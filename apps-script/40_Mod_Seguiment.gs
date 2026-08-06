@@ -152,6 +152,10 @@ function MODUL_SEGUIMENT() {
     }],
 
     resumPeriode: function (desde, fins) { return Seguiment.resumPeriode(desde, fins); },
+
+    /* El control setmanal ja ve per setmanes, i porta l'única cosa que no
+       surt de cap altre lloc: com dorms, quina energia tens, quina gana. */
+    seriesDiaries: function (desde, fins) { return Seguiment.seriesDiaries(desde, fins); },
     /**
      * El control setmanal que toca i encara no has fet. És una setmana que es
      * perd de la sèrie, i la sèrie és tot el que té valor aquí.
@@ -663,6 +667,63 @@ var Seguiment = (function () {
     return t.join('\n');
   }
 
+  /**
+   * El control setmanal, com a números per creuar.
+   *
+   * AQUÍ JA VE PER SETMANES: una fila cada diumenge. Per això `minimDies` és
+   * 1 —una pesada ÉS la dada d'aquella setmana— i l'agregació és la mitjana,
+   * que amb un sol valor és aquell valor.
+   *
+   * LES SENSACIONS TAMBÉ SÓN NÚMEROS. «Malament / normal / bé» és un ordre,
+   * i Spearman treballa amb ordres: convertir-ho a 1-2-3 no s'inventa cap
+   * distància perquè les distàncies no les mira. Sense això, la meitat
+   * interessant del control —com dorms, quina gana tens— no es podria creuar
+   * amb res, i és justament la que no surt de cap altre lloc.
+   *
+   * LES FAMÍLIES separen el que seria trivial: pes i cintura van junts per
+   * definició, i les quatre sensacions es responen el mateix dia i de la
+   * mateixa tirada.
+   */
+  function seriesDiaries(desde, fins) {
+    var h = controls().filter(function (c) { return c.data >= desde && c.data <= fins; });
+    if (h.length < 8) return [];
+
+    var ESCALA = {
+      energia: { baixa: 1, normal: 2, alta: 3 },
+      son:     { malament: 1, normal: 2, 'bé': 3, be: 3 },
+      gana:    { poca: 1, normal: 2, molta: 3 },
+      dieta:   { malament: 1, 'a mitges': 2, 'bé': 3, be: 3 }
+    };
+
+    var treu = function (camp, mapa) {
+      var dies = {};
+      h.forEach(function (c) {
+        var v = mapa ? mapa[String(c[camp]).toLowerCase()] : c[camp];
+        if (v === null || v === undefined || v === '' || !isFinite(Number(v))) return;
+        if (!mapa && Number(v) === 0) return;      // 0 al full vol dir «no ho vaig posar»
+        dies[c.data] = Number(v);
+      });
+      return dies;
+    };
+
+    var fes = function (id, nom, unitat, dies, familia, amunt) {
+      if (Object.keys(dies).length < 8) return null;
+      return { id: id, nom: nom, unitat: unitat, agrega: 'mitjana',
+               familia: familia, minimDies: 1, millorAmunt: amunt, dies: dies };
+    };
+
+    return [
+      fes('pes', 'pes', 'kg', treu('pes'), 'cos', false),
+      fes('cintura', 'cintura', 'cm', treu('cintura'), 'cos', false),
+      fes('forca', 'força', '', treu('forca'), 'esforc', true),
+      fes('trail', 'trail', '', treu('trail'), 'esforc', true),
+      fes('energia', 'energia', '', treu('energia', ESCALA.energia), 'sensacions', true),
+      fes('son', 'son', '', treu('son', ESCALA.son), 'sensacions', true),
+      fes('gana', 'gana', '', treu('gana', ESCALA.gana), 'sensacions', null),
+      fes('dieta', 'dieta seguida', '', treu('dieta', ESCALA.dieta), 'sensacions', true)
+    ].filter(Boolean);
+  }
+
   function resumPeriode(desde, fins) {
     var h = controls().filter(function (c) { return c.data >= desde && c.data <= fins; });
     if (!h.length) return null;
@@ -724,6 +785,7 @@ var Seguiment = (function () {
     comenta: comenta,
     contextIA: contextIA,
     resumPeriode: resumPeriode,
+    seriesDiaries: seriesDiaries,
     perALaIA: perALaIA,
     analitza: analitza,
     veredicte: veredicte,

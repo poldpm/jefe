@@ -216,6 +216,67 @@ var Moduls = (function () {
   }
 
   /**
+   * ELS NÚMEROS D'UN MÒDUL, DIA A DIA.
+   *
+   * Existeix per creuar-los: el pes, els cigarros, les calories, l'ànim i les
+   * hores del calendari són sèries de números que fins ara no s'havien mirat
+   * mai juntes, i coses com «les setmanes que dorms bé fumes menys» només les
+   * pot veure qui té les dues.
+   *
+   * Un mòdul torna una llista de sèries:
+   *
+   *     { id, nom, unitat, agrega: 'suma'|'mitjana', familia, dies: {data: n} }
+   *
+   *   `agrega`  com es passa de dies a setmanes. Els cigarros se SUMEN (set
+   *             dies a tres al dia són vint-i-un); el pes es fa la MITJANA
+   *             (la suma de set peses no vol dir res).
+   *   `familia` dues sèries de la mateixa família no es creuen mai. Que el pes
+   *             i la cintura vagin junts no és cap descobriment, i si les
+   *             deixes competir s'emporten totes les places de les que sí que
+   *             en són.
+   *   `dies`    només els dies que tenen dada. Un dia que falta NO és un zero:
+   *             no haver-te pesat no vol dir que pesis zero.
+   *
+   * És OPCIONAL. Un mòdul que no la implementi no es creua amb res.
+   *
+   * Retorna [{ modul, ...la sèrie }].
+   */
+  function seriesDiaries(desde, fins) {
+    var out = [];
+    var m = actius();
+    for (var i = 0; i < m.length; i++) {
+      if (typeof m[i].seriesDiaries !== 'function') continue;
+      try {
+        var l = m[i].seriesDiaries(desde, fins) || [];
+        for (var k = 0; k < l.length; k++) {
+          var s = l[k];
+          if (!s || !s.id || !s.dies) continue;
+          out.push({
+            modul: m[i].id,
+            id: m[i].id + '.' + s.id,
+            nom: s.nom || s.id,
+            unitat: s.unitat || '',
+            agrega: s.agrega === 'suma' ? 'suma' : 'mitjana',
+            /* Quants dies apuntats calen perquè una setmana compti. El mòdul
+               ho sap i el nucli no: una pesada a la setmana ja és la dada de
+               la setmana, però dos dies de menjar apuntats no ho són. */
+            minimDies: Number(s.minimDies) || 0,
+            familia: m[i].id + '.' + (s.familia || s.id),
+            /* Si més val que pugi o que baixi. Sense això no es pot dir «i
+               això és bona notícia»; amb això, tampoc es diu —però es pot
+               ordenar el que s'ensenya. */
+            millorAmunt: s.millorAmunt === undefined ? null : !!s.millorAmunt,
+            dies: s.dies
+          });
+        }
+      } catch (err) {
+        Log.error('moduls.seriesDiaries', 'Mòdul ' + m[i].id + ': ' + err.message);
+      }
+    }
+    return out;
+  }
+
+  /**
    * ELS AVISOS PROGRAMATS DELS MÒDULS.
    *
    * Fins ara els automatismes eren tots del nucli i amb nom fix, i per tant un
@@ -505,6 +566,7 @@ var Moduls = (function () {
     resumInici: resumInici,
     resumPeriode: resumPeriode,
     laSetmana: laSetmana,
+    seriesDiaries: seriesDiaries,
     elDia: elDia,
     avisos: avisos,
     contextIA: contextIA,

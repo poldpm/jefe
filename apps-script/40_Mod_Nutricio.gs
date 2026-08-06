@@ -131,6 +131,11 @@ function MODUL_NUTRICIO() {
 
     resumPeriode: function (desde, fins) { return Nutricio.resumPeriode(desde, fins); },
 
+    /* Aquí l'absència SÍ que vol dir «no ho sé»: un dia sense apuntar res no
+       és un dia de zero calories. Per això només hi van els dies apuntats, i
+       es demanen quatre per setmana perquè la setmana compti. */
+    seriesDiaries: function (desde, fins) { return Nutricio.seriesDiaries(desde, fins); },
+
     /**
      * ELS DIES QUE NO HAS APUNTAT RES.
      *
@@ -534,6 +539,40 @@ var Nutricio = (function () {
    * Sí que es diu quants dies han quedat sense tancar, que és el que et
    * convé saber.
    */
+  /**
+   * Les tres coses que d'aquí es poden creuar amb la resta.
+   *
+   * `net` són les cremades menys les ingerides, o sigui el dèficit: només hi
+   * és els dies que tens totes dues xifres, i per això va a part i no dins de
+   * la mateixa família que les calories. Un dia amb les ingerides i sense les
+   * cremades no diu res del dèficit i no s'inventa.
+   */
+  function seriesDiaries(desde, fins) {
+    var r = agregat_(Utils.rangDates(desde, fins));
+    var kcal = {}, prot = {}, net = {};
+
+    r.dies.forEach(function (d) {
+      if (!d.apuntat) return;                    // no apuntat no és zero
+      if (d.ingerides > 0) {
+        kcal[d.data] = Math.round(d.ingerides);
+        prot[d.data] = Math.round(d.proteina);
+      }
+      if (d.net !== null) net[d.data] = Math.round(d.net);
+    });
+
+    var fes = function (id, nom, unitat, dies, familia) {
+      if (Object.keys(dies).length < 14) return null;
+      return { id: id, nom: nom, unitat: unitat, agrega: 'mitjana',
+               familia: familia, minimDies: 4, dies: dies };
+    };
+
+    return [
+      fes('kcal', 'calories', 'kcal al dia', kcal, 'menjar'),
+      fes('proteina', 'proteïna', 'g al dia', prot, 'menjar'),
+      fes('deficit', 'dèficit', 'kcal al dia', net, 'balanc')
+    ].filter(Boolean);
+  }
+
   function resumPeriode(desde, fins) {
     var r = agregat_(Utils.rangDates(desde, fins));
     if (!r.diesApuntats) return null;
@@ -847,6 +886,7 @@ var Nutricio = (function () {
     r1: r1,
     dia: dia,
     resumPeriode: resumPeriode,
+    seriesDiaries: seriesDiaries,
     periode: periode,
     pantalla: pantalla,
     afegeix: afegeix,

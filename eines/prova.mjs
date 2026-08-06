@@ -3246,5 +3246,227 @@ console.log('\nEls dies d\'un esdeveniment llarg: un per un, i les hores un sol 
       l2.length === 2 && l2[0].dia === '2026-08-03', JSON.stringify(l2.map((x) => x.dia)));
 }
 
+/* El pas de dies a setmanes, per poder comptar a fora el que sortiria sense
+   el control de falsos descobriments. */
+function C_perSetmanes(ctx, serie) { return ctx.Creuaments.perSetmanes(serie); }
+
+// ------------------------------------------------------------------ creuar
+console.log('\nCreuar dades: els números, contra valors que ja se saben');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  const C = ctx.Creuaments;
+
+  /* Els rangs, amb repeticions. Sense repartir-les, tres zeros rebrien 1, 2 i
+     3 i s'inventarien un ordre que no existeix. */
+  cal('els rangs surten ordenats', C.rangs([10, 30, 20]).join(',') === '1,3,2');
+  cal('i les repeticions es reparteixen', C.rangs([5, 5, 5, 9]).join(',') === '2,2,2,4',
+      C.rangs([5, 5, 5, 9]).join(','));
+
+  /* Spearman mira ORDRES. Aquestes dues sèries no són proporcionals però van
+     ordenades igual: ha de donar 1 exacte, que és el que separa Spearman de
+     Pearson i la raó per la qual es fa servir aquest. */
+  cal('dues sèries amb el mateix ordre donen 1',
+      Math.abs(C.spearman([1, 2, 3, 4, 5], [1, 4, 9, 100, 5000]) - 1) < 1e-12);
+  cal('i a l\'inrevés, -1',
+      Math.abs(C.spearman([1, 2, 3, 4, 5], [9, 8, 7, 6, 5]) + 1) < 1e-12);
+  cal('una sèrie plana no es relaciona amb res',
+      C.spearman([1, 2, 3, 4], [7, 7, 7, 7]) === 0);
+  /* Cas de llibre, calculat a mà: les diferències de rang són −1, 1, −1, 1, 0,
+     o sigui Σd² = 4, i rho = 1 − 6·4/(5·24) = 0,8. */
+  cal('i un cas amb els números coneguts dona 0,8',
+      Math.abs(C.spearman([1, 2, 3, 4, 5], [2, 1, 4, 3, 5]) - 0.8) < 1e-9,
+      C.spearman([1, 2, 3, 4, 5], [2, 1, 4, 3, 5]));
+
+  /* EL VALOR P. Aquí és on una errada faria dir coses que no són: es compara
+     amb els valors de la taula de la t de Student, que són públics i fixos.
+     Amb n=12 (10 graus de llibertat), t=2,228 correspon a p=0,05; el rho que
+     dona aquella t és 0,5760. */
+  const prop = (a, b, tol) => Math.abs(a - b) < tol;
+  cal('rho 0,576 amb 12 setmanes val p=0,05',
+      prop(C.valorP(0.576, 12), 0.05, 0.002), C.valorP(0.576, 12));
+  /* t=3,169 amb df=10 → p=0,01 → rho = 0,7079 */
+  cal('rho 0,708 amb 12 setmanes val p=0,01',
+      prop(C.valorP(0.7079, 12), 0.01, 0.001), C.valorP(0.7079, 12));
+  /* t=2,086 amb df=20 → p=0,05 → rho = 0,4227 */
+  cal('i amb 22 setmanes en fa falta menys: rho 0,423 ja val p=0,05',
+      prop(C.valorP(0.4227, 22), 0.05, 0.002), C.valorP(0.4227, 22));
+  cal('cap relació val p=1', prop(C.valorP(0, 12), 1, 1e-9), C.valorP(0, 12));
+  cal('i una de perfecta, gairebé zero', C.valorP(0.999, 20) < 1e-10);
+  cal('amb tres setmanes no es diu res', C.valorP(0.99, 3) === 1);
+
+  /* BENJAMINI–HOCHBERG amb l'exemple clàssic: de vuit valors p, només els dos
+     primers passen amb q=0,05. Si això falla, es dirien relacions que són
+     casualitat i tota la pantalla deixaria de valer. */
+  const ps = [0.041, 0.001, 0.205, 0.008, 0.06, 0.039, 0.074, 0.042]
+    .map((p, i) => ({ p, i }));
+  const jutjats = C.passenBH(ps, 0.05);
+  const passen = jutjats.filter((x) => x.passa).map((x) => x.p).sort();
+  cal('de vuit parelles, en passen dues', passen.length === 2, JSON.stringify(passen));
+  cal('i són les dues més petites', passen[0] === 0.001 && passen[1] === 0.008);
+  cal('amb res que passi, no passa res',
+      C.passenBH([{ p: 0.9 }, { p: 0.8 }], 0.05).filter((x) => x.passa).length === 0);
+
+  /* DE DIES A SETMANES. Una setmana a mitges no és una setmana. */
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, v) => v };
+
+  const dl = '2026-08-03';                       // dilluns
+  const suma = (n) => ctx.Utils.sumaDies(dl, n);
+  const sumaSerie = { agrega: 'suma', dies: {} };
+  [0, 1, 2].forEach((n) => { sumaSerie.dies[suma(n)] = 3; });
+  cal('tres dies no fan una setmana de les que se sumen',
+      Object.keys(C.perSetmanes(sumaSerie)).length === 0);
+  [3, 4].forEach((n) => { sumaSerie.dies[suma(n)] = 3; });
+  cal('cinc sí, i se sumen', C.perSetmanes(sumaSerie)[dl] === 15,
+      JSON.stringify(C.perSetmanes(sumaSerie)));
+
+  const mitjSerie = { agrega: 'mitjana', dies: {} };
+  mitjSerie.dies[suma(2)] = 80;
+  cal('una pesada sola SÍ que és la dada de la setmana',
+      C.perSetmanes(mitjSerie)[dl] === 80);
+  const exigent = { agrega: 'mitjana', minimDies: 4, dies: {} };
+  [0, 1].forEach((n) => { exigent.dies[suma(n)] = 5; });
+  cal('però un mòdul pot demanar-ne més i llavors manen els seus',
+      Object.keys(C.perSetmanes(exigent)).length === 0);
+
+  /* LA FRASE no diu mai «perquè». */
+  const f = C.frase({ a: 'Son', b: 'Cigarros', rho: -0.7 });
+  cal('la frase diu que van juntes, no que una causi l\'altra',
+      /Les setmanes de més/.test(f) && !/perqu/i.test(f) && !/causa/i.test(f), f);
+  cal('i amb rho negatiu diu «menys»', /menys/.test(f), f);
+  cal('amb rho positiu diu «també»', /també/.test(C.frase({ a: 'A', b: 'B', rho: 0.8 })));
+}
+
+console.log('\nCreuar dades: una relació de veritat enmig de soroll');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Log = { info() {}, avis() {}, error() {} };
+  ctx.Config = { zonaHoraria: () => 'Europe/Madrid', get: () => null, getNum: (k, v) => v };
+  ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  ctx.Utils.avui = () => '2026-08-05';
+
+  let desat = null;
+  ctx.Dades = {
+    un: () => desat,
+    insereix: (full, fila) => { desat = fila; return fila; },
+    actualitza: (full, id, canvis) => { desat = Object.assign({}, desat, canvis); return desat; }
+  };
+
+  /* Vint setmanes. Una relació PLANTADA —b segueix a a— i sis sèries de
+     soroll fet amb una successió fixa (res d'atzar: la prova ha de donar el
+     mateix cada cop que s'executi). */
+  const dl0 = ctx.Utils.dillunsDe('2026-08-05');
+  const setmanes = [];
+  for (let s = 20; s >= 1; s--) setmanes.push(ctx.Utils.sumaDies(dl0, -7 * s));
+
+  const serie = (id, familia, fn) => {
+    const dies = {};
+    setmanes.forEach((dl, k) => {
+      for (let i = 0; i < 7; i++) dies[ctx.Utils.sumaDies(dl, i)] = fn(k, i);
+    });
+    return { id, nom: id, unitat: '', agrega: 'suma', familia, dies };
+  };
+
+  /* SOROLL DE DEBÒ, I SEMPRE EL MATEIX. El primer intent va ser una successió
+     modular —`(k * llavor) % 23`— i no era soroll: tenia pendent, es
+     relacionava amb tot i la prova acusava el codi d'una cosa que feia ella.
+     Això és un generador pseudoaleatori amb llavor fixa: sembla atzar per a
+     l'estadística i dona el mateix cada cop que s'executa la prova. */
+  const daus = (llavor) => {
+    let s = llavor >>> 0;
+    return () => {
+      s = (s + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return (((t ^ (t >>> 14)) >>> 0) / 4294967296);
+    };
+  };
+  const soroll = (llavor) => {
+    const d = daus(llavor), vals = [];
+    for (let k = 0; k < 40; k++) vals.push(Math.round(d() * 20) + 1);
+    return (k) => vals[k];
+  };
+
+  const SOROLL = 12;                             // 66 parelles de soroll pur
+  const series = [
+    /* A i B van agafades de la mà: B = 40 − A, o sigui relació perfecta i
+       negativa. Ha de sortir sí o sí. */
+    Object.assign(serie('a', 'fa', (k) => k + 1), { modul: 'm1', nom: 'A' }),
+    Object.assign(serie('b', 'fb', (k) => 40 - k), { modul: 'm2', nom: 'B' }),
+    /* G és de la MATEIXA FAMÍLIA que A i també va perfecta amb ella: la
+       parella A-G no s'ha de provar mai, perquè dir-la seria una obvietat.
+       (Amb B sí que es prova, i hi surt: en aquest món inventat B i G es
+       mouen de debò juntes, i això no és cap error.) */
+    Object.assign(serie('g', 'fa', (k) => (k + 1) * 2), { modul: 'm1', nom: 'G' })
+  ];
+  for (let n = 0; n < SOROLL; n++) {
+    series.push(Object.assign(serie('n' + n, 'fn' + n, soroll(1000 + n * 37)),
+                              { modul: 'mn' + n, nom: 'N' + n }));
+  }
+  ctx.Moduls.seriesDiaries = () => series;
+
+  const r = ctx.Creuaments.calcula({ fins: '2026-08-05' });
+  const esSoroll = (t) => /^N\d+$/.test(t.a) || /^N\d+$/.test(t.b);
+
+  cal('la relació plantada surt', r.trobades.some((t) => t.a === 'A' && t.b === 'B'),
+      JSON.stringify(r.trobades.map((t) => t.a + '/' + t.b)));
+  cal('i surt com a inversa', r.trobades.filter((t) => t.a === 'A' && t.b === 'B')[0].rho === -1);
+
+  /* LA PROVA QUE VAL. Amb 105 parelles i vint setmanes, unes quantes de
+     soroll passen el llindar de sempre (p < 0,05) per pura aritmètica. El
+     control de falsos descobriments les ha de tallar. No es demana que en
+     surti ZERO —Benjamini–Hochberg controla la PROPORCIÓ, no el compte, i
+     prometre zero seria prometre el que no fa—: es demana que en talli la
+     immensa majoria, i es comprova contra el que sortiria sense ell. */
+  let sensControl = 0;
+  for (let i = 0; i < series.length; i++) {
+    for (let j = i + 1; j < series.length; j++) {
+      if (series[i].familia === series[j].familia) continue;
+      if (!/^N\d+$/.test(series[i].nom) && !/^N\d+$/.test(series[j].nom)) continue;
+      const sa = C_perSetmanes(ctx, series[i]), sb = C_perSetmanes(ctx, series[j]);
+      const claus = Object.keys(sa).filter((k) => sb[k] !== undefined);
+      const rho = ctx.Creuaments.spearman(claus.map((k) => sa[k]), claus.map((k) => sb[k]));
+      if (ctx.Creuaments.valorP(rho, claus.length) < 0.05) sensControl++;
+    }
+  }
+  const ambControl = r.trobades.filter(esSoroll).length;
+  cal('sense control, el soroll donaria relacions', sensControl >= 2, sensControl);
+  cal('amb control, en queden molt poques o cap',
+      ambControl <= 1 && ambControl < sensControl,
+      ambControl + ' de ' + sensControl);
+
+  cal('el que és de la mateixa família no s\'ha ni provat',
+      !r.trobades.some((t) => (t.a === 'A' && t.b === 'G') || (t.a === 'G' && t.b === 'A')));
+  /* 15 sèries → 105 parelles, menys A-G que és de la mateixa família. */
+  cal('s\'han provat les parelles que toquen', r.provades === 104, r.provades);
+  cal('i queda desat per a la pantalla', !!desat && !!desat.resultat);
+
+  /* La setmana en curs no hi entra: està a mitges i faria de setmana fluixa
+     una que encara no ha acabat. */
+  cal('no es mira la setmana que s\'està vivint',
+      r.fins === ctx.Utils.sumaDies(dl0, -1), r.fins);
+
+  /* I amb poques setmanes, silenci. Set no arriben al mínim de vuit. */
+  const poques = setmanes.slice(-7);
+  ctx.Moduls.seriesDiaries = () => [
+    Object.assign((() => { const d = {}; poques.forEach((dl, k) => {
+      for (let i = 0; i < 7; i++) d[ctx.Utils.sumaDies(dl, i)] = k + 1; });
+      return { id: 'x', nom: 'X', agrega: 'suma', familia: 'fx', dies: d }; })(), { modul: 'm1' }),
+    Object.assign((() => { const d = {}; poques.forEach((dl, k) => {
+      for (let i = 0; i < 7; i++) d[ctx.Utils.sumaDies(dl, i)] = 40 - k; });
+      return { id: 'y', nom: 'Y', agrega: 'suma', familia: 'fy', dies: d }; })(), { modul: 'm2' })
+  ];
+  const r2 = ctx.Creuaments.calcula({ fins: '2026-08-05' });
+  cal('amb set setmanes, per perfecta que sigui, no es diu res',
+      r2.trobades.length === 0, JSON.stringify(r2.trobades));
+
+  /* I la pantalla ha d'estar muntada, que si no el senyal porta enlloc. */
+  const idxR = fs.readFileSync('apps-script/ui_index.html', 'utf8');
+  cal('la pantalla està muntada a l\'app', /include\('vista_relacions'\)/.test(idxR));
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);

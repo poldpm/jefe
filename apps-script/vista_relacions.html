@@ -1,0 +1,197 @@
+<script>
+/* JEFE — MÒDUL · Relacions
+
+   QUÈ ENSENYA: què va junt amb què, de tot el que apuntes.
+
+   L'ORDRE MANA, I ÉS L'ARGUMENT DE LA PANTALLA:
+
+     1. EL QUE S'HA VIST. Cada cosa amb la seva frase, les setmanes que hi ha
+        al darrere i la força. Cap diu «perquè».
+     2. EL QUE NO ES POT DIR ENCARA, amb les setmanes que li falten.
+     3. QUÈ S'HA MIRAT I QUÈ S'HA DESCARTAT.
+
+   Els punts 2 i 3 no són lletra petita: són la meitat del valor. Una app que
+   només ensenyés les relacions que ha trobat seria indistingible d'una que
+   se les inventa. Ensenyar quantes parelles s'han provat, quantes no han
+   passat el filtre i què està esperant dades és el que fa que et puguis
+   creure les tres que sí que hi surten.
+
+   NO HI HA GRÀFICS. Cada relació es podria dibuixar amb un núvol de punts, i
+   seria bonic i no diria res més que la frase: amb dotze punts, l'ull hi veu
+   la forma que vulgui. El número que mana ja hi és —les setmanes— i el
+   dibuix només serviria per fer-ho semblar més científic del que és. */
+
+App.registraVista('relacions', {
+  render: function (arrel) {
+
+    var d = null;
+    var calculant = false;
+
+    function capcalera() {
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
+          ic('conversa', 'ic-p') + '</button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:1.0625rem;margin:0">Relacions</h1>' +
+          '<p class="marge" style="margin:2px 0 0">' +
+            (d && d.calculat
+              ? d.provades + (d.provades === 1 ? ' parella mirada' : ' parelles mirades')
+              : '') +
+          '</p>' +
+        '</div>' +
+      '</div></header>';
+    }
+
+    /* La força, dita amb paraules i no amb el número. «rho 0,72» no vol dir
+       res a ningú i «forta» sí; el número hi és igualment al peu, per a qui
+       el vulgui mirar. */
+    /* «5 de febrer», sense el dia de la setmana: aquí no importa si era
+       dijous, importa per on comença el que s'ha mirat. */
+    function sensDia(data) {
+      return String(fmt.llarga(data)).replace(/^[^,]+,\s*/, '');
+    }
+
+    function forca(r) {
+      var a = Math.abs(r);
+      return a >= 0.8 ? 'molt forta' : a >= 0.65 ? 'forta' : 'clara';
+    }
+
+    function trobades() {
+      if (!d.trobades.length) {
+        return '<section class="secc"><div class="estat">' + ic('relacions', 'ic-g') +
+          '<h2>Encara res de prou clar</h2>' +
+          '<p>S\'han mirat ' + d.provades + ' parelles i cap ha passat el filtre. ' +
+          'Amb més setmanes apuntades, això canvia.</p></div></section>';
+      }
+      return '<section class="secc">' +
+        '<p class="marge">El que va junt</p>' +
+        '<div class="caixes"><section class="caixa"><ul class="caixa-coses">' +
+          d.trobades.map(function (t) {
+            return '<li class="rel-fila">' +
+              '<p class="rel-frase">' + esc(t.frase) + '</p>' +
+              '<p class="rel-peu">' +
+                '<span>' + t.n + ' setmanes</span>' +
+                '<span>relació ' + forca(t.rho) + '</span>' +
+                /* Dos decimals i no un: `fmt.decimal` arrodoneix a un i
+                   convertia un −0,74 en un −0,7. Aquí el número és per a qui
+                   el vulgui mirar de debò, i arrodonir-lo el fa inútil. */
+                '<span class="rel-rho">rho ' +
+                  esc((t.rho < 0 ? '−' : '') + Math.abs(t.rho).toFixed(2).replace('.', ',')) +
+                '</span>' +
+              '</p>' +
+            '</li>';
+          }).join('') +
+        '</ul></section></div>' +
+        /* L'avís va SOTA la llista i no a sobre. A sobre seria una excusa
+           anticipada; a sota és el que has de tenir al cap quan acabes de
+           llegir-les i abans de fer-ne res. */
+        '<p class="menut" style="margin-top:var(--e3)">Dues coses que van juntes no diuen ' +
+          'quina mou l\'altra, ni si les mou una tercera. Això ho saps tu.</p>' +
+      '</section>';
+    }
+
+    function esperant() {
+      if (!d.curtes.length) return '';
+      return '<section class="secc">' +
+        '<p class="marge">Esperant setmanes</p>' +
+        '<div class="caixes"><section class="caixa"><ul class="caixa-coses">' +
+          d.curtes.map(function (c) {
+            return '<li class="rel-fila rel-curta">' +
+              '<p class="rel-frase">' + esc(c.a) + ' i ' + esc(c.b) + '</p>' +
+              '<p class="rel-peu"><span>' + c.setmanes + ' de ' + d.minim +
+                ' setmanes amb totes dues dades</span></p>' +
+            '</li>';
+          }).join('') +
+        '</ul></section></div>' +
+      '</section>';
+    }
+
+    function peu() {
+      return '<section class="secc">' +
+        '<div class="caixes"><section class="caixa">' +
+          '<h3 class="caixa-cap"><span>Com es mira</span></h3>' +
+          '<ul class="caixa-coses">' +
+            ['Es comparen ' + d.series + ' sèries per setmanes, no per dies.',
+             'Cal un mínim de ' + d.minim + ' setmanes amb totes dues dades.',
+             'Es compara l\'ordre de les setmanes, no els valors: una setmana ' +
+               'rara no s\'endú la conclusió.',
+             'De les ' + d.provades + ' parelles provades es controla que, del que ' +
+               'es digui, com a molt una de cada deu sigui casualitat.',
+             'Coses de la mateixa família no es creuen: que el pes i la cintura ' +
+               'vagin junts no és cap descobriment.'
+            ].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') +
+          '</ul>' +
+        '</section></div>' +
+        /* Les dates, dites com les diries. «Mirat del 2026-02-05 al
+           2026-08-04» és com ho guarda el full, no com es llegeix. */
+        '<p class="menut" style="margin-top:var(--e2)">' +
+          esc('Mirat del ' + sensDia(d.desde) + ' al ' + sensDia(d.fins) + '.') +
+          ' Es refà sol un cop la setmana.' +
+        '</p>' +
+        '<button class="btn btn-fantasma" data-recalcula style="margin-top:var(--e3)"' +
+          (calculant ? ' disabled' : '') + '>' +
+          (calculant ? 'Mirant-ho…' : 'Torna-ho a mirar ara') + '</button>' +
+        (calculant ? '<p class="menut">Triga: està llegint mig any de tot.</p>' : '') +
+      '</section>';
+    }
+
+    function pinta() {
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+          (d.calculat
+            ? trobades() + esperant() + peu()
+            : '<section class="secc"><div class="estat">' + ic('relacions', 'ic-g') +
+                '<h2>Encara no ho he mirat mai</h2>' +
+                '<p>Es fa sol un cop la setmana, en segon pla. Si no vols esperar, ' +
+                'demana-ho ara.</p>' +
+                '<button class="btn btn-primari" data-recalcula' +
+                  (calculant ? ' disabled' : '') + '>' +
+                  (calculant ? 'Mirant-ho…' : 'Mira-ho ara') + '</button>' +
+              '</div></section>') +
+        '</div>';
+      lliga();
+    }
+
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+
+      arrel.querySelectorAll('[data-recalcula]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          calculant = true;
+          App.mantenintLaVista(pinta);
+          crida('relacions', 'recalcula', {})
+            .then(function (r) {
+              calculant = false;
+              d = r; Cau.set('relacions', r);
+              App.mantenintLaVista(pinta);
+            })
+            .catch(function (err) {
+              calculant = false;
+              App.mantenintLaVista(pinta);
+              App.brindis(err.message, 'error');
+            });
+        });
+      });
+    }
+
+    function carrega() {
+      var cau = Cau.get('relacions', null);
+      if (cau) { d = cau; pinta(); }
+      else arrel.innerHTML = Comp.carregant(3);
+
+      crida('relacions', 'pantalla', {}).then(function (r) {
+        d = r; Cau.set('relacions', r);
+        App.mantenintLaVista(pinta);
+      }).catch(function (err) {
+        if (d) return;
+        arrel.innerHTML = Comp.error(err, true);
+        var b = arrel.querySelector('[data-reintenta]');
+        if (b) b.addEventListener('click', function () { App.ves('relacions'); });
+      });
+    }
+
+    carrega();
+  }
+});
+</script>

@@ -147,6 +147,11 @@ function MODUL_HABITS() {
        demana al nucli què ha passat i el nucli ens ho pregunta a nosaltres. */
     resumPeriode: function (desde, fins) { return Habits.resumPeriode(desde, fins); },
 
+    /* Cada hàbit és una sèrie, i cadascun la seva família: que dues coses que
+       fas cada dia vagin juntes SÍ que és un descobriment —«les setmanes que
+       llegeixes fumes menys»—, mentre que el pes i la cintura no ho és. */
+    seriesDiaries: function (desde, fins) { return Habits.seriesDiaries(desde, fins); },
+
     /**
      * Dels hàbits, dues coses i cap més: un comptador que puja i una ratxa
      * llarga que s'acaba de trencar. La resta —«et falten quatre hàbits»— ja
@@ -709,6 +714,58 @@ var Habits = (function () {
    * hàbit de dilluns, dimecres i divendres seria acusar-lo de no fer-lo els
    * dies que no havia de fer-lo.
    */
+  /**
+   * Els hàbits com a números, per creuar-los amb la resta.
+   *
+   * UN DIA SENSE FILA NO ÉS UN DIA SENSE DADA: és un dia que no vas fer
+   * l'hàbit. Aquest full només guarda els dies que has tocat, i si els que
+   * falten es deixessin buits, una setmana en què vas llegir dos dies tindria
+   * dues dades i es compararia com si haguessis llegit sempre. Per això
+   * s'omplen amb zero —però només des del dia que l'hàbit existeix, que abans
+   * no és que no el fessis: és que no hi era.
+   *
+   * Els comptadors van igual: si no hi ha fila, no vas fumar cap cigarro. És
+   * l'única lectura que serveix, perquè és la que fa tota la resta del mòdul
+   * (la ratxa, el percentatge, la corba) i dues lectures del mateix full no
+   * poden dir coses diferents.
+   */
+  function seriesDiaries(desde, fins) {
+    var idx = indexRegistres_();
+    var calendari = Utils.rangDates(desde, fins);
+
+    return definicions().map(function (h) {
+      var regs = idx[h.id] || {};
+      var creacio = dataCreacio_(h);
+      var comptador = esComptador_(h);
+      var dies = {}, quants = 0;
+
+      calendari.forEach(function (d) {
+        if (d < creacio) return;
+        /* Un hàbit de dilluns i dimecres no «falla» els dijous. Els dies que
+           no toquen no són ni un zero ni un u: no hi són. */
+        if (!comptador && !exigit_(h, d)) return;
+        dies[d] = comptador ? (Number(regs[d]) || 0)
+                            : (complert_(h, regs[d]) ? 1 : 0);
+        quants++;
+      });
+
+      if (quants < 14) return null;               // ni un mes de vida: encara no
+      return {
+        id: h.id,
+        nom: h.nom,
+        unitat: comptador ? (h.unitat || '') : 'dies',
+        agrega: 'suma',
+        familia: h.id,
+        /* Tres dies de set. Per sota, la setmana no és una setmana d'aquell
+           hàbit; per sobre de cinc, un hàbit de dies alterns no comptaria mai
+           cap setmana. */
+        minimDies: comptador ? 5 : 3,
+        millorAmunt: !comptador,
+        dies: dies
+      };
+    }).filter(Boolean);
+  }
+
   function resumPeriode(desde, fins) {
     var idx = indexRegistres_();
     var calendari = Utils.rangDates(desde, fins);
@@ -1055,6 +1112,7 @@ var Habits = (function () {
     historic: historic,
     resumTots: resumTots,
     resumPeriode: resumPeriode,
+    seriesDiaries: seriesDiaries,
     crea: crea,
     edita: edita,
     registraPerNom: registraPerNom,

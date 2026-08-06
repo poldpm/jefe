@@ -69,6 +69,26 @@ var FULLS_NUCLI = [
     ]
   },
   {
+    /* L'últim creuament de totes les sèries. UNA SOLA FILA, la de sempre:
+       això no és un històric, és el resultat d'ara, i el de la setmana
+       passada no serveix per a res un cop hi ha el d'aquesta. Vegeu
+       `70_Creuaments.gs`. Va al nucli i no a cap mòdul perquè el que hi ha
+       dins surt de tots alhora i no és de ningú. */
+    nom: '_Relacions',
+    columnes: [
+      { nom: 'id',          tipus: 'text' },
+      { nom: 'calculat_el', tipus: 'iso'  },
+      { nom: 'desde',       tipus: 'data' },
+      { nom: 'fins',        tipus: 'data' },
+      { nom: 'series',      tipus: 'num'  },
+      { nom: 'parelles',    tipus: 'num'  },
+      { nom: 'provades',    tipus: 'num'  },
+      { nom: 'resultat',    tipus: 'json' },
+      { nom: 'creat_el',    tipus: 'iso'  },
+      { nom: 'actualitzat_el', tipus: 'iso' }
+    ]
+  },
+  {
     nom: '_Moduls',
     columnes: [
       { nom: 'id_modul', tipus: 'text' },

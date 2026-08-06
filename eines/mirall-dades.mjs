@@ -713,6 +713,33 @@ export function dades(AVUI, menys) {
   });
   // ------------------------------------------------------------------ inici
 
+  /* Les relacions entre dades. Inventades, com tot el mirall, pero amb la
+     forma que tindran: unes quantes trobades, unes quantes esperant setmanes,
+     i els numeros de quantes s han mirat. */
+  const relacions = () => ({
+    calculat: true,
+    calculatEl: AVUI + 'T04:12:00+02:00',
+    desde: menys(182), fins: menys(2),
+    series: 17, provades: 96, parelles: 136, minim: 8,
+    trobades: [
+      { a: 'son', b: 'Cigarros', idA: 'seguiment.son', idB: 'habits.h6',
+        modulA: 'seguiment', modulB: 'habits', n: 19, rho: -0.74, p: 0.0003,
+        frase: 'Les setmanes de mes son, menys cigarros.' },
+      { a: 'hores ocupades', b: 'Cigarros', idA: 'calendari.hores', idB: 'habits.h6',
+        modulA: 'calendari', modulB: 'habits', n: 22, rho: 0.68, p: 0.0006,
+        frase: 'Les setmanes de mes hores ocupades, tambe de mes cigarros.' },
+      { a: 'Llegir', b: 'anim', idA: 'habits.h4', idB: 'diari.anim',
+        modulA: 'habits', modulB: 'diari', n: 16, rho: 0.61, p: 0.0121,
+        frase: 'Les setmanes de mes llegir, tambe de mes anim.' }
+    ],
+    curtes: [
+      { a: 'proteina', b: 'forca', setmanes: 7 },
+      { a: 'deficit', b: 'pes', setmanes: 6 },
+      { a: '10.000 passes', b: 'energia', setmanes: 4 },
+      { a: 'Idiomes', b: 'anim', setmanes: 3 }
+    ]
+  });
+
   const nucliInici = () => ({
     avui: AVUI,
     moduls: [
@@ -727,7 +754,8 @@ export function dades(AVUI, menys) {
          ensenyava vuit botons on l'app en té nou. Justament el tauler és on
          es veuen totes les icones alhora. */
       { id: 'escola', nom: 'Escola', icona: 'escola', ordre: 35, teVista: true },
-      { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true }
+      { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true },
+      { id: 'relacions', nom: 'Relacions', icona: 'relacions', ordre: 45, teVista: true }
     ],
     targetes: [
       { modul: 'habits', icona: 'habits', etiqueta: 'Hàbits pendents', valor: 4, urgent: true, accio: 'habits' },
@@ -742,6 +770,6 @@ export function dades(AVUI, menys) {
 
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia, laSetmana,
-           CATEGORIES, finPantalla, tasquesPantalla, tasquesFetes, diariPantalla,
+           CATEGORIES, finPantalla, tasquesPantalla, relacions, tasquesFetes, diariPantalla,
            conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
 }

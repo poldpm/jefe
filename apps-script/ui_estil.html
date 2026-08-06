@@ -2126,6 +2126,29 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   LES RELACIONS
+
+   Files de dues línies: la frase i, sota, d'on surt. La segona línia no és
+   lletra petita decorativa —és el que et permet decidir si t'ho creus, i per
+   això porta sempre les setmanes primer i el número tècnic al final.
+   ========================================================================== */
+
+.rel-fila { padding: var(--e2) var(--e3); }
+.rel-frase { margin: 0; font-size: .9375rem; line-height: 1.45; }
+.rel-peu {
+  display: flex; flex-wrap: wrap; gap: var(--e2); margin: 4px 0 0;
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .04em;
+  color: var(--ink-suau);
+}
+.rel-peu > span + span::before { content: '·'; margin-right: var(--e2); }
+.rel-rho { opacity: 1; }
+/* Les que encara no es poden dir es queden amb la lletra fluixa a la frase,
+   no amb opacitat a la fila: el que ha de recular és el pes del text, i
+   `--ink-suau` sobre el panell dona 4,77:1 —mesurat—, que es llegeix. */
+.rel-curta .rel-frase { color: var(--ink-suau); font-size: .875rem; }
+
+
+/* ==========================================================================
    LA MEMÒRIA
 
    Files de text amb una creu. Res més: el que hi ha aquí es llegeix i, de tant

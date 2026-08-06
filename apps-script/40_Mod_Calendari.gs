@@ -130,6 +130,17 @@ function MODUL_CALENDARI() {
       };
     },
 
+    /* LES HORES QUE TENS OCUPADES, dia a dia. Es creua amb tota la resta, i
+       és la sèrie que pot contestar la pregunta que cap apartat sap: si les
+       setmanes plenes de feina en són de fumar més, de dormir pitjor o de no
+       apuntar el menjar. Cap altre mòdul sap què és una setmana plena. */
+    seriesDiaries: function (desde, fins) {
+      var dies = Calendari.horesPerDia(desde, fins);
+      if (Object.keys(dies).length < 28) return [];
+      return [{ id: 'hores', nom: 'hores ocupades', unitat: 'min a la setmana',
+                agrega: 'suma', familia: 'agenda', minimDies: 7, dies: dies }];
+    },
+
     contextIA: function () {
       var avui = Utils.avui();
       var l = [];
@@ -732,6 +743,35 @@ var Calendari = (function () {
     });
   }
 
+  /**
+   * Les hores ocupades de cada dia d'un tros llarg.
+   *
+   * NO PASSA PER `rang` I ÉS A POSTA. `rang` desa la finestra que llegeix, i
+   * aquí es demanen SIS MESOS: la finestra desada passaria de dos mesos a
+   * vuit, no cabria a la memòria cau, es descartaria, i la pantalla del
+   * calendari —que va costar de fer ràpida— tornaria a construir-ho tot cada
+   * cop. Això llegeix, contesta i no deixa rastre.
+   *
+   * Els de tot el dia no compten hores: bloquen el dia, no la tarda. I d'un
+   * que dura tres dies, les hores compten el dia que comença.
+   */
+  function horesPerDia(desde, fins) {
+    var out = {};
+    llegeix_(desde, fins).forEach(function (e) {
+      if (e.totElDia || !e.minuts) return;
+      if (e.data < desde || e.data > fins) return;
+      out[e.data] = (out[e.data] || 0) + e.minuts;
+    });
+    /* Els dies sense res SÓN zero hores, no dies sense dada: aquí no hi ha res
+       per apuntar i per tant no hi ha res que puguis oblidar-te. Sense això,
+       una setmana de vacances no comptaria en comptes de comptar com el que
+       és, la setmana més buida de totes. */
+    Utils.rangDates(desde, fins).forEach(function (d) {
+      if (out[d] === undefined) out[d] = 0;
+    });
+    return out;
+  }
+
   function novaData_(text) {
     var p = String(text).split('-');
     return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0);
@@ -1330,6 +1370,7 @@ var Calendari = (function () {
     dia: dia,
     rang: rang,
     rangPerDies: rangPerDies,
+    horesPerDia: horesPerDia,
     targeta: targeta,
     escalfa: escalfa,
     compta: compta,

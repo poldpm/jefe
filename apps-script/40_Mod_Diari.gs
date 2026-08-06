@@ -110,6 +110,30 @@ function MODUL_DIARI() {
       return l.join('\n');
     },
 
+    /**
+     * L'ÀNIM, que és l'única xifra d'aquesta app que no surt de comptar res.
+     *
+     * Val la pena creuar-la precisament per això: el pes, els cigarros i les
+     * hores es poden mirar tots sols i s'entenen; com et sents no, i el que
+     * pugui anar amb ell és el que aquesta app no sabria dir de cap altra
+     * manera.
+     *
+     * Només els dies que el vas posar: un dia sense escriure no és un dia
+     * d'ànim zero. Tres dies per setmana perquè la setmana compti —amb un de
+     * sol, la setmana és aquell dia i prou.
+     */
+    seriesDiaries: function (desde, fins) {
+      var dies = {}, quants = 0;
+      Diari.entrades(desde, fins).forEach(function (d) {
+        if (!d.anim) return;
+        dies[d.data] = Number(d.anim);
+        quants++;
+      });
+      if (quants < 14) return [];
+      return [{ id: 'anim', nom: 'ànim', unitat: 'sobre 5', agrega: 'mitjana',
+                familia: 'anim', minimDies: 3, millorAmunt: true, dies: dies }];
+    },
+
     /* La revisió pregunta a tots els mòduls què ha passat aquesta setmana, i
        el diari s'hi inclou a si mateix com un més. */
     resumPeriode: function (desde, fins) {
