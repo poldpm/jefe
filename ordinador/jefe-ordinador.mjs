@@ -75,53 +75,75 @@ const ORIGENS = [
 ];
 
 /**
- * ON POT MIRAR.
+ * ══════════════════════════════════════════════════════════════════════════
+ * ON POT MIRAR: EL DISC SENCER
+ * ══════════════════════════════════════════════════════════════════════════
  *
- * NO ES DEDUEIX DE `USERPROFILE` I PROU, i aquesta màquina n'és l'exemple:
- * l'escriptori d'en Pol no és `C:\Users\polca\Desktop` —aquesta carpeta no
+ * Va començar sent quatre carpetes —Documents, Baixades, OneDrive, Drive— i
+ * en Pol ho va obrir a tot `C:`. És la seva màquina i la seva decisió; això
+ * és el que hi ha, i les tres coses de sota són el que fa que segueixi sent
+ * utilitzable i no un forat.
+ *
+ * DE PASSADA, LA RAÓ PER LA QUAL LES QUATRE CARPETES NO ANAVEN BÉ: en aquesta
+ * màquina l'escriptori no és `C:\Users\polca\Desktop` —aquesta carpeta no
  * existeix—, sinó `C:\Users\polca\OneDrive\Pol\Escritorio`, perquè OneDrive
- * se'ls emporta. Buscar només als noms de sempre hauria donat una llista
- * mig buida i «no trobo aquell document» quan el document hi era.
+ * se'l va emportar. Deduir les carpetes dels noms de sempre donava «no trobo
+ * aquell document» amb el document allà. Amb el disc sencer, això s'acaba.
  *
- * Per això es proven candidats i es queden els que existeixen de debò: les
- * carpetes del perfil en els tres noms que poden tenir (anglès, castellà i
- * català), les arrels d'OneDrive que el sistema declari, i la unitat de
- * Drive. Els repetits cauen.
- *
- * AFEGIR-NE UNA ÉS AFEGIR-LA AQUÍ. No hi ha cap manera de fer-ho des de la
- * conversa a posta: qui decideix on pot mirar ets tu, davant del teclat, i
- * no una frase dita en veu alta.
+ * AFEGIR O TREURE UNA ARREL ÉS TOCAR AQUESTA LLISTA. No hi ha cap manera de
+ * fer-ho des de la conversa a posta: qui decideix on pot mirar ets tu,
+ * davant del teclat, i no una frase dita en veu alta.
  */
-const ARRELS = (function () {
-  const casa = os.homedir();
-  const noms = ['Desktop', 'Escritorio', 'Escriptori',
-                'Documents', 'Documentos',
-                'Downloads', 'Descargas', 'Baixades'];
+const ARRELS = ['C:\\', 'G:\\']
+  .filter((d) => { try { return fs.existsSync(d); } catch (e) { return false; } })
+  .map((d) => path.resolve(d));
 
-  const candidats = noms.map((n) => path.join(casa, n));
+/**
+ * EL SOROLL, QUE NO ÉS EL MATEIX QUE UN PANY.
+ *
+ * Amb el disc sencer, buscar «informe» voldria dir recórrer Windows, els
+ * Program Files i mig `AppData`: minuts d'espera per tornar-te DLLs i fitxers
+ * de cau que no busques mai. Aquestes carpetes se salten EN BUSCAR.
+ *
+ * NO ÉS UN PERMÍS: si li dius el camí exacte d'un fitxer de dins, l'obre i el
+ * llegeix igual. És una llista de llocs on no hi ha res teu, i està aquí per
+ * fer la cerca útil, no per protegir res. El que protegeix és el de sota.
+ */
+const SOROLL = ['windows', 'program files', 'program files (x86)', 'programdata',
+                '$recycle.bin', 'system volume information', 'recovery',
+                'appdata', 'node_modules', '.git', '.cache', 'temp', 'tmp',
+                '$windows.~bt', '$windows.~ws', 'perflogs', 'msocache',
+                'onedrivetemp', '.venv', 'venv', '__pycache__'];
 
-  // Les arrels d'OneDrive, que és on Windows sol amagar l'escriptori de debò.
-  [process.env.OneDrive, process.env.OneDriveConsumer, process.env.OneDriveCommercial]
-    .filter(Boolean).forEach((d) => candidats.push(d));
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * DUES COSES QUE SEGUEIXEN TANCADES, I PER QUÈ
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * 1. NO S'OBRE RES QUE S'EXECUTI.
+ *    Obrir un document és ensenyar-te'l; obrir un `.exe` o un `.bat` és
+ *    EXECUTAR UN PROGRAMA, que és exactament el que en Pol va descartar quan
+ *    va triar verbs concrets en comptes d'ordres lliures. Amb el disc sencer,
+ *    sense això, «obre'm allò» amb una transcripció dolenta podria arrencar
+ *    qualsevol instal·lador de la carpeta de baixades.
+ *
+ * 2. NO ES LLEGEIXEN CLAUS NI CERTIFICATS.
+ *    Llegir un fitxer no és mirar-se'l: és enviar-ne el contingut a Gemini
+ *    perquè te l'expliqui. Un `.env`, una clau privada o el JSON d'un compte
+ *    de servei acabarien dins d'una petició a un model, i la regla d'aquesta
+ *    casa és que això no passa mai. Obrir-los sí que es pot —és la teva
+ *    màquina i el teu editor—; el que no es pot és fer-los sortir d'aquí.
+ */
+const NO_EXECUTABLES = ['.exe', '.bat', '.cmd', '.com', '.scr', '.msi', '.msp',
+                        '.ps1', '.psm1', '.vbs', '.vbe', '.wsf', '.wsh', '.js',
+                        '.jse', '.jar', '.reg', '.lnk', '.pif', '.cpl', '.hta',
+                        '.msc', '.gadget', '.appref-ms'];
 
-  // I la unitat de Drive, si està muntada.
-  ['G:\\La meva unitat', 'G:\\My Drive', 'G:\\Mi unidad'].forEach((d) => candidats.push(d));
-
-  /* Els repetits fora, i sense mirar majúscules: a Windows «C:\Users» i
-     «c:\users» són la mateixa carpeta, i `OneDrive` i `OneDriveConsumer`
-     resulten ser el mateix camí en aquesta màquina. */
-  const vistes = {};
-  const vives = candidats
-    .filter((d) => { try { return fs.existsSync(d); } catch (e) { return false; } })
-    .map((d) => path.resolve(d))
-    .filter((d) => { var k = d.toLowerCase(); if (vistes[k]) return false; vistes[k] = 1; return true; });
-
-  /* I les que ja són dins d'una altra també: amb OneDrive i
-     OneDrive\Escritorio a la llista, buscar recorreria l'escriptori dues
-     vegades i tot sortiria duplicat. */
-  return vives.filter((d, i) => !vives.some((altra, j) =>
-    j !== i && d.toLowerCase().startsWith(altra.toLowerCase() + path.sep)));
-})();
+const NO_LLEGIBLES = [/\.pem$/i, /\.key$/i, /\.p12$/i, /\.pfx$/i, /\.crt$/i, /\.cer$/i,
+                      /\.ppk$/i, /\.kdbx$/i, /(^|[\\/])\.env/i, /(^|[\\/])id_[rd]sa/i,
+                      /credentials?\.json$/i, /service[-_]?account.*\.json$/i,
+                      /(^|[\\/])\.(ssh|jefe|claude|aws|gnupg|docker|kube|azure)([\\/]|$)/i,
+                      /(^|[\\/])(clasprc|clasp)\.json$/i];
 
 /* La clau viu fora del repositori: aquest projecte és públic. */
 const CASA = path.join(os.homedir(), '.jefe');
@@ -135,6 +157,7 @@ const LLEGIBLES = ['.txt', '.md', '.markdown', '.csv', '.tsv', '.json', '.log',
 
 const MAX_TEXT = 40000;      // el que cap a una pregunta sense ofegar el model
 const MAX_TROBATS = 40;
+const TEMPS_CERCA = 6000;    // ms; amb el disc sencer, el que mana és el rellotge
 
 // ────────────────────────────────────────────────────────────────────── clau
 
@@ -163,12 +186,34 @@ function dins(cami) {
   try { abs = path.resolve(String(cami)); } catch (e) { return null; }
   /* `resolve` ja s'ha menjat els `..`, o sigui que aquí es compara el destí
      final i no el que s'ha escrit. Comparar el text tal com ve deixaria
-     passar «Documents/../../Windows/System32». */
+     passar «Documents/../../Windows/System32», que amb quatre carpetes era el
+     forat gros. Amb el disc sencer el que atura això és el de sota, però la
+     comprovació es queda: és la que fa que canviar les arrels sigui segur. */
   const seu = ARRELS.some((arrel) => {
-    const a = path.resolve(arrel);
-    return abs === a || abs.toLowerCase().startsWith(a.toLowerCase() + path.sep);
+    /* L'ARREL D'UN DISC JA ACABA EN BARRA. `path.resolve('C:\\')` torna
+       «C:\», i enganxar-hi el separador donava «C:\\»: cap camí comença per
+       això i TOT `C:` quedava fora. Va passar el minut que l'arrel va deixar
+       de ser una carpeta i va passar a ser el disc. */
+    const a = path.resolve(arrel).replace(/[\\/]+$/, '');
+    return abs.toLowerCase() === a.toLowerCase() ||
+           abs.toLowerCase().startsWith(a.toLowerCase() + path.sep);
   });
   return seu ? abs : null;
+}
+
+/** Una carpeta on no hi ha res seu i que la cerca es salta. */
+function esSoroll(nom) {
+  return SOROLL.indexOf(String(nom).toLowerCase()) !== -1;
+}
+
+/** Els que obrir-los vol dir executar-los. */
+function sExecuta(cami) {
+  return NO_EXECUTABLES.indexOf(path.extname(cami).toLowerCase()) !== -1;
+}
+
+/** Els que llegir-los voldria dir enviar-ne el contingut a un model. */
+function esSecret(cami) {
+  return NO_LLEGIBLES.some((r) => r.test(cami));
 }
 
 /** Obrir una cosa amb el programa que li toqui, sense passar per cap consola. */
@@ -225,6 +270,15 @@ const VERBS = {
   obre_fitxer(a) {
     const cami = dins(a.cami);
     if (!cami) throw new Error('Aquest camí queda fora d\'on puc mirar.');
+    /* QUÈ ÉS, ABANS DE SI HI ÉS. Obrir un document és ensenyar-te'l; obrir un
+       `.exe` és executar un programa, i això no és el que fa aquesta eina.
+       Va abans de mirar si existeix a posta: si no, un `.bat` que encara no
+       hi és respon «aquí no hi ha res», que sona a «si hi fos, te l'obriria».
+       La resposta ha de dir el mateix tant si el fitxer hi és com si no. */
+    if (sExecuta(cami)) {
+      throw new Error('«' + path.basename(cami) + '» és un programa, i obrir-lo ' +
+                      'voldria dir executar-lo. Això no ho faig: obre\'l tu.');
+    }
     if (!fs.existsSync(cami)) throw new Error('Aquí no hi ha res: ' + cami);
     obreAmbElSistema(cami);
     return { obert: cami, mena: fs.statSync(cami).isDirectory() ? 'carpeta' : 'fitxer' };
@@ -236,13 +290,26 @@ const VERBS = {
     const que = String(a.text || '').toLowerCase().trim();
     if (que.length < 2) throw new Error('Digues almenys dues lletres.');
 
+    /* AMB EL DISC SENCER CAL UN RELLOTGE, no una fondària.
+       Amb quatre carpetes n'hi havia prou amb parar als quatre nivells. Ara
+       l'arrel és `C:\` i un document teu pot ser a vuit carpetes de fons
+       mentre que `Windows` en té vint que no vols. La fondària sola o et deixa
+       fora els teus documents o et fa esperar minuts; el que no pot passar és
+       que preguntis una cosa i la conversa es quedi penjada. Per això es
+       busca fins que s'acaba el temps i es diu si s'ha acabat abans d'hora. */
+    const fins = Date.now() + TEMPS_CERCA;
+    let mirades = 0, tallat = false;
+
     const trobats = [];
     const mira = (carpeta, fondaria) => {
-      if (trobats.length >= MAX_TROBATS || fondaria > 4) return;
+      if (trobats.length >= MAX_TROBATS || fondaria > 10) return;
+      if (Date.now() > fins) { tallat = true; return; }
       let files;
       try { files = fs.readdirSync(carpeta, { withFileTypes: true }); } catch (e) { return; }
+      mirades++;
       for (const f of files) {
         if (trobats.length >= MAX_TROBATS) return;
+        if (Date.now() > fins) { tallat = true; return; }
         if (f.name.startsWith('.') || f.name.startsWith('~$')) continue;
         const complet = path.join(carpeta, f.name);
         if (f.name.toLowerCase().includes(que)) {
@@ -251,21 +318,43 @@ const VERBS = {
           catch (e) { /* un fitxer que desapareix mentre busques no és un error */ }
           trobats.push({ nom: f.name, cami: complet, carpeta: f.isDirectory(), quan, mida });
         }
-        if (f.isDirectory()) mira(complet, fondaria + 1);
+        if (f.isDirectory() && !esSoroll(f.name)) mira(complet, fondaria + 1);
       }
     };
-    ARRELS.forEach((arrel) => mira(arrel, 0));
+
+    /* PRIMER A CASA. Els teus documents són gairebé sempre sota el teu perfil,
+       i començar per l'arrel del disc voldria dir gastar el rellotge a
+       `C:\Users\Public` i a mig sistema abans d'arribar-hi. */
+    const casa = os.homedir();
+    [casa].concat(ARRELS.filter((r) => r.toLowerCase() !== path.resolve(casa).toLowerCase()))
+      .forEach((arrel) => { if (fs.existsSync(arrel)) mira(arrel, 0); });
 
     /* Els més recents primer: quan busques un document, gairebé sempre vols
        el que has tocat últimament i no el de fa tres anys. */
     trobats.sort((x, y) => String(y.quan || '').localeCompare(String(x.quan || '')));
-    return { quants: trobats.length, trobats };
+    return {
+      quants: trobats.length, trobats,
+      carpetesMirades: mirades,
+      /* Que ho digui quan no ha arribat a mirar-ho tot: «no ho he trobat» i
+         «no he tingut temps d'acabar» són dues respostes molt diferents. */
+      incomplet: tallat || trobats.length >= MAX_TROBATS
+    };
   },
 
   /* Tornar el text d'un document perquè JEFE te'l pugui explicar. */
   llegeix(a) {
     const cami = dins(a.cami);
     if (!cami) throw new Error('Aquest camí queda fora d\'on puc mirar.');
+
+    /* QUÈ ÉS, ABANS DE SI HI ÉS —igual que a `obre_fitxer` i per la mateixa
+       raó—. Llegir no és mirar: el text acaba dins d'una petició a Gemini. Les
+       claus i els certificats no hi van. Obrir-los, sí. */
+    if (esSecret(cami)) {
+      throw new Error('«' + path.basename(cami) + '» sembla una clau o un fitxer de ' +
+                      'credencials. No el llegeixo: llegir-lo voldria dir enviar-ne el ' +
+                      'contingut a la IA. Te\'l puc obrir.');
+    }
+
     if (!fs.existsSync(cami)) throw new Error('Aquí no hi ha res: ' + cami);
     if (fs.statSync(cami).isDirectory()) throw new Error('Això és una carpeta, no un document.');
 
@@ -314,8 +403,13 @@ const VERBS = {
       jefe: 'ordinador',
       maquina: os.hostname(),
       sistema: process.platform,
+      casa: os.homedir(),
       arrels: ARRELS,
-      verbs: Object.keys(VERBS)
+      verbs: Object.keys(VERBS),
+      /* Que ho digui ell i no ho hagi de saber ningú altre: la conversa pot
+         explicar per què una cosa no s'ha fet sense tenir cap llista pròpia. */
+      noObre: NO_EXECUTABLES,
+      noLlegeix: 'claus, certificats i fitxers de credencials'
     };
   }
 };
@@ -410,6 +504,9 @@ servidor.listen(PORT, '127.0.0.1', () => {
   console.log('');
   console.log('  Pot mirar dins de:');
   ARRELS.forEach((a) => console.log('      ' + a));
+  console.log('');
+  console.log('  No obre programes (.exe, .bat, .ps1…) ni llegeix claus ni certificats.');
+  console.log('  En buscar se salta Windows, Program Files, AppData i companyia.');
   console.log('');
   console.log('  Verbs: ' + Object.keys(VERBS).join(' · '));
   console.log('');

@@ -77,28 +77,76 @@ console.log('\nEls verbs: el que no hi és, no es pot demanar');
   cal('sense verb, tampoc', buit.codi === 400, JSON.stringify(buit));
 }
 
-console.log('\nOn pot mirar, i on no');
+console.log('\nOn pot mirar: el disc sencer');
 {
-  const fora = await truca({ verb: 'llegeix', args: { cami: 'C:\\Windows\\win.ini' } });
-  cal('un fitxer de fora de les arrels no es llegeix',
-      fora.dades.fet === false && /fora d'on puc mirar/.test(fora.dades.error),
-      JSON.stringify(fora.dades));
+  const hola = await truca({ verb: 'hola' });
+  cal('l\'arrel és el disc, no quatre carpetes',
+      (hola.dades.arrels || []).some((a) => /^C:\\?$/i.test(a)), JSON.stringify(hola.dades.arrels));
 
-  const amunt = await truca({ verb: 'llegeix',
-    args: { cami: path.join(os.homedir(), 'Documents', '..', '..', '..', 'Windows', 'win.ini') } });
-  cal('i pujar amb «..» tampoc hi arriba',
-      amunt.dades.fet === false && /fora d'on puc mirar/.test(amunt.dades.error),
-      JSON.stringify(amunt.dades));
+  const win = await truca({ verb: 'llista', args: { cami: 'C:\\Windows' } });
+  cal('i per tant sí que pot llistar C:\\Windows si li dius', win.dades.fet === true,
+      JSON.stringify(win.dades).slice(0, 120));
 
-  const carpetaFora = await truca({ verb: 'llista', args: { cami: 'C:\\Windows' } });
-  cal('ni llistar-ne una carpeta',
-      carpetaFora.dades.fet === false && /fora d'on puc mirar/.test(carpetaFora.dades.error),
-      JSON.stringify(carpetaFora.dades));
+  /* La comprovació dels camins es queda encara que ara l'arrel sigui el disc:
+     és la que fa que canviar les arrels torni a ser segur el dia que es
+     canviïn. Amb `C:\` hi entra tot, o sigui que el que ha de rebutjar és el
+     que NO és de cap disc de la llista. */
+  const altreDisc = await truca({ verb: 'llegeix', args: { cami: 'Z:\\res.txt' } });
+  cal('un disc que no és a la llista segueix fora',
+      altreDisc.dades.fet === false && /fora d'on puc mirar/.test(altreDisc.dades.error),
+      JSON.stringify(altreDisc.dades));
 
-  const obrirFora = await truca({ verb: 'obre_fitxer', args: { cami: 'C:\\Windows\\System32\\cmd.exe' } });
-  cal('ni obrir-hi res',
-      obrirFora.dades.fet === false && /fora d'on puc mirar/.test(obrirFora.dades.error),
-      JSON.stringify(obrirFora.dades));
+  const xarxa = await truca({ verb: 'llegeix', args: { cami: '\\\\servidor\\compartit\\x.txt' } });
+  cal('i una carpeta de xarxa també',
+      xarxa.dades.fet === false && /fora d'on puc mirar/.test(xarxa.dades.error),
+      JSON.stringify(xarxa.dades));
+}
+
+console.log('\nDues coses que segueixen tancades');
+{
+  /* Obrir un document és ensenyar-te'l; obrir un .exe és executar un programa,
+     que és el que en Pol va descartar quan va triar verbs concrets. Amb el
+     disc sencer, sense això, «obre'm allò» amb una transcripció dolenta
+     podria arrencar qualsevol instal·lador de la carpeta de baixades. */
+  const programes = ['C:\\Windows\\System32\\cmd.exe', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'];
+  const oberts = [];
+  for (const p of programes) {
+    if (!fs.existsSync(p)) continue;
+    const r = await truca({ verb: 'obre_fitxer', args: { cami: p } });
+    if (r.dades.fet !== false) oberts.push(p);
+  }
+  cal('no obre res que s\'executi', oberts.length === 0, oberts.join(' · '));
+
+  const inventats = ['C:\\x\\a.bat', 'C:\\x\\a.ps1', 'C:\\x\\a.msi', 'C:\\x\\a.vbs',
+                     'C:\\x\\a.reg', 'C:\\x\\a.lnk', 'C:\\x\\a.jar'];
+  const passen = [];
+  for (const p of inventats) {
+    const r = await truca({ verb: 'obre_fitxer', args: { cami: p } });
+    /* Cap no existeix, o sigui que el que importa és QUIN no: si diu «aquí no
+       hi ha res» vol dir que hauria arribat a obrir-lo si hi fos. */
+    if (!/programa/.test(r.dades.error || '')) passen.push(p + ' → ' + r.dades.error);
+  }
+  cal('i ho mira per l\'extensió, abans de saber si existeix', passen.length === 0,
+      passen.join(' · '));
+
+  /* Llegir no és mirar: el text acaba dins d'una petició a Gemini. */
+  const secrets = [path.join(os.homedir(), '.jefe', 'clau-ordinador.txt'),
+                   'C:\\x\\.env', 'C:\\x\\id_rsa', 'C:\\x\\credentials.json',
+                   'C:\\x\\service-account.json', 'C:\\x\\clau.pem',
+                   path.join(os.homedir(), '.ssh', 'config')];
+  const llegits = [];
+  for (const s of secrets) {
+    const r = await truca({ verb: 'llegeix', args: { cami: s } });
+    if (!/clau o un fitxer de credencials/.test(r.dades.error || '')) llegits.push(s + ' → ' + (r.dades.error || 'LLEGIT'));
+  }
+  cal('no llegeix claus ni credencials, ni les seves pròpies', llegits.length === 0,
+      llegits.join(' · '));
+
+  /* Però obrir-les sí: és la teva màquina i el teu editor. El que no es pot
+     és fer-ne sortir el contingut. */
+  const obreClau = await truca({ verb: 'obre_fitxer', args: { cami: 'C:\\x\\.env' } });
+  cal('però obrir-les no està prohibit: només no surten d\'aquí',
+      /no hi ha res/.test(obreClau.dades.error || ''), JSON.stringify(obreClau.dades));
 }
 
 console.log('\nAdreces: què és una web i què no');
@@ -150,6 +198,24 @@ console.log('\nLlegir i buscar de debò');
     const curt = await truca({ verb: 'busca', args: { text: 'a' } });
     cal('amb una lletra sola no busca: tornaria mitja màquina', curt.dades.fet === false,
         JSON.stringify(curt.dades));
+
+    /* AMB EL DISC SENCER, LA CERCA HA DE TENIR RELLOTGE. Buscar una cosa que
+       no hi és no pot deixar la conversa penjada mirant `C:\Windows`. */
+    const t0 = Date.now();
+    const enlloc = await truca({ verb: 'busca', args: { text: 'zzqx-no-existeix-enlloc' } });
+    const trigat = Date.now() - t0;
+    cal('buscar una cosa que no hi és no triga més del compte',
+        trigat < 9000, trigat + ' ms');
+    cal('i diu si ha pogut mirar-ho tot o s\'ha quedat a mitges',
+        typeof enlloc.dades.incomplet === 'boolean',
+        JSON.stringify({ q: enlloc.dades.quants, i: enlloc.dades.incomplet, c: enlloc.dades.carpetesMirades }));
+
+    /* I s'ha de saltar el soroll: si entrés a Windows i als Program Files, el
+       rellotge se n'aniria allà i els teus documents no sortirien mai. */
+    const soroll = await truca({ verb: 'busca', args: { text: 'system32' } });
+    const dinsDeWindows = (soroll.dades.trobats || []).filter((t) => /\\windows\\/i.test(t.cami));
+    cal('en buscar se salta Windows i companyia', dinsDeWindows.length === 0,
+        JSON.stringify(dinsDeWindows.slice(0, 3)));
 
     const pdf = await truca({ verb: 'llegeix', args: { cami: provaCami.replace('.txt', '.pdf') } });
     cal('un fitxer que no hi és, ho diu', pdf.dades.fet === false, JSON.stringify(pdf.dades));
