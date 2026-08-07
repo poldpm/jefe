@@ -2705,7 +2705,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-07 22:05 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-07 22:55 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3073,7 +3073,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-07 22:05 · en curs";
+window.MARCA_JEFE = "2026-08-07 22:55 · en curs";
 </script>
 
 <script>
@@ -5878,6 +5878,129 @@ App.registraVista('conversa', {
       return null;
     }
 
+    /**
+     * ══════════════════════════════════════════════════════════════════════
+     * «OBRE'M ALLÒ» NO HA DE FER LA VOLTA AL MÓN
+     * ══════════════════════════════════════════════════════════════════════
+     *
+     * Demanar que t'obri una cosa trigava una eternitat, i no era l'ordinador:
+     * mesurat, buscar per tot el disc són 350 mil·lisegons i saludar-lo 37.
+     * El que trigava era el camí. Cada «obre'm això» feia:
+     *
+     *     navegador → Apps Script (dos segons llargs, sempre)
+     *               → Gemini per triar l'eina
+     *               → Gemini per escriure la resposta
+     *               → i tornar
+     *
+     * Deu segons per a una cosa que és un botó dit amb la boca. És el mateix
+     * que ja passava amb «ensenya'm la pàgina del dia», i té la mateixa
+     * solució: aquí no hi ha res a pensar.
+     *
+     * TRES DESTINS, en aquest ordre:
+     *   · una pantalla de JEFE —«obre'm les finances»— i s'hi va
+     *   · una adreça —«obre'm el 3cat.cat»— i s'obre al navegador
+     *   · qualsevol altra cosa, i se li demana a l'ordinador que la busqui
+     *
+     * I SI NO LA TROBA, NO S'ACABA AQUÍ: la pregunta se'n va al model tal com
+     * l'has dita. «Obre'm el correu» no és cap fitxer, però ell sap que vol
+     * dir Gmail. Així el camí curt no et pren res: quan encerta t'estalvia deu
+     * segons i quan falla tornes a ser on eres.
+     */
+    var VERB_OBRIR = /^\s*(obre|obri|obrir|obrim|posa|posam|engega)\s*(?:['’]m|[’']|\s+em)?\s+(.{2,})$/i;
+    /* L'ARTICLE AMB APÒSTROF TAMBÉ. Amb «l'informe de la batuda», tallar
+       només pels articles amb espai deixava el `l'` enganxat i es buscava un
+       fitxer que es digués «l'informe». */
+    var ARTICLES = /^(?:(?:el|la|els|les|un|una|uns|unes|al|als|es|lo)\s+|[ld]['’]\s*)/i;
+    /* Coses de dins de l'app que no s'obren buscant-les enlloc. */
+    var DE_CASA = /(^|\s)(conversa|converses|microfon|teclat|ajust|ajustos|app|aplicacio)(\s|$)/;
+
+    function ordreDObrir(text) {
+      var m = String(text).match(VERB_OBRIR);
+      if (!m) return null;
+      var que = m[2].trim().replace(ARTICLES, '').trim();
+      if (que.length < 2) return null;
+
+      var net = neteja(que);
+      if (DE_CASA.test(net)) return null;       // que se'n cuidi el model
+
+      /* NOMÉS SI ENCAIXA SENCER. Buscar una paraula solta que fos el nom
+         d'una pantalla feia que «obre'm una altra conversa» acabés obrint la
+         conversa: hi surt la paraula, però la frase diu una altra cosa. */
+      if (App.vistes[net]) return { mena: 'vista', vista: net };
+
+      /* Una adreça: sense espais i amb un punt enmig, o dita com a tal. */
+      if (/^https?:\/\//i.test(que) ||
+          (/^[^\s]+\.[a-z]{2,}([\/?#].*)?$/i.test(que))) {
+        return { mena: 'web', url: que };
+      }
+      if (!Ordinador.clau()) return null;       // sense ajudant, que hi pensi ell
+      return { mena: 'fitxer', busca: que };
+    }
+
+    /**
+     * Fa l'ordre pel camí curt. Torna `true` si se n'ha ocupat.
+     *
+     * El cas del fitxer és l'únic que pot dir que no: buscar-lo és rapidíssim
+     * —350 ms per tot el disc, mesurat— però pot no trobar-lo, i llavors el
+     * que toca no és dir «no hi és» sinó deixar que hi pensi el model. Per
+     * això aquesta funció torna `true` de seguida a les dues primeres i,
+     * a la tercera, decideix quan ja ho sap.
+     */
+    function obreDeDreta_(ordre, original) {
+      if (ordre.mena === 'vista') { App.ves(ordre.vista, null); return true; }
+
+      if (ordre.mena === 'web') {
+        posaEstat('pensant', 'obrint');
+        Ordinador.truca('obre_web', { url: ordre.url }, 8)
+          .then(function (r) {
+            missatges.push({ rol: 'usuari', text: original });
+            missatges.push({ rol: 'assistent', text: 'Obert: ' + r.obert });
+            respostaFresca = true; pinta(); acaba();
+          })
+          ['catch'](function (err) {
+            missatges.push({ rol: 'usuari', text: original });
+            missatges.push({ rol: 'assistent', text: err.message });
+            respostaFresca = true; pinta(); acaba();
+          });
+        return true;
+      }
+
+      /* El fitxer. Es busca aquí mateix i, si hi és, s'obre; si no, la
+         pregunta segueix el camí de sempre com si no hagués passat res. */
+      ocupat = true;
+      arrel.querySelector('#b-envia').disabled = true;
+      missatges.push({ rol: 'usuari', text: original });
+      respostaFresca = false;
+      pinta();
+      posaEstat('pensant', 'buscant-ho');
+
+      Ordinador.truca('busca', { text: ordre.busca }, 12)
+        .then(function (b) {
+          var quins = (b.trobats || []).filter(function (t) { return !t.carpeta; });
+          var tria = quins[0] || (b.trobats || [])[0];
+          if (!tria) throw { _capITornaEnrere: true };
+          return Ordinador.truca('obre_fitxer', { cami: tria.cami }, 8).then(function () {
+            missatges.push({ rol: 'assistent', text: 'Obert: ' + tria.nom });
+            respostaFresca = true; pinta(); acaba();
+          });
+        })
+        ['catch'](function (err) {
+          if (err && err._capITornaEnrere) {
+            /* No l'he trobat. Potser no és un fitxer —«obre'm el correu» vol
+               dir Gmail— i això ho sap ell, no jo. El missatge de l'usuari ja
+               hi és: només cal enviar-lo. */
+            posaEstat('pensant', 'consultant dades');
+            crida('conversa', 'envia', { text: original, id_conversa: idConversa })
+              .then(rebResposta)
+              .catch(function (e) { missatges.push({ rol: 'assistent', text: e.message }); acaba(); });
+            return;
+          }
+          missatges.push({ rol: 'assistent', text: err.message });
+          respostaFresca = true; pinta(); acaba();
+        });
+      return true;
+    }
+
     function envia() {
       var text = camp.value.trim();
       if (!text || ocupat) return;
@@ -5899,6 +6022,16 @@ App.registraVista('conversa', {
         if (App._tancaEscriptura) App._tancaEscriptura();
         App.ves(d.vista, d.params || null);
         return;
+      }
+
+      /* «Obre'm allò» pel camí curt. Vegeu `ordreDObrir`: quan encerta
+         estalvia la volta sencera i quan no, la pregunta se'n va al model
+         igualment. */
+      var obrir = ordreDObrir(text);
+      if (obrir) {
+        camp.value = ''; camp.style.height = 'auto';
+        if (App._tancaEscriptura) App._tancaEscriptura();
+        if (obreDeDreta_(obrir, text)) return;
       }
 
       ocupat = true; camp.value = ''; camp.style.height = 'auto';

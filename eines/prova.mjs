@@ -4244,6 +4244,61 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
       /case 'habits':\s*return 'habits\./.test(fs.readFileSync('apps-script/ui_app.html', 'utf8')));
   cal('i sense punt final, que si no el prefix no encaixa',
       !/'(escola|seguiment)\.'/.test(vista), 'n\'hi ha alguna amb punt');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     «OBRE'M ALLÒ» PEL CAMÍ CURT.
+     Demanar que t'obri una cosa trigava una eternitat i no era l'ordinador:
+     mesurat, buscar per tot el disc són 350 ms. El que trigava era la volta
+     —Apps Script, dues crides a Gemini i tornar— per a una cosa que és un
+     botó dit amb la boca. */
+  {
+    const c3 = { String, RegExp, Object, console };
+    vm.createContext(c3);
+    vm.runInContext(
+      vista.slice(vista.indexOf('function neteja(t) {'), vista.indexOf('/**\n     * ALGUNES ORDRES')) +
+      vista.slice(vista.indexOf('var VERB_OBRIR'), vista.indexOf('function envia() {')) +
+      '\nvar __o = ordreDObrir;', c3);
+
+    c3.App = { vistes: { conversa: 1, finances: 1, habits: 1, dia: 1, setmana: 1, nutricio: 1 } };
+    c3.Ordinador = { clau: () => 'una-clau-qualsevol' };
+    const o = (t) => c3.__o(t);
+
+    cal('«obre\'m les finances» és una pantalla, no un fitxer',
+        (o("obre'm les finances") || {}).vista === 'finances', JSON.stringify(o("obre'm les finances")));
+    cal('«obre la setmana» també',
+        (o('obre la setmana') || {}).vista === 'setmana', JSON.stringify(o('obre la setmana')));
+    cal('«obre\'m el 3cat.cat» és una adreça',
+        (o("obre'm el 3cat.cat") || {}).mena === 'web', JSON.stringify(o("obre'm el 3cat.cat")));
+    cal('i una adreça sencera també',
+        (o('obre https://www.vilaweb.cat/hola') || {}).mena === 'web');
+    cal('«obre\'m l\'informe de la batuda» és una cosa de l\'ordinador',
+        (o("obre'm l'informe de la batuda") || {}).busca === 'informe de la batuda',
+        JSON.stringify(o("obre'm l'informe de la batuda")));
+
+    /* El que NO ha d'agafar: si no comença per un verb d'obrir, és una
+       pregunta i ha d'anar al model com sempre. */
+    cal('una pregunta no s\'agafa', o('què tinc obert ara mateix?') === null);
+    cal('ni «obre» tot sol', o('obre') === null);
+    cal('ni les coses de dins de l\'app',
+        o("obre'm una altra conversa") === null && o("obre'm el micròfon") === null,
+        JSON.stringify([o("obre'm una altra conversa"), o("obre'm el micròfon")]));
+
+    /* I SENSE AJUDANT, que hi pensi ell. Al mòbil no hi ha cap ordinador a
+       qui demanar-ho, però «obre'm les finances» ha de seguir funcionant:
+       una pantalla de JEFE no necessita cap programa a cap màquina. */
+    c3.Ordinador = { clau: () => '' };
+    cal('sense la clau de l\'ordinador, un fitxer se\'n va al model',
+        o("obre'm l'informe de la batuda") === null);
+    cal('però una pantalla de JEFE s\'obre igual',
+        (o("obre'm les finances") || {}).vista === 'finances');
+    cal('i una adreça també', (o('obre 3cat.cat') || {}).mena === 'web');
+  }
+
+  /* I si no el troba, la pregunta ha d'anar al model igualment: «obre'm el
+     correu» no és cap fitxer, però ell sap que vol dir Gmail. */
+  cal('quan no troba el fitxer, la pregunta segueix el camí de sempre',
+      /_capITornaEnrere/.test(vista) &&
+      /crida\('conversa', 'envia', \{ text: original/.test(vista));
   {
     const assistent = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
     cal('i al model se li diu que NO parli de prémer botons',
