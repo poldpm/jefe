@@ -4303,6 +4303,44 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
     cal('i una adreça també', (o('obre 3cat.cat') || {}).mena === 'web');
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     I DIT AMB LA BOCA TAMBÉ, que és com ho fa ell.
+     El camí curt del navegador no existeix per a la veu: l'àudio se'n va al
+     servidor a transcriure's i des d'allà ja no hi passa. Vint segons per
+     obrir una pantalla que és a un toc, i dues rondes buscant fantasmes
+     —la connexió amb el PC, el codi vell— quan el que passava és que li
+     parlava en comptes d'escriure-li. */
+  {
+    /* AMB ELS MÒDULS DE DEBÒ, no amb una llista inventada: el que es prova és
+       precisament que els noms dels apartats que hi ha de veritat es
+       reconeguin. (La primera versió d'aquesta prova en doblava la llista i
+       no doblava res: `drecera` crida la funció de dins del fitxer, no la que
+       es veu des de fora, i el doble no s'arribava a fer servir mai.) */
+    const ctx2 = carregaTotElServidor();
+    ctx2.Log = { info() {}, avis() {}, error() {} };
+    ctx2.Config = { get: () => null, getNum: (k, v) => v, esSi: () => false,
+                    zonaHoraria: () => 'Europe/Madrid' };
+    ctx2.Dades = { llegeix: () => [] };
+    const d = (t) => ctx2.Moduls.drecera(t);
+
+    cal('per veu, «obre\'m les finances» tampoc arriba al model',
+        (d("obre'm les finances") || {}).vista === 'finances', JSON.stringify(d("obre'm les finances")));
+    cal('«obre\'m el resum de finances» igual',
+        (d("obre'm el resum de finances") || {}).vista === 'finances');
+    cal('i pel nom del mòdul, encara que no sigui el seu identificador',
+        (d('obre el seguiment fitfat') || {}).vista === 'seguiment',
+        JSON.stringify(d('obre el seguiment fitfat')));
+    cal('i les dues pantalles del nucli que no són de cap mòdul',
+        (d('obre la setmana') || {}).vista === 'setmana' &&
+        (d("obre'm el dia") || {}).vista === 'dia');
+    /* El mòdul de l'ordinador no té pantalla: el que fa es veu al PC. */
+    cal('un mòdul sense pantalla no s\'obre', d("obre'm l'ordinador") === null,
+        JSON.stringify(d("obre'm l'ordinador")));
+    cal('ni les coses de dins de l\'app', d("obre'm una altra conversa") === null);
+    cal('ni una pregunta qualsevol', d('quant he gastat aquest mes') === null);
+    cal('ni un fitxer, que aquí no es pot saber', d("obre'm l'informe de la batuda") === null);
+  }
+
   /* I si no el troba, la pregunta ha d'anar al model igualment: «obre'm el
      correu» no és cap fitxer, però ell sap que vol dir Gmail. */
   cal('quan no troba el fitxer, la pregunta segueix el camí de sempre',

@@ -548,7 +548,51 @@ var Moduls = (function () {
         if (net.indexOf(l[i].frases[j]) !== -1) return l[i];
       }
     }
-    return null;
+    return obrirUnApartat_(net);
+  }
+
+  /**
+   * ══════════════════════════════════════════════════════════════════════
+   * «OBRE'M LES FINANCES», DIT AMB LA BOCA
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Això ja es resolia al navegador i era instantani... quan hi escrivies.
+   * Dit de veu no: l'àudio se'n va al servidor a transcriure's, i des d'aquí
+   * el camí curt del navegador no existeix. Vint segons per obrir una
+   * pantalla que és a un toc. En Pol hi va estar dues rondes i jo buscant
+   * fantasmes: no era la connexió amb el PC ni el codi vell, és que li
+   * parlava en comptes d'escriure-li.
+   *
+   * La llista de frases de `dreceres()` no serveix per a això: un mòdul no
+   * pot escriure totes les maneres de demanar-se. El que sí que se sap és
+   * com es diu cada apartat, i el nom ja és a la seva fitxa.
+   *
+   * NOMÉS SI ENCAIXA SENCER —tret de les tres paraules de farciment que
+   * tothom hi posa—. «Obre'm una altra conversa» porta la paraula «conversa»
+   * i no vol dir això.
+   */
+  var VERB_OBRIR_ = /^(obre|obri|obrir|obrim|posa|posam|engega)\s+(?:m\s+)?(.+)$/;
+  var PALLA_ = /^(el|la|els|les|un|una|uns|unes|al|als)\s+/;
+  var MES_PALLA_ = /^(pagina|pantalla|resum|apartat|seccio|llista)\s+(de la |del |de |d )?/;
+  var DE_CASA_ = /(^|\s)(conversa|converses|microfon|teclat|ajust|ajustos)(\s|$)/;
+
+  function obrirUnApartat_(net) {
+    var m = net.match(VERB_OBRIR_);
+    if (!m) return null;
+    var que = m[2].replace(PALLA_, '').replace(MES_PALLA_, '').replace(PALLA_, '').trim();
+    if (que.length < 2 || DE_CASA_.test(que)) return null;
+
+    var quines = {};
+    actius().forEach(function (mod) {
+      if (!mod.vista) return;
+      quines[Utils.aixafa(mod.id)] = mod.id;
+      if (mod.nom) quines[Utils.aixafa(mod.nom)] = mod.id;
+    });
+    /* Les dues pantalles del nucli que no són de cap mòdul. */
+    quines['dia'] = 'dia'; quines['el dia'] = 'dia';
+    quines['setmana'] = 'setmana'; quines['la setmana'] = 'setmana';
+
+    return quines[que] ? { vista: quines[que], params: null } : null;
   }
 
   /** Metadades per a la interfície (sense funcions, serialitzable). */
