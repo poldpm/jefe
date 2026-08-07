@@ -1087,19 +1087,24 @@ App.registraVista('conversa', {
      * això aquesta funció torna `true` de seguida a les dues primeres i,
      * a la tercera, decideix quan ja ho sap.
      */
-    function obreDeDreta_(ordre, original) {
+    function obreDeDreta_(ordre, original, jaHiEs) {
+      /* `jaHiEs` vol dir que la bombolla de l'usuari ja és a la conversa: ve
+         de la veu, i el que has dit ja s'hi ha escrit en transcriure's.
+         Tornar-hi seria dir dues vegades la mateixa frase. */
+      var posaLaSeva = function () { if (!jaHiEs) missatges.push({ rol: 'usuari', text: original }); };
+
       if (ordre.mena === 'vista') { App.ves(ordre.vista, null); return true; }
 
       if (ordre.mena === 'web') {
         posaEstat('pensant', 'obrint');
         Ordinador.truca('obre_web', { url: ordre.url }, 8)
           .then(function (r) {
-            missatges.push({ rol: 'usuari', text: original });
+            posaLaSeva();
             missatges.push({ rol: 'assistent', text: 'Obert: ' + r.obert });
             respostaFresca = true; pinta(); acaba();
           })
           ['catch'](function (err) {
-            missatges.push({ rol: 'usuari', text: original });
+            posaLaSeva();
             missatges.push({ rol: 'assistent', text: err.message });
             respostaFresca = true; pinta(); acaba();
           });
@@ -1110,7 +1115,7 @@ App.registraVista('conversa', {
          pregunta segueix el camí de sempre com si no hagués passat res. */
       ocupat = true;
       arrel.querySelector('#b-envia').disabled = true;
-      missatges.push({ rol: 'usuari', text: original });
+      posaLaSeva();
       respostaFresca = false;
       pinta();
       posaEstat('pensant', 'buscant-ho');
@@ -1203,6 +1208,8 @@ App.registraVista('conversa', {
     /* La resposta es tracta igual tant si li has escrit com si li has parlat:
        una sola funció, perquè el dia que canviï una cosa canviï per als dos. */
     function rebResposta(r) {
+      /* Vegeu `App._respostaDeProva` al final: el mirall no té micròfon i la
+         meitat de camins d'aquí només s'arriben parlant. */
       idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
       if (r.consum && estatIA) estatIA.consum = r.consum;
 
@@ -1222,6 +1229,30 @@ App.registraVista('conversa', {
         Cau.set('conversa.missatges', missatges.slice(-40));
         acaba();
         App.ves(r.drecera.vista, r.drecera.params || null);
+        return;
+      }
+
+      /* I SI ERA UN «OBRE'M ALLÒ» QUE NO ÉS CAP APARTAT, el servidor ha tornat
+         la transcripció sense gastar-hi res: la decisió és aquí. Escrivint,
+         això ja passava abans d'enviar res —vegeu `ordreDObrir`—, però amb la
+         veu no es pot: la frase encara no existeix fins que algú l'ha sentida.
+         És el mateix camí, un pas més tard.
+
+         El missatge de l'usuari ja hi és —la bombolla del micròfon, que
+         acabem d'omplir amb el que ha dit—, per això no se n'hi posa cap
+         altre. */
+      if (r.obreAlPC && r.pregunta) {
+        var ordre = ordreDObrir(r.pregunta);
+        if (ordre) {
+          ocupat = false;                       // que `obreDeDreta_` mani ell
+          if (obreDeDreta_(ordre, r.pregunta, true)) return;
+        }
+        /* No n'ha sortit res: la pregunta se'n va al model com si res, que és
+           exactament el que costava abans. */
+        posaEstat('pensant', 'consultant dades');
+        crida('conversa', 'envia', { text: r.pregunta, id_conversa: idConversa })
+          .then(rebResposta)
+          .catch(function (e) { missatges.push({ rol: 'assistent', text: e.message }); acaba(); });
         return;
       }
 
@@ -2290,6 +2321,18 @@ App.registraVista('conversa', {
         bOblida.remove();
       });
     });
+
+    /* ══════════════════════════════════════════════════════════════════════
+       UNA PORTA PER PROVAR EL QUE NOMÉS S'ARRIBA PARLANT.
+       Mitja lògica d'aquesta pantalla només s'executa quan el servidor
+       contesta a una gravació —les dreceres de veu, els encàrrecs per a
+       l'ordinador—, i al mirall no hi ha cap micròfon. Sense això, l'única
+       manera de comprovar-ho seria a l'app de debò, parlant-hi, i gastant
+       quota a cada intent; i el que va passar exactament és que aquell camí
+       no s'havia provat mai i era el que fallava.
+       No fa res per si sola: rep una resposta ja feta i la tracta com la
+       tractaria si hagués arribat del servidor. */
+    App._respostaDeProva = rebResposta;
 
     window.addEventListener('resize', function () { if (nucli) nucli.redimensiona(); });
 

@@ -595,6 +595,29 @@ var Moduls = (function () {
     return quines[que] ? { vista: quines[que], params: null } : null;
   }
 
+  /**
+   * «Sembla que vulgui obrir alguna cosa, però no és cap apartat.»
+   *
+   * Serveix per a una cosa molt concreta: NO GASTAR-HI RES. Quan et diu «obre'm
+   * l'informe de la batuda», des d'aquí no hi ha manera de saber si és un
+   * fitxer del seu ordinador, una web o una manera rara de preguntar. Qui ho
+   * sap és la pantalla —ella sap si té l'ajudant a l'altra banda i pot
+   * buscar-ho en tres-cents mil·lisegons—, i per tant el millor que pot fer el
+   * servidor és tornar la transcripció i callar.
+   *
+   * Si la pantalla no en surt, la pregunta torna aquí pel camí de sempre i es
+   * contesta com sempre. O sigui que això no pot fer perdre res: només pot
+   * estalviar la volta sencera quan encerta.
+   */
+  function semblaObrir(text) {
+    var net = Utils.aixafa(text);
+    if (!net) return false;
+    var m = net.match(VERB_OBRIR_);
+    if (!m) return false;
+    var que = m[2].replace(PALLA_, '').replace(MES_PALLA_, '').replace(PALLA_, '').trim();
+    return que.length >= 2 && !DE_CASA_.test(que);
+  }
+
   /** Metadades per a la interfície (sense funcions, serialitzable). */
   function perAlClient() {
     return actius().map(function (m) {
@@ -627,6 +650,7 @@ var Moduls = (function () {
     einesIA: einesIA,
     dreceres: dreceres,
     drecera: drecera,
+    semblaObrir: semblaObrir,
     perAlClient: perAlClient
   };
 })();

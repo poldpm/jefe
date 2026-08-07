@@ -1476,7 +1476,7 @@ console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tir
              aixafa: (t) => String(t).toLowerCase() },
     Config: { get: (k) => (k === 'model_veu' ? 'un-model-que-no-hi-es' : null) },
     Dades: { llegeix: () => [], insereix: () => null },
-    Moduls: { drecera: () => null, dreceres: () => [] },
+    Moduls: { drecera: () => null, dreceres: () => [], semblaObrir: () => false },
     Assistent: { pregunta: () => ({ text: 'resposta', propostes: [], einesUsades: [],
                                     tokens: {}, temps: { total: 1, ia: 1, context: 0, eines: 0, voltes: 1 } }) },
     IA: {
@@ -4339,6 +4339,37 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
     cal('ni les coses de dins de l\'app', d("obre'm una altra conversa") === null);
     cal('ni una pregunta qualsevol', d('quant he gastat aquest mes') === null);
     cal('ni un fitxer, que aquí no es pot saber', d("obre'm l'informe de la batuda") === null);
+
+    /* PERÒ TAMPOC S'HI HA DE GASTAR RES. D'aquí no es pot saber si «l'informe
+       de la batuda» és un fitxer seu, una web o una pregunta rara: qui ho sap
+       és la pantalla, que té l'ajudant a l'altra banda. El servidor només ha
+       de dir «això sembla un obre» i tornar la transcripció. */
+    const s = (t) => ctx2.Moduls.semblaObrir(t);
+    cal('però sí que es veu que ho SEMBLA', s("obre'm l'informe de la batuda") === true);
+    cal('i una web també', s("obre'm el 3cat.cat") === true);
+    cal('una pregunta no ho sembla', s('quant he gastat aquest mes') === false);
+    cal('ni una frase que només parli d\'obrir', s('quan obre la biblioteca') === false);
+    cal('ni les coses de dins de l\'app', s("obre'm una altra conversa") === false);
+  }
+
+  /* I la volta sencera: el servidor ho ha de tornar sense cridar ningú, i el
+     client ha de saber què fer-ne. Si no, la frase es perd pel camí. */
+  {
+    const conv = fs.readFileSync('apps-script/40_Mod_Conversa.gs', 'utf8');
+    const veu = conv.slice(conv.indexOf('function enviaVeu'), conv.indexOf('function transcriu_'));
+    cal('la veu no gasta res quan sembla un «obre»',
+        /Moduls\.semblaObrir\(text\)/.test(veu) && /obreAlPC: true/.test(veu));
+    cal('i ho decideix ABANS de cridar l\'assistent',
+        veu.indexOf('semblaObrir') < veu.indexOf('envia(text, p.id_conversa)'));
+    cal('la conversa recull la transcripció i ho resol com si l\'hagués escrita',
+        /r\.obreAlPC && r\.pregunta/.test(vista) && /ordreDObrir\(r\.pregunta\)/.test(vista));
+    cal('i si no en surt res, la frase se\'n va al model igualment',
+        /crida\('conversa', 'envia', \{ text: r\.pregunta/.test(vista));
+    /* La bombolla del micròfon ja porta el que has dit: posar-n'hi una altra
+       la diria dues vegades. */
+    cal('i no s\'escriu dues vegades el que has dit',
+        /function obreDeDreta_\(ordre, original, jaHiEs\)/.test(vista) &&
+        /obreDeDreta_\(ordre, r\.pregunta, true\)/.test(vista));
   }
 
   /* I si no el troba, la pregunta ha d'anar al model igualment: «obre'm el
