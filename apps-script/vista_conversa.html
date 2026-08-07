@@ -812,17 +812,22 @@ App.registraVista('conversa', {
       return crida('conversa', 'confirma', { eina: p.eina, args: p.args })
         .then(function () {
           acaba_(p, 'fet');
-          /* La IA acaba d'escriure una dada. TOTES les pantalles que la
-             mostraven han quedat velles, no només les d'hàbits: ara també
-             pot apuntar una despesa, una ingesta, el control de divendres o
-             despatxar els avisos de l'escola. Sense això, obrir finances
-             just després ensenyaria el mes sense el que acabes de confirmar.
+          /* ACABA D'ESCRIURE UNA DADA: el que hi ha desat d'aquell mòdul ja no
+             val. Sense això, obrir finances just després ensenyaria el mes
+             sense el que acabes de confirmar.
+
+             S'OBLIDA EL MÒDUL DE LA PROPOSTA, no una llista escrita a mà.
+             Aquí hi havia els vuit noms escrits, i això volia dir que el dia
+             que hi hagi un mòdul nou, confirmar-li una escriptura deixaria la
+             seva pantalla amb el de fa una estona —i no ho notaria ningú fins
+             que passés. Afegir un mòdul ha de ser un fitxer i prou, també per
+             aquesta banda. La clau del desat és el nom del mòdul: mateix nom,
+             mateixa família.
 
              SENSE PUNT AL FINAL: `oblida` va per prefix, i les claus de
              l'escola i del seguiment són la paraula pelada —«escola», no
              «escola.res»—. Amb el punt no s'haurien esborrat mai. */
-          ['habits', 'nutricio', 'finances', 'tasques', 'seguiment', 'escola', 'diari',
-           'calendari'].forEach(function (fam) { Cau.oblida(fam); });
+          if (p.modul) Cau.oblida(p.modul);
           Cau.treu('inici');
           nucli.pols(1);
           return true;

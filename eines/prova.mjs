@@ -4232,19 +4232,18 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
      Va sense punt final a posta: `Cau.oblida` va per prefix i les claus de
      l'escola i del seguiment són la paraula pelada. Amb «escola.» no
      s'haurien esborrat mai —i això no ho hauria notat ningú. */
-  {
-    const app = fs.readFileSync('apps-script/ui_app.html', 'utf8');
-    const taula = app.slice(app.indexOf('clauDe: function'), app.indexOf('default:          return null'));
-    const families = (taula.match(/case '([a-z]+)':/g) || []).map((c) => c.slice(6, -2));
-    const llista = (vista.match(/\['habits'[^\]]*\]/) || [''])[0];
-    const oblidades = families.filter((f) => llista.indexOf("'" + f + "'") !== -1);
-    cal('es troben les famílies que desa la precàrrega', families.length >= 7, families.join(', '));
-    cal('en confirmar s\'oblida el que hi ha desat de cada mòdul',
-        oblidades.length === families.length,
-        'falten: ' + families.filter((f) => oblidades.indexOf(f) === -1).join(', '));
-    cal('i sense punt final, que si no el prefix no encaixa',
-        !/'(escola|seguiment)\.'/.test(vista), 'n\'hi ha alguna amb punt');
-  }
+  cal('en confirmar s\'oblida el que hi ha desat del mòdul que ha escrit',
+      /if \(p\.modul\) Cau\.oblida\(p\.modul\);/.test(vista));
+  /* I NO D'UNA LLISTA ESCRITA A MÀ. Hi havia els vuit noms posats un a un, i
+     això volia dir que el dia que hi hagi un mòdul nou, confirmar-li una
+     escriptura li deixaria la pantalla amb el de fa una estona. Afegir un
+     mòdul ha de ser un fitxer i prou, també per aquesta banda. */
+  cal('i no d\'una llista de mòduls escrita a la conversa',
+      !/\['habits',\s*'nutricio'/.test(vista), 'la llista encara hi és');
+  cal('la clau del desat és el nom del mòdul, que és el que fa que això funcioni',
+      /case 'habits':\s*return 'habits\./.test(fs.readFileSync('apps-script/ui_app.html', 'utf8')));
+  cal('i sense punt final, que si no el prefix no encaixa',
+      !/'(escola|seguiment)\.'/.test(vista), 'n\'hi ha alguna amb punt');
   {
     const assistent = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
     cal('i al model se li diu que NO parli de prémer botons',
