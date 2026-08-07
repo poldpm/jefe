@@ -94,6 +94,10 @@ function netejaFullPerDefecte_(ss) {
  * REGLA: si afegeixes un `newTrigger` aquí sota, el seu nom va aquí dalt. La
  * prova `eines/prova.mjs` ho comprova i peta si te'n descuides.
  */
+/* On queda apuntat a quines hores es van crear els avisos dels mòduls. Vegeu
+   el final d'`instalaTriggers` per què cal, i `provaAvisos` per a què serveix. */
+var PROP_HORES_AVISOS = 'JEFE_HORES_AVISOS';
+
 var TRIGGERS = ['triggerResumDiari', 'triggerRevisioSetmanal', 'triggerManteniment',
                 'triggerTancamentNutricio', 'triggerBanc', 'triggerPatrimoni',
                 'triggerAgendaDelDia', 'triggerEscalfa', 'triggerEscalfaFora',
@@ -203,12 +207,36 @@ function instalaTriggers() {
 
      Això existeix perquè fins ara un mòdul nou no podia demanar que se
      l'avisés sense que algú vingués a editar aquest fitxer, i el contracte
-     diu el contrari: un mòdul és un fitxer i prou. */
+     diu el contrari: un mòdul és un fitxer i prou.
+
+     I VAN AMB `nearMinute`, QUE NO ÉS UN DETALL. Un `atHour(7)` pelat vol dir
+     «entre les set i les vuit», i Google tria: el control setmanal va picar un
+     divendres a les 7:37, quan en Pol ja anava cap a l'escola i la mesura en
+     dejú ja no es podia fer. Amb `nearMinute(0)` la finestra passa d'una hora
+     a un quart llarg —de menys quinze a més quinze—, que és tot el que Apps
+     Script deixa acostar-s'hi. Un avís que demana una hora la demana per
+     alguna cosa; si arriba una hora tard, no ha arribat.
+
+     El preu és que ara pot picar ABANS de l'hora, i llavors el rellotge diu
+     una hora que no és la demanada. Qui ho arregla és `triggerAvisos`, que
+     mira l'hora amb el mateix arrodoniment. */
   var hores = {};
   Moduls.avisos().forEach(function (a) { hores[a.hora] = true; });
   Object.keys(hores).forEach(function (h) {
-    ScriptApp.newTrigger('triggerAvisos').timeBased().atHour(Number(h)).everyDays(1).create();
+    ScriptApp.newTrigger('triggerAvisos')
+      .timeBased().atHour(Number(h)).nearMinute(0).everyDays(1).create();
   });
+
+  /* I S'APUNTA A QUINES HORES HAN QUEDAT. No és per lluïment: Apps Script no
+     deixa preguntar a quina hora està programat un automatisme —del `Trigger`
+     només en surt el nom de la funció—, o sigui que si un mòdul canvia d'hora
+     i ningú no torna a instal·lar, l'antic es queda i NO ES NOTA. Comptar-los
+     no ho veu: n'hi ha un i n'hi ha d'haver un. Això ho veu, perquè compara
+     l'hora que demanen amb l'hora del dia que es van crear. Ho llegeix
+     `provaAvisos`. */
+  PropertiesService.getScriptProperties().setProperty(
+    PROP_HORES_AVISOS,
+    JSON.stringify(Object.keys(hores).map(Number).sort(function (a, b) { return a - b; })));
 
   Log.info('instalacio', 'Triggers instal·lats', {
     horaResum: horaResum, diaRevisio: diaRevisio, horaRevisio: horaRevisio,
@@ -927,7 +955,7 @@ function provaNotificacio() {
 /**
  * ELS AVISOS DELS MÒDULS: ARRIBARAN O NO?
  *
- * Un avís programat falla EN SILENCI. Si divendres a les set no et pica, el
+ * Un avís programat falla EN SILENCI. Si divendres a les sis no et pica, el
  * que passa és que no passa res, i te n'assabentes per no rebre res —que és la
  * pitjor manera d'assabentar-se'n, perquè és igual que si aquell dia no hi
  * hagués res a dir. Això ho pregunta avui.
@@ -959,12 +987,28 @@ function provaAvisos() {
   }).length;
   var calen = {};
   avisos.forEach(function (a) { calen[a.hora] = true; });
-  var nCalen = Object.keys(calen).length;
+  var horesCalen = Object.keys(calen).map(Number).sort(function (a, b) { return a - b; });
+  var nCalen = horesCalen.length;
 
   afegeix('Automatismes «triggerAvisos»: ' + quants + ' instal·lats, ' +
-          nCalen + ' que en calen (' + Object.keys(calen).join(', ') + 'h)');
+          nCalen + ' que en calen (' + horesCalen.join(', ') + 'h)');
   if (quants < nCalen) {
     afegeix('  FALLA: en falta algun. Executa instalaTriggers().');
+  }
+
+  /* I A QUINA HORA ES VAN CREAR. Comptar-los no ho veu: si un mòdul passa de
+     les set a les sis, segueix havent-hi un automatisme i segueix calent-ne
+     un, i el que hi ha és el de les set. El número quadra i l'avís arriba una
+     hora tard —que és com no arribar. */
+  var apuntades = Utils.desJson(
+    PropertiesService.getScriptProperties().getProperty(PROP_HORES_AVISOS), null);
+  if (!apuntades) {
+    afegeix('  No consta a quina hora es van crear. Executa instalaTriggers()');
+    afegeix('  per deixar-ho apuntat; fins llavors això no ho pot comprovar.');
+  } else if (apuntades.join(',') !== horesCalen.join(',')) {
+    afegeix('  FALLA: es van crear per a les ' + apuntades.join(', ') + 'h i ara');
+    afegeix('  els mòduls demanen les ' + horesCalen.join(', ') + 'h. L\'avís arribaria');
+    afegeix('  a l\'hora vella. Executa instalaTriggers().');
   }
   afegeix('');
 
@@ -981,7 +1025,8 @@ function provaAvisos() {
   avisos.forEach(function (a) {
     afegeix('· ' + a.modul + '.' + a.id + ' — ' +
             (a.dia === null ? 'cada dia' : 'cada ' + (DIES[a.dia] || '?')) +
-            ' a la franja de les ' + a.hora + ':00');
+            ' cap a les ' + a.hora + ':00 (entre les ' + ((a.hora + 23) % 24) +
+            ':45 i les ' + a.hora + ':15)');
     var r;
     try {
       r = a.mira();
@@ -2513,8 +2558,21 @@ function provaClauBanc() {
  */
 function triggerAvisos() {
   var ara = new Date();
+
+  /* L'HORA ES MIRA ARRODONIDA, i cal que sigui així.
+     Els triggers es creen amb `nearMinute(0)`, que vol dir «a l'hora, més o
+     menys un quart». Aquell «menys» és el problema: un avís de les sis pot
+     picar a les 5:50, i llavors el rellotge diu cinc, cap mòdul no demana les
+     cinc i l'avís es perdria en silenci —que és la pitjor manera de perdre'l.
+     Del minut 45 endavant, doncs, comptem que ja som a l'hora següent. I si
+     amb això es passa la mitjanit, també canvia el dia: a les 23:50 de dijous,
+     l'avís que toca és el de les 0h de DIVENDRES. */
   var hora = ara.getHours();
   var dia = ara.getDay() === 0 ? 7 : ara.getDay();     // 1 = dilluns … 7 = diumenge
+  if (ara.getMinutes() >= 45) {
+    hora = (hora + 1) % 24;
+    if (hora === 0) dia = dia === 7 ? 1 : dia + 1;
+  }
   var enviats = 0, mirats = 0;
 
   Moduls.avisos().forEach(function (a) {

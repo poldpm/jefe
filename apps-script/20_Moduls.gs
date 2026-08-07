@@ -288,7 +288,7 @@ var Moduls = (function () {
    *
    *     avisos: [{
    *       id: 'control',
-   *       hora: 7,                 // 0-23, hora local
+   *       hora: 6,                 // 0-23, hora local
    *       dia: 5,                  // 1=dilluns … 7=diumenge. Omes = cada dia
    *       mira: function () {      // null = avui no hi ha res a dir
    *         return { titol: '…', cos: '…', url: 'seguiment' };
@@ -298,6 +298,12 @@ var Moduls = (function () {
    * `instalaTriggers` mira quines hores demana algú i en crea una per hora, ni
    * una més: si cap mòdul demana res, no hi ha cap automatisme de més. Un avís
    * que no toqui avui no arriba ni a preguntar-ho al mòdul.
+   *
+   * QUÈ VOL DIR `hora` DE VERITAT: dins del quart d'hora abans o després. Apps
+   * Script no deixa demanar un minut exacte, i el més estret que hi ha és
+   * `nearMinute`. Posar-hi 6 vol dir entre les 5:45 i les 6:15, no a les sis
+   * clavades. Si un avís només té sentit a una hora clavada, no el pengis
+   * d'aquí.
    */
   function avisos() {
     var out = [];

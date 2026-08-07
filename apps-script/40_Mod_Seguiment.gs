@@ -127,17 +127,24 @@ function MODUL_SEGUIMENT() {
     },
 
     /* EL PIC DE DIVENDRES AL MATÍ, que és per això que existeix tot això.
-       L'hora és la que és a posta: a les set del matí el que has de fer és
-       pesar-te i mesurar-te EN DEJÚ, abans de cafè i abans de moure't. Omplir
-       sis camps ja ho faràs quan puguis —el control es queda pendent al dia i
-       a l'inici fins que el despatxis—, però la mesura, si te la saltes, ja no
-       la pots recuperar fins divendres que ve.
+       L'hora és la que és a posta: el que has de fer és pesar-te i mesurar-te
+       EN DEJÚ, abans de cafè i abans de moure't. Omplir sis camps ja ho faràs
+       quan puguis —el control es queda pendent al dia i a l'inici fins que el
+       despatxis—, però la mesura, si te la saltes, ja no la pots recuperar
+       fins divendres que ve.
+
+       PER QUÈ LES SIS I NO LES SET. Perquè a les set ja no hi ets. Amb l'avís
+       a les set arribava amb el dia començat —un divendres va picar a les
+       7:37, camí de l'escola— i llavors ja no serveix de res: la mesura s'ha
+       de fer abans de llevar-se del tot, no quan surts per la porta. A les sis
+       el pic arriba abans que et moguis, que és l'únic moment en què encara la
+       pots fer.
 
        Si ja l'has fet, no pica: un avís que arriba tant si toca com si no
        deixa de voler dir res al cap de tres setmanes. */
     avisos: [{
       id: 'control',
-      hora: 7,
+      hora: 6,
       dia: 5,
       mira: function () {
         var e = Seguiment.estat();

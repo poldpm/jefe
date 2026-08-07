@@ -33,7 +33,7 @@ function carregaTotElServidor() {
     Utilities: {}, DriveApp: {}, SpreadsheetApp: {}, UrlFetchApp: {}, CacheService: {},
     LockService: {}, Session: {}, HtmlService: {}, CalendarApp: {}, MailApp: {},
     ContentService: {}, Logger: { log() {} }, ScriptApp: {},
-    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) }
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) }
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -1778,11 +1778,13 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
 
   let triggers = [];
   const cadena = (nom) => {
+    const t = { fn: nom, hora: null, minut: null };
     const c = {};
-    ['timeBased', 'everyDays', 'everyMinutes', 'everyHours', 'onWeekDay', 'onMonthDay', 'nearMinute']
+    ['timeBased', 'everyDays', 'everyMinutes', 'everyHours', 'onWeekDay', 'onMonthDay']
       .forEach((m) => { c[m] = () => c; });
-    c.atHour = (h) => { triggers.push({ fn: nom, hora: h }); return c; };
-    c.create = () => {};
+    c.atHour = (h) => { t.hora = h; return c; };
+    c.nearMinute = (m) => { t.minut = m; return c; };
+    c.create = () => { if (t.hora !== null) triggers.push(t); };
     return c;
   };
   ctx.ScriptApp = { newTrigger: (n) => cadena(n), getProjectTriggers: () => [],
@@ -1804,10 +1806,17 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
   ctx.instalaTriggers();
   const seus = triggers.filter((t) => t.fn === 'triggerAvisos');
   cal('es crea una hora de trigger per cada hora que demana un mòdul',
-      seus.length === 1 && seus[0].hora === 7, JSON.stringify(seus));
+      seus.length === 1 && seus[0].hora === 6, JSON.stringify(seus));
 
-  /* Les quatre combinacions que importen. La que ha d'enviar és una de sola:
-     divendres, a les set, i amb el control encara per fer. */
+  /* SENSE `nearMinute` L'AVÍS ARRIBA QUAN VOL DINS D'UNA HORA, i el control
+     setmanal ja va picar un divendres a les 7:37 amb en Pol camí de l'escola.
+     Que la finestra sigui d'un quart i no d'una hora és el que fa que demanar
+     les sis vulgui dir alguna cosa. */
+  cal('els avisos dels mòduls demanen el minut, no només l\'hora',
+      seus[0].minut === 0, JSON.stringify(seus));
+
+  /* Les combinacions que importen. La que ha d'enviar és una de sola:
+     divendres, a les sis, i amb el control encara per fer. */
   const quan = (iso) => { ctx.Date = class extends Date { constructor() { super(iso); } }; };
   const prova = (iso, fet) => {
     enviades = [];
@@ -1817,24 +1826,66 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
     return enviades.length;
   };
 
-  cal('divendres a les 7 amb el control per fer: pica',
-      prova('2026-08-07T07:15:00', false) === 1);
-  cal('divendres a les 7 amb el control ja fet: calla',
-      prova('2026-08-07T07:15:00', true) === 0);
-  cal('dijous a les 7: no és el seu dia',
-      prova('2026-08-06T07:15:00', false) === 0);
+  cal('divendres a les 6 amb el control per fer: pica',
+      prova('2026-08-07T06:10:00', false) === 1);
+  cal('divendres a les 6 amb el control ja fet: calla',
+      prova('2026-08-07T06:10:00', true) === 0);
+  cal('dijous a les 6: no és el seu dia',
+      prova('2026-08-06T06:10:00', false) === 0);
   cal('divendres a les 15: no és la seva hora',
       prova('2026-08-07T15:15:00', false) === 0);
+  cal('divendres a les 7: l\'avís de les sis ja ha passat, no es repeteix',
+      prova('2026-08-07T07:15:00', false) === 0);
+
+  /* EL QUART DE MENYS. `nearMinute(0)` pot picar ABANS de l'hora, i llavors el
+     rellotge diu una hora que ningú no ha demanat. Si això no s'arrodonís,
+     l'avís no s'enviaria i no ho sabria ningú. */
+  cal('divendres a les 5:50 encara compta com l\'avís de les sis',
+      prova('2026-08-07T05:50:00', false) === 1);
+  cal('divendres a les 5:30 encara no toca',
+      prova('2026-08-07T05:30:00', false) === 0);
+
+  /* I l'arrodoniment ha de moure el DIA quan travessa la mitjanit: a les 23:50
+     de dijous, l'avís de les 0h és el de divendres. Aquí es comprova al revés
+     —dijous a les 23:50 no és divendres a les sis— però amb la mateixa peça. */
+  cal('dijous a les 23:50 no dispara res de divendres que no sigui de les 0h',
+      prova('2026-08-06T23:50:00', false) === 0);
 
   /* Un mòdul que peti no se n'ha d'emportar cap altre: és la mateixa regla que
      a `elDia` i a `resumInici`, i aquí encara importa més perquè ningú no ho
      està mirant quan passa. */
   enviades = [];
   ctx.Seguiment.estat = () => { throw new Error('el full no hi és'); };
-  quan('2026-08-07T07:15:00');
+  quan('2026-08-07T06:10:00');
   let ha_petat = false;
   try { ctx.triggerAvisos(); } catch (e) { ha_petat = true; }
   cal('un avís que peta es registra i no tomba el repartidor', !ha_petat);
+
+  /* CANVIAR L'HORA AL MÒDUL NO CANVIA L'AUTOMATISME que ja hi ha: els triggers
+     miren l'hora quan es creen i mai més. I comptar-los no ho veu —n'hi ha un i
+     n'hi ha d'haver un—, o sigui que l'avís arribaria a l'hora vella i el
+     diagnòstic diria que tot va bé. Per això `instalaTriggers` apunta les hores
+     i `provaAvisos` les compara. */
+  let apuntat = null;
+  ctx.PropertiesService = { getScriptProperties: () => ({
+    getProperty: () => apuntat, setProperty: (k, v) => { apuntat = v; } }) };
+  ctx.ScriptApp.getProjectTriggers = () => [{ getHandlerFunction: () => 'triggerAvisos' }];
+  ctx.Notifica.disponible = () => false;
+  ctx.Notifica.motiu = () => 'no és una prova de notificacions';
+  ctx.Seguiment.estat = () => ({ fetAquestaSetmana: true });
+
+  ctx.instalaTriggers();
+  cal('en instal·lar, queda apuntat a quines hores han quedat els avisos',
+      apuntat === '[6]', String(apuntat));
+  cal('i acabats d\'instal·lar, el diagnòstic no es queixa de l\'hora',
+      !/hora vella/.test(ctx.provaAvisos()));
+
+  apuntat = '[7]';
+  const informe = ctx.provaAvisos();
+  cal('si el mòdul ha canviat d\'hora i ningú no ha reinstal·lat, ho diu',
+      /FALLA/.test(informe) && /hora vella/.test(informe), informe);
+  cal('i diu quina hora hi ha posada i quina es demana',
+      /les 7h/.test(informe) && /les 6h/.test(informe), informe);
 }
 
 
