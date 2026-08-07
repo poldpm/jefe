@@ -476,10 +476,55 @@ function resum(a) {
   return s.length > 70 ? s.slice(0, 70) + '…' : s;
 }
 
-servidor.on('error', (err) => {
+/**
+ * EL PORT OCUPAT: PER QUI?
+ *
+ * Deia «probablement ja tens l'ajudant obert en una altra finestra» i
+ * probablement no ho era. Un «probablement» en un missatge d'error és una
+ * endevinalla que has de resoldre tu, i aquí no cal endevinar res: n'hi ha
+ * prou amb trucar al port i veure qui contesta.
+ *
+ * Tres respostes ben diferents, i cadascuna vol que facis una cosa diferent:
+ * si el que hi ha és un ajudant que funciona, el que has de fer és NO obrir-ne
+ * cap altre; si és un altre programa, saber quin; i si no contesta, saber com
+ * trobar-lo.
+ */
+async function quiOcupaElPort_() {
+  try {
+    const aturador = new AbortController();
+    const temps = setTimeout(() => aturador.abort(), 1500);
+    const r = await fetch('http://127.0.0.1:' + PORT + '/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Origin': ORIGENS[0], 'X-Jefe-Clau': CLAU },
+      body: JSON.stringify({ verb: 'hola' }),
+      signal: aturador.signal
+    });
+    clearTimeout(temps);
+    const d = await r.json();
+    if (d && d.jefe === 'ordinador') return { jefe: true, maquina: d.maquina };
+    return { jefe: false, contesta: true };
+  } catch (e) {
+    return { jefe: false, contesta: false };
+  }
+}
+
+servidor.on('error', async (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error('\n  El port ' + PORT + ' ja està ocupat.');
-    console.error('  Probablement ja tens l\'ajudant obert en una altra finestra.\n');
+    const qui = await quiOcupaElPort_();
+    console.error('');
+    if (qui.jefe) {
+      console.error('  JA TENS L\'AJUDANT OBERT, i funciona.');
+      console.error('  No cal que n\'obris cap altre: aquesta finestra es pot tancar.');
+    } else {
+      console.error('  El port ' + PORT + ' ja està ocupat per un altre programa.');
+      console.error('  (Hi ha alguna cosa escoltant, però no és l\'ajudant de JEFE.)');
+      console.error('');
+      console.error('  Per veure qui és:');
+      console.error('      netstat -ano | findstr :' + PORT);
+      console.error('  i amb el número de l\'última columna:');
+      console.error('      tasklist /fi "pid eq AQUELL_NUMERO"');
+    }
+    console.error('');
     process.exit(1);
   }
   throw err;

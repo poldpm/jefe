@@ -26,6 +26,20 @@ function cal(nom, cond, extra) {
   if (!cond) falles++;
 }
 
+/* SI L'AJUDANT NO HI ÉS, DIR-HO. Sense això, `fetch` peta amb una traça de
+   Node de vint línies i el que sembla és que les proves estiguin trencades,
+   quan el que passa és que t'has descuidat d'obrir el programa. */
+try {
+  const viu = new AbortController();
+  setTimeout(() => viu.abort(), 2000);
+  await fetch('http://127.0.0.1:' + PORT + '/', { method: 'OPTIONS', signal: viu.signal });
+} catch (e) {
+  console.error('\n  L\'ajudant no està obert.');
+  console.error('  Engega\'l en una altra finestra i torna-ho a provar:\n');
+  console.error('      node ordinador/jefe-ordinador.mjs\n');
+  process.exit(1);
+}
+
 async function truca(cos, opcions) {
   opcions = opcions || {};
   const capceleres = { 'Content-Type': 'application/json' };
