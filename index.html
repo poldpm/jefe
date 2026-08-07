@@ -2290,12 +2290,15 @@ input[type="checkbox"] { accent-color: var(--utm); }
   font-family: var(--mono); font-size: .5625rem; letter-spacing: .06em;
   color: var(--ink-suau);
 }
-/* A la conversa, la cantonada de baix a la dreta és el micròfon. Es puja per
-   sobre de la barra d'escriure en comptes de quedar-hi a sota. */
-body[data-vista="conversa"] .marca-versio {
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  color: #6f93a6;
-}
+/* A la conversa estava pujada 84 px per no topar amb el micròfon, i el que
+   passava és que quedava a l'alçada dels botons i semblava que en formés
+   part. A baix de tot no hi topa amb res: el micròfon i el llapis van
+   centrats i el botó d'apartats també, o sigui que la cantonada dreta de
+   l'última franja és l'únic tros de pantalla que no fa res. Que és
+   exactament on ha de viure una cosa que no mires mai.
+   El color sí que canvia: sobre el fons del HUD, el gris de la resta de
+   pantalles es queda curt. */
+body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 
 /* ==========================================================================
@@ -2702,7 +2705,7 @@ body[data-vista="conversa"] .marca-versio {
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-07 21:19 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-07 21:27 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3070,7 +3073,7 @@ body[data-vista="conversa"] .marca-versio {
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-07 21:19 · en curs";
+window.MARCA_JEFE = "2026-08-07 21:27 · en curs";
 </script>
 
 <script>
