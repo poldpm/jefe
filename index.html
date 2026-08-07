@@ -2702,7 +2702,7 @@ body[data-vista="conversa"] .marca-versio {
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-06 23:41 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-07 20:59 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3070,7 +3070,7 @@ body[data-vista="conversa"] .marca-versio {
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-06 23:41 · en curs";
+window.MARCA_JEFE = "2026-08-07 20:59 · en curs";
 </script>
 
 <script>
@@ -5486,9 +5486,16 @@ App.registraVista('conversa', {
       h += '</div>';
       if (m.propostes && m.propostes.length) {
         h += m.propostes.map(function (p, i) {
+          /* COM HA QUEDAT, SI JA ESTÀ RESOLTA. Fins ara el resultat només
+             s'escrivia al requadre en prémer el botó, i com que prémer un
+             botó no repinta res, allà s'hi quedava. Dient «sí» sí que es
+             repinta —la pantalla ha de dir alguna cosa més—, i llavors el
+             «Fet.» desapareixia i tornaven a sortir els dos botons d'una
+             cosa que ja estava feta. */
+          var estat = p.resolta ? fiDeProposta_(p) : '';
           return '<div class="proposta" data-proposta="' + i + '"><p>' + esc(p.etiqueta) + '</p>' +
-            '<div class="accions"><button data-si="1">Confirma</button>' +
-            '<button data-no="1">Deixa-ho</button></div></div>';
+            (estat || '<div class="accions"><button data-si="1">Confirma</button>' +
+                      '<button data-no="1">Deixa-ho</button></div>') + '</div>';
         }).join('');
       }
       return h + '</div></div>';
@@ -5547,34 +5554,161 @@ App.registraVista('conversa', {
       rail.style.transform = 'scaleY(' + f + ')';
     }
 
+    /* Les propostes del darrer torn que encara no has ni confirmat ni
+       descartat. Tant els botons com la veu treballen sobre aquesta llista. */
+    function propostesPendents() {
+      var m = missatges[missatges.length - 1];
+      return (m && m.propostes || []).filter(function (p) { return !p.resolta; });
+    }
+
+    function caixaDe_(p) {
+      var m = missatges[missatges.length - 1];
+      var i = (m && m.propostes || []).indexOf(p);
+      return i === -1 ? null : tr.querySelector('.proposta[data-proposta="' + i + '"]');
+    }
+
+    /* Com queda un requadre un cop resolt. Ha de sortir igual tant si el
+       repintat el torna a construir com si s'escriu al vol. */
+    function fiDeProposta_(p) {
+      if (p.com === 'fet') return '<p style="margin:0;color:var(--cian)">Fet.</p>';
+      if (p.com === 'descartat') return '<p style="margin:0;color:var(--apagat)">Descartat.</p>';
+      return '<p style="margin:0;color:var(--alerta)">' + esc(p.com || 'No s\'ha pogut fer.') + '</p>';
+    }
+
+    function acaba_(p, com) {
+      p.resolta = true;
+      p.com = com;
+      var el = caixaDe_(p);
+      if (el) el.innerHTML = '<p>' + esc(p.etiqueta) + '</p>' + fiDeProposta_(p);
+    }
+
+    function descarta_(p) { acaba_(p, 'descartat'); }
+
+    function confirma_(p) {
+      var el = caixaDe_(p);
+      var boto = el && el.querySelector('[data-si]');
+      if (boto) { boto.disabled = true; boto.textContent = 'Desant…'; }
+      return crida('conversa', 'confirma', { eina: p.eina, args: p.args })
+        .then(function () {
+          acaba_(p, 'fet');
+          /* La IA acaba d'escriure una dada. TOTES les pantalles que la
+             mostraven han quedat velles, no només les d'hàbits: ara també
+             pot apuntar una despesa, una ingesta, el control de divendres o
+             despatxar els avisos de l'escola. Sense això, obrir finances
+             just després ensenyaria el mes sense el que acabes de confirmar.
+
+             SENSE PUNT AL FINAL: `oblida` va per prefix, i les claus de
+             l'escola i del seguiment són la paraula pelada —«escola», no
+             «escola.res»—. Amb el punt no s'haurien esborrat mai. */
+          ['habits', 'nutricio', 'finances', 'tasques', 'seguiment', 'escola', 'diari',
+           'calendari'].forEach(function (fam) { Cau.oblida(fam); });
+          Cau.treu('inici');
+          nucli.pols(1);
+          return true;
+        })
+        .catch(function (err) {
+          acaba_(p, err.message);              // resolta amb error: ja no espera res
+          throw err;
+        });
+    }
+
     function lligaPropostes() {
       tr.querySelectorAll('.proposta').forEach(function (el) {
         var m = missatges[missatges.length - 1];
         var p = m && m.propostes ? m.propostes[Number(el.dataset.proposta)] : null;
-        if (!p) return;
-        el.querySelector('[data-no]').addEventListener('click', function () {
-          el.innerHTML = '<p style="margin:0;color:var(--apagat)">Descartat.</p>';
-          p.resolta = true;
+        /* Una de resolta ja no té botons: només diu com ha quedat. Buscar-los
+           igualment tornava `null` i petava aquí mateix, i com que això passa
+           dins del repintat, el que es trencava era tot el que venia després
+           —el nucli es quedava dient «desant» per sempre. */
+        if (!p || p.resolta) return;
+        el.querySelector('[data-no]').addEventListener('click', function () { descarta_(p); });
+        el.querySelector('[data-si]').addEventListener('click', function () {
+          confirma_(p)['catch'](function () {});
         });
-        el.querySelector('[data-si]').addEventListener('click', function (ev) {
-          ev.currentTarget.disabled = true; ev.currentTarget.textContent = 'Desant…';
-          crida('conversa', 'confirma', { eina: p.eina, args: p.args })
-            .then(function () {
-              el.innerHTML = '<p style="margin:0;color:var(--cian)">Fet.</p>';
-              p.resolta = true;
-              /* La IA acaba d'escriure una dada. TOTES les pantalles que la
-                 mostraven han quedat velles, no només les d'hàbits: ara també
-                 pot apuntar una despesa o una ingesta. Sense això, obrir
-                 finances just després ensenyaria el mes sense el que acabes
-                 de confirmar. */
-              Cau.oblida('habits.'); Cau.oblida('nutricio.'); Cau.oblida('finances.');
-              Cau.treu('inici');
-              nucli.pols(1);
-            })
-            .catch(function (err) {
-              el.innerHTML = '<p style="margin:0;color:var(--alerta)">' + esc(err.message) + '</p>';
-            });
-        });
+      });
+    }
+
+    /**
+     * ══════════════════════════════════════════════════════════════════════
+     * DIR «SÍ» TAMBÉ CONFIRMA
+     * ══════════════════════════════════════════════════════════════════════
+     *
+     * Res del que JEFE escriu passa sense que ho confirmis: és la regla que
+     * fa que se li pugui deixar tocar el full. Però l'única manera de
+     * confirmar era prémer un botó, i això trencava pel mig l'única cosa que
+     * hauria de funcionar sense mans: parlar-li mentre condueixes, mentre
+     * cuines o amb el telèfon a la butxaca. Deies «apunta trenta euros de
+     * gasolina», ell ho preparava, i allà es quedava.
+     *
+     * Aquí «sí» no és una pregunta al model: és el botó. Si hi ha alguna
+     * proposta esperant i el que has dit ÉS una d'aquestes paraules —tota la
+     * frase, no una part—, es confirma o es descarta sense sortir de la
+     * pantalla i sense gastar cap petició.
+     *
+     * LA FRASE SENCERA I NO UN TROS, i és la part important. Amb «conté un
+     * sí» n'hi hauria prou perquè «sí, però a les cinc» confirmés l'hora
+     * dolenta i «no, millor demà» no en canviés cap. Tot el que no sigui
+     * exactament una d'aquestes paraules torna a ser una frase per al model,
+     * que és qui sap què vol dir.
+     */
+    var PARAULES_SI = ['si', 'si si', 'sisi', 'fes ho', 'fes la', 'fes les', 'fes',
+                       'endavant', 'confirma', 'confirma ho', 'confirmat', 'd acord',
+                       'dacord', 'va', 'som hi', 'tira', 'correcte', 'exacte', 'aixo',
+                       'aixo mateix', 'perfecte', 'apunta ho', 'desa ho', 'guarda ho', 'ok'];
+    var PARAULES_NO = ['no', 'no no', 'deixa ho', 'deixa la', 'deixa les', 'deixa estar',
+                       'cancel la', 'anul la', 'oblida ho', 'millor no', 'res', 'para',
+                       'atura ho', 'no ho facis', 'descarta ho'];
+
+    function respostaAUnaProposta(text) {
+      if (!propostesPendents().length) return null;
+      var net = neteja(text);
+      if (!net) return null;
+      if (PARAULES_SI.indexOf(net) !== -1) return 'si';
+      if (PARAULES_NO.indexOf(net) !== -1) return 'no';
+      return null;
+    }
+
+    /* Amb la veu no veus la pantalla: el que passa s'ha de sentir. Per això
+       aquí es diu en veu alta què s'ha fet, i amb el compte quan n'hi ha més
+       d'una —«dos fets» no és el mateix que «fet». */
+    function resolPerVeu(quina) {
+      var pendents = propostesPendents();
+      if (!pendents.length) return;
+
+      if (quina === 'no') {
+        pendents.forEach(descarta_);
+        if (veuActiva) parla(pendents.length === 1 ? 'Deixat.' : 'Deixades.');
+        App.brindis(pendents.length === 1 ? 'Descartat' : 'Descartades');
+        pinta();
+        return;
+      }
+
+      posaEstat('pensant', 'desant');
+      var fets = 0, error = null;
+      var cua = pendents.reduce(function (abans, p) {
+        return abans.then(function () { return confirma_(p).then(function () { fets++; }); })
+          ['catch'](function (err) { error = error || err; });
+      }, Promise.resolve());
+
+      cua.then(function () {
+        if (error && !fets) {
+          if (veuActiva) parla('No he pogut: ' + error.message);
+          App.brindis(error.message, 'error');
+        } else {
+          var diu = fets === 1 ? 'Fet.' : fets + ' fets.';
+          if (veuActiva) parla(diu);
+          App.brindis(error ? diu + ' Una ha fallat.' : diu);
+        }
+        pinta();
+        /* El micròfon ha de tornar a escoltar: si no, «sí» seria l'última
+           cosa que li pots dir sense tornar a tocar la pantalla. */
+        if (continua && veu.engegat) {
+          posaEstat('escoltant', 'escoltant');
+          mostraOida('escoltant… parla quan vulguis', false);
+        } else {
+          posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
+                    estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
+        }
       });
     }
 
@@ -5655,6 +5789,17 @@ App.registraVista('conversa', {
       var text = camp.value.trim();
       if (!text || ocupat) return;
 
+      /* «Sí» amb una proposta esperant és el botó, no una pregunta. Va abans
+         que les dreceres i abans que el servidor: no gasta cap petició i no
+         canvia de pantalla. */
+      var resposta = respostaAUnaProposta(text);
+      if (resposta) {
+        camp.value = ''; camp.style.height = 'auto';
+        if (App._tancaEscriptura) App._tancaEscriptura();
+        resolPerVeu(resposta);
+        return;
+      }
+
       var d = drecera(text);
       if (d) {
         camp.value = ''; camp.style.height = 'auto';
@@ -5720,7 +5865,11 @@ App.registraVista('conversa', {
         if (r.tokens) tokensSessio += (r.tokens.entrada || 0) + (r.tokens.sortida || 0);
         missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
                          propostes: r.propostes, temps: r.temps });
-        if (veuActiva) parla(r.resposta);
+        /* AMB VEU, LA PROPOSTA S'HA DE SENTIR. El que has de confirmar és
+           l'etiqueta —«30,00 € · gasolina · avui»—, i viu al requadre, no al
+           text. Sense dir-la en veu alta, confirmar sense mirar la pantalla
+           seria dir que sí a una cosa que no saps quina és. */
+        if (veuActiva) parla(ambLesPropostes(r.resposta, r.propostes));
 
         /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
            És com «ensenya'm la pàgina del dia» acaba ensenyant-la, i és també
@@ -5799,6 +5948,24 @@ App.registraVista('conversa', {
     }
 
     // ---------------------------------------------------------------------- veu
+
+    /**
+     * El text de la resposta, més el que hi ha per confirmar.
+     *
+     * L'etiqueta d'una proposta està escrita per llegir-se de reüll dins d'un
+     * requadre —«30,00 € · gasolina · avui»—, i dita en veu alta els punts
+     * volats no sonen. Es canvien per pauses, que és el que volen dir.
+     */
+    function ambLesPropostes(text, propostes) {
+      var p = propostes || [];
+      if (!p.length) return text;
+      var quines = p.map(function (x) {
+        return String(x.etiqueta || '').replace(/\s*·\s*/g, ', ');
+      });
+      return [String(text || '').trim()].concat(quines)
+        .concat([p.length === 1 ? 'Ho faig?' : 'Ho faig tot?'])
+        .filter(Boolean).join(' ');
+    }
 
     function parla(text) {
       if (!potParlar) return;
@@ -11890,9 +12057,25 @@ App.registraVista('diari', {
       return b ? Number(b.dataset.anim) : 0;
     }
 
+    /* UNA DESADA A LA VEGADA.
+       Tocar el botó de l'ànim treu el focus del camp: salta el desat del
+       `blur` i tot seguit el del botó, i les dues peticions se'n van juntes.
+       El servidor ja no en fa dues files —hi ha un bloqueig—, però enviar-ne
+       dues segueix sent dues anades per res, i la segona pot arribar abans
+       que la primera i desar text vell.
+       Si mentre n'hi ha una en marxa se'n demana una altra, s'apunta i es fa
+       UNA sola quan torni: el que val és l'últim estat del camp, no quantes
+       vegades l'has demanat. */
+    var desant = false, pendent = null;
+
     function desa(alAcabar) {
+      if (desant) {
+        pendent = alAcabar || pendent || function () {};
+        return;
+      }
       var camp = arrel.querySelector('#d-text');
       if (!camp) { if (alAcabar) alAcabar(); return; }
+      desant = true;
 
       var text = camp.value;
       var anim = animTriat();
@@ -11907,6 +12090,7 @@ App.registraVista('diari', {
           if (e2) e2.textContent = 'Desat';
           aplica(r);
           if (alAcabar) alAcabar();
+          acabaDesada();
         })
         .catch(function (err) {
           brut = true;
@@ -11914,7 +12098,18 @@ App.registraVista('diari', {
           if (e2) e2.textContent = 'No s\'ha pogut desar';
           App.brindis(err.message, 'error');
           if (alAcabar) alAcabar();
+          acabaDesada();
         });
+    }
+
+    /* La que s'havia demanat mentre l'altra anava. Una i no les que fossin:
+       totes deien el mateix —«desa el que hi ha al camp»— i el camp és un. */
+    function acabaDesada() {
+      desant = false;
+      if (!pendent) return;
+      var seguent = pendent;
+      pendent = null;
+      desa(seguent === true ? undefined : seguent);
     }
 
     /** Abans de marxar del dia, desa el que hi hagi sense desar. */
@@ -13386,8 +13581,28 @@ App.registraVista('focus', {
     if (params.minuts) durada = Number(params.minuts);
 
     estat = llegeixEstat();
-    carrega();
-    if (estat) compta();
+
+    /* «PARA EL BLOC», DIT DE VEU.
+       El rellotge corre AQUÍ i el servidor no en sap res: no hi ha cap fila
+       fins que el bloc s'acaba. Per això aturar-lo no pot ser una eina que
+       escrigui —no hi ha res a escriure encara—: la conversa obre aquesta
+       pantalla dient què vol i qui ho fa és qui té el rellotge.
+
+       Els minuts que s'apunten són els que han passat de debò, com si
+       haguessis premut el botó: parar abans d'hora no apunta el bloc sencer. */
+    var aturant = !!(params.atura && estat);
+    if (aturant) {
+      /* `tanca` ja apunta el bloc I torna la pantalla refeta. Cridar `carrega`
+         a més seria un segon viatge amb una foto ANTERIOR a l'apunt, i el que
+         arribés l'últim mandaria: de vegades hi sortiria el bloc i de vegades
+         no. */
+      tanca(false);
+      App.brindis('Bloc aturat');
+    } else {
+      if (params.atura) App.brindis('Ara mateix no hi ha cap bloc en marxa');
+      carrega();
+    }
+    if (estat && !aturant) compta();
 
     /* En sortir de la pantalla, el rellotge de repintar s'atura. El bloc no:
        viu al telèfon i segueix corrent encara que miris una altra cosa. */

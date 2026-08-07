@@ -202,7 +202,7 @@ function MODUL_HABITS() {
       descripcio: 'Marca un hàbit com a fet o no fet un dia concret. Si l\'hàbit és un ' +
                   'COMPTADOR (els cigarros, per exemple), `quantitat` és el total del dia; ' +
                   'si no se\'n diu cap, se n\'hi suma un. NO s\'executa directament: ' +
-                  'genera una proposta que en Pol ha de confirmar amb un botó.',
+                  'genera una proposta que en Pol ha de confirmar, amb el botó o dient-ho.',
       escriu: true,
       esquema: {
         type: 'object',
@@ -249,6 +249,27 @@ function MODUL_HABITS() {
         return 'Crear l\'hàbit «' + (a.nom || '?') + '» (' + t + ')';
       },
       executa: function (a) { return Habits.creaPerNom(a); }
+    }, {
+      nom: 'treu_habit',
+      descripcio: 'Treu un hàbit de la llista: «treu-me el de llegir», «ja no faig ' +
+                  'estiraments». NO esborra res —l\'històric hi queda i es pot ' +
+                  'reactivar—, només deixa de sortir a la pantalla i de comptar. Si el ' +
+                  'que vol és marcar-lo com a NO fet un dia, això és `registra_habit`, ' +
+                  'no això. NO s\'executa directament: genera una proposta que en Pol ha ' +
+                  'de confirmar, amb el botó o dient-ho.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          nom_habit: { type: 'string', description: 'Nom de l\'hàbit' }
+        },
+        required: ['nom_habit']
+      },
+      etiqueta: function (a) {
+        return 'Treure l\'hàbit «' + ((a && a.nom_habit) || '?') + '» de la llista ' +
+               '(l\'històric no es toca)';
+      },
+      executa: function (a) { return Habits.arxivaPerNom(a); }
     }, {
       nom: 'ensenya_el_comptador',
       descripcio: 'ENSENYA la gràfica d\'un comptador —els cigarros, per exemple— en un ' +
@@ -1027,6 +1048,38 @@ var Habits = (function () {
     };
   }
 
+  /**
+   * «Treu-me l'hàbit de llegir.»
+   *
+   * ARXIVA, NO ESBORRA, i la diferència importa: als hàbits l'històric és tot
+   * el que hi ha. Un hàbit esborrat s'emporta les ratxes, les mitjanes i les
+   * relacions que en surtin, i no hi ha manera de tornar-ho a tenir. Arxivat
+   * desapareix de la pantalla i es pot reactivar.
+   *
+   * Dit de veu això encara importa més: una frase mal sentida no pot
+   * carregar-se tres anys de registres.
+   */
+  function arxivaPerNom(a) {
+    var busca = String((a && a.nom_habit) || '').toLowerCase().trim();
+    if (!busca) throw new Error('No has dit quin hàbit.');
+
+    var candidats = definicions().filter(function (h) {
+      return String(h.nom).toLowerCase().indexOf(busca) !== -1;
+    });
+    if (!candidats.length) {
+      throw new Error('No hi ha cap hàbit actiu que es digui «' + a.nom_habit + '». Hàbits actius: ' +
+        definicions().map(function (h) { return h.nom; }).join(', '));
+    }
+    if (candidats.length > 1) {
+      throw new Error('«' + a.nom_habit + '» encaixa amb més d\'un hàbit: ' +
+        candidats.map(function (h) { return h.nom; }).join(', ') + '. Sigues més concret.');
+    }
+
+    arxiva(candidats[0].id);
+    return { arxivat: true, nom: candidats[0].nom,
+             com: 'no s\'ha esborrat res: l\'històric hi és i es pot reactivar des de la pantalla d\'hàbits' };
+  }
+
   function creaPerNom(a) {
     var nou = crea({
       nom: a.nom,
@@ -1171,6 +1224,7 @@ var Habits = (function () {
     edita: edita,
     registraPerNom: registraPerNom,
     creaPerNom: creaPerNom,
+    arxivaPerNom: arxivaPerNom,
     comptadorPerAEnsenyar: comptadorPerAEnsenyar,
     arxiva: arxiva,
     reactiva: reactiva,

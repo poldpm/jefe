@@ -200,6 +200,52 @@ function MODUL_SEGUIMENT() {
         }
       },
       executa: function (args) { return Seguiment.mesuraPerAEnsenyar(args); }
+    }, {
+      /* AQUESTA ÉS LA RAÓ DE SER DEL MÒDUL, DITA AMB LA BOCA.
+         El pic de divendres arriba a les sis del matí, en dejú, amb el telèfon
+         a la tauleta: escriure sis camps allà és exactament el moment en què no
+         ho faràs. Dient «peso 78,4 i cintura 86» ja està. */
+      nom: 'apunta_el_control',
+      descripcio: 'Apunta el control setmanal de seguiment físic: pes, cintura, sessions ' +
+                  'de força, sortides de trail i com es troba. Fes-la servir quan et digui ' +
+                  'qualsevol d\'aquestes coses: «peso 78 i mig», «cintura 86», «aquesta ' +
+                  'setmana he fet tres de força i dues sortides», «vaig baix d\'energia».\n' +
+                  'NO CAL QUE HO DIGUI TOT DE COP: el que no diu, no es toca. Si el ' +
+                  'control d\'aquell dia ja existeix, s\'hi afegeix el que digui ara i la ' +
+                  'resta es queda com estava.\n' +
+                  'El pes va en quilos amb decimals («setanta-vuit i mig» és 78.5) i la ' +
+                  'cintura en centímetres. NO s\'executa directament: genera una proposta ' +
+                  'que en Pol ha de confirmar, amb el botó o dient-ho.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          pes:      { type: 'number', description: 'Quilos, amb decimals' },
+          cintura:  { type: 'number', description: 'Centímetres' },
+          forca:    { type: 'integer', description: 'Sessions de força de la setmana' },
+          trail:    { type: 'integer', description: 'Sortides de trail de la setmana' },
+          trailGros: { type: 'integer', description: 'Quantes d\'aquelles sortides eren grosses' },
+          energia:  { type: 'string', description: 'baixa, normal o alta' },
+          son:      { type: 'string', description: 'malament, normal o bé' },
+          gana:     { type: 'string', description: 'poca, normal o molta' },
+          notes:    { type: 'string', description: 'El que digui i no càpiga enlloc més' },
+          data:     { type: 'string', description: 'Dia del control AAAA-MM-DD. Si s\'omet, avui.' }
+        }
+      },
+      etiqueta: function (a) {
+        var q = [];
+        if (a.pes !== undefined && a.pes !== null) q.push(a.pes + ' kg');
+        if (a.cintura !== undefined && a.cintura !== null) q.push('cintura ' + a.cintura + ' cm');
+        if (a.forca !== undefined && a.forca !== null) q.push(a.forca + ' de força');
+        if (a.trail !== undefined && a.trail !== null) q.push(a.trail + ' de trail');
+        if (a.energia) q.push('energia ' + a.energia);
+        if (a.son) q.push('son ' + a.son);
+        if (a.gana) q.push('gana ' + a.gana);
+        if (a.notes) q.push('«' + Utils.talla(String(a.notes), 40) + '»');
+        return 'Control ' + (a.data ? 'del ' + a.data : 'd\'avui') +
+               (q.length ? ': ' + q.join(' · ') : ' (sense cap dada)');
+      },
+      executa: function (a) { return Seguiment.apuntaPerNom(a); }
     }],
 
     vista: 'vista_seguiment'
@@ -526,6 +572,81 @@ var Seguiment = (function () {
     return { desat: true, data: p.data, id: r && r.id ? r.id : null };
   }
 
+  /**
+   * ══════════════════════════════════════════════════════════════════════
+   * EL CONTROL, DIT A TROSSOS
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * Ve de la conversa: «peso 78,4», i d'aquí a una estona «i he fet tres de
+   * força». Són dues frases i un sol control.
+   *
+   * PER QUÈ NO CRIDA `desaControl` DIRECTAMENT. Perquè `desaControl` escriu
+   * la fila SENCERA: és el que ha de fer, perquè ve del formulari de la
+   * pantalla, on hi són tots els camps a la vegada i el que has deixat en
+   * blanc l'has deixat en blanc a posta. Dit de paraula és al revés: el que
+   * no dius no és un zero, és una cosa de la qual no has parlat. Cridar-lo
+   * amb el pes tot sol posaria la cintura a buit i la força a zero, i el
+   * control de divendres quedaria mig esborrat per haver dit el pes.
+   *
+   * Per això aquí es llegeix primer el que ja hi ha d'aquell dia i s'hi
+   * escriu a sobre només el que porta. La resta hi torna igual.
+   */
+  function apuntaPerNom(a) {
+    a = a || {};
+    var data = Utils.esDataValida(a.data) ? a.data : Utils.avui();
+
+    var jaHiEra = controls().filter(function (c) { return c.data === data; })[0] || null;
+    var fila = {
+      data: data,
+      pes: jaHiEra ? jaHiEra.pes : null,
+      cintura: jaHiEra ? jaHiEra.cintura : null,
+      cinturaValida: jaHiEra ? jaHiEra.cinturaValida : true,
+      forca: jaHiEra ? jaHiEra.forca : 0,
+      trail: jaHiEra ? jaHiEra.trail : 0,
+      trailGros: jaHiEra ? jaHiEra.trailGros : 0,
+      energia: jaHiEra ? jaHiEra.energia : '',
+      son: jaHiEra ? jaHiEra.son : '',
+      gana: jaHiEra ? jaHiEra.gana : '',
+      dieta: jaHiEra ? jaHiEra.dieta : '',
+      notes: jaHiEra ? jaHiEra.notes : ''
+    };
+
+    var posats = [];
+    [['pes', 'pes'], ['cintura', 'cintura'], ['forca', 'força'],
+     ['trail', 'trail'], ['trailGros', 'sortides grosses']].forEach(function (par) {
+      var v = num_(a[par[0]]);
+      if (v === null) return;
+      fila[par[0]] = v;
+      posats.push(par[1]);
+    });
+    ['energia', 'son', 'gana', 'dieta'].forEach(function (k) {
+      if (!a[k]) return;
+      fila[k] = String(a[k]).toLowerCase();
+      posats.push(k);
+    });
+
+    /* Les notes S'ACUMULEN. Són l'únic camp on el que vas dir dilluns i el que
+       dius divendres són dues coses i totes dues valen; substituir-les faria
+       que la segona frase esborrés la primera sense avisar. */
+    if (a.notes) {
+      var nou = String(a.notes).trim();
+      fila.notes = fila.notes && fila.notes.indexOf(nou) === -1
+        ? fila.notes + '. ' + nou : (fila.notes || nou);
+      posats.push('notes');
+    }
+
+    if (!posats.length) throw new Error('No m\'has dit cap dada del control.');
+
+    var r = desaControl(fila);
+    return {
+      desat: true, data: data, posats: posats,
+      nou: !jaHiEra,
+      control: { pes: fila.pes, cintura: fila.cintura, forca: fila.forca,
+                 trail: fila.trail, energia: fila.energia },
+      id: r.id
+    };
+  }
+
   // ------------------------------------------------------------------ FOTOS
   /* A DRIVE, I NOMÉS L'IDENTIFICADOR AL FULL.
      Les fotos són el que fa visible el que la bàscula no diu, però també són
@@ -842,6 +963,7 @@ var Seguiment = (function () {
     pantalla: pantalla,
     estat: estat,
     desaControl: desaControl,
+    apuntaPerNom: apuntaPerNom,
     carpetaFotos: carpeta_,
     pujaFoto: pujaFoto,
     esborraFoto: esborraFoto,

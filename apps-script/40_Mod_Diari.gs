@@ -168,7 +168,7 @@ function MODUL_DIARI() {
       nom: 'escriu_diari',
       descripcio: 'Afegeix text al diari d\'un dia. NO substitueix el que ja hi hagi ' +
                   'escrit: hi va a continuació. NO s\'executa directament: genera una ' +
-                  'proposta que en Pol ha de confirmar amb un botó.',
+                  'proposta que en Pol ha de confirmar, amb el botó o dient-ho.',
       escriu: true,
       esquema: {
         type: 'object',
@@ -184,6 +184,29 @@ function MODUL_DIARI() {
                ': «' + Utils.talla(String(a.text || '?'), 60) + '»';
       },
       executa: function (a) { return Diari.afegeixPerNom(a); }
+    }, {
+      /* La contrapartida d'`escriu_diari`. Dictar té una manera de fallar que
+         escriure no té —el reconeixedor sent una altra cosa—, i si el que has
+         apuntat sense mirar la pantalla no es pot desdir sense mirar-la, no
+         t'hi fiaràs mai. */
+      nom: 'esborra_del_diari',
+      descripcio: 'Treu l\'entrada del diari d\'un dia. Fes-la servir quan et digui que ' +
+                  'el que ha apuntat no va bé: «esborra el que he escrit avui», «treu ' +
+                  'l\'entrada d\'ahir». Treu el dia SENCER, no una frase: si el que vol ' +
+                  'és canviar-ne un tros, esborra-la i torna a escriure-la.\n' +
+                  'NO s\'executa directament: genera una proposta que en Pol ha de ' +
+                  'confirmar, amb el botó o dient-ho.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          data: { type: 'string', description: 'Dia AAAA-MM-DD. Si s\'omet, avui.' }
+        }
+      },
+      etiqueta: function (a) {
+        return 'Esborrar l\'entrada del diari' + (a && a.data ? ' del ' + a.data : ' d\'avui');
+      },
+      executa: function (a) { return Diari.treuPerNom(a); }
     }],
 
     vista: 'vista_diari'
@@ -611,10 +634,27 @@ var Diari = (function () {
     };
   }
 
+  /**
+   * Ve d'una proposta confirmada: «esborra el que he escrit avui».
+   *
+   * NO ESBORRA LA FILA: `treu` hi posa la data d'esborrat i prou, com a tot
+   * arreu en aquesta app. El que has dit sense mirar la pantalla s'ha de poder
+   * desdir sense mirar-la, però desdir no és cremar.
+   */
+  function treuPerNom(a) {
+    a = a || {};
+    var data = Utils.esDataValida(a.data) ? a.data : Utils.avui();
+    var e = entrada(data);
+    if (!e) throw new Error('El ' + data + ' no hi ha res escrit al diari.');
+    treu(e.id);
+    return { tret: true, data: data, era: Utils.talla(e.text, 120) };
+  }
+
   return {
     pantalla: pantalla,
     entrada: entrada,
     entrades: entrades,
+    treuPerNom: treuPerNom,
     ultimaRevisio: ultimaRevisio,
     escriu: escriu,
     treu: treu,

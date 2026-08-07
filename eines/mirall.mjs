@@ -307,7 +307,37 @@ const MOCK = `
                  eines: [], propostes: [], tokens: { entrada: 0, sortida: 0 },
                  temps: { total: 2600, veu: 900, ia: 1700, context: 0, eines: 0, voltes: 1 } };
       }
-      if (accio === 'envia') throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
+      /* CONFIRMAR UNA ESCRIPTURA. Aquí no es desa res: el que s'ha de poder
+         mirar és la roda sencera —proposta, «sí», «Fet.»— sense cap IA. */
+      if (accio === 'confirma') {
+        window.__confirmades = (window.__confirmades || []).concat([{ eina: p.eina, args: p.args }]);
+        return { fet: true, eina: p.eina };
+      }
+
+      /* EL MIRALL NO PENSA, PERÒ SÍ QUE SAP FER UNA PROPOSTA.
+         Cap escriptura de JEFE passa sense confirmar-la, i des que també es
+         pot confirmar DIENT-HO, aquell requadre és el pas per on passa tot el
+         que fas parlant. Sense poder-lo veure aquí, l'única manera de mirar-lo
+         seria a l'app de debò i gastant quota. Les propostes surten de verbs,
+         no de cap model: escriu «apunta 30 euros de gasolina» i ja hi és. */
+      if (accio === 'envia') {
+        var q = aixafa(String((p && p.text) || ''));
+        var verbs = ['apunta', 'apuntam', 'marca', 'esborra', 'treu', 'peso', 'registra', 'posa'];
+        var escriu = verbs.some(function (v) { return q.indexOf(v) === 0 || q.indexOf(' ' + v + ' ') !== -1; });
+        if (!escriu) throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
+
+        var quantes = q.indexOf(' i ') !== -1 ? 2 : 1;
+        var props = [];
+        for (var pi = 0; pi < quantes; pi++) {
+          props.push({ eina: 'eina_del_mirall', modul: 'mirall', accio: 'inventada',
+                       etiqueta: pi === 0 ? '30,00 € · gasolina · avui'
+                                          : 'Marcar «córrer» com a fet · avui',
+                       args: { i: pi } });
+        }
+        return { id_conversa: 'cnv_mirall', resposta: 'Ho deixo preparat.',
+                 eines: [], propostes: props, tokens: { entrada: 0, sortida: 0 },
+                 temps: { total: 1200, ia: 1200, context: 0, eines: 0, voltes: 1 } };
+      }
     }
 
     if (modul === 'focus') {

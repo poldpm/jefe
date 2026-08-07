@@ -158,6 +158,32 @@ function MODUL_ESCOLA() {
         }
       },
       executa: function (a) { return Escola.perALaIA(a || {}); }
+    }, {
+      /* Els avisos de l'escola s'acumulen sols i no se'n va cap fins que el
+         despatxes. Fins ara l'única manera era obrir la pantalla i tocar-los
+         un per un; dient «ja els he vist» s'acaba. */
+      nom: 'marca_els_avisos',
+      descripcio: 'Marca com a llegits els avisos de l\'escola. Fes-la servir quan et ' +
+                  'digui que ja els ha vist: «marca\'ls tots», «ja he llegit els de ' +
+                  'l\'escola», «treu-me el del menjador». Si diu de quin parla, passa-li ' +
+                  'un tros del text a `conte` i només es marcarà aquell; si no diu res, ' +
+                  'es marquen tots els que queden sense llegir. NO s\'executa ' +
+                  'directament: genera una proposta que en Pol ha de confirmar, amb el ' +
+                  'botó o dient-ho.',
+      escriu: true,
+      esquema: {
+        type: 'object',
+        properties: {
+          conte: { type: 'string', description: 'Part del títol o del text. Si s\'omet, tots.' }
+        }
+      },
+      etiqueta: function (a) {
+        return a && a.conte
+          ? 'Marcar com a llegits els avisos de l\'escola que parlin de «' +
+            Utils.talla(String(a.conte), 40) + '»'
+          : 'Marcar com a llegits tots els avisos de l\'escola';
+      },
+      executa: function (a) { return Escola.marcaPerNom(a || {}); }
     }],
 
     vista: 'vista_escola'
@@ -296,6 +322,39 @@ var Escola = (function () {
     var ara = Utils.ara();
     f.forEach(function (m) { Dades.actualitza('Escola', m.id, { llegit_el: ara }); });
     return { fets: f.length };
+  }
+
+  /**
+   * Ve de la conversa: «ja he llegit els de l'escola», «treu-me el del
+   * menjador».
+   *
+   * NOMÉS TOCA ELS QUE NO S'HAN LLEGIT. Tornar a marcar un que ja ho estava li
+   * canviaria la data de lectura per la d'avui, i llavors l'històric diria que
+   * un avís de fa tres setmanes el vas veure aquest matí.
+   */
+  function marcaPerNom(a) {
+    a = a || {};
+    var busca = Utils.aixafa(String(a.conte || ''));
+    var quins = senseLlegir().filter(function (m) {
+      if (!busca) return true;
+      return Utils.aixafa(String(m.titol || '') + ' ' + String(m.cos || '')).indexOf(busca) !== -1;
+    });
+
+    if (!quins.length) {
+      return { fets: 0, queden: pendents(),
+               motiu: busca ? 'Cap avís sense llegir parla d\'això.'
+                            : 'No en queda cap per llegir.' };
+    }
+
+    var ara = Utils.ara();
+    quins.forEach(function (m) { Dades.actualitza('Escola', m.id, { llegit_el: ara }); });
+    Memoria.oblida('escola');
+    Log.info('escola.marca', quins.length + ' avisos marcats des de la conversa');
+    return {
+      fets: quins.length,
+      quins: quins.slice(0, 5).map(function (m) { return Utils.talla(m.titol, 60); }),
+      queden: pendents()
+    };
   }
 
   // ------------------------------------------------- QUÈ HI HA EXTRET D'AVUI
@@ -532,6 +591,7 @@ var Escola = (function () {
 
   return {
     rebre: rebre, elDia: elDia, desglossa: desglossa_, pantalla: pantalla, marcaLlegit: marcaLlegit, llegeixTot: llegeixTot,
+    marcaPerNom: marcaPerNom,
     pendents: pendents, senseLlegir: senseLlegir, contextIA: contextIA, perALaIA: perALaIA,
     pendentsDelPont: pendentsDelPont, pendentsDeText: pendentsDeText_,
     pendentsDelPontAraMateix: pendentsDelPontAraMateix, oblidaPendents: oblidaPendents,

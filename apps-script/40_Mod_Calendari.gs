@@ -195,7 +195,7 @@ function MODUL_CALENDARI() {
       nom: 'apunta_al_calendari',
       descripcio: 'Crea un esdeveniment al calendari. Cal el títol i el dia. Si no es diu ' +
                   'cap hora, es fa de tot el dia. NO s\'executa directament: genera una ' +
-                  'proposta que en Pol ha de confirmar amb un botó.',
+                  'proposta que en Pol ha de confirmar, amb el botó o dient-ho.',
       escriu: true,
       esquema: {
         type: 'object',

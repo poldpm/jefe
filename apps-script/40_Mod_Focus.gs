@@ -141,6 +141,20 @@ function MODUL_FOCUS() {
         }
       },
       executa: function (a) { return Focus.comencaPerNom(a); }
+    }, {
+      /* AQUESTA NO ESCRIU, I ÉS L'ÚNICA DE TOTA L'APP QUE HO SEMBLA I NO HO
+         ÉS. El rellotge corre al telèfon i al full no hi ha res fins que el
+         bloc s'acaba: aquí no hi ha cap fila per confirmar. El que fa és obrir
+         la pantalla dient-li que pari, i qui té el rellotge ja sap quants
+         minuts han passat de debò. */
+      nom: 'atura_el_bloc',
+      descripcio: 'Para el bloc de focus que hi ha en marxa i apunta els minuts que han ' +
+                  'passat. Fes-la servir quan et digui que plega: «para», «ja està», ' +
+                  '«atura el bloc», «deixem-ho aquí». Si no n\'hi ha cap en marxa, ' +
+                  'la pantalla t\'ho dirà i no passa res.',
+      obre: 'focus',
+      esquema: { type: 'object', properties: {} },
+      executa: function () { return Focus.aturaPerNom(); }
     }],
 
     vista: 'vista_focus'
@@ -288,8 +302,21 @@ var Focus = (function () {
     };
   }
 
+  /**
+   * «Para el bloc.»
+   *
+   * Aquí no hi ha res a fer: el rellotge és al telèfon i el servidor no sap
+   * ni que n'hi ha cap en marxa. L'únic que pot fer aquesta funció és dir a
+   * la pantalla que pari, i és la pantalla qui després apunta els minuts.
+   * `_params` és com una eina passa alguna cosa a la vista que obre.
+   */
+  function aturaPerNom() {
+    return { _params: { atura: true }, pantalla: 'oberta' };
+  }
+
   return {
     pantalla: pantalla, apunta: apunta, comencaPerNom: comencaPerNom,
+    aturaPerNom: aturaPerNom,
     delDia: delDia, entre: entre, minutsDe: minutsDe, seriesDiaries: seriesDiaries,
     DURADES: DURADES
   };

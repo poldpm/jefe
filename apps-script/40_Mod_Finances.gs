@@ -278,7 +278,7 @@ function MODUL_FINANCES() {
     }, {
       nom: 'apunta_moviment',
       descripcio: 'Apunta una despesa o un ingrés. NO s\'executa directament: genera una ' +
-                  'proposta que en Pol ha de confirmar amb un botó.',
+                  'proposta que en Pol ha de confirmar, amb el botó o dient-ho.',
       escriu: true,
       esquema: {
         type: 'object',

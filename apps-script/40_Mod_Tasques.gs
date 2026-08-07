@@ -183,7 +183,7 @@ function MODUL_TASQUES() {
     }, {
       nom: 'apunta_tasca',
       descripcio: 'Apunta una cosa per fer a Google Tasks. NO s\'executa directament: ' +
-                  'genera una proposta que en Pol ha de confirmar amb un botó.',
+                  'genera una proposta que en Pol ha de confirmar, amb el botó o dient-ho.',
       escriu: true,
       esquema: {
         type: 'object',

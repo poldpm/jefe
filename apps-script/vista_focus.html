@@ -332,8 +332,28 @@ App.registraVista('focus', {
     if (params.minuts) durada = Number(params.minuts);
 
     estat = llegeixEstat();
-    carrega();
-    if (estat) compta();
+
+    /* «PARA EL BLOC», DIT DE VEU.
+       El rellotge corre AQUÍ i el servidor no en sap res: no hi ha cap fila
+       fins que el bloc s'acaba. Per això aturar-lo no pot ser una eina que
+       escrigui —no hi ha res a escriure encara—: la conversa obre aquesta
+       pantalla dient què vol i qui ho fa és qui té el rellotge.
+
+       Els minuts que s'apunten són els que han passat de debò, com si
+       haguessis premut el botó: parar abans d'hora no apunta el bloc sencer. */
+    var aturant = !!(params.atura && estat);
+    if (aturant) {
+      /* `tanca` ja apunta el bloc I torna la pantalla refeta. Cridar `carrega`
+         a més seria un segon viatge amb una foto ANTERIOR a l'apunt, i el que
+         arribés l'últim mandaria: de vegades hi sortiria el bloc i de vegades
+         no. */
+      tanca(false);
+      App.brindis('Bloc aturat');
+    } else {
+      if (params.atura) App.brindis('Ara mateix no hi ha cap bloc en marxa');
+      carrega();
+    }
+    if (estat && !aturant) compta();
 
     /* En sortir de la pantalla, el rellotge de repintar s'atura. El bloc no:
        viu al telèfon i segueix corrent encara que miris una altra cosa. */
