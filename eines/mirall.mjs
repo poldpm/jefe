@@ -322,6 +322,53 @@ const MOCK = `
          no de cap model: escriu «apunta 30 euros de gasolina» i ja hi és. */
       if (accio === 'envia') {
         var q = aixafa(String((p && p.text) || ''));
+
+        /* L'ORDINADOR. El mirall no pensa, però sí que sap encarregar coses al
+           PC: és l'única manera de mirar la roda sencera —encàrrec, ajudant,
+           resposta— sense gastar una petició de Gemini. Els encàrrecs són
+           exactament els que munta 40_Mod_Ordinador.gs.
+
+           (Sense cometes esquerres enlloc: tot aquest servidor fals viu dins
+           d'una plantilla de mirall.mjs, i una cometa esquerra la talla pel
+           mig. La primera versió d'aquest comentari en portava i el mirall va
+           deixar de construir-se.)
+
+           I la segona volta —quan el client torna a preguntar amb el que ha
+           trobat— es reconeix pel text: així es pot veure que el resultat de
+           l'ordinador arriba de debò a una resposta. */
+        if (q.indexOf('aixo es el contingut del document') === 0 ||
+            q.indexOf('aixo es el que he trobat') === 0 ||
+            q.indexOf('aixo es el que hi ha a la carpeta') === 0) {
+          window.__tornatDeLOrdinador = String(p.text);
+          return { id_conversa: 'cnv_mirall',
+                   resposta: 'Ja ho tinc (' + String(p.text).length + ' caràcters).',
+                   eines: [], propostes: [], tokens: { entrada: 0, sortida: 0 },
+                   temps: { total: 800, ia: 800, context: 0, eines: 0, voltes: 1 } };
+        }
+
+        var encarrec = null;
+        if (q.indexOf('obre') === 0 && q.indexOf('web') !== -1) {
+          encarrec = { verb: 'obre_web', args: { url: 'example.com' }, tornaAmb: null,
+                       mentrestant: 'obrint la pàgina…' };
+        } else if (q.indexOf('obre') === 0) {
+          encarrec = { verb: 'obre_trobat', args: { text: p.text.replace(/^obre'?m?\s*/i, '').trim() },
+                       tornaAmb: null, mentrestant: 'buscant-ho…' };
+        } else if (q.indexOf('on tinc') === 0 || q.indexOf('busca') === 0) {
+          encarrec = { verb: 'busca', args: { text: p.text.replace(/^(on tinc|busca)\s*/i, '').trim() },
+                       tornaAmb: 'llista', mentrestant: 'buscant per l\\'ordinador…' };
+        } else if (q.indexOf('explica') === 0 || q.indexOf('resumeix') === 0) {
+          encarrec = { verb: 'llegeix_trobat', args: { text: p.text.replace(/^(explica'?m?|resumeix'?m?)\s*/i, '').trim() },
+                       tornaAmb: 'text', mentrestant: 'llegint el document…' };
+        } else if (q.indexOf('que tinc a') === 0 || q.indexOf('que hi ha a') === 0) {
+          encarrec = { verb: 'llista', args: {}, tornaAmb: 'llista', mentrestant: 'mirant la carpeta…' };
+        }
+        if (encarrec) {
+          return { id_conversa: 'cnv_mirall', resposta: 'Hi vaig.',
+                   eines: [{ eina: 'del_mirall', args: {}, ordinador: encarrec }],
+                   propostes: [], tokens: { entrada: 0, sortida: 0 },
+                   temps: { total: 900, ia: 900, context: 0, eines: 0, voltes: 1 } };
+        }
+
         var verbs = ['apunta', 'apuntam', 'marca', 'esborra', 'treu', 'peso', 'registra', 'posa'];
         var escriu = verbs.some(function (v) { return q.indexOf(v) === 0 || q.indexOf(' ' + v + ' ') !== -1; });
         if (!escriu) throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');

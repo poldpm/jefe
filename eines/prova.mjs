@@ -4420,5 +4420,118 @@ console.log('\nParlar-li: les eines que faltaven per poder-ho fer tot');
       senseConfirmar.map((x) => x[1]).join(', '));
 }
 
+// ═══════════════════════════════════════════════════════════════ L'ORDINADOR
+/* El mòdul que no fa res: prepara encàrrecs per a la pantalla, perquè el
+   servidor no pot arribar al PC d'en Pol —des de Google, 127.0.0.1 és
+   Google—. El que es pot comprovar aquí, doncs, no és què fa: és que
+   l'encàrrec estigui ben format i que les dues meitats es reconeguin.
+
+   I la comprovació que de veritat val: que els verbs que demana el mòdul
+   existeixin a l'ajudant. Són dos fitxers que no es veuen mai l'un a l'altre
+   —un va a Apps Script i l'altre corre al PC— i el dia que un canviï de nom,
+   això fallaria en silenci amb un «no sé fer allò» al mig d'una conversa. */
+console.log('\nL\'ordinador: el mòdul prepara encàrrecs, no els fa');
+{
+  const ctx = carregaTotElServidor();
+  ctx.Log = { info() {}, avis() {}, error() {} };
+
+  const mod = ctx.MODUL_ORDINADOR();
+  cal('el mòdul no declara cap full ni cap acció de servidor',
+      mod.fulls.length === 0 && Object.keys(mod.accions).length === 0,
+      JSON.stringify({ f: mod.fulls.length, a: Object.keys(mod.accions) }));
+  cal('ni cap pantalla: el que fa es veu a l\'ordinador', mod.vista === null, String(mod.vista));
+
+  /* CAP NO ESCRIU, i no és un descuit. Obrir una web o un document no toca
+     cap dada i es desfà tancant la finestra; demanar confirmació a cada
+     «obre'm això» el faria més lent que fer-ho amb la mà. */
+  const escriuen = mod.einesIA.filter((e) => e.escriu);
+  cal('cap eina de l\'ordinador passa per confirmació', escriuen.length === 0,
+      escriuen.map((e) => e.nom).join(', '));
+
+  const sobre = ctx.Ordinador.obre({ url: 'elpuntavui.cat' });
+  cal('obrir una web torna un encàrrec, no un fet',
+      sobre._ordinador.verb === 'obre_web' && sobre.encara_no_fet === true,
+      JSON.stringify(sobre));
+  cal('i porta què dir-li mentre s\'hi treballa',
+      typeof sobre._ordinador.mentrestant === 'string' && sobre._ordinador.mentrestant.length > 3,
+      String(sobre._ordinador.mentrestant));
+
+  cal('obrir per nom passa pel buscar-i-obrir',
+      ctx.Ordinador.obre({ busca: 'informe batuda' })._ordinador.verb === 'obre_trobat');
+  cal('i amb un camí, directe',
+      ctx.Ordinador.obre({ cami: 'C:\\x\\a.txt' })._ordinador.verb === 'obre_fitxer');
+
+  let sense = false;
+  try { ctx.Ordinador.obre({}); } catch (e) { sense = true; }
+  cal('sense dir què, no munta cap encàrrec', sense, 'n\'ha muntat un');
+
+  let curt = false;
+  try { ctx.Ordinador.busca({ text: 'a' }); } catch (e) { curt = true; }
+  cal('buscar amb una lletra tampoc', curt, 'ho ha deixat passar');
+
+  /* `tornaAmb` és el que fa que el resultat torni a la conversa. Sense això
+     JEFE demanaria el text d'un document i no el llegiria mai. */
+  cal('buscar i llegir tornen a preguntar amb el resultat',
+      ctx.Ordinador.busca({ text: 'acta' })._ordinador.tornaAmb === 'llista' &&
+      ctx.Ordinador.explica({ busca: 'acta' })._ordinador.tornaAmb === 'text');
+  cal('i obrir no: ja està fet',
+      ctx.Ordinador.obre({ url: 'x.cat' })._ordinador.tornaAmb === null);
+
+  // ─────────────────────────── que les dues meitats parlin el mateix idioma
+  const ajudant = fs.readFileSync('ordinador/jefe-ordinador.mjs', 'utf8');
+  const bloc = ajudant.slice(ajudant.indexOf('const VERBS = {'), ajudant.indexOf('// ─────────────────────────────────────────────────────────────────── servidor'));
+  const verbsAjudant = (bloc.match(/^  ([a-z_]+)\(/gm) || []).map((v) => v.trim().replace('(', ''));
+  cal('es troben els verbs de l\'ajudant', verbsAjudant.length >= 6, verbsAjudant.join(', '));
+
+  /* Dos no hi són a posta: «obre'm l'informe» són DUES coses —buscar-lo i
+     obrir-lo— i l'ajudant només en sap fer una de cada. El client les ajunta,
+     i així la llista de verbs de la màquina es queda curta i es pot llegir
+     sencera per veure que no n'hi ha cap que executi res. */
+  const COMPOSATS = ['obre_trobat', 'llegeix_trobat'];
+  const demanats = [];
+  ['obre', 'busca', 'explica', 'llista'].forEach((f) => {
+    [{ url: 'x' }, { cami: 'c' }, { busca: 'b' }, { text: 'bu' }, {}].forEach((a) => {
+      try { demanats.push(ctx.Ordinador[f](a)._ordinador.verb); } catch (e) {}
+    });
+  });
+  const orfes = [...new Set(demanats)].filter((v) =>
+    verbsAjudant.indexOf(v) === -1 && COMPOSATS.indexOf(v) === -1);
+  cal('cada verb que demana el mòdul existeix a l\'ajudant', orfes.length === 0,
+      orfes.join(', ') + '  (ajudant: ' + verbsAjudant.join(', ') + ')');
+
+  const vista = fs.readFileSync('apps-script/vista_conversa.html', 'utf8');
+  const noResol = COMPOSATS.filter((c) => vista.indexOf("'" + c + "'") === -1);
+  cal('i els dos composats els resol el client', noResol.length === 0, noResol.join(', '));
+
+  // ────────────────────────────────── que el nucli el porti fins a la pantalla
+  const assistent = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
+  cal('el nucli passa l\'encàrrec al client sense mirar-hi dins',
+      /ordinador: \(resultat && resultat\._ordinador\)/.test(assistent));
+  cal('i la conversa el recull', /e\.ordinador/.test(vista) && /feinaDeLOrdinador/.test(vista));
+
+  /* EL TEXT D'UN DOCUMENT NO ÉS UNA ORDRE. Un document que comenci amb
+     «ignora el que t'han dit» arribaria al model dins de la mateixa petició
+     que les seves instruccions, i per tant s'ha de dir explícitament què és. */
+  cal('el text que arriba del PC va marcat com a text i no com a instruccions',
+      /no instruccions per a tu/.test(vista) && /=== DOCUMENT ===/.test(vista));
+
+  /* I no pot sortir a la transcripció com si l'hagués escrit ell: són
+     quaranta mil caràcters d'un fitxer, no una cosa que hagi dit. */
+  cal('i la pregunta que en surt no s\'escriu com a seva',
+      /function preguntaSilenciosa_/.test(vista) &&
+      vista.indexOf('preguntaSilenciosa_') < vista.indexOf('SI FALLA TRES VEGADES'));
+
+  // ──────────────────────────────────────────────── i els tres panys, escrits
+  cal('l\'ajudant només escolta a 127.0.0.1',
+      /servidor\.listen\(PORT, '127\.0\.0\.1'/.test(ajudant));
+  cal('només accepta l\'origen de JEFE',
+      /ORIGENS\.indexOf\(origen\) !== -1/.test(ajudant));
+  cal('i compara la clau en temps constant',
+      /crypto\.timingSafeEqual/.test(ajudant));
+  cal('no hi ha cap verb que executi res del sistema',
+      !/\bexec\b|child_process.*exec[^A-Za-z]/.test(bloc) && /spawn/.test(ajudant),
+      'n\'hi ha algun');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
