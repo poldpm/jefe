@@ -2705,7 +2705,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-07 22:55 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-07 23:06 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3073,7 +3073,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-07 22:55 · en curs";
+window.MARCA_JEFE = "2026-08-07 23:06 · en curs";
 </script>
 
 <script>
@@ -5928,6 +5928,14 @@ App.registraVista('conversa', {
          conversa: hi surt la paraula, però la frase diu una altra cosa. */
       if (App.vistes[net]) return { mena: 'vista', vista: net };
 
+      /* PERÒ NINGÚ NO DIU «obre finances». En Pol va dir «obre'm el resum de
+         finances» i, com que no encaixava sencer, se'n va anar a buscar un
+         fitxer que no existia i d'allà al model: vint segons per una pantalla
+         que és aquí mateix. Aquestes tres paraules davant d'un nom de
+         pantalla no hi afegeixen res. */
+      var sensePalla = net.replace(/^(la |el |els |les )?(pagina|pantalla|resum|apartat|seccio|llista)( de la | del | de | d )?/, '').trim();
+      if (App.vistes[sensePalla]) return { mena: 'vista', vista: sensePalla };
+
       /* Una adreça: sense espais i amb un punt enmig, o dita com a tal. */
       if (/^https?:\/\//i.test(que) ||
           (/^[^\s]+\.[a-z]{2,}([\/?#].*)?$/i.test(que))) {
@@ -6095,7 +6103,19 @@ App.registraVista('conversa', {
            l'etiqueta —«30,00 € · gasolina · avui»—, i viu al requadre, no al
            text. Sense dir-la en veu alta, confirmar sense mirar la pantalla
            seria dir que sí a una cosa que no saps quina és. */
-        if (veuActiva) parla(ambLesPropostes(r.resposta, r.propostes));
+        /* PERÒ SI HI HA UN ENCÀRREC PER A L'ORDINADOR, ENCARA NO S'HA FET RES,
+           i el que hagi escrit el model no s'ha de llegir ni sentir. Escriu la
+           resposta abans que la pantalla mogui un dit: sempre en parla en
+           passat —«ja te l'he obert»— i de vegades el que passa després és que
+           no s'obre. Es va veure a la primera vegada que en Pol ho va fer
+           servir de debò: li va dir que li havia obert una cosa i no en va
+           obrir cap.
+           No és cosa d'ajustar la instrucció: mentre l'ordre i la resposta
+           vagin al mateix torn, el model sempre anirà per davant dels fets.
+           Qui sap què ha passat és qui ho ha fet, i és aquesta pantalla. */
+        var faFeina = (r.eines || []).filter(function (e) { return e.ordinador; })[0];
+        if (veuActiva && !faFeina) parla(ambLesPropostes(r.resposta, r.propostes));
+        if (faFeina) missatges[missatges.length - 1].text = 'Un moment…';
 
         /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
            És com «ensenya'm la pàgina del dia» acaba ensenyant-la, i és també
@@ -6169,18 +6189,36 @@ App.registraVista('conversa', {
       fes_(ordre)
         .then(function (r) {
           if (!ordre.tornaAmb) {
+            var diu = r && r.obert
+              ? 'Obert: ' + String(r.obert).split(/[\\/]/).pop()
+              : 'Fet a l\'ordinador.';
+            digues_(diu);
             acaba();
-            App.brindis(r && r.obert ? 'Obert a l\'ordinador' : 'Fet a l\'ordinador');
-            if (veuActiva) parla('Fet.');
+            if (veuActiva) parla(diu);
             return;
           }
           preguntaSilenciosa_(comHoExplico_(ordre, r));
         })
         ['catch'](function (err) {
-          missatges.push({ rol: 'assistent', text: err.message });
+          digues_(err.message);
           acaba();
           if (veuActiva) parla(err.message);
         });
+    }
+
+    /* El que ha passat de debò, escrit al lloc del que el model s'imaginava.
+       Substitueix en comptes d'afegir: dues línies dient coses contràries
+       —«ja te l'he obert» i tot seguit «no arribo a l'ordinador»— són pitjor
+       que una de sola que digui la veritat. */
+    function digues_(text) {
+      var ultim = missatges[missatges.length - 1];
+      if (ultim && ultim.rol === 'assistent') {
+        ultim.text = text;
+        delete ultim.eines;
+      } else {
+        missatges.push({ rol: 'assistent', text: text });
+      }
+      respostaFresca = true;
     }
 
     /* Els dos composats. La resta va tal qual a l'ajudant. */

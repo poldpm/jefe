@@ -4267,6 +4267,15 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
         (o("obre'm les finances") || {}).vista === 'finances', JSON.stringify(o("obre'm les finances")));
     cal('«obre la setmana» també',
         (o('obre la setmana') || {}).vista === 'setmana', JSON.stringify(o('obre la setmana')));
+    /* NINGÚ NO DIU «obre finances». En Pol va dir «obre'm el resum de
+       finances» i, com que no encaixava sencer, se'n va anar a buscar un
+       fitxer que no existia i d'allà al model: vint segons per una pantalla
+       que era aquí mateix. */
+    ['obre\'m el resum de finances', 'obre la pàgina de finances',
+     'obre\'m la pantalla de finances', 'obre l\'apartat de finances'].forEach((f) => {
+      cal('«' + f + '» també és la pantalla',
+          (o(f) || {}).vista === 'finances', JSON.stringify(o(f)));
+    });
     cal('«obre\'m el 3cat.cat» és una adreça',
         (o("obre'm el 3cat.cat") || {}).mena === 'web', JSON.stringify(o("obre'm el 3cat.cat")));
     cal('i una adreça sencera també',
@@ -4299,6 +4308,33 @@ console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
   cal('quan no troba el fitxer, la pregunta segueix el camí de sempre',
       /_capITornaEnrere/.test(vista) &&
       /crida\('conversa', 'envia', \{ text: original/.test(vista));
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     EL QUE DIU LA PANTALLA MANA SOBRE EL QUE S'IMAGINA EL MODEL.
+     La primera vegada que en Pol ho va fer servir de debò, JEFE li va dir que
+     li havia obert una cosa i no en va obrir cap. No és cosa d'ajustar la
+     instrucció: mentre l'ordre i la resposta vagin al mateix torn, el model
+     sempre escriurà en passat abans que la pantalla mogui un dit. */
+  cal('amb un encàrrec per a l\'ordinador, el que ha escrit el model es tapa',
+      /if \(faFeina\) missatges\[missatges\.length - 1\]\.text = 'Un moment…';/.test(vista));
+  cal('i no es diu en veu alta tampoc',
+      /if \(veuActiva && !faFeina\) parla\(/.test(vista));
+  cal('i el resultat SUBSTITUEIX, no s\'hi afegeix a sota',
+      /function digues_\(text\)/.test(vista) && /ultim\.text = text;/.test(vista));
+
+  /* I al model se li diu clarament, encara que no s'hi confiï. */
+  {
+    const ordi = fs.readFileSync('apps-script/40_Mod_Ordinador.gs', 'utf8');
+    cal('a l\'eina se li diu que encara no està fet',
+        /ENCARA NO ESTÀ FET/.test(ordi) && /NO diguis que ho has obert/.test(ordi));
+    const sensAvis = ['Buscant-ho', 'Llegint-lo', 'Mirant la carpeta']
+      .filter((m) => {
+        const i = ordi.indexOf(m);
+        return i === -1 || !/ENCARA NO/.test(ordi.slice(i, i + 260));
+      });
+    cal('i a totes les que tornen amb resultat, també', sensAvis.length === 0,
+        sensAvis.join(', '));
+  }
   {
     const assistent = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
     cal('i al model se li diu que NO parli de prémer botons',

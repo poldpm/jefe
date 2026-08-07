@@ -175,7 +175,10 @@ var Ordinador = (function () {
       /* Perquè el model no digui que ja està fet abans d'hora: el que torna
          d'aquí no és el resultat, és l'encàrrec. */
       encara_no_fet: true,
-      missatge: opcions.missatge || 'Enviat a l\'ordinador. Encara no se sap com ha anat.'
+      missatge: opcions.missatge ||
+        'ENCARA NO ESTÀ FET. Això és un encàrrec per a la pantalla, i qui el ' +
+        'farà és ella. NO diguis que ho has obert ni que ja ho té: no ho saps. ' +
+        'Contesta amb una paraula o calla; el resultat l\'escriurà la pantalla.'
     };
   }
 
@@ -209,7 +212,8 @@ var Ordinador = (function () {
     return sobre_('busca', { text: text }, {
       tornaAmb: 'llista',
       mentrestant: 'buscant «' + Utils.talla(text, 30) + '» per l\'ordinador…',
-      missatge: 'Buscant-ho a l\'ordinador.'
+      missatge: 'Buscant-ho a l\'ordinador. ENCARA NO HO TENS: el resultat ' +
+                't\'arribarà en una segona pregunta. No t\'inventis cap llista.'
     });
   }
 
@@ -221,7 +225,8 @@ var Ordinador = (function () {
                   a.cami ? { cami: a.cami } : { text: a.busca }, {
       tornaAmb: 'text',
       mentrestant: 'llegint el document…',
-      missatge: 'Llegint-lo de l\'ordinador.'
+      missatge: 'Llegint-lo de l\'ordinador. ENCARA NO L\'HAS LLEGIT: el text ' +
+                't\'arribarà en una segona pregunta. No diguis de què va fins llavors.'
     });
   }
 
@@ -231,7 +236,8 @@ var Ordinador = (function () {
     return sobre_('llista', a.cami ? { cami: a.cami } : {}, {
       tornaAmb: 'llista',
       mentrestant: 'mirant la carpeta…',
-      missatge: 'Mirant la carpeta a l\'ordinador.'
+      missatge: 'Mirant la carpeta a l\'ordinador. ENCARA NO SAPS QUÈ HI HA: ' +
+                't\'arribarà en una segona pregunta.'
     });
   }
 
