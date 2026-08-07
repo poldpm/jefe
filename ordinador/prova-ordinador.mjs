@@ -40,6 +40,34 @@ try {
   process.exit(1);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   I QUE EL QUE CONTESTA SIGUI EL CODI D'ARA.
+   Un programa que es queda obert es queda vell: canvies el fitxer, tornes a
+   provar i el que respon és el d'abans. Em va passar amb els .docx —seguien
+   dient «no sé llegir això» deu minuts després de saber-ne— i el pitjor no és
+   perdre l'estona: és que les proves diguin que sí quan haurien de dir que
+   no. Es compara la data que diu l'ajudant amb la dels fitxers. */
+async function comprovaQueNoEsVell() {
+  const r = await fetch('http://127.0.0.1:' + PORT + '/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Origin': ORIGEN, 'X-Jefe-Clau': CLAU },
+    body: JSON.stringify({ verb: 'hola' })
+  });
+  const d = await r.json();
+  const aqui = new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+  const quan = ['jefe-ordinador.mjs', 'documents.mjs']
+    .map((f) => fs.statSync(path.join(aqui, f)).mtimeMs);
+  const disc = new Date(Math.max(...quan)).toISOString().slice(0, 19).replace('T', ' ');
+  if (d.versio !== disc) {
+    console.error('\n  L\'ajudant que està obert NO és el codi d\'ara.');
+    console.error('    corrent:  ' + d.versio);
+    console.error('    al disc:  ' + disc);
+    console.error('\n  Tanca\'l i torna\'l a obrir abans de provar res.\n');
+    process.exit(1);
+  }
+}
+await comprovaQueNoEsVell();
+
 async function truca(cos, opcions) {
   opcions = opcions || {};
   const capceleres = { 'Content-Type': 'application/json' };
@@ -244,6 +272,166 @@ console.log('\nLlegir i buscar de debò');
   const dir = await truca({ verb: 'llegeix', args: { cami: path.join(os.homedir(), 'Documents') } });
   cal('i una carpeta no es llegeix com si fos un document',
       dir.dades.fet === false && /carpeta/.test(dir.dades.error), JSON.stringify(dir.dades));
+}
+
+// ══════════════════════════════════════════════════ treure text d'un document
+import * as D from './documents.mjs';
+import zlib from 'node:zlib';
+
+console.log('\nDocuments: el zip a mà');
+{
+  /* UN .DOCX FET A MÀ, per poder comprovar el lector de zip sense dependre de
+     cap fitxer de ningú. Va sense comprimir —mètode 0— perquè el que es prova
+     aquí és que es trobin bé les posicions, que és on es falla. */
+  function zipDunFitxer(nom, contingut) {
+    const n = Buffer.from(nom, 'utf8');
+    const d = Buffer.from(contingut, 'utf8');
+    const crc = 0;                        // ningú no el mira per llegir
+
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4); local.writeUInt16LE(0, 6); local.writeUInt16LE(0, 8);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(d.length, 18); local.writeUInt32LE(d.length, 22);
+    local.writeUInt16LE(n.length, 26);
+    /* UN EXTRA DE MENTIDA, i és el que fa que la prova valgui: el directori
+       central i la capçalera local poden tenir extres de mides diferents, i
+       qui llegeix el zip de pressa se salta aquest i llegeix les dades
+       desplaçades. */
+    const extra = Buffer.alloc(6);
+    local.writeUInt16LE(extra.length, 28);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(d.length, 20); central.writeUInt32LE(d.length, 24);
+    central.writeUInt16LE(n.length, 28);
+    central.writeUInt16LE(0, 30);         // sense extra aquí: mides diferents
+    central.writeUInt32LE(0, 42);         // el local comença al byte 0
+
+    const fi = Buffer.alloc(22);
+    fi.writeUInt32LE(0x06054b50, 0);
+    fi.writeUInt16LE(1, 8); fi.writeUInt16LE(1, 10);
+    fi.writeUInt32LE(central.length + n.length, 12);
+    fi.writeUInt32LE(local.length + n.length + extra.length + d.length, 16);
+
+    return Buffer.concat([local, n, extra, d, central, n, fi]);
+  }
+
+  const xml = '<?xml version="1.0"?><w:document><w:body>' +
+    '<w:p><w:r><w:t>Benvolgudes fam&#237;lies,</w:t></w:r></w:p>' +
+    '<w:p><w:r><w:t>Us fem arribar aquesta carta.</w:t></w:r></w:p>' +
+    '</w:body></w:document>';
+  const docx = zipDunFitxer('word/document.xml', xml);
+
+  const t = D.textDeDocx(docx);
+  cal('llegeix un .docx sense comprimir', /Benvolgudes fam[íi]lies/.test(t), JSON.stringify(t));
+  cal('i respecta els paràgrafs', t.split('\n').length === 2, JSON.stringify(t));
+  cal('i desfà les entitats XML', t.indexOf('&#237;') === -1 && t.indexOf('í') !== -1, t);
+
+  let noZip = false;
+  try { D.textDeDocx(Buffer.from('això no és un zip')); } catch (e) { noZip = true; }
+  cal('el que no és un zip, ho diu', noZip, 'ho ha provat igualment');
+}
+
+console.log('\nDocuments: el jutge que evita els resums inventats');
+{
+  /* És l'única cosa que separa «t'explico el document» de «m'invento un resum
+     d'un document que no he pogut llegir». */
+  cal('un text català passa',
+      D.sembla_text_de_debo_('Benvolgudes famílies, us fem arribar aquesta carta per tal ' +
+        'd\'informar-vos de tot el que necessiteu saber perquè el casal comenci bé aquest ' +
+        'estiu. Les activitats seran del catorze al vint-i-cinc de juliol.'));
+  cal('i un d\'anglès també',
+      D.sembla_text_de_debo_('The idea is to create an avatar of the host, so that the ' +
+        'introduction of every module feels the same and the students recognise it from ' +
+        'the very first video they watch in the course.'));
+
+  /* Això és text de debò d'un PDF d'aquesta màquina, amb la font sense
+     traduir. Gairebé tot són lletres i per això passava la comprovació de
+     comptar caràcters: el que el delata és que la meitat de paraules no
+     tenen cap vocal. */
+  cal('una font sense traduir NO passa',
+      !D.sembla_text_de_debo_('!]GkYI h jgkEjkg I <[G jQZQ[O Í ¬®þÿ [ jg ]GkEjQ][ ' +
+        '<[G q IYE ]ZI ¥ 6 $ < p < j <g¦ Æ Í ¬®þÿ !]G kYI ]qIgpQIr'));
+  cal('ni un perfil de color',
+      !D.sembla_text_de_debo_('gTRC´(bTRC´(cprtÜ<mlucenUSXGoogle/Skia/7C5FA215139747' +
+        '4A0486BBCC83733D59XYZ o¢8õXYZ b·ÚXYZ $ ¶ÏXYZ öÖÓ-para'));
+  cal('ni quatre paraules soltes', !D.sembla_text_de_debo_('Acta 22 primària'));
+  cal('ni res buit', !D.sembla_text_de_debo_('') && !D.sembla_text_de_debo_(null));
+}
+
+console.log('\nDocuments: els de debò d\'aquesta màquina');
+{
+  /* Si n'hi ha a mà, es fan servir: una prova amb els fitxers de veritat val
+     més que deu inventades. Si no n'hi ha, no falla: es diu i s'acaba. */
+  const trobats = { '.docx': [], '.pdf': [], '.pptx': [] };
+  const fins = Date.now() + 6000;
+  const salta = ['windows', 'program files', 'program files (x86)', 'programdata',
+                 'appdata', 'node_modules', '.git', '$recycle.bin'];
+  (function mira(d, f) {
+    if (Date.now() > fins || f > 5) return;
+    let l; try { l = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    for (const x of l) {
+      if (x.name.startsWith('.') || x.name.startsWith('~$')) continue;
+      const c = path.join(d, x.name);
+      if (x.isDirectory()) { if (!salta.includes(x.name.toLowerCase())) mira(c, f + 1); continue; }
+      const e = path.extname(x.name).toLowerCase();
+      if (trobats[e] && trobats[e].length < 8) trobats[e].push(c);
+    }
+  })(os.homedir(), 0);
+
+  let quants = 0, llegits = 0, dolents = [];
+  Object.keys(trobats).forEach((ext) => {
+    trobats[ext].forEach((p) => {
+      quants++;
+      try {
+        const t = D.textDe(p);
+        llegits++;
+        /* EL QUE NO POT PASSAR MAI: que torni símbols com si fossin un text.
+           Es mira només als PDF, que és on hi ha el risc —un Word o una
+           presentació porten el text escrit i el que en surt és el que hi
+           havia, encara que siguin quatre línies. */
+        if (ext === '.pdf' && !D.sembla_text_de_debo_(t)) dolents.push(path.basename(p));
+      } catch (e) { /* dir que no és una resposta bona */ }
+    });
+  });
+
+  if (!quants) {
+    console.log('  --     (no he trobat cap document a mà; aquesta part no s\'ha provat)');
+  } else {
+    cal('llegeix la majoria dels documents que hi ha a la màquina',
+        llegits / quants >= 0.6, llegits + ' de ' + quants);
+    cal('i mai no torna un text que no ho sigui', dolents.length === 0, dolents.join(', '));
+  }
+}
+
+console.log('\nQue l\'ajudant faci servir tot això');
+{
+  const provaCami = path.join(os.homedir(), 'Documents', 'jefe-prova-esborrable.docx');
+  /* No cal que sigui un docx de debò: el que es prova és que l'ajudant
+     l'ENVIÏ al lector de documents en comptes de dir que no en sap. */
+  fs.writeFileSync(provaCami, 'no soc un zip', 'utf8');
+  try {
+    const r = await truca({ verb: 'llegeix', args: { cami: provaCami } });
+    cal('els .docx ja no són «no sé llegir això»',
+        !/Encara no sé llegir/.test(r.dades.error || ''), r.dades.error);
+  } finally {
+    fs.unlinkSync(provaCami);
+  }
+
+  /* El .doc vell ha d'EXISTIR per arribar al missatge: primer es mira si el
+     fitxer hi és. Amb un camí inventat el que es prova és l'altra cosa. */
+  const vell = path.join(os.homedir(), 'Documents', 'jefe-prova-esborrable.doc');
+  fs.writeFileSync(vell, 'binari de fa vint anys', 'utf8');
+  try {
+    const doc = await truca({ verb: 'llegeix', args: { cami: vell } });
+    cal('i els .doc antics es distingeixen dels .docx',
+        /abans del 2007/.test(doc.dades.error || ''), doc.dades.error);
+  } finally {
+    fs.unlinkSync(vell);
+  }
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

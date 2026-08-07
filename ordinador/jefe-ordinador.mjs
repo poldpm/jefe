@@ -61,6 +61,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { textDe, AMB_FORMAT } from './documents.mjs';
 
 // ─────────────────────────────────────────────────────────────── configuració
 
@@ -176,6 +177,25 @@ function clau() {
 }
 
 const CLAU = clau();
+
+/**
+ * La data del codi que hi ha corrent ara mateix. Vegeu `hola`.
+ *
+ * ES MIRA UN COP, EN ARRENCAR, i és tot el sentit que té. Mirant-la a cada
+ * petició es llegiria el fitxer del DISC, que és el nou, i per tant sempre
+ * quadraria: un programa vell diria que és l'últim i la comprovació no
+ * serviria de res. La primera versió d'això ho feia i no detectava res.
+ */
+function versioDelCodi_() {
+  try {
+    const aqui = new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+    const quan = ['jefe-ordinador.mjs', 'documents.mjs']
+      .map((f) => { try { return fs.statSync(path.join(aqui, f)).mtimeMs; } catch (e) { return 0; } });
+    return new Date(Math.max.apply(null, quan)).toISOString().slice(0, 19).replace('T', ' ');
+  } catch (e) { return '?'; }
+}
+
+const VERSIO = versioDelCodi_();
 
 // ─────────────────────────────────────────────────────────────────── camins
 
@@ -359,19 +379,28 @@ const VERBS = {
     if (fs.statSync(cami).isDirectory()) throw new Error('Això és una carpeta, no un document.');
 
     const ext = path.extname(cami).toLowerCase();
-    if (LLEGIBLES.indexOf(ext) === -1) {
-      /* DIR-HO EN COMPTES DE TORNAR BROSSA. Un PDF llegit com a text són
-         quatre paraules soltes entre símbols, i la IA hi construiria un
-         resum a partir del no-res. Val més que t'ho obri i te'l miris. */
+
+    /* DUES MENES DE DOCUMENT. Els de text pla es llegeixen i ja està; els que
+       porten format —PDF, Word, presentacions— s'han de desempaquetar, i
+       d'això se n'encarrega `documents.mjs`. Quan no se'n pot treure text de
+       debò, allà es llança i el missatge arriba tal qual: dir-ho és millor
+       que tornar símbols que la IA convertiria en un resum inventat. */
+    let text, com;
+    if (AMB_FORMAT.indexOf(ext) !== -1 || ext === '.doc') {
+      text = textDe(cami);
+      com = ext.slice(1);
+    } else if (LLEGIBLES.indexOf(ext) !== -1) {
+      text = fs.readFileSync(cami, 'utf8');
+      com = 'text';
+    } else {
       throw new Error('Encara no sé llegir els «' + (ext || 'sense extensió') +
                       '». Te\'l puc obrir i te\'l mires tu.');
     }
 
-    let text = fs.readFileSync(cami, 'utf8');
     const sencer = text.length;
     if (text.length > MAX_TEXT) text = text.slice(0, MAX_TEXT);
     return {
-      cami, nom: path.basename(cami), text,
+      cami, nom: path.basename(cami), text, com,
       caracters: sencer,
       retallat: sencer > MAX_TEXT
     };
@@ -403,6 +432,12 @@ const VERBS = {
       jefe: 'ordinador',
       maquina: os.hostname(),
       sistema: process.platform,
+      /* DE QUAN ÉS EL CODI QUE ESTÀ CORRENT. Un programa que es queda obert
+         és un programa que es queda VELL: canvies el fitxer, tornes a provar,
+         i el que contesta és el d'abans. M'hi vaig passar una estona buscant
+         per què els .docx seguien dient «no sé llegir això» quan feia deu
+         minuts que sí que en sabia. Amb això, les proves ho poden veure. */
+      versio: VERSIO,
       casa: os.homedir(),
       arrels: ARRELS,
       verbs: Object.keys(VERBS),
