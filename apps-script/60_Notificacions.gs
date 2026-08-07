@@ -173,6 +173,24 @@ var Notifica = (function () {
    * on et porta en tocar-la, perquè el destí és el mateix apartat. El cos és
    * on hi ha el contingut i el següent pas.
    *
+   * LA FORMA ÉS «Apartat» O «Apartat · què». La segona és per quan d'un mateix
+   * apartat en surt més d'una mena de notificació i saber quina és canvia si
+   * l'obres ara o després. Totes les de l'app hi caben:
+   *
+   *   Calendari · 3 cites      Diari · resum          Finances · banc
+   *   Nutrició · tancament     Diari · revisió        Finances · patrimoni
+   *   Escola · acta            El dia · demà          Seguiment FitFat
+   *
+   * TRES PARAULES, i el punt volat no compta. Un títol de sis paraules és una
+   * frase, i una frase al títol vol dir que el cos la tornarà a dir. Això no
+   * és un consell: `eines/prova.mjs` llegeix els títols escrits al codi i peta
+   * si n'hi ha cap de llarg.
+   *
+   * QUI EL POSA. Als avisos programats i als senyals, el NUCLI: el mòdul diu
+   * què passa i el nucli sap d'on ve, perquè és qui té el registre. Així cap
+   * mòdul no s'ha de recordar d'aquesta regla —que és l'única manera que una
+   * regla sobrevisqui al vuitè lloc on s'aplica.
+   *
    * opcions: { url, etiqueta, urgent }
    *   url      — on va en tocar-la (relativa a l'app)
    *   etiqueta — les notificacions amb la mateixa etiqueta es reemplacen

@@ -337,9 +337,14 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
      COS i el títol diu d'on ve: el que no pot ser és que els dos diguin el
      mateix, que és el que passava al calendari amb una sola cita. */
   cal('el títol diu d\'on ve i el cos què queda pendent',
-      notificacions.length === 1 && notificacions[0].titol === 'Resum del dia' &&
+      notificacions.length === 1 && notificacions[0].titol === 'Diari · resum' &&
       /hàbits pendents/i.test(notificacions[0].cos),
       JSON.stringify(notificacions[0]));
+  /* I NOMÉS UNA VEGADA. Sense IA, darrere dels pendents hi anava la llista
+     sencera de fets, que els tornava a dir amb els punts de la llista pel mig:
+     «Hàbits pendents: 2. · Hàbits pendents: 2 · · Tasques per fer: 5». */
+  cal('i sense IA no repeteix els pendents darrere seu',
+      notificacions[0].cos === 'Hàbits pendents: 2', notificacions[0].cos);
 
   // Repetir-lo no n'acumula un segon.
   ctx.Diari.generaDiari(AVUI);
@@ -359,6 +364,42 @@ console.log('\nDiari: afegir no és substituir, i el resum no depèn de la IA');
   let hoImpedeix = false;
   try { ctx.Diari.escriu('2026-09-01', 'del futur', 0, 'app'); } catch (err) { hoImpedeix = true; }
   cal('no deixa escriure un dia que no ha arribat', hoImpedeix, 'ho ha deixat fer');
+
+  /* ────────────────────────────────────────────────────────────────────
+     I ARA AMB LA IA ENCESA, que és d'on venia el problema de debò.
+     Al telèfon arribava això:
+       «Hàbits pendents: 5 · escola: 1 · vas en negatiu: −599,73 €.
+        Tens 5 hàbits pendents i 1 tema d'escola per demà. Ves a dormir.»
+     La segona meitat no afegia res. A la instrucció ja se li diu que no ho
+     faci; això és el que ho talla quan hi torna igualment. */
+  let elQueDiuLaIA = '';
+  ctx.IA = { disponible: () => true, genera: () => ({ text: elQueDiuLaIA }) };
+  const cosAmbIA = (diu) => {
+    elQueDiuLaIA = diu;
+    notificacions.length = 0;
+    ctx.Diari.generaDiari(AVUI);
+    return notificacions[0].cos;
+  };
+
+  cal('la frase que recompta els pendents cau',
+      cosAmbIA('Tens 2 hàbits pendents. Ves a dormir.') === 'Hàbits pendents: 2. Ves a dormir.',
+      cosAmbIA('Tens 2 hàbits pendents. Ves a dormir.'));
+  cal('la que no porta cap xifra no es toca mai',
+      cosAmbIA('Demà et llevaràs abans.') === 'Hàbits pendents: 2. Demà et llevaràs abans.');
+  /* Una frase amb una xifra NOVA es queda sencera encara que en repeteixi
+     alguna: allò que la llista no diu val més que la repetició que arrossega. */
+  cal('la que porta una xifra nova es queda',
+      cosAmbIA('El control fa 6 dies que no es fa i tens 2 hàbits pendents.')
+        === 'Hàbits pendents: 2. El control fa 6 dies que no es fa i tens 2 hàbits pendents.');
+  cal('si tot el comentari repetia, queden només els pendents',
+      cosAmbIA('Tens 2 hàbits pendents.') === 'Hàbits pendents: 2');
+
+  /* I al diari hi ha de quedar el comentari SENCER: allà es llegeix sota la
+     llista i com a tancament del dia, que és el seu lloc. */
+  elQueDiuLaIA = 'Tens 2 hàbits pendents. Ves a dormir.';
+  const ambIA = ctx.Diari.generaDiari(AVUI);
+  cal('però al diari hi queda el comentari sencer',
+      ambIA.text.indexOf('Tens 2 hàbits pendents. Ves a dormir.') !== -1, ambIA.text);
 }
 
 // ------------------------------------------------------- l'agenda de les sis
@@ -2065,6 +2106,26 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
   cal('cap notificació porta a una pantalla que no existeix',
       dolents.length === 0, dolents.map((d) => d.on + ' → ' + d.url).join(' · '));
 
+  /* I CAP NO POT ANAR SENSE ETIQUETA. Les que no en porten arriben totes amb
+     la mateixa —«jefe»—, i al telèfon una etiqueta repetida no vol dir dues
+     notificacions: vol dir que la segona tapa la primera. Els senyals hi anaven
+     així, i com que en surten dos al dia, la meitat no s'arribaven a veure. */
+  const senseEtiqueta = [];
+  let mirades = 0;
+  fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).forEach((f) => {
+    const t = fs.readFileSync('apps-script/' + f, 'utf8');
+    let i = 0;
+    while ((i = t.indexOf('Notifica.envia(', i)) !== -1) {
+      mirades++;
+      const tros = t.slice(i, i + 700);
+      if (!/etiqueta:/.test(tros)) senseEtiqueta.push(f + ':' + t.slice(0, i).split('\n').length);
+      i += 15;
+    }
+  });
+  cal('es miren totes les notificacions del codi', mirades >= 9, mirades + ' mirades');
+  cal('cada notificació porta la seva etiqueta', senseEtiqueta.length === 0,
+      senseEtiqueta.join(' · '));
+
 
   /* EL TÍTOL NO POT DIR EL MATEIX QUE EL COS. Amb una sola cita al calendari
      sortia «Montgrony 7:00-15:00» de títol i «Montgrony 7:00-15:00» de cos:
@@ -2086,7 +2147,11 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
       junta('Bon dia, Pol!', '09:00 Claustre'));
 
   /* Els títols escrits al codi han de ser curts. Un títol de sis paraules és
-     una frase, i una frase al títol vol dir que el cos la repetirà. */
+     una frase, i una frase al títol vol dir que el cos la repetirà.
+
+     EL PUNT VOLAT NO ÉS UNA PARAULA. La forma és «Apartat · què» —«Diari ·
+     resum», «Finances · patrimoni»— i comptar el separador com a paraula
+     deixava el pressupost real en dues. Es treu abans de comptar. */
   const titols = [];
   fs.readdirSync('apps-script').filter((f) => f.endsWith('.gs')).forEach((f) => {
     const t = fs.readFileSync('apps-script/' + f, 'utf8');
@@ -2098,9 +2163,22 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
     }
   });
   cal('es troben els títols escrits al codi', titols.length >= 4, titols.length + ' trobats');
-  const llargs = titols.filter((t) => t.titol.split(/\s+/).length > 3);
+  const paraules = (t) => t.split(/\s+/).filter((p) => p && p !== '·').length;
+  const llargs = titols.filter((t) => paraules(t.titol) > 3);
   cal('cap títol és una frase', llargs.length === 0,
       llargs.map((t) => t.on + ': «' + t.titol + '»').join(' · '));
+
+  /* I CAP NO POT SER UNA COSA QUE PASSA. Els títols han de dir d'on ve la
+     notificació, i el que es va escapar era just al revés: «Resum del dia»,
+     «Revisió setmanal», «Banc», «Demà». Es comprova que cadascun comenci per
+     un apartat de debò —el nom d'un mòdul o d'una pantalla de l'app. */
+  const APARTATS = ['Calendari', 'Diari', 'Escola', 'Finances', 'Hàbits', 'Nutrició',
+                    'Tasques', 'Focus', 'Relacions', 'Memòria', 'Seguiment', 'El dia',
+                    'La setmana', 'Prova'];
+  const forasters = titols.filter((t) =>
+    !APARTATS.some((a) => t.titol === a || t.titol.indexOf(a + ' · ') === 0));
+  cal('cada títol comença per l\'apartat d\'on ve', forasters.length === 0,
+      forasters.map((t) => t.on + ': «' + t.titol + '»').join(' · '));
 
   /* I la còpia del treballador de servei ha de dir el mateix: és la que mana
      quan la notificació ja és al telèfon i l'app està tancada. */
@@ -2168,7 +2246,8 @@ console.log('\nEl repàs de demà: què tens i què no cal dir-te');
   ctx.triggerDema();
 
   cal('pregunta pel dia de DEMÀ, no per avui', ctx.__data === '2026-08-07', String(ctx.__data));
-  cal('el títol és una paraula', enviades.length === 1 && enviades[0].t === 'Demà',
+  cal('el títol diu quina pantalla obre i quin dia',
+      enviades.length === 1 && enviades[0].t === 'El dia · demà',
       JSON.stringify(enviades[0]));
   cal('el cos porta un bloc per línia',
       enviades[0].c.split('\n').length === 2, JSON.stringify(enviades[0].c));
@@ -2186,6 +2265,36 @@ console.log('\nEl repàs de demà: què tens i què no cal dir-te');
   let petat = false;
   try { ctx.triggerDema(); } catch (e) { petat = true; }
   cal('i si alguna cosa peta, no tomba el trigger', !petat);
+
+  /* EL BANC I EL PATRIMONI, tal com arriben. Els dos deien alguna cosa dues
+     vegades: el banc repetia «moviments» tres cops en dues frases i el
+     patrimoni escrivia el nom del valor abans i dins del detall. */
+  ctx.Notifica.junta = (a, b) => (!a ? b : !b ? a : a + '. ' + b);
+  ctx.ambBloqueig_ = (fn) => fn();
+  ctx.Finances = { eur: (n) => n.toFixed(2).replace('.', ',') + ' €',
+                   generaRecurrents: () => [] };
+  ctx.FinancesBanc = { disponible: () => true,
+                       sincronitzaSiCal: () => ({ nous: 5, perRevisar: 3, jaSabuts: 2 }) };
+  enviades = [];
+  ctx.triggerBanc();
+  cal('el banc diu què has de fer i d\'on surt, sense repetir-se',
+      enviades[0].t === 'Finances · banc' &&
+      enviades[0].c === '3 moviments per classificar. N\'han entrat 5 i de 2 ja sabia què eren.',
+      JSON.stringify(enviades[0]));
+
+  ctx.FinancesBanc.sincronitzaSiCal = () => ({ nous: 1, perRevisar: 1, jaSabuts: 0 });
+  enviades = [];
+  ctx.triggerBanc();
+  cal('i si tots els que entren són per classificar, no ho diu dues vegades',
+      enviades[0].c === '1 moviment nou per classificar.', enviades[0].c);
+
+  ctx.Finances.patrimoni = () => ({ total: 12345.6, actius: [{ nom: 'El pis', dies: 40 }] });
+  enviades = [];
+  ctx.triggerPatrimoni();
+  cal('amb un sol valor, el patrimoni no escriu el nom dues vegades',
+      enviades[0].t === 'Finances · patrimoni' &&
+      enviades[0].c === 'Toca actualitzar El pis (fa 40 dies). Ara mateix tens anotat 12345,60 €.',
+      JSON.stringify(enviades[0]));
 
   /* Els mòduls que no tenen res a dir d'un dia futur han de callar ells
      mateixos: si no, el repàs de la nit et diria «et falten 9 hàbits» cada
@@ -2989,7 +3098,12 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
   };
 
   let enviades = [];
-  ctx.Notifica = { envia: (t, c, o) => { enviades.push({ t, c, url: o && o.url }); return { enviades: 1 }; } };
+  /* `junta` no es dobla: és la que decideix com queda el cos que arriba al
+     telèfon, i doblar-la voldria dir comprovar una altra cosa. */
+  ctx.Notifica = {
+    junta: (a, b) => (!a ? b : !b ? a : a + (/[.!?:;·…]$/.test(a) ? ' ' : '. ') + b),
+    envia: (t, c, o) => { enviades.push({ t, c, url: o && o.url, etiqueta: o && o.etiqueta }); return { enviades: 1 }; }
+  };
 
   const senyal = (id, urgencia) => ({ id, titol: 'T', text: 'passa una cosa', urgencia });
   let elsMeus = [senyal('a', 3), senyal('b', 2), senyal('c', 1)];
@@ -2999,6 +3113,21 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
   cal('en troba tres i n\'envia dos', r1.trobats === 3 && r1.enviats === 2, JSON.stringify(r1));
   cal('i envia els MÉS urgents, no els primers que troba',
       enviades.length === 2 && r1.quins.join(',') === 'a,b', JSON.stringify(r1.quins));
+
+  /* EL TÍTOL DEL SENYAL NO ÉS EL DE LA NOTIFICACIÓ. A la barra hi has de
+     llegir d'on et parlen; què passa ja ho diu el cos, i el títol del senyal
+     l'encapçala perquè no es perdi. */
+  cal('el títol de la notificació és l\'apartat, no el del senyal',
+      enviades[0].t === 'Prova', JSON.stringify(enviades[0]));
+  cal('i el que deia el senyal encapçala el cos',
+      enviades[0].c === 'T. passa una cosa', enviades[0].c);
+
+  /* Sense etiqueta pròpia totes arribaven com a «jefe», i al telèfon això no
+     vol dir dues notificacions: vol dir que la segona tapa la primera. */
+  cal('cada senyal porta la seva etiqueta, i no la comparteix',
+      enviades[0].etiqueta === 'senyal-a' && enviades[1].etiqueta === 'senyal-b',
+      JSON.stringify(enviades.map((e) => e.etiqueta)));
+
   cal('el que s\'ha callat també queda apuntat',
       files.length === 3 && files.filter((f) => !f.enviat_el).length === 1,
       JSON.stringify(files.map((f) => f.senyal + ':' + (f.enviat_el ? 'dit' : 'callat'))));
@@ -3047,6 +3176,31 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
   enviades = [];
   const r6 = ctx.Senyals.passa({});
   cal('un mòdul que peta no s\'emporta els altres', r6.enviats === 1, JSON.stringify(r6));
+
+  /* Quan el senyal ja es diu com el seu apartat —l'escola en diu «Escola» i el
+     mòdul també— no s'ha de dir dues vegades en dues línies seguides. */
+  ctx.Utils.avui = () => '2026-08-26';
+  ctx.Utils.ara = () => '2026-08-26T10:00:00+02:00';
+  ctx.Moduls = { actius: () => [{ id: 'igualet', nom: 'Prova', senyals: () =>
+    [{ id: 'igual', titol: 'Prova', text: 'passa una cosa', urgencia: 3 }] }] };
+  enviades = [];
+  ctx.Senyals.passa({});
+  cal('si el senyal es diu com l\'apartat, no es repeteix',
+      enviades.length === 1 && enviades[0].c === 'passa una cosa',
+      JSON.stringify(enviades[0]));
+
+  /* I un senyal pot obrir una pantalla que no es digui com el seu mòdul: la
+     conversa es diu «JEFE» i la seva obre «La setmana». El nom de l'app com a
+     títol no diu on et porta. */
+  ctx.Utils.avui = () => '2026-08-27';
+  ctx.Utils.ara = () => '2026-08-27T10:00:00+02:00';
+  ctx.Moduls = { actius: () => [{ id: 'conversa', nom: 'JEFE', senyals: () =>
+    [{ id: 'setmana', apartat: 'La setmana', titol: 'La setmana que ve',
+       text: 'tres coses esperen', urgencia: 1, accio: 'setmana' }] }] };
+  enviades = [];
+  ctx.Senyals.passa({});
+  cal('un senyal pot dir a quin apartat pertany la notificació',
+      enviades.length === 1 && enviades[0].t === 'La setmana', JSON.stringify(enviades[0]));
 
   /* I els mòduls de debò han de saber-ne declarar. */
   const declaren = ['40_Mod_Tasques.gs', '40_Mod_Habits.gs', '40_Mod_Nutricio.gs',

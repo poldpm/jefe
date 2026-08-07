@@ -873,7 +873,10 @@ var Nutricio = (function () {
     if (buits < 3) return [];
     return [{
       id: 'nutri_sense_registre',
-      titol: 'Menjar',
+      /* Sense títol a posta: la notificació ja s'encapçala «Nutrició» i posar
+         «Menjar» a la primera línia del cos seria dir dues vegades de què va.
+         El títol d'un senyal només val la pena quan afegeix alguna cosa que
+         el nom de l'apartat no diu —«Vençuda», «Encallada». */
       text: 'Fa ' + buits + ' dies que no hi ha res apuntat. Amb forats, la ' +
             'comparació amb el pes deixa de dir res: apunta el d\'avui i ja està.',
       urgencia: 2,

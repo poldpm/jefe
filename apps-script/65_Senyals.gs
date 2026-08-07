@@ -33,11 +33,24 @@
  *   Un mòdul declara `senyals: function () { return [...] }` al seu
  *   descriptor. Cada senyal és:
  *
- *     { id, titol, text, urgencia, accio }
+ *     { id, titol, text, urgencia, accio, apartat }
  *
  *   `id` ha de ser ESTABLE per a la mateixa cosa —«tasca_encallada:tsk_123»—
  *   perquè la regla dels tres dies el pugui reconèixer. `urgencia` va d'1 a 3
  *   i és per ordenar, no per cridar.
+ *
+ * QUÈ ES VEU AL TELÈFON, I QUI HO DECIDEIX
+ *   El títol de la notificació NO és el del senyal: és el de l'apartat d'on
+ *   ve. A la barra hi caben tres o quatre paraules, i el que has de saber
+ *   abans de decidir si l'obres és d'on et parlen —«Tasques», «Hàbits»—, no
+ *   una frase que després el cos et tornarà a dir. El que el senyal escriu al
+ *   `titol` no es perd: encapçala el cos.
+ *
+ *   Ho posa AQUÍ el nucli i no cada mòdul, per la mateixa raó que als avisos
+ *   programats: una regla que s'ha de recordar a vuit llocs és una regla que
+ *   es trencarà al novè. Un senyal només ha de dir `apartat` si obre una
+ *   pantalla que no es diu com el seu mòdul —la conversa n'és l'únic cas:
+ *   el mòdul es diu «JEFE» i el senyal obre «La setmana».
  */
 
 var PROP_SENYALS_MAX = 2;          // quants n'hi ha cada dia, com a molt
@@ -62,7 +75,12 @@ var Senyals = (function () {
           out.push({
             id: String(s.id),
             modul: m[i].id,
-            titol: String(s.titol || m[i].nom),
+            /* L'apartat és el títol que arriba al telèfon; el títol del senyal
+               encapçala el cos. Quan diuen el mateix —l'escola en diu «Escola»
+               i el mòdul també— es deixa un de sol: repetir-ho seria dir dues
+               vegades la mateixa paraula en dues línies seguides. */
+            apartat: String(s.apartat || m[i].nom || m[i].id),
+            titol: String(s.titol || ''),
             text: String(s.text),
             urgencia: Math.max(1, Math.min(3, Number(s.urgencia) || 1)),
             accio: s.accio || m[i].id
@@ -137,7 +155,14 @@ var Senyals = (function () {
       apunta_(s, toca ? Utils.ara() : '');
       if (!toca) return;
       try {
-        Notifica.envia(s.titol, s.text, { url: s.accio });
+        /* L'ETIQUETA VA PER SENYAL. Sense posar-ne cap, totes arribaven amb la
+           mateixa —«jefe»— i al telèfon una etiqueta repetida no vol dir dues
+           notificacions: vol dir que la segona TAPA la primera. Amb dos
+           senyals al dia, això és la meitat dels avisos perduts. */
+        Notifica.envia(
+          s.apartat,
+          Notifica.junta(s.titol === s.apartat ? '' : s.titol, s.text),
+          { url: s.accio, etiqueta: 'senyal-' + s.id });
         enviats.push(s.id);
       } catch (err) {
         Log.avis('senyals', 'No he pogut avisar de ' + s.id + ': ' + err.message);
@@ -167,7 +192,9 @@ var Senyals = (function () {
       }
       Dades.insereix(FULL, {
         clau: clau, senyal: s.id, modul: s.modul, data: avui,
-        titol: s.titol, text: s.text, urgencia: s.urgencia,
+        // Al full i a la pantalla d'inici hi ha d'haver sempre un títol: si el
+        // senyal no en porta, el de l'apartat fa la feina.
+        titol: s.titol || s.apartat, text: s.text, urgencia: s.urgencia,
         enviat_el: enviatEl || ''
       }, 'sen');
     } catch (err) {

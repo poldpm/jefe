@@ -65,7 +65,11 @@ function MODUL_CONVERSA() {
       if (!s.pila.length) return [];
       return [{
         id: 'prepara_setmana:' + s.desde,
-        titol: 'La setmana que ve',
+        /* Aquest mòdul es diu «JEFE» i el senyal obre «La setmana». És l'únic
+           lloc on el títol de la notificació no pot sortir del nom del mòdul:
+           «JEFE» no diu on et porta, i el nom de l'app com a títol no informa
+           de res. Vegeu el contracte a 65_Senyals.gs. */
+        apartat: 'La setmana',
         text: s.pila.length + (s.pila.length === 1 ? ' cosa espera' : ' coses esperen') +
               ' sense dia. Cinc minuts ara i dilluns ja saps per on comences.',
         urgencia: 1,

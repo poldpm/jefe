@@ -476,10 +476,7 @@ function triggerAgendaDelDia() {
     }
 
     var e = d.esdeveniments;
-    var ambHora = e.filter(function (x) { return !x.totElDia; });
 
-    /* El títol ha de servir sol des de la pantalla blocada: la primera cosa
-       de debò i a quina hora, que és el que et fa aixecar o no córrer. */
     /* El títol era la primera cita i el cos la llista de cites: amb una de
        sola, la notificació es deia dues vegades el mateix. Ara el títol diu
        d'on ve i quantes n'hi ha, i el cos les diu. */
@@ -539,7 +536,7 @@ function triggerTancamentNutricio() {
     }
 
     var r = Notifica.envia(
-      'Nutrició',
+      'Nutrició · tancament',
       'Falten les calories cremades. Portes ' + Math.round(d.totals.ingerides) +
         ' kcal i ' + Nutricio.r1(d.totals.proteina) + ' g de proteïna: entra el que ' +
         'has cremat i el dia queda tancat.',
@@ -593,13 +590,21 @@ function triggerBanc() {
       return;
     }
 
-    Notifica.envia(
-      'Banc',
-      r.perRevisar + (r.perRevisar === 1 ? ' moviment per classificar' : ' moviments per classificar') +
-        '. Han entrat ' + r.nous + ' moviments' +
-        (r.jaSabuts ? ' i ' + r.jaSabuts + ' ja sabia què eren' : '') + '.',
-      { etiqueta: 'finances-banc', url: './#finances' }
-    );
+    /* «Moviments» una vegada i prou. Deia «3 moviments per classificar. Han
+       entrat 5 moviments i 2 ja sabia què eren» —tres cops la mateixa paraula
+       en dues frases—, i quan tots els que entraven eren per classificar
+       acabava en «1 moviment per classificar. N'han entrat 1», que és la
+       segona frase dient el que ja deia la primera. */
+    var cos = r.perRevisar === r.nous
+      ? r.nous + (r.nous === 1 ? ' moviment nou per classificar.'
+                               : ' moviments nous per classificar.')
+      : r.perRevisar + (r.perRevisar === 1 ? ' moviment per classificar'
+                                           : ' moviments per classificar') +
+        '. N\'han entrat ' + r.nous +
+        (r.jaSabuts ? ' i de ' + r.jaSabuts + ' ja sabia què eren' : '') + '.';
+
+    Notifica.envia('Finances · banc', cos,
+      { etiqueta: 'finances-banc', url: './#finances' });
   } catch (err) {
     Log.error('trigger.banc', err);
   }
@@ -635,11 +640,16 @@ function triggerPatrimoni() {
       return a.dies === null ? a.nom + ' (mai)' : a.nom + ' (fa ' + a.dies + ' dies)';
     }).join(', ');
 
+    /* AMB UN DE SOL, EL NOM SORTIA DUES VEGADES: «Toca actualitzar el pis: el
+       pis (fa 40 dies)». El detall ja porta el nom, o sigui que quan n'hi ha
+       un de sol l'encapçalament no l'ha de repetir. */
+    var quins = vells.length === 1
+      ? 'Toca actualitzar ' + detall
+      : vells.length + ' valors per actualitzar: ' + detall;
+
     Notifica.envia(
-      'Patrimoni',
-      (vells.length === 1 ? 'Toca actualitzar ' + vells[0].nom
-                          : vells.length + ' valors per actualitzar') + ': ' +
-        detall + '. Ara mateix tens anotat ' + Finances.eur(p.total) + '.',
+      'Finances · patrimoni',
+      quins + '. Ara mateix tens anotat ' + Finances.eur(p.total) + '.',
       { etiqueta: 'patrimoni', url: './#finances' }
     );
     Log.info('trigger.patrimoni', 'Recordatori enviat', { vells: vells.length });
@@ -2639,8 +2649,11 @@ function triggerDema() {
     }).join('\n');
 
     var quantes = blocs.reduce(function (n, b) { return n + b.coses.length; }, 0);
+    /* «El dia» és la pantalla que obre; «demà» és quin. La resta de
+       notificacions diuen d'on venen igual: «Calendari», «Nutrició ·
+       tancament», «Diari · resum». */
     var r = Notifica.envia(
-      'Demà',
+      'El dia · demà',
       cos,
       { etiqueta: 'dema', url: './#dia:' + dema }
     );

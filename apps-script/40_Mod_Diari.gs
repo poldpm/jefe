@@ -350,6 +350,57 @@ var Diari = (function () {
   // ------------------------------------------------------- el resum de la nit
 
   /**
+   * ══════════════════════════════════════════════════════════════════════
+   * QUE LA NOTIFICACIÓ NO ES DIGUI DUES VEGADES LA MATEIXA COSA
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * El cos del resum són dues peces: la llista de pendents, que la fa el codi
+   * i sempre és exacta, i una frase de tancament que hi posa la IA. Arribaven
+   * així al telèfon:
+   *
+   *   «Hàbits pendents: 5 · escola: 1 · vas en negatiu: −599,73 €.
+   *    Tens 5 hàbits pendents i 1 tema d'escola per demà. Ves a dormir.»
+   *
+   * La segona meitat no afegia res: repetia la primera amb altres paraules.
+   * Una notificació que es diu dues vegades el mateix no el diu dues vegades:
+   * el diu cap, perquè deixes de llegir-la.
+   *
+   * DEMANAR-LI QUE NO HO FACI NO N'HI HA PROU. Ja se li diu a la instrucció,
+   * i un model prou sovint hi torna. Això ho talla sense demanar permís:
+   *
+   *   · frase per frase, no tot o res. «Ves a dormir» no repeteix res i es
+   *     queda; la frase que recompta els pendents se'n va.
+   *   · el que decideix són les XIFRES, que és per on es repeteix de debò.
+   *     Una frase amb números que ja són a la llista i cap de nou, fora. Si
+   *     en porta un de nou —«fa 6 dies del control»— es queda sencera: allò
+   *     sí que és una cosa que la llista no diu.
+   *   · una frase sense cap número no es toca mai.
+   *
+   * NOMÉS AFECTA LA NOTIFICACIÓ. Al diari hi queda el comentari sencer: allà
+   * el llegeixes sota la llista i com a tancament del dia, que és el seu lloc.
+   */
+  function senseRepetir_(comentari, jaDit) {
+    var text = String(comentari || '').trim();
+    if (!text) return '';
+
+    var XIFRA = /-?\d+(?:[.,]\d+)?/g;
+    var velles = {};
+    (String(jaDit || '').match(XIFRA) || []).forEach(function (n) { velles[n] = true; });
+
+    var frases = text.match(/[^.!?…]+[.!?…]*/g) || [text];
+    var queden = frases.filter(function (f) {
+      var seves = f.match(XIFRA) || [];
+      if (!seves.length) return true;                       // sense xifres, no repeteix
+      for (var i = 0; i < seves.length; i++) {
+        if (!velles[seves[i]]) return true;                 // en porta una de nova
+      }
+      return false;
+    });
+
+    return queden.join('').trim();
+  }
+
+  /**
    * EL RESUM DE LES DEU DEL VESPRE.
    *
    * Els fets els posa el nucli preguntant a cada mòdul. La IA només hi afegeix
@@ -373,8 +424,10 @@ var Diari = (function () {
       'XIFRES D\'AVUI:\n' + fets.join('\n') +
       (meva && meva.text ? '\n\nEL QUE HA ESCRIT ELL AVUI AL DIARI:\n' + Utils.talla(meva.text, 600) : ''),
       'Escriu-li DUES frases com a molt tancant-li el dia. Directe, sense floritures i ' +
-      'sense felicitar-lo per res. Si hi ha alguna cosa pendent, digues-li quina i prou. ' +
-      'NO t\'inventis cap xifra: només pots fer servir les que hi ha aquí.');
+      'sense felicitar-lo per res. NO t\'inventis cap xifra: només pots fer servir les ' +
+      'que hi ha aquí. I NO REPETEIXIS la llista de pendents: ja la té al davant, ' +
+      'escrita just a sobre del que escriguis tu. Digues només alguna cosa que la ' +
+      'llista no digui, i si no en tens cap, tanca-li el dia amb una frase i prou.');
 
     if (comentari) text += '\n\n' + comentari;
 
@@ -389,9 +442,13 @@ var Diari = (function () {
     quePassa = quePassa.charAt(0).toUpperCase() + quePassa.slice(1);
 
     try {
+      /* I si no queda comentari —perquè la IA és apagada, ha fallat o només
+         repetia—, el cos és la llista de pendents i prou. Abans hi anaven tots
+         els fets del dia darrere, i això tornava a dir els pendents una segona
+         vegada amb els punts de la llista pel mig. */
       Notifica.envia(
-        'Resum del dia',
-        Notifica.junta(quePassa, comentari || fets.join(' · ')),
+        'Diari · resum',
+        Notifica.junta(quePassa, senseRepetir_(comentari, quePassa)),
         { url: 'diari', etiqueta: 'resum-diari' });
     } catch (err) {
       Log.error('diari.notifica', err);
@@ -469,8 +526,12 @@ var Diari = (function () {
 
     desaGenerat_(fins, 'revisio', text);
     try {
-      Notifica.envia('Revisió setmanal',
-        comentari || (blocs.length + ' apartats amb novetats. Obre-la per veure-la.'),
+      /* Igual que el resum de la nit: el títol diu d'on ve, i el cos comença
+         dient QUINA setmana —que és el que aquesta notificació ha de situar—
+         abans del que se n'ha de dir. */
+      Notifica.envia('Diari · revisió',
+        Notifica.junta('Setmana ' + quan,
+          comentari || (blocs.length + ' apartats amb novetats. Obre-la per veure-la.')),
         { url: 'diari', etiqueta: 'revisio-setmanal' });
     } catch (err) {
       Log.error('diari.notifica', err);
