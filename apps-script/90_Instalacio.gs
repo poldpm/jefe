@@ -1814,21 +1814,33 @@ function omplequiCobra(dies) {
   if (r.motiu) { a(r.motiu); a(''); a('=== FI ==='); return l.join('\n'); }
 
   a('Sense contrapart ....... ' + r.buits);
-  a('Transaccions mirades ... ' + r.mirats + ' (des del ' + r.desde + ')');
+  a('Finestres provades ..... ' + (r.provats || []).join(' · '));
+  a('Transaccions mirades ... ' + r.mirats +
+    (r.finestra ? ' (' + r.finestra + ' dies enrere)' : ''));
   a('Omplerts ............... ' + r.omplerts);
   a('');
   a('   amb el compte de qui cobra: ' + r.fonts.compte);
   a('   només amb el nom .........: ' + r.fonts.nom);
   a('   el banc no n\'envia cap ...: ' + r.fonts.cap);
-  if (r.errors && r.errors.length) { a(''); a('Errors: ' + r.errors.join(' · ')); }
+  if (r.errors && r.errors.length) { a(''); a('El banc ha dit:'); r.errors.forEach(function (x) { a('   ' + x); }); }
   a('');
-  if (r.omplerts) {
-    a('Fet. Executa provaQuiCobra() per veure com ha quedat.');
-    a('Els que no s\'han omplert són més vells que la finestra que el banc');
-    a('deixa consultar; aquells seguiran lligant pel text, com fins ara.');
+
+  if (r.caducat) {
+    a('LA SESSIÓ AMB EL BANC S\'HA ACABAT.');
+    a('   No és el període: el banc rebutja qualsevol finestra. Els permisos');
+    a('   que li vas donar caduquen cada pocs mesos i s\'han de renovar.');
+    a('   Executa connectaBanc() i torna a passar per la pàgina del banc.');
+  } else if (r.finestra === null) {
+    a('El banc no ha acceptat cap finestra. Mira el que ha dit aquí sobre.');
+  } else if (r.omplerts) {
+    a('Fet, i ara ja sabem que el teu banc deixa mirar ' + r.finestra + ' dies enrere.');
+    a('Queda desat: la propera vegada no caldrà endevinar-ho.');
+    a('Executa provaQuiCobra() per veure com ha quedat.');
+    a('Els moviments més vells que aquests ' + r.finestra + ' dies no s\'ompliran mai:');
+    a('aquells seguiran lligant pel text, com fins ara.');
   } else {
-    a('No se n\'ha omplert cap. O el banc no envia la contrapart, o els');
-    a('moviments són més vells del que et deixa consultar.');
+    a('El banc ha contestat, però no envia la contrapart de cap moviment.');
+    a('Els rebuts es lligaran pel text, que és el que es feia fins ara.');
   }
   a('');
   a('=== FI ===');

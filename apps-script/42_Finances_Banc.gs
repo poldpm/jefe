@@ -310,38 +310,68 @@ var FinancesBanc = (function () {
     });
     if (!buits) return { buits: 0, omplerts: 0, motiu: 'Ja el tenen tots.' };
 
-    var desde = Utils.aText(new Date(Date.now() - (Number(dies) || 180) * 864e5));
+    /* ELS DIES QUE EL TEU BANC DEIXA MIRAR ENRERE NO ELS SAP NINGÚ.
+       La primera vegada es van demanar cent vuitanta i el banc va contestar
+       «WRONG_TRANSACTIONS_PERIOD»: no és que la sessió estigui morta, és que
+       aquell període no el deixa. Cada banc en té un de diferent i no ho diu
+       enlloc, o sigui que es baixa fins que un funciona. Quan un funciona es
+       desa, i a partir d'aquí ja no s'endevina més. */
+    var escala = [];
+    if (Number(dies)) escala.push(Number(dies));
+    if (e.finestraDies) escala.push(Number(e.finestraDies));
+    [90, 60, 30, 10].forEach(function (d) { if (escala.indexOf(d) === -1) escala.push(d); });
+
     var trobats = {}, fonts = { compte: 0, nom: 0, cap: 0 };
-    var mirats = 0, errors = [];
+    var mirats = 0, errors = [], provats = [], finestra = null;
 
-    (e.accounts || []).forEach(function (compte) {
-      var continuacio = null, voltes = 0;
-      do {
-        var q = '?date_from=' + desde +
-                (continuacio ? '&continuation_key=' + encodeURIComponent(continuacio) : '');
-        var dades;
-        try {
-          dades = eb_('/accounts/' + compte.uid + '/transactions' + q, { method: 'get' });
-        } catch (err) {
-          errors.push('Compte ' + Utils.talla(compte.uid, 8) + ': ' + err.message);
-          return;
-        }
+    for (var i = 0; i < escala.length && finestra === null; i++) {
+      var desde = Utils.aText(new Date(Date.now() - escala[i] * 864e5));
+      var falla = null;
+      mirats = 0; trobats = {}; fonts = { compte: 0, nom: 0, cap: 0 };
 
-        (dades.transactions || []).forEach(function (b) {
-          var t = llegeixTransaccio_(b, compte.uid);
-          if (!t) return;
-          mirats++;
-          var idFila = perId[t.id];
-          if (!idFila) return;                       // o és nova, o ja el tenia
-          var qui = FinancesRegles.contrapart(b, t.esIngres);
-          fonts[qui.font === 'compte' ? 'compte' : qui.font === 'nom' ? 'nom' : 'cap']++;
-          if (!qui.valor) return;
-          trobats[idFila] = qui.valor;
-        });
+      (e.accounts || []).forEach(function (compte) {
+        if (falla) return;
+        var continuacio = null, voltes = 0;
+        do {
+          var q = '?date_from=' + desde +
+                  (continuacio ? '&continuation_key=' + encodeURIComponent(continuacio) : '');
+          var dades;
+          try {
+            dades = eb_('/accounts/' + compte.uid + '/transactions' + q, { method: 'get' });
+          } catch (err) {
+            falla = err.message;
+            return;
+          }
 
-        continuacio = dades.continuation_key;
-      } while (continuacio && ++voltes < 20);
-    });
+          (dades.transactions || []).forEach(function (b) {
+            var t = llegeixTransaccio_(b, compte.uid);
+            if (!t) return;
+            mirats++;
+            var idFila = perId[t.id];
+            if (!idFila) return;                     // o és nova, o ja el tenia
+            var qui = FinancesRegles.contrapart(b, t.esIngres);
+            fonts[qui.font === 'compte' ? 'compte' : qui.font === 'nom' ? 'nom' : 'cap']++;
+            if (!qui.valor) return;
+            trobats[idFila] = qui.valor;
+          });
+
+          continuacio = dades.continuation_key;
+        } while (continuacio && ++voltes < 20);
+      });
+
+      provats.push(escala[i] + (falla ? ' ✗' : ' ✓'));
+      if (!falla) { finestra = escala[i]; break; }
+      errors.push(escala[i] + ' dies: ' + Utils.talla(falla, 160));
+      /* Si el problema NO és el període, baixar-lo no arreglarà res: la
+         sessió està morta i el que cal és tornar a connectar el banc. */
+      if (!/WRONG_TRANSACTIONS_PERIOD|period/i.test(falla)) break;
+    }
+
+    if (finestra !== null && finestra !== e.finestraDies) {
+      e = estat();
+      e.finestraDies = finestra;
+      desaEstat(e);
+    }
 
     var ids = Object.keys(trobats);
     var omplerts = 0;
@@ -354,10 +384,13 @@ var FinancesBanc = (function () {
     }
 
     Log.info('banc.contrapart', 'Reompliment de qui cobra',
-             { buits: buits, mirats: mirats, omplerts: omplerts, fonts: fonts });
+             { buits: buits, mirats: mirats, omplerts: omplerts, fonts: fonts,
+               finestra: finestra });
 
     return { buits: buits, mirats: mirats, omplerts: omplerts, fonts: fonts,
-             errors: errors, desde: desde };
+             errors: errors, finestra: finestra, provats: provats,
+             caducat: finestra === null && errors.length &&
+                      !/WRONG_TRANSACTIONS_PERIOD|period/i.test(errors[errors.length - 1]) };
   }
 
   function sincronitza() {
@@ -371,8 +404,12 @@ var FinancesBanc = (function () {
       if (f.origen === 'banc') primera = false;
     });
 
-    // La primera vegada, 90 dies enrere; després només els últims 10.
-    var desde = Utils.aText(new Date(Date.now() - (primera ? 90 : 10) * 864e5));
+    /* La primera vegada, 90 dies enrere; després només els últims 10. Si el
+       banc ja ens ha dit que no arriba a 90 —ho aprèn `omplequiCobra`—, es
+       demana el que accepta: demanar-ne més fa que rebutgi la petició sencera
+       i no entri res, que és pitjor que entrar-ne menys. */
+    var maxim = Number(e.finestraDies) || 90;
+    var desde = Utils.aText(new Date(Date.now() - (primera ? Math.min(90, maxim) : 10) * 864e5));
 
     var nous = 0, errors = [];
     var perDesar = [];

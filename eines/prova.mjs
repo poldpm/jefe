@@ -2571,6 +2571,24 @@ console.log('\nQui cobra: el compte del banc mana sobre el text');
       /return \{ contrapart: trobats\[actual\.id\] \};/.test(omple) &&
       !/insereix/.test(omple), omple.slice(0, 80));
   cal('i salta les files que ja la tenen', /if \(String\(f\.contrapart \|\| ''\)\) return;/.test(omple));
+
+  /* QUANTS DIES ENRERE DEIXA MIRAR EL BANC NO HO SAP NINGÚ.
+     Es van demanar cent vuitanta i va contestar «WRONG_TRANSACTIONS_PERIOD».
+     No és que la sessió fos morta: és que aquell període no el deixa, i cada
+     banc en té un de diferent que no diu enlloc. */
+  cal('si el període no val, es prova un de més curt en comptes de rendir-se',
+      /\[90, 60, 30, 10\]/.test(omple) && /finestra === null/.test(omple));
+  cal('i quan un funciona, es desa per no tornar-ho a endevinar',
+      /e\.finestraDies = finestra;/.test(omple));
+  /* Baixar el període només arregla un problema DE PERÍODE. Si el banc falla
+     per una altra cosa —la sessió caducada— provar finestres més curtes és
+     gastar mirades per acabar igual, i el que cal és tornar a connectar. */
+  cal('però si la fallada no és del període, no s\'hi insisteix',
+      /if \(!\/WRONG_TRANSACTIONS_PERIOD\|period\/i\.test\(falla\)\) break;/.test(omple));
+  cal('i llavors es diu que el que toca és reconnectar el banc',
+      /connectaBanc\(\)/.test(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8')));
+  cal('la sincronització de cada dia també respecta el que el banc accepta',
+      /Math\.min\(90, maxim\)/.test(banc));
 }
 
 // --------------------- i que els vells i els nous segueixin sent el mateix rebut
