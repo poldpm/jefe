@@ -1900,6 +1900,7 @@ function provaQuiCobra() {
      sinó quants dels que SEMBLEN un rebut fix en porten. Comptar el total
      era comptar el que és fàcil en comptes del que decideix.
      ═══════════════════════════════════════════════════════════════════════ */
+  var fiables = null, candidats = 0;
   try {
     var c = Finances.candidatsRecurrents();
     var L = c.llindars;
@@ -1913,11 +1914,14 @@ function provaQuiCobra() {
        tingués tres mesos, i llavors la llista ensenyava dotze coses que no es
        proposaran mai. Semblava que el detector fos generós quan el que passava
        és que la comprovació mentia. */
+    var quants = c.tots.length ? c.tots[0].mesosMirats : 0;
+    a('MESOS D\'HISTÒRIA QUE HI HA ... ' + quants +
+      (quants < L.finestra ? '  (el banc no en deixa consultar més)' : ''));
     a('ES PROPOSARIEN ARA .......... ' + c.propostes.length);
     c.propostes.forEach(function (g) { a(linia(g)); });
-    if (!c.propostes.length) {
-      a('   (cap: en calen ' + Math.ceil(L.finestra * L.presencia) + ' mesos dels ' +
-        L.finestra + ' que es miren)');
+    if (!c.propostes.length && quants) {
+      a('   (cap: n\'hi ha d\'haver a ' + Math.ceil(quants * L.presencia) +
+        ' dels ' + quants + ' mesos)');
     }
     a('');
 
@@ -1927,10 +1931,7 @@ function provaQuiCobra() {
     if (aprop.length) {
       a('HI SÓN A PROP, PERÒ NO HI ARRIBEN .. ' + aprop.length);
       aprop.slice(0, 10).forEach(function (g) {
-        var per = g.variacio > L.variacio ? 'l\'import balla'
-                : g.perMes > L.perMes ? 'hi compres més d\'un cop al mes'
-                : 'li falten mesos';
-        a(linia(g) + '  → ' + per);
+        a(linia(g) + '  → ' + (g.perQueNo || '?'));
       });
       if (aprop.length > 10) a('   … i ' + (aprop.length - 10) + ' més');
       a('');
@@ -1940,6 +1941,10 @@ function provaQuiCobra() {
     a('       el concepte cada mes.');
     a('   · = va pel text, que ara ja no porta ni números ni noms de mes.');
     a('');
+
+    var mirem = c.propostes.concat(aprop);
+    candidats = mirem.length;
+    fiables = mirem.filter(function (g) { return g.fiable; }).length;
   } catch (err) {
     a('No he pogut mirar els candidats: ' + err.message);
     a('');
@@ -1953,19 +1958,30 @@ function provaQuiCobra() {
     return l.join('\n');
   }
 
+  /* EL VEREDICTE ES DONA PEL NÚMERO QUE DECIDEIX, i abans es donava pel fàcil.
+     «43 de 200» sonava a fluix i no ho era: els 157 que el banc no identifica
+     són compres amb targeta, i d'aquelles no en portarà mai. El que cal jutjar
+     és si els que SEMBLEN un rebut fix van identificats. */
   if (!delBanc) {
     a('Cap moviment ve del banc: la identitat sortirà sempre del text.');
-  } else if (compte >= delBanc * 0.5) {
-    a('BÉ: el teu banc envia el compte de qui cobra a la majoria.');
-    a('   És la identitat més fiable que hi ha: no canvia encara que el');
-    a('   concepte porti el mes a dins o l\'import pugi.');
-  } else if (compte + nom >= delBanc * 0.5) {
-    a('MIG: el teu banc no sempre envia el compte, però sí el nom.');
-    a('   També serveix, i és molt més estable que el concepte.');
+  } else if (fiables !== null && candidats) {
+    if (fiables >= candidats * 0.5) {
+      a('BÉ: dels que semblen un rebut fix, ' + fiables + ' de ' + candidats +
+        ' els identifica el banc.');
+      a('   Aquests no es perdran encara que els canviïn el concepte cada mes.');
+      a('   Els altres van pel text, que ja no porta números ni noms de mes.');
+    } else {
+      a('EL TEU BANC IDENTIFICA POCS REBUTS (' + fiables + ' de ' + candidats + ').');
+      a('   La resta aniran pel text. No és greu: el text ja no porta números');
+      a('   ni noms de mes, o sigui que el concepte pot canviar cada mes.');
+    }
   } else {
-    a('FLUIX: el teu banc envia poca cosa. Els rebuts es lligaran pel text,');
-    a('   que és el que es feia fins ara.');
+    a('Encara no hi ha prou història per dir-ho.');
   }
+  a('');
+  a('Els moviments amb targeta no porten mai qui cobra, i és normal: no hi ha');
+  a('cap emissor darrere. Els rebuts domiciliats i les transferències sí, i');
+  a('són justament els que aquest apartat busca.');
 
   a('');
   a('=== FI ===');

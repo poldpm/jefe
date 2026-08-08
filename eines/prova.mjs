@@ -2763,6 +2763,44 @@ console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
   cal('quan cada mes porta un número diferent, s\'ensenya el que tenen en comú',
       ambFactura.tots.length === 1 && !/\d/.test(ambFactura.tots[0].descripcio),
       JSON.stringify(ambFactura.tots.map((g) => g.descripcio)));
+
+  /* ══════════════════════════════════════════════════════════════════════
+     LA FINESTRA ÉS EL QUE HI HA, NO EL QUE VOLDRIA
+
+     Amb les dades reals no es va proposar ni un, i no era per cap filtre: el
+     seu banc deixa consultar noranta dies, o sigui tres mesos d'història. Es
+     demanaven cinc mesos de sis i era demanar l'impossible.
+     ══════════════════════════════════════════════════════════════════════ */
+  const tresMesos = ['05', '06', '07'].map((m, i) => ({
+    id: 'x' + i, data: '2026-' + m + '-05', tipus: 'd', import: 42.9,
+    categoria: 'c_cotx', descripcio: 'SEGUROS CATALANA OCC', metode: 'domic',
+    origen: 'banc', contrapart: IBAN, revisat: 'SI' }));
+  const c3 = munta(tresMesos, [], '2026-08-08').candidatsRecurrents('2026-08-08');
+  cal('amb tres mesos d\'història, sortir als tres és sortir sempre',
+      c3.propostes.length === 1 && c3.tots[0].mesosMirats === 3,
+      JSON.stringify(c3.tots.map((g) => [g.mesos, g.mesosMirats])));
+
+  /* I UNA NÒMINA BALLA. Amb el llindar de les compres quedava fora, i una
+     nòmina que varia per l'IRPF segueix sent una nòmina. El que la separa del
+     súper no és l'import: és que el banc diu qui la paga. */
+  const nomines = ['05', '06', '07'].map((m, i) => ({
+    id: 'n' + i, data: '2026-' + m + '-28', tipus: 'i', import: [1840, 2100, 1790][i],
+    categoria: 'i_nomi', descripcio: 'NOMINA', metode: 'transf',
+    origen: 'banc', contrapart: 'ib|ES7620770024003102575766', revisat: 'SI' }));
+  const cn = munta(nomines, [], '2026-08-08').candidatsRecurrents('2026-08-08');
+  cal('una nòmina que balla es proposa igualment: el banc diu qui la paga',
+      cn.propostes.length === 1, JSON.stringify(cn.tots.map((g) => [g.variacio, g.fiable])));
+
+  /* Però una benzinera amb el mateix ball NO, perquè va pel text. És el mateix
+     número i decideix diferent segons qui hi hagi a l'altra banda. */
+  const benzina = ['05', '06', '07'].map((m, i) => ({
+    id: 'b' + i, data: '2026-' + m + '-14', tipus: 'd', import: [40, 62, 35][i],
+    categoria: 'c_cotx', descripcio: 'ESCLATOIL VIC', metode: 'targeta',
+    origen: 'banc', contrapart: '', revisat: 'SI' }));
+  const cb = munta(benzina, [], '2026-08-08').candidatsRecurrents('2026-08-08');
+  cal('i la benzinera amb el mateix ball no, perquè va pel text',
+      cb.propostes.length === 0 && /balla/.test(cb.tots[0].perQueNo),
+      JSON.stringify(cb.tots.map((g) => [g.variacio, g.fiable, g.perQueNo])));
 }
 
 // ------------------- el vigilant: el que NO ha passat i el que ha passat diferent

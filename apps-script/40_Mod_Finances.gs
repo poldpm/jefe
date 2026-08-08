@@ -1230,10 +1230,22 @@ var Finances = (function () {
      ha de sortir a gairebé tots els mesos de la finestra, no a tres de deu.
      ══════════════════════════════════════════════════════════════════════ */
   var RECURRENT = {
-    finestra: 6,        // mesos enrere que es miren
+    finestra: 6,        // mesos enrere que es miren COM A MOLT
     mesosMinims: 3,     // amb menys, «cada mes» no vol dir res
-    presencia: 0.7,     // ha de sortir a set de cada deu mesos mirats
-    variacio: 0.12,     // (màxim − mínim) / mitjana
+    presencia: 0.7,     // ha de sortir a set de cada deu mesos que hi hagi
+    variacio: 0.12,     // (màxim − mínim) / mitjana, per a les compres
+    /* MÉS MANEGA QUAN EL BANC DIU QUI COBRA.
+       Amb les dades reals d'en Pol, els dos únics rebuts que importaven —la
+       nòmina i el pagament del centre docent— quedaven fora per «l'import
+       balla», i era veritat: una nòmina varia cada mes per l'IRPF i per les
+       hores. Però una nòmina és un ingrés fix encara que balli, i el motiu pel
+       qual el llindar era estret era un altre: no proposar el súper.
+
+       El súper i la benzinera són compres amb targeta, i d'aquelles el banc no
+       envia mai qui cobra. Els rebuts domiciliats i les transferències, sí.
+       O sigui que la mateixa dada que fa fiable la identitat diu també quina
+       mena de cosa és, i pot decidir quant se li deixa ballar l'import. */
+    variacioFiable: 0.4,
     marge: 1,           // €: per sota d'això la diferència no compta
     perMes: 1.5         // càrrecs per mes: més amunt és comprar, no pagar
   };
@@ -1357,7 +1369,22 @@ var Finances = (function () {
       g.moviments++;
     });
 
-    var mesosMirats = RECURRENT.finestra;
+    /* ELS MESOS QUE ES MIREN SÓN ELS QUE HI HA, NO ELS QUE VOLDRIA.
+       La finestra era de sis mesos fixos i demanava sortir a cinc. Amb les
+       dades reals d'en Pol no en va passar ni un, i el motiu no era cap
+       filtre: el seu banc només deixa consultar noranta dies enrere, o sigui
+       que per moltes voltes que hi donis només hi ha tres mesos d'història.
+       Demanar-ne cinc de sis quan només n'hi ha tres és demanar l'impossible
+       i quedar-se amb la llista buida.
+
+       Ara la finestra és el que hi hagi: si hi ha tres mesos, sortir als tres
+       és sortir sempre. La xifra viatja amb el grup perquè la pantalla pugui
+       dir «4 de 4» i no «4 de 6», que semblaria que se n'ha saltat dos. */
+    var mesosAmbDades = {};
+    dins.forEach(function (m) { mesosAmbDades[String(m.data).slice(0, 7)] = true; });
+    var mesosMirats = Math.max(1, Math.min(RECURRENT.finestra,
+                                           Object.keys(mesosAmbDades).length));
+
     return Object.keys(grups).map(function (k) {
       var g = grups[k];
       var mesos = Object.keys(g.mesos).length;
@@ -1405,8 +1432,22 @@ var Finances = (function () {
     if (g.mesos < RECURRENT.mesosMinims) return false;
     if (g.mesos < Math.ceil(g.mesosMirats * RECURRENT.presencia)) return false;
     if (g.perMes > RECURRENT.perMes) return false;
-    if (g.variacio > RECURRENT.variacio) return false;
+    /* Un rebut que el banc identifica pot ballar molt més que una compra: una
+       nòmina no és mai dos mesos igual i segueix sent una nòmina. Vegeu
+       `RECURRENT.variacioFiable`. */
+    if (g.variacio > (g.fiable ? RECURRENT.variacioFiable : RECURRENT.variacio)) return false;
     return true;
+  }
+
+  /** Per què un grup no arriba a proposta. Serveix per poder-ho explicar. */
+  function perQueNo_(g) {
+    if (g.mesos < RECURRENT.mesosMinims) return 'amb ' + g.mesos + ' mesos encara no se sap';
+    if (g.mesos < Math.ceil(g.mesosMirats * RECURRENT.presencia)) return 'li falten mesos';
+    if (g.perMes > RECURRENT.perMes) return 'hi compres més d\'un cop al mes';
+    if (g.variacio > (g.fiable ? RECURRENT.variacioFiable : RECURRENT.variacio)) {
+      return 'l\'import balla' + (g.fiable ? ' massa' : ' i és una compra');
+    }
+    return '';
   }
 
   /**
@@ -1434,6 +1475,8 @@ var Finances = (function () {
       if (b.mesos !== a.mesos) return b.mesos - a.mesos;
       return b.import - a.import;
     });
+
+    grups.forEach(function (g) { g.perQueNo = perQueNo_(g); });
 
     return {
       propostes: grups.filter(function (g) { return esFix_(g) && !vistos[g.clau]; }),
