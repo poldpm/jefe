@@ -2552,7 +2552,25 @@ console.log('\nQui cobra: el compte del banc mana sobre el text');
   const banc = fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8');
   cal('el que entra del banc es queda amb qui hi ha a l\'altre costat',
       /contrapart: qui\.valor/.test(banc) &&
-      /FinancesRegles\.contrapart\(b, esIngres\)/.test(banc));
+      /FinancesRegles\.contrapart\(b, t\.esIngres\)/.test(banc));
+
+  /* L'IDENTIFICADOR HA DE SER UN DE SOL. El reompliment retroba les files pel
+     mateix identificador amb què la sincronització va decidir que no eren
+     noves. Si n'hi hagués dues còpies i se separessin, el reompliment no
+     trobaria res i diria que ho ha fet tot sense haver tocat cap fila. */
+  cal('la fórmula de l\'identificador del banc viu en un sol lloc',
+      (banc.match(/entry_reference \|\| b\.transaction_id/g) || []).length === 1,
+      String((banc.match(/entry_reference \|\| b\.transaction_id/g) || []).length));
+  cal('i la fan servir totes dues: la sincronització i el reompliment',
+      (banc.match(/llegeixTransaccio_\(b, compte\.uid\)/g) || []).length === 2);
+
+  /* Reomplir no pot crear ni esborrar res: només omple una columna buida. */
+  const omple = banc.slice(banc.indexOf('function omplequiCobra('),
+                           banc.indexOf('function sincronitza()'));
+  cal('reomplir només toca la columna buida, no en crea cap de nova',
+      /return \{ contrapart: trobats\[actual\.id\] \};/.test(omple) &&
+      !/insereix/.test(omple), omple.slice(0, 80));
+  cal('i salta les files que ja la tenen', /if \(String\(f\.contrapart \|\| ''\)\) return;/.test(omple));
 }
 
 // --------------------- i que els vells i els nous segueixin sent el mateix rebut

@@ -1793,6 +1793,50 @@ function provaAvisCremades() {
 
 
 /**
+ * OMPLE «QUI COBRA» ALS MOVIMENTS QUE JA TENS.
+ *
+ * El compte de qui cobra es desa des d'avui, i els dos-cents moviments que hi
+ * ha són d'abans. Això no seria greu si només afectés el futur, però les
+ * propostes de rebuts fixos miren els SIS ÚLTIMS MESOS: sense reomplir-los, la
+ * millora no s'aplicaria fins d'aquí a mig any.
+ *
+ * Torna a demanar les transaccions al banc i omple la columna a les files que
+ * ja hi són. No crea res, no esborra res i no toca cap altra columna. Es pot
+ * executar dues vegades sense fer mal: la segona ja no trobaria res per omplir.
+ *
+ * GASTA UNA DE LES MIRADES que el banc et deixa fer al dia.
+ */
+function omplequiCobra(dies) {
+  var r = FinancesBanc.omplequiCobra(dies);
+  var l = ['=== QUI COBRA, ALS MOVIMENTS QUE JA HI HA ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  if (r.motiu) { a(r.motiu); a(''); a('=== FI ==='); return l.join('\n'); }
+
+  a('Sense contrapart ....... ' + r.buits);
+  a('Transaccions mirades ... ' + r.mirats + ' (des del ' + r.desde + ')');
+  a('Omplerts ............... ' + r.omplerts);
+  a('');
+  a('   amb el compte de qui cobra: ' + r.fonts.compte);
+  a('   només amb el nom .........: ' + r.fonts.nom);
+  a('   el banc no n\'envia cap ...: ' + r.fonts.cap);
+  if (r.errors && r.errors.length) { a(''); a('Errors: ' + r.errors.join(' · ')); }
+  a('');
+  if (r.omplerts) {
+    a('Fet. Executa provaQuiCobra() per veure com ha quedat.');
+    a('Els que no s\'han omplert són més vells que la finestra que el banc');
+    a('deixa consultar; aquells seguiran lligant pel text, com fins ara.');
+  } else {
+    a('No se n\'ha omplert cap. O el banc no envia la contrapart, o els');
+    a('moviments són més vells del que et deixa consultar.');
+  }
+  a('');
+  a('=== FI ===');
+  return l.join('\n');
+}
+
+
+/**
  * EL TEU BANC, DIU QUI COBRA?
  *
  * La identitat d'un rebut es busca per esglaons: el compte de qui cobra, el
@@ -1835,6 +1879,14 @@ function provaQuiCobra() {
   a('Sense res .................. ' + cap);
   a('');
 
+  if (cap === delBanc && delBanc) {
+    a('CAP EN TÉ. Si són d\'abans d\'avui és normal: no es desava.');
+    a('   Executa omplequiCobra() i es demanaran de nou al banc per omplir-los.');
+    a('');
+    a('=== FI ===');
+    return l.join('\n');
+  }
+
   if (!delBanc) {
     a('Cap moviment ve del banc: la identitat sortirà sempre del text.');
   } else if (compte >= delBanc * 0.5) {
@@ -1844,10 +1896,6 @@ function provaQuiCobra() {
   } else if (compte + nom >= delBanc * 0.5) {
     a('MIG: el teu banc no sempre envia el compte, però sí el nom.');
     a('   També serveix, i és molt més estable que el concepte.');
-  } else if (cap === delBanc) {
-    a('ENCARA NO SE SAP: cap moviment porta la contrapart desada.');
-    a('   Si són d\'abans d\'avui és normal —no es desava—. Sincronitza el');
-    a('   banc (sincronitzaBancAra) i torna a executar això.');
   } else {
     a('FLUIX: el teu banc envia poca cosa. Els rebuts es lligaran pel text,');
     a('   que és el que es feia fins ara.');

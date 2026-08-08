@@ -256,6 +256,110 @@ var FinancesBanc = (function () {
    * La deduplicació és per `id_banc`: el mateix moviment mai no entra dues
    * vegades encara que la sincronització es repeteixi o es solapi.
    */
+  /* L'IDENTIFICADOR AMB QUÈ SABEM SI UN MOVIMENT JA HI ÉS.
+     Viu aquí i no dins de `sincronitza` perquè el reompliment de «qui cobra»
+     ha de calcular-lo EXACTAMENT igual: si les dues fórmules es separessin,
+     el reompliment no trobaria cap fila i diria que ho ha fet tot sense haver
+     tocat res. */
+  function idBanc_(b, uid, quan, imp, desc) {
+    return b.entry_reference || b.transaction_id ||
+           (uid + '|' + quan + '|' + imp + '|' + String(desc).slice(0, 24));
+  }
+
+  /** El que cal de cada transacció per desar-la o per retrobar-la. */
+  function llegeixTransaccio_(b, uid) {
+    var imp = parseFloat((b.transaction_amount && b.transaction_amount.amount) || '0');
+    if (!imp) return null;
+    var esIngres = b.credit_debit_indicator === 'CRDT';
+    var quan = String(b.booking_date || b.value_date || b.transaction_date ||
+                      Utils.avui()).slice(0, 10);
+    var desc = FinancesRegles.descripcio(b);
+    return { imp: imp, esIngres: esIngres, quan: quan, desc: desc,
+             id: idBanc_(b, uid, quan, imp, desc) };
+  }
+
+  /**
+   * ══════════════════════════════════════════════════════════════════════
+   * OMPLE «QUI COBRA» ALS MOVIMENTS QUE JA HI HA
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * El compte de qui cobra es desa des que es desa, i els moviments d'abans no
+   * en tenen cap. Això no seria greu si només afectés el futur, però afecta el
+   * present: les propostes de rebuts fixos miren els SIS ÚLTIMS MESOS, i tots
+   * són d'abans. O sigui que sense això, la millora no s'aplicaria fins d'aquí
+   * a mig any.
+   *
+   * Es tornen a demanar les transaccions al banc i s'omple la columna a les
+   * files que ja hi són, lligant-les pel mateix identificador amb què es va
+   * decidir que no eren noves. No crea res, no esborra res i no toca cap altra
+   * columna: si el banc no envia la contrapart d'una, aquella es queda igual.
+   *
+   * GASTA UNA MIRADA de les que el banc et deixa fer al dia. Per això és a mà
+   * i no automàtic.
+   */
+  function omplequiCobra(dies) {
+    var e = estat();
+    if (!disponible()) return { motiu: 'El banc encara no està connectat.' };
+
+    var perId = {}, buits = 0;
+    Dades.llegeix('Moviments').forEach(function (f) {
+      if (f.esborrat_el || !f.id_banc) return;
+      if (String(f.contrapart || '')) return;        // ja el té
+      perId[String(f.id_banc)] = f.id;
+      buits++;
+    });
+    if (!buits) return { buits: 0, omplerts: 0, motiu: 'Ja el tenen tots.' };
+
+    var desde = Utils.aText(new Date(Date.now() - (Number(dies) || 180) * 864e5));
+    var trobats = {}, fonts = { compte: 0, nom: 0, cap: 0 };
+    var mirats = 0, errors = [];
+
+    (e.accounts || []).forEach(function (compte) {
+      var continuacio = null, voltes = 0;
+      do {
+        var q = '?date_from=' + desde +
+                (continuacio ? '&continuation_key=' + encodeURIComponent(continuacio) : '');
+        var dades;
+        try {
+          dades = eb_('/accounts/' + compte.uid + '/transactions' + q, { method: 'get' });
+        } catch (err) {
+          errors.push('Compte ' + Utils.talla(compte.uid, 8) + ': ' + err.message);
+          return;
+        }
+
+        (dades.transactions || []).forEach(function (b) {
+          var t = llegeixTransaccio_(b, compte.uid);
+          if (!t) return;
+          mirats++;
+          var idFila = perId[t.id];
+          if (!idFila) return;                       // o és nova, o ja el tenia
+          var qui = FinancesRegles.contrapart(b, t.esIngres);
+          fonts[qui.font === 'compte' ? 'compte' : qui.font === 'nom' ? 'nom' : 'cap']++;
+          if (!qui.valor) return;
+          trobats[idFila] = qui.valor;
+        });
+
+        continuacio = dades.continuation_key;
+      } while (continuacio && ++voltes < 20);
+    });
+
+    var ids = Object.keys(trobats);
+    var omplerts = 0;
+    if (ids.length) {
+      /* D'un sol viatge al full i no un per fila: dues-centes escriptures
+         d'una en una es mengen el temps d'execució senceres. */
+      omplerts = Dades.actualitzaMoltes('Moviments', ids, function (actual) {
+        return { contrapart: trobats[actual.id] };
+      });
+    }
+
+    Log.info('banc.contrapart', 'Reompliment de qui cobra',
+             { buits: buits, mirats: mirats, omplerts: omplerts, fonts: fonts });
+
+    return { buits: buits, mirats: mirats, omplerts: omplerts, fonts: fonts,
+             errors: errors, desde: desde };
+  }
+
   function sincronitza() {
     var e = estat();
     if (!disponible()) return { nous: 0, motiu: 'El banc encara no està connectat.' };
@@ -287,16 +391,10 @@ var FinancesBanc = (function () {
         }
 
         (dades.transactions || []).forEach(function (b) {
-          var imp = parseFloat((b.transaction_amount && b.transaction_amount.amount) || '0');
-          if (!imp) return;
-
-          var esIngres = b.credit_debit_indicator === 'CRDT';
-          var quan = String(b.booking_date || b.value_date || b.transaction_date ||
-                            Utils.avui()).slice(0, 10);
-          var desc = FinancesRegles.descripcio(b);
-
-          var idBanc = b.entry_reference || b.transaction_id ||
-                       (compte.uid + '|' + quan + '|' + imp + '|' + desc.slice(0, 24));
+          var t = llegeixTransaccio_(b, compte.uid);
+          if (!t) return;
+          var imp = t.imp, esIngres = t.esIngres, quan = t.quan, desc = t.desc;
+          var idBanc = t.id;
           if (vistos[idBanc]) return;
           vistos[idBanc] = true;
 
@@ -516,6 +614,7 @@ var FinancesBanc = (function () {
     creaSessio: creaSessio,
     clauPem: clauPem_,        // per a provaClauBanc()
     sincronitza: sincronitza,
+    omplequiCobra: omplequiCobra,
     sincronitzaSiCal: sincronitzaSiCal,
     ultimaMirada: ultimaMirada,
     comEstem: comEstem
