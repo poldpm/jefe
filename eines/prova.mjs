@@ -4061,6 +4061,22 @@ console.log('\nEl full índex: cap apartat es pot quedar sense porta');
   cal('l\'índex llista TOTS els mòduls que tenen pantalla',
       /m\.teVista && m\.id !== 'conversa'/.test(inici));
 
+  /* ELS QUE NO SÓN PER A ELL. La memòria i les relacions són eines de dins
+     —què sap l'app de tu i què ha vist creuant dades—: hi entra molt de tant
+     en tant i a la graella ocupaven el mateix que els hàbits. Van a una icona
+     al marge del capçal. Ho declara el mòdul i no la pantalla, perquè si demà
+     en neix un altre d'aquesta mena s'ha de col·locar sol. */
+  const secundaris = ctx.Moduls.perAlClient().filter((m) => m.secundari);
+  cal('la memòria i les relacions es declaren eines de dins',
+      secundaris.map((m) => m.id).sort().join(',') === 'memoria,relacions',
+      secundaris.map((m) => m.id).join(','));
+  cal('i el nucli ho porta fins a la pantalla',
+      /secundari: !!m\.secundari/.test(fs.readFileSync('apps-script/20_Moduls.gs', 'utf8')));
+  cal('la graella les deixa fora',
+      /function apartats\(\)[\s\S]{0,140}!m\.secundari/.test(inici));
+  cal('i el capçal les recull, que si no desapareixerien',
+      /function eines\(\)[\s\S]{0,140}m\.secundari/.test(inici) && /class="cap-eina"/.test(inici));
+
   /* Les pantalles que no són de cap mòdul s'han d'afegir a mà, i per tant són
      les que es poden oblidar. Aquestes dues han de tenir porta sempre. */
   cal('el dia hi és, i per partida doble: la data i el botó',

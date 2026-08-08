@@ -21,11 +21,21 @@
 App.registraVista('inici', {
   render: function (arrel) {
 
-    function apartats() {
-      var l = (Cau.get('moduls', []) || []).filter(function (m) {
+    function ambPantalla() {
+      return (Cau.get('moduls', []) || []).filter(function (m) {
         return m.teVista && m.id !== 'conversa';
       });
-      return l;
+    }
+    function apartats() {
+      return ambPantalla().filter(function (m) { return !m.secundari; });
+    }
+    /* Les eines de dins —què sap de tu, què ha vist creuant dades—. Hi entra
+       molt de tant en tant, i a la graella principal ocupaven el mateix que
+       els hàbits o les finances, que és on va cada dia. Van al marge del
+       capçal amb la icona i prou. Ho diu el mòdul, no aquesta pantalla: si
+       demà en neix un altre d'aquesta mena, es col·loca sol. */
+    function eines() {
+      return ambPantalla().filter(function (m) { return m.secundari; });
     }
 
     function reixa(l) {
@@ -54,13 +64,23 @@ App.registraVista('inici', {
 
     function pinta(l) {
       var avui = fmt.avui();
+      var t = eines();
       arrel.innerHTML =
         '<div class="reticula" id="reticula" aria-hidden="true"></div>' +
-        '<header class="capcalera">' +
+        '<header class="capcalera cap-inici">' +
           '<button class="dia-porta" data-ves="dia" aria-label="Obre la pàgina del dia">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
           '</button>' +
+          (t.length
+            ? '<div class="cap-eines">' + t.map(function (m) {
+                /* Sense text: no hi cap i no cal. El nom hi és per a qui
+                   escolta la pantalla i per si t'hi atures a sobre. */
+                return '<button class="cap-eina" data-ves="' + esc(m.id) + '"' +
+                  ' aria-label="' + esc(m.nom) + '" title="' + esc(m.nom) + '">' +
+                  ic(m.icona || 'modul') + '</button>';
+              }).join('') + '</div>'
+            : '') +
         '</header>' +
         '<div class="pagina">' + reixa(l) + '</div>';
 
@@ -76,14 +96,19 @@ App.registraVista('inici', {
     }
 
     /* Els apartats surten del registre de mòduls, que ja hi és desat: la
-       pantalla es pinta sencera sense esperar cap viatge. La crida només
-       serveix per posar la llista al dia si ha canviat. */
+       pantalla es pinta sencera sense esperar cap viatge. */
     pinta(apartats());
 
+    /* I ES TORNA A PINTAR SEMPRE que arribi la llista, sense comparar si ha
+       canviat. La comparació semblava una economia i era un error d'esperar:
+       si el que hi havia desat venia d'una versió anterior —sense saber
+       encara quins mòduls són eines de dins— sortia igual i no es corregia
+       fins que algú canviés un mòdul. Repintar una graella de tretze botons
+       no costa res. */
     crida('nucli', 'moduls', {}).then(function (d) {
-      var abans = JSON.stringify(apartats());
+      if (!d || !d.moduls) return;
       Cau.set('moduls', d.moduls);
-      if (JSON.stringify(apartats()) !== abans) pinta(apartats());
+      pinta(apartats());
     }).catch(function () { /* sense connexió, el que hi ha desat serveix igual */ });
   }
 });

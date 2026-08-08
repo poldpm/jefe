@@ -2258,6 +2258,27 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 /* El terreny del fons. Fix i darrere de tot, sense interceptar mai cap dit. */
 .reticula { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* LES EINES DE DINS, A LA CANTONADA DE BAIX A LA DRETA DEL CAPÇAL.
+   La memòria i les relacions no són llocs on va cada dia: són què sap l'app
+   de tu i què ha vist creuant les teves dades. A la graella ocupaven el
+   mateix que els hàbits, i això no és el que valen.
+   `align-items: flex-end` és el que les baixa a l'alçada de la data: al
+   costat del títol i no flotant a dalt, que és on ell les va marcar. */
+.cap-inici { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--e3); }
+.cap-eines { display: flex; gap: var(--e1); flex: none; }
+.cap-eina {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--toc); height: var(--toc);
+  background: none; border: 1px solid transparent; color: var(--ink-suau);
+  transition: color .16s var(--entra), border-color .16s var(--entra);
+}
+.cap-eina .ic { width: 20px; height: 20px; }
+.cap-eina:focus-visible { outline: 2px solid var(--utm); outline-offset: 2px; }
+.cap-eina:active { color: var(--utm); border-color: var(--fil-viu); }
+@media (hover: hover) and (pointer: fine) {
+  .cap-eina:hover { color: var(--utm); border-color: var(--fil-viu); }
+}
 body[data-vista="inici"] .capcalera,
 body[data-vista="inici"] .pagina { position: relative; z-index: 1; }
 

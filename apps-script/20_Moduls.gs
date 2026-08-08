@@ -559,6 +559,15 @@ var Moduls = (function () {
         nom: m.nom || m.id,
         icona: m.icona || '',
         ordre: m.ordre,
+        /* SECUNDARI: no és per a ell, és per a l'app.
+           La memòria i les relacions són eines de dins —què sap de tu i què
+           ha vist creuant dades—: hi entra molt de tant en tant i no han
+           d'ocupar un lloc a la graella principal, al costat dels hàbits o
+           les finances, que són on va cada dia. La pàgina principal els posa
+           en una icona al marge.
+           Ho declara el mòdul i no la pantalla, perquè si demà en neix un
+           altre d'aquesta mena s'ha de poder col·locar sol. */
+        secundari: !!m.secundari,
         teVista: !!m.vista
       };
     });

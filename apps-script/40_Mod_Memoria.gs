@@ -40,6 +40,9 @@ function MODUL_MEMORIA() {
     id: 'memoria',
     nom: 'Memòria',
     icona: 'llegenda',
+    /* Eina de dins, no lloc on va cada dia: la pàgina principal la posa al
+       marge amb una icona i prou. Vegeu `secundari` a 20_Moduls.gs. */
+    secundari: true,
     ordre: 45,
     versioEsquema: 1,
 

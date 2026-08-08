@@ -27,6 +27,9 @@ function MODUL_RELACIONS() {
     id: 'relacions',
     nom: 'Relacions',
     icona: 'relacions',
+    /* Igual que la memòria: el que ha vist creuant les seves dades és una
+       eina de l'app, no un apartat on treballa. */
+    secundari: true,
     ordre: 45,
     versioEsquema: 1,
 
