@@ -324,7 +324,18 @@ const MOCK = `
         var q = aixafa(String((p && p.text) || ''));
         var verbs = ['apunta', 'apuntam', 'marca', 'esborra', 'treu', 'peso', 'registra', 'posa'];
         var escriu = verbs.some(function (v) { return q.indexOf(v) === 0 || q.indexOf(' ' + v + ' ') !== -1; });
-        if (!escriu) throw new Error('El mirall no pensa: aquí no hi ha capa d\\'IA.');
+        if (!escriu) {
+          /* El mirall no pensa, però contesta amb la FORMA d'una resposta:
+             negreta, un parell de pics i prou. Sense això, l'única manera de
+             mirar com queda el calaix de preguntar era a l'app de debò
+             gastant quota, i per tant no es mirava. */
+          return { id_conversa: 'cnv_mirall',
+                   resposta: 'Aquest mes portes **320,40 €** gastats, que és menys que el ' +
+                             'passat pel mateix dia.\\n- Menjar: 148,20 €\\n- Cotxe: 92,00 €\\n' +
+                             '- La resta: 80,20 €\\nEl mirall no pensa: aquesta resposta és inventada.',
+                   eines: [], propostes: [], tokens: { entrada: 0, sortida: 0 },
+                   temps: { total: 1400, ia: 1400, context: 0, eines: 0, voltes: 1 } };
+        }
 
         var quantes = q.indexOf(' i ') !== -1 ? 2 : 1;
         var props = [];

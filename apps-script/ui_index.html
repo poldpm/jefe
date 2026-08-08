@@ -50,8 +50,18 @@
 
 <main id="vista" role="main"></main>
 
-<!-- La barra de seccions s'ha tret a petició. L'accés a la resta de vistes és
-     un sol botó discret dins de la capçalera del HUD, fins que decidim el menú. -->
+<!-- LA IA, AMAGADA I A MÀ.
+     Va ser la pantalla d'arrencada —una esfera i una caixa per parlar-hi— i
+     en Pol la va treure després de fer-la servir: per fer una cosa és més
+     ràpid fer-la que demanar-la. Però per PREGUNTAR-LI encara serveix, i per
+     això torna com el que havia de ser des del principi: un botó a la
+     cantonada que obre un calaix quan el necessites, i que la resta del
+     temps no ocupa cap decisió.
+     Va aquí i no dins de cap vista perquè es pugui preguntar des d'on siguis:
+     mirant les finances, els hàbits o el dia. -->
+<button id="b-jefe" class="flotant" aria-label="Pregunta a JEFE" title="Pregunta a JEFE">
+  <svg class="ic" aria-hidden="true"><use href="#ic-jefe"/></svg>
+</button>
 
 <!-- QUINA VERSIÓ ESTÀS VEIENT, i de quan és. Aquesta nit vam perdre una
      estona llarga perquè el codi era desplegat i la pàgina publicada era la
@@ -66,6 +76,7 @@
 <?!= include('ui_app'); ?>
 <?!= include('ui_relleu'); ?>
 <?!= include('ui_notifica'); ?>
+<?!= include('ui_xat'); ?>
 <?!= include('vista_inici'); ?>
 <?!= include('vista_habits'); ?>
 <?!= include('vista_nutricio'); ?>

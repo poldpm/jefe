@@ -2312,6 +2312,93 @@ body[data-vista="inici"] .pagina { position: relative; z-index: 1; }
 
 
 /* ==========================================================================
+   EL BOTÓ DE PREGUNTAR, I EL CALAIX
+
+   La IA amagada. No és la porta de l'app —ho va ser i es va treure—: és un
+   botó a la cantonada que s'obre quan el necessites i que la resta del temps
+   no ocupa cap decisió.
+
+   VA A SOBRE DE LA MARCA DE VERSIÓ, i per això la marca ha de saber que hi
+   és: si es trepitgessin, la que perdria és la marca, que és la que no es
+   pot moure de la cantonada.
+   ========================================================================== */
+
+.flotant {
+  position: fixed; z-index: 30;
+  right: var(--e4);
+  bottom: calc(var(--e5) + env(safe-area-inset-bottom, 0px));
+  width: 56px; height: 56px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--paper2); color: var(--utm);
+  border: 1px solid var(--vora-viva);
+  box-shadow: var(--ombra);
+  transition: color .16s var(--entra), border-color .16s var(--entra),
+              transform .12s var(--entra);
+}
+.flotant .ic { width: 26px; height: 26px; }
+.flotant:focus-visible { outline: 2px solid var(--utm); outline-offset: 3px; }
+.flotant:active { transform: scale(.94); }
+@media (hover: hover) and (pointer: fine) { .flotant:hover { border-color: var(--utm); } }
+@media (prefers-reduced-motion: reduce) { .flotant { transition: none; } .flotant:active { transform: none; } }
+/* Amb el calaix obert, el botó sobra: el que hi ha a sota no s'ha de tocar. */
+body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
+
+.xat { display: flex; flex-direction: column; gap: var(--e3); }
+
+.xat-fil {
+  display: flex; flex-direction: column; gap: var(--e3);
+  min-height: 180px; max-height: min(52vh, 420px);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding-right: var(--e1);
+}
+.xat-buit { margin: 0; color: var(--ink-suau); font-size: .875rem; line-height: 1.55; }
+
+/* LES DUES VEUS. La seva, alineada a la dreta i amb fons; la de JEFE, a
+   l'esquerra i sense capsa: el que llegeixes de debò és la resposta, i posar
+   les dues dins d'un globus les iguala quan no ho són. */
+.xat-meu { align-self: flex-end; max-width: 88%; }
+.xat-meu p {
+  margin: 0; padding: var(--e2) var(--e3);
+  background: var(--utm-suau); color: var(--ink);
+  font-size: .875rem; line-height: 1.5;
+}
+.xat-seu { align-self: stretch; }
+.xat-seu p { margin: 0; font-size: .9375rem; line-height: 1.6; white-space: pre-wrap; }
+.xat-seu code { font-family: var(--mono); font-size: .8125rem; }
+.xat-punt { display: block; padding-left: 1.1em; text-indent: -1.1em; }
+.xat-punt::before { content: '· '; color: var(--utm); }
+
+/* LA PROPOSTA. Res del que escrigui passa sense que ho confirmis, i per això
+   té marc propi i color d'avís: ha de destacar del text, no fondre-s'hi. */
+.xat-proposta {
+  margin-top: var(--e3); padding: var(--e3);
+  border: 1px solid var(--avis); background: var(--avis-fons);
+}
+.xat-proposta p { font-size: .875rem; margin: 0 0 var(--e3); }
+.xat-accions { display: flex; gap: var(--e2); flex-wrap: wrap; }
+.xat-fi { margin: 0 !important; color: var(--ink-suau); font-size: .8125rem; }
+
+.xat-peu { display: flex; gap: var(--e2); }
+.xat-peu .entrada { flex: 1; min-width: 0; }
+.xat-neteja {
+  align-self: flex-start; background: none; border: 0; padding: var(--e1) 0;
+  color: var(--ink-suau); font: inherit; font-size: .75rem;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.xat-neteja:focus-visible { outline: 2px solid var(--utm); outline-offset: 2px; }
+
+/* Que s'hi està pensant. Tres punts i prou: un comptador de segons ja el vam
+   tenir i el que feia era mirar-lo. */
+.xat-pensa { display: flex; gap: 5px; padding: var(--e2) 0; }
+.xat-pensa i { width: 5px; height: 5px; background: var(--utm); border-radius: 50%;
+               animation: xatBat 1.1s ease-in-out infinite; }
+.xat-pensa i:nth-child(2) { animation-delay: .16s; }
+.xat-pensa i:nth-child(3) { animation-delay: .32s; }
+@keyframes xatBat { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .xat-pensa i { animation: none; opacity: .6; } }
+
+
+/* ==========================================================================
    LA MARCA DE VERSIÓ
 
    A la cantonada, petita i sense demanar res. No és decoració: és la

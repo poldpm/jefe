@@ -4102,5 +4102,51 @@ console.log('\nEl full índex: cap apartat es pot quedar sense porta');
       'al mirall hi falta: ' + falten.join(', '));
 }
 
+// ═════════════════════════════════════════════ LA IA, AMAGADA I A LA CANTONADA
+/* Va ser la pantalla d'arrencada i es va treure: per FER una cosa és més
+   ràpid fer-la que demanar-la. Per PREGUNTAR encara serveix, i torna com el
+   que havia de ser des del principi —un botó a la cantonada i un calaix—.
+
+   El que es comprova aquí és el que no pot caure mai: que res del que
+   escrigui passi sense confirmar-ho. */
+console.log('\nEl calaix de preguntar: la IA amagada');
+{
+  const xat = fs.readFileSync('apps-script/ui_xat.html', 'utf8');
+  const index = fs.readFileSync('apps-script/ui_index.html', 'utf8');
+  const estil = fs.readFileSync('apps-script/ui_estil.html', 'utf8');
+  const icones = fs.readFileSync('apps-script/ui_icones.html', 'utf8');
+
+  cal('el botó viu fora de les vistes, per poder preguntar des d\'on siguis',
+      /id="b-jefe"/.test(index) && /include\('ui_xat'\)/.test(index));
+  cal('i porta la marca de l\'app', /use href="#ic-jefe"/.test(index) &&
+      /symbol id="ic-jefe"/.test(icones));
+  cal('va a la cantonada, sobre la marca de versió',
+      /\.flotant \{[^}]*position: fixed/.test(estil));
+
+  /* LA REGLA QUE NO POT CAURE. Les eines que escriuen no s'executen: tornen
+     una proposta amb un botó. Si això es perdés, la IA passaria a poder
+     tocar el full sense que ell ho sàpiga. */
+  cal('cap escriptura passa sense confirmar-la',
+      /crida\('conversa', 'confirma', \{ eina: p\.eina, args: p\.args \}\)/.test(xat));
+  cal('i mentre no la confirmes, hi ha els dos botons',
+      /data-si="1"/.test(xat) && /data-no="1"/.test(xat));
+  cal('un cop resolta, els botons se\'n van i queda com ha anat',
+      /if \(!p \|\| p\.resolta\) return;/.test(xat) && /function finalDe\(p\)/.test(xat));
+
+  /* En confirmar, el que hi ha desat d'aquell mòdul ja no val. El mòdul ve
+     amb la proposta, o sigui que un mòdul nou no ha de tocar res d'aquí. */
+  cal('i el que hi havia desat d\'aquell mòdul s\'oblida',
+      /if \(p\.modul\) Cau\.oblida\(p\.modul\);/.test(xat));
+
+  /* El text del model porta asteriscos i guions. S'escapa PRIMER i es
+     formata després: al revés, un text amb un `<` s'hi colaria com a
+     etiqueta. */
+  cal('el text s\'escapa abans de formatar-lo',
+      /var t = esc\(String\(text \|\| ''\)\)\.trim\(\);/.test(xat));
+
+  cal('no hi ha micròfon enlloc',
+      !/micro|SpeechRecognition|enviaVeu/.test(xat), 'n\'hi ha quedat algun rastre');
+}
+
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');
 process.exit(falles ? 1 : 0);
