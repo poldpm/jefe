@@ -2483,6 +2483,29 @@ console.log('\nRebuts fixos: sortir cada mes no és ser un rebut');
         marcats.indexOf('r1') !== -1, marcats.join(' | '));
     cal('i el que NO ha arribat sí que s\'apunta: aquesta és la seva feina',
         escrits.some((x) => /Lloguer/.test(x)), escrits.join(' | '));
+
+    /* ══════════════════════════════════════════════════════════════════════
+       I AMB EL BANC CONNECTAT, RES DE RES
+
+       En Pol va acceptar sis rebuts i de seguida va veure despeses duplicades.
+       El cas evident ja estava tapat —no crear-lo si ja havia arribat— i el
+       que quedava viu era el que fa més mal: si encara NO ha arribat, se
+       n'inventava un. I això és pitjor que duplicar, perquè el vigilant
+       després el troba, dona el rebut per arribat i no avisa que falta: la
+       mateixa línia que embruta el balanç apaga l'avís que l'hauria de
+       descobrir.
+       ══════════════════════════════════════════════════════════════════════ */
+    escrits = []; marcats = [];
+    ctx.FinancesBanc = { disponible: () => true };
+    ctx.Finances.generaRecurrents('2026-08-08');
+    cal('amb el banc connectat no s\'inventa CAP moviment, ni el que falta',
+        escrits.length === 0, escrits.join(' | '));
+
+    ctx.FinancesBanc = { disponible: () => false };
+    escrits = [];
+    ctx.Finances.generaRecurrents('2026-08-08');
+    cal('i sense banc segueix fent la seva feina de sempre',
+        escrits.some((x) => /Lloguer/.test(x)), escrits.join(' | '));
   }
 }
 

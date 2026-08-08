@@ -1725,6 +1725,30 @@ var Finances = (function () {
     var diaAvui = Number(avui.slice(8, 10));
     var fets = [];
 
+    /* ══════════════════════════════════════════════════════════════════════
+       AMB EL BANC CONNECTAT, AIXÒ NO HA D'ESCRIURE RES. MAI.
+
+       En Pol va acceptar sis rebuts i de seguida va veure despeses duplicades.
+       Jo havia tapat el cas evident —no crear-lo si el mateix rebut ja havia
+       arribat— i havia deixat viu el que fa més mal: si encara NO ha arribat,
+       se n'inventava un.
+
+       I inventar-se'n un és pitjor que duplicar-lo, per dues raons. La primera
+       és que et posa al full una despesa que no has fet. La segona és més
+       lletja: el vigilant després el troba, dona el rebut per arribat i no
+       t'avisa que falta. O sigui que la mateixa línia que embruta el balanç
+       apaga l'avís que l'hauria de descobrir.
+
+       Escriure el moviment tenia sentit quan el full era l'única font: ningú
+       més l'anava a posar. Amb el banc connectat, la font és el banc, i el que
+       ha de fer un recurrent és VIGILAR, no escriure. És exactament el que ell
+       preguntava quan va dir «si el banc ja el porta, de què serveix aquest
+       apartat?»: la resposta era que no serveix per escriure.
+       ══════════════════════════════════════════════════════════════════════ */
+    if (typeof FinancesBanc !== 'undefined' && FinancesBanc.disponible()) {
+      return [];
+    }
+
     /* QUI JA HA ARRIBAT AQUEST MES, per no apuntar-ho dues vegades.
        El recurrent es va inventar quan no hi havia banc: llavors escriure'l
        era l'única manera que el rebut existís. Amb el banc connectat, el

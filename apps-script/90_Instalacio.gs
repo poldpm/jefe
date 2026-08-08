@@ -1793,6 +1793,74 @@ function provaAvisCremades() {
 
 
 /**
+ * ══════════════════════════════════════════════════════════════════════════
+ * ELS MOVIMENTS QUE ES VA INVENTAR UN RECURRENT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Fins ara, un recurrent al qual li havia arribat el dia i encara no havia
+ * vist el càrrec al full se n'inventava un. Tenia sentit quan el full era
+ * l'única font; amb el banc connectat és una despesa que no has fet.
+ *
+ * `mirraElsInventats()` només MIRA i t'ho ensenya. No toca res.
+ * `treuElsInventats()` els treu, i «treure» aquí vol dir el mateix que a la
+ * resta de l'app: es marquen com a esborrats i la fila es queda al full. Si
+ * algun l'havies de tenir, es pot recuperar.
+ */
+function mirraElsInventats() { return inventats_(false); }
+function treuElsInventats()  { return inventats_(true); }
+
+function inventats_(esborrar) {
+  var l = ['=== MOVIMENTS QUE ES VA INVENTAR UN RECURRENT ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var files;
+  try {
+    files = Dades.llegeix('Moviments', function (f) {
+      return !f.esborrat_el && String(f.origen) === 'recurrent';
+    });
+  } catch (err) { a('No he pogut llegir els moviments: ' + err.message); return l.join('\n'); }
+
+  if (!files.length) {
+    a('No n\'hi ha cap. No s\'ha inventat res.');
+    a(''); a('=== FI ==='); return l.join('\n');
+  }
+
+  files.sort(function (x, y) { return String(x.data) < String(y.data) ? -1 : 1; });
+  var suma = 0;
+  files.forEach(function (f) {
+    var imp = Number(String(f['import']).replace(',', '.')) || 0;
+    suma += (f.tipus === 'i' ? -imp : imp);
+    a('   ' + f.data + '  ' + (f.tipus === 'i' ? '+' : '−') +
+      imp.toFixed(2).replace('.', ',') + ' €  ' + Utils.talla(String(f.descripcio), 40));
+  });
+  a('');
+  a('Són ' + files.length + ', i sumen ' + suma.toFixed(2).replace('.', ',') + ' € de despesa.');
+  a('');
+
+  if (!esborrar) {
+    a('AIXÒ NOMÉS HO HA MIRAT. No s\'ha tocat res.');
+    a('Repassa la llista: si tots són coses que NO has pagat de debò,');
+    a('executa treuElsInventats() i se n\'aniran.');
+    a('Si algun sí que el vas pagar en efectiu o fora del banc, deixa-ho');
+    a('estar i esborra els altres a mà des de l\'app.');
+  } else {
+    var fora = 0;
+    files.forEach(function (f) {
+      try { Dades.actualitza('Moviments', f.id, { esborrat_el: Utils.ara() }); fora++; }
+      catch (err) { a('   no he pogut treure ' + f.id + ': ' + err.message); }
+    });
+    try { Memoria.oblida('finances'); } catch (err) {}
+    a('TRETS: ' + fora + '.');
+    a('Les files es queden al full marcades com a esborrades: si algun');
+    a('l\'havies de tenir, es pot recuperar.');
+  }
+
+  a(''); a('=== FI ===');
+  return l.join('\n');
+}
+
+
+/**
  * OMPLE «QUI COBRA» ALS MOVIMENTS QUE JA TENS.
  *
  * El compte de qui cobra es desa des d'avui, i els dos-cents moviments que hi
