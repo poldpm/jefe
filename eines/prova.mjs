@@ -2486,6 +2486,124 @@ console.log('\nRebuts fixos: sortir cada mes no és ser un rebut');
   }
 }
 
+// ------------------- el vigilant: el que NO ha passat i el que ha passat diferent
+/* «Si el banc ja el porta, de què serveix aquest apartat?» La pregunta era bona
+   i la resposta honesta era: de res. Els moviments són el que ha passat; una
+   expectativa és l'únic que pot trobar a faltar alguna cosa. Això prova les
+   dues coses que ho justifiquen —i que no cridi quan no toca, que és el que fa
+   que d'aquí a tres setmanes encara te'ls miris. */
+console.log('\nEls rebuts fixos vigilen: què falta i què ha pujat');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Finances.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Finances = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+  let n = 0;
+
+  const munta = (movs, recs, avui) => {
+    const ctx = {
+      Utils: { avui: () => avui, ara: () => avui + 'T10:00:00', talla: (s, x) => String(s).slice(0, x),
+               esDataValida: () => true, nouId: (p) => p + (++n) },
+      Dades: {
+        llegeix: (full, filtre) => {
+          const l = full === 'Moviments' ? movs : full === 'Recurrents' ? recs
+                  : full === 'Categories' ? [] : [];
+          return l.filter((f) => !filtre || filtre(f));
+        },
+        un: () => null, perId: () => null,
+        insereix: (f, fila, p) => Object.assign({ id: p + (++n) }, fila),
+        actualitza: () => ({}), desa: (f, fila, c, p) => ({ id: p + (++n) })
+      },
+      Config: { get: () => '', getNum: (k, d) => d, esSi: () => false },
+      Log: { info() {}, avis() {}, error() {} },
+      Memoria: { recorda: (a, b, fer) => fer(), oblida() {} },
+      Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp
+    };
+    vm.createContext(ctx);
+    vm.runInContext(srvFont, ctx);
+    return ctx.Finances;
+  };
+
+  const rec = (id, desc, imp, dia, clau, tipus) =>
+    ({ id, tipus: tipus || 'd', import: imp, categoria: 'c_casa', descripcio: desc,
+       metode: 'domic', dia, actiu: 'SI', clau, ultim_mes: '' });
+  const mov = (data, desc, imp, tipus) =>
+    ({ id: 'm' + (++n), data, tipus: tipus || 'd', import: imp, categoria: 'c_casa',
+       descripcio: desc, metode: 'domic', origen: 'banc', revisat: 'SI' });
+
+  const recs = [
+    rec('r1', 'Assegurança del cotxe', 42.9, 5, 'd|SEGUROS CATALANA OCC'),
+    rec('r2', 'Lloguer', 620, 1, 'd|IMMOBILIARIA VIC'),
+    rec('r3', 'Spotify', 10.99, 18, 'd|SPOTIFY AB'),
+    rec('r4', 'Nòmina', 1840, 28, 'i|NOMINA ESCOLA VEDRUNA', 'i')
+  ];
+
+  /* Dia 20 del mes: el lloguer i l'assegurança havien d'haver arribat; el
+     Spotify fa dos dies i encara té cortesia; la nòmina encara no toca. */
+  const movs = [
+    mov('2026-08-01', 'IMMOBILIARIA VIC', 620),          // ha arribat igual
+    mov('2026-08-05', 'SEGUROS CATALANA OCC', 51.2)      // ha arribat MÉS CAR
+    // Spotify: no hi és
+  ];
+
+  const F = munta(movs, recs, '2026-08-20');
+  const v = F.vigilancia();
+
+  cal('el terra del mes és la suma del que surt cada mes',
+      v.compromes === 673.89, String(v.compromes));
+  cal('i el que entra de fix va a part, no es resta',
+      v.esperat === 1840, String(v.esperat));
+
+  const falten = v.falten.map((f) => f.descripcio);
+  cal('el Spotify falta: el dia 18 més tres de cortesia ja han passat el 20... encara no',
+      falten.indexOf('Spotify') === -1, falten.join(' | '));
+
+  /* El 22 sí: dia 18 + 3 de cortesia = 21, i el 22 ja és tard. */
+  const v2 = munta(movs, recs, '2026-08-22').vigilancia();
+  cal('i el 22 sí que es dona per no arribat',
+      v2.falten.map((f) => f.descripcio).indexOf('Spotify') !== -1,
+      v2.falten.map((f) => f.descripcio).join(' | '));
+  cal('els tres dies de cortesia són el que evita cridar el dia clavat',
+      F.VIGILA.marge === 3);
+
+  cal('la nòmina no es reclama: encara no li toca',
+      v2.falten.map((f) => f.descripcio).indexOf('Nòmina') === -1,
+      v2.falten.map((f) => f.descripcio).join(' | '));
+  cal('i el lloguer, que ha arribat igual, no diu res',
+      !v2.falten.concat(v2.canviats).some((x) => /Lloguer/.test(x.descripcio)));
+
+  const c = v2.canviats[0];
+  cal('l\'assegurança que passa de 42,90 a 51,20 es detecta',
+      c && /Assegurança/.test(c.descripcio), JSON.stringify(v2.canviats));
+  cal('i es diu quant ha pujat en tant per cent, que és el que et fa reaccionar',
+      c.abans === 42.9 && c.ara === 51.2 && c.percentatge === 19, JSON.stringify(c));
+
+  /* Un cèntim no és una pujada de preu. Ha de ser gros en relatiu I en
+     absolut: un 5 % de tres euros tampoc no ho és. */
+  const petit = munta([mov('2026-08-01', 'IMMOBILIARIA VIC', 620.4)],
+                      [rec('r2', 'Lloguer', 620, 1, 'd|IMMOBILIARIA VIC')], '2026-08-22');
+  cal('quaranta cèntims en sis-cents euros no són un canvi de preu',
+      petit.vigilancia().canviats.length === 0);
+
+  /* I el que arriba al telèfon: només els esdeveniments, no els estats. */
+  const s = munta(movs, recs, '2026-08-22').senyals();
+  const ids = s.map((x) => x.id);
+  cal('els senyals són el que falta i el que ha pujat, i res més', s.length === 2,
+      ids.join(' | '));
+  cal('i cadascun porta el mes a dins, per no repetir-se cada dia',
+      ids.every((x) => /2026-08$/.test(x)), ids.join(' | '));
+  cal('el que falta ho diu amb el retard i l\'import',
+      s.some((x) => /no ha arribat/i.test(x.titol) && /10,99 €/.test(x.text)),
+      JSON.stringify(s.map((x) => x.titol)));
+  cal('i la pujada diu els dos preus',
+      s.some((x) => /ha pujat/.test(x.titol) && /42,9 €/.test(x.text) && /51,2 €/.test(x.text)),
+      JSON.stringify(s.map((x) => x.text)));
+
+  /* Un mes en què tot ha anat bé no ha de dir absolutament res. */
+  const tot = munta([mov('2026-08-01', 'IMMOBILIARIA VIC', 620)],
+                    [rec('r2', 'Lloguer', 620, 1, 'd|IMMOBILIARIA VIC')], '2026-08-22');
+  cal('un mes sense res a dir no diu res', tot.senyals().length === 0);
+}
+
 // -------------------------------- la pantalla de rebuts fixos: proposar i triar
 console.log('\nRebuts fixos: la pantalla proposa, tria i sap dir que no');
 {
@@ -4035,9 +4153,9 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
 
   /* I els mòduls de debò han de saber-ne declarar. */
   const declaren = ['40_Mod_Tasques.gs', '40_Mod_Habits.gs', '40_Mod_Nutricio.gs',
-                    '40_Mod_Escola.gs', '40_Mod_Seguiment.gs']
+                    '40_Mod_Escola.gs', '40_Mod_Seguiment.gs', '40_Mod_Finances.gs']
     .filter((f) => /senyals:\s*function/.test(fs.readFileSync('apps-script/' + f, 'utf8')));
-  cal('cinc mòduls saben dir què els passa', declaren.length === 5, declaren.join(', '));
+  cal('sis mòduls saben dir què els passa', declaren.length === 6, declaren.join(', '));
 
   const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
   cal('i hi ha un trigger que ho mira, i surt a la llista de neteja',

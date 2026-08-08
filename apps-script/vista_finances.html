@@ -562,39 +562,53 @@ App.registraVista('finances', {
     function pintaRecurrents(d) {
       var llista = d.llista || [];
       var mesAra = new Date().toISOString().slice(0, 7);
-      var totalD = llista.filter(function (r) { return r.actiu && r.tipus === 'd'; })
-        .reduce(function (s, r) { return s + r.import; }, 0);
-      var totalI = llista.filter(function (r) { return r.actiu && r.tipus === 'i'; })
-        .reduce(function (s, r) { return s + r.import; }, 0);
+      var v = d.vigilancia || { compromes: 0, esperat: 0, falten: [], canviats: [],
+                                perRecurrent: [] };
+      var estats = {};
+      (v.perRecurrent || []).forEach(function (x) { estats[x.id] = x; });
 
       arrel.innerHTML = capcalera(false) +
         '<div class="pagina nutri">' +
+          /* EL TERRA DEL MES, i és la xifra que abans no sortia enlloc.
+             «He gastat 780 €» i «tinc 862 € compromesos passi el que passi»
+             són dues coses molt diferents, i la segona és la que et diu quant
+             et queda de debò per decidir. */
           '<section class="nutri-dalt">' +
             '<div class="tres-xifres">' +
-              xifra('Surten', eurNum(totalD), '€') +
-              xifra('Entren', eurNum(totalI), '€') +
+              xifra('Compromès', eurNum(v.compromes), '€') +
+              xifra('Entren', eurNum(v.esperat), '€') +
               xifra('Actius', llista.filter(function (r) { return r.actiu; }).length, '') +
             '</div>' +
-            '<p class="menut">El que et passa cada mes sense fer-hi res. Si el banc ja ' +
-              'el porta, no se n\'apunta cap de nou: es dona per arribat.</p>' +
+            '<p class="menut">El que surt cada mes sense fer-hi res. Els porta el banc; ' +
+              'aquí el que es fa és vigilar que arribin i que no pugin de preu.</p>' +
             '<button class="btn btn-primari" data-tria-rec style="width:100%;margin-top:var(--e3)">' +
               ic('mes') + 'Afegeix-ne un</button>' +
           '</section>' +
 
+          alarmes(v) +
           propostes(d) +
 
           '<section class="nutri-apats">' +
             (llista.length
               ? '<div class="cats">' + llista.map(function (r) {
-                  var fet = String(r.ultimMes) === mesAra;
+                  /* L'ESTAT D'AQUEST MES, dit amb paraules i no amb un color.
+                     «Pendent» volia dir «encara no l'he escrit jo», que amb el
+                     banc connectat no vol dir res. Ara diu si ha arribat, si
+                     encara no toca o si el s'espera i no hi és. */
+                  var e = estats[r.id] || { estat: 'esperant' };
+                  var diu = !r.actiu ? 'aturat'
+                          : e.estat === 'arribat' ? 'ha arribat el ' + Number(String(e.data).slice(8, 10))
+                          : e.estat === 'canviat' ? 'ha arribat, però per ' + eurNum(e.import) + ' €'
+                          : e.estat === 'falta' ? 'no ha arribat'
+                          : 'encara no toca';
                   return '<button class="rec-fila" data-rec="' + esc(r.id) + '"' +
-                    (r.actiu ? '' : ' data-apagat="1"') + '>' +
+                    (r.actiu ? '' : ' data-apagat="1"') +
+                    ' data-estat="' + esc(e.estat) + '">' +
                     '<span class="rec-dia">' + r.dia + '</span>' +
                     '<span class="rec-cos">' +
                       '<b>' + esc(r.descripcio) + '</b>' +
                       '<span class="menut">' + esc((r.emoji ? r.emoji + ' ' : '') + r.categoriaNom) +
-                        ' · ' + esc(r.metode) +
-                        (r.actiu ? (fet ? ' · fet aquest mes' : ' · pendent') : ' · aturat') +
+                        ' · ' + esc(diu) +
                       '</span>' +
                     '</span>' +
                     '<span class="rec-import num" data-costat="' +
@@ -618,6 +632,27 @@ App.registraVista('finances', {
         });
       });
 
+      /* «Ha pujat» sense poder-hi fer res és una queixa. El botó posa el preu
+         nou a l'expectativa, i a partir d'aquí el que vigila és el nou. */
+      arrel.querySelectorAll('[data-posa]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var r = null;
+          for (var i = 0; i < llista.length; i++) if (llista[i].id === b.dataset.posa) r = llista[i];
+          if (!r) return;
+          b.disabled = true; b.textContent = 'Desant…';
+          escriu('finances', 'desaRecurrent', {
+            id: r.id, clau: r.clau, tipus: r.tipus, 'import': Number(b.dataset.nou),
+            descripcio: r.descripcio, categoria: r.categoria, metode: r.metode,
+            dia: r.dia, actiu: true
+          }, quePinto()).then(function (p) {
+            App.brindis('Actualitzat');
+            Cau.oblida('finances.'); aplica(p);
+          }).catch(function (err) {
+            b.disabled = false; App.brindis(err.message, 'error');
+          });
+        });
+      });
+
       var props = d.propostes || [];
       arrel.querySelectorAll('[data-prop]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -637,6 +672,46 @@ App.registraVista('finances', {
             .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
         });
       });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       LES DUES COSES QUE UN MOVIMENT NO POT DIR
+
+       Els moviments són el que ha passat. Això és el que NO ha passat —un
+       rebut que s'espera i no hi és— i el que ha passat DIFERENT —un que ha
+       arribat per un altre import. Cap de les dues es veu mirant la llista
+       del mes: la primera perquè no hi és, i la segona perquè hi és com una
+       línia més entre trenta.
+
+       Van a dalt de tot i amb el fil encès: si hi són, són el motiu pel qual
+       val la pena que aquesta pantalla existeixi.
+       ═══════════════════════════════════════════════════════════════════ */
+    function alarmes(v) {
+      var falten = v.falten || [], canviats = v.canviats || [];
+      if (!falten.length && !canviats.length) return '';
+
+      return '<section class="nutri-apats">' +
+        '<div class="vigila">' +
+          falten.map(function (f) {
+            return '<div class="vigila-fila" data-mena="falta">' + ic('avis') +
+              '<span><b>' + esc(f.descripcio) + (f.tipus === 'i' ? ' no ha entrat' : ' no ha arribat') +
+                '</b><span class="menut">' + esc('Feia ' + eurNum(f.import) + ' € el dia ' + f.dia +
+                ' i en portem ' + f.dies + ' de retard.') + '</span></span>' +
+            '</div>';
+          }).join('') +
+          canviats.map(function (c) {
+            var amunt = c.diferencia > 0;
+            return '<div class="vigila-fila" data-mena="' + (amunt ? 'puja' : 'baixa') + '">' +
+              ic(amunt ? 'avis' : 'punxo') +
+              '<span><b>' + esc(c.descripcio) + (amunt ? ' ha pujat' : ' ha baixat') + '</b>' +
+              '<span class="menut">' + esc('Pagaves ' + eurNum(c.abans) + ' € i aquest mes són ' +
+                eurNum(c.ara) + ' € (' + (amunt ? '+' : '') + c.percentatge + ' %).') + '</span></span>' +
+              '<button class="btn btn-secundari btn-menut" data-posa="' + esc(c.id) +
+                '" data-nou="' + c.ara + '">Posa-hi ' + eurNum(c.ara) + '</button>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</section>';
     }
 
     /* Un grup de moviments, vestit de recurrent perquè el formulari el pugui

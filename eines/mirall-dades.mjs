@@ -286,8 +286,30 @@ export function dades(AVUI, menys) {
           categoriaNom: 'Casa', metode: 'rebut', dia: 1, actiu: true, ultim_mes: '' },
         { id: 'r2', descripcio: 'Assegurança del cotxe', import: 38.9, tipus: 'd',
           categoria: 'c_cotx', categoriaNom: 'Cotxe i benzina', metode: 'rebut', dia: 15,
-          actiu: true, ultim_mes: '' }
+          actiu: true, clau: 'd|SEGUROS CATALANA OCC', ultim_mes: '' },
+        { id: 'r3', descripcio: 'Spotify', import: 10.99, tipus: 'd',
+          categoria: 'c_oci', categoriaNom: 'Oci', metode: 'targeta', dia: 4,
+          actiu: true, clau: 'd|SPOTIFY AB', ultim_mes: '' }
       ],
+      /* El vigilant amb els dos casos alhora: un que no ha arribat i un que ha
+         pujat de preu. Es el motiu pel qual aquesta pantalla existeix, o sigui
+         que al mirall hi han de ser tots dos per poder-los mirar. */
+      vigilancia: {
+        mes: AVUI.slice(0, 7),
+        compromes: 669.89, esperat: 0, arribat: 666.2,
+        perRecurrent: [
+          { id: 'r1', estat: 'arribat', import: 620, data: AVUI.slice(0, 8) + '01' },
+          { id: 'r2', estat: 'canviat', import: 46.2, data: AVUI.slice(0, 8) + '15',
+            diferencia: 7.3, percentatge: 19 },
+          { id: 'r3', estat: 'falta' }
+        ],
+        falten: [{ id: 'r3', descripcio: 'Spotify', tipus: 'd', import: 10.99,
+                   dia: 4, dies: 4 }],
+        canviats: [{ id: 'r2', descripcio: 'Assegurança del cotxe', tipus: 'd',
+                     abans: 38.9, ara: 46.2, diferencia: 7.3, percentatge: 19,
+                     clau: 'd|SEGUROS CATALANA OCC' }],
+        llindars: { marge: 3, canvi: 0.05, minim: 1 }
+      },
       /* El que JEFE hauria vist als moviments. Inventat, com tot el mirall,
          pero amb els casos que importen: dos que passen el filtre i, a la
          llista de triar, el super que NO el passa. */

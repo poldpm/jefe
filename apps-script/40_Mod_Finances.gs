@@ -263,8 +263,30 @@ function MODUL_FINANCES() {
         l.push('- On va més: ' + tres.join(', '));
       }
       if (m.perRevisar) l.push('- Tens ' + m.perRevisar + ' moviments del banc per revisar.');
+
+      /* EL TERRA DEL MES. «He gastat 780 €» i «tinc 862 € compromesos passi el
+         que passi» són dues respostes molt diferents a la mateixa pregunta, i
+         la segona no sortia enlloc. */
+      try {
+        var v = Finances.vigilancia();
+        if (v.compromes) l.push('- Compromès cada mes (rebuts fixos): ' + Finances.eur(v.compromes) +
+          (v.esperat ? ', i n\'entren ' + Finances.eur(v.esperat) + ' de fixos' : ''));
+        if (v.falten.length) {
+          l.push('- NO HA ARRIBAT aquest mes: ' + v.falten.map(function (f) {
+            return f.descripcio + ' (' + Finances.eur(f.import) + ')'; }).join(', '));
+        }
+        if (v.canviats.length) {
+          l.push('- Ha canviat de preu: ' + v.canviats.map(function (c) {
+            return c.descripcio + ' de ' + Finances.eur(c.abans) + ' a ' + Finances.eur(c.ara); }).join(', '));
+        }
+      } catch (err) { /* sense vigilància, el context segueix sencer */ }
+
       return l.join('\n');
     },
+
+    /* El que ha de picar al telèfon: una cosa que havia d'arribar i no ha
+       arribat, i una que ha canviat de preu. Vegeu `senyalsFinances`. */
+    senyals: function () { return Finances.senyals(); },
 
     einesIA: [{
       nom: 'consulta_finances',
@@ -1288,6 +1310,148 @@ var Finances = (function () {
     };
   }
 
+  /* ══════════════════════════════════════════════════════════════════════
+     EL VIGILANT
+
+     «Si el banc ja el porta, de què serveix aquest apartat?» La pregunta era
+     bona i la resposta honesta era: de res. Els recurrents es van inventar per
+     ESCRIURE el moviment quan no hi havia banc; amb el banc connectat aquella
+     feina ja no cal, i el que quedava era una llista que repetia el que ja hi
+     ha als moviments.
+
+     El que un moviment no pot fer per definició és dir-te el que NO ha passat.
+     Els moviments són el que ha passat; un recurrent és una expectativa, i
+     només una expectativa pot trobar a faltar alguna cosa. D'aquí surten les
+     tres úniques coses que justifiquen que l'apartat existeixi:
+
+       · QUANT TENS COMPROMÈS abans de decidir res. No és el que has gastat:
+         és el terra del mes, i no surt enlloc més.
+       · QUÈ HAVIA D'ARRIBAR I NO HA ARRIBAT. La subscripció que et pensaves
+         que havies cancel·lat, la que sí i segueix cobrant, la nòmina que no
+         ha entrat.
+       · QUÈ HA CANVIAT DE PREU. L'assegurança que passa de 42,90 a 51,20 és
+         una línia més entre els moviments i no la veuràs mai; contra el que
+         pagaves, és un 19 % amunt.
+
+     ELS TRES DIES DE CORTESIA no són un detall: un rebut del dia 5 pot caure
+     el 7 sense que passi res, i cridar el dia 5 a les sis del matí faria que
+     tres setmanes després ja no miressis els avisos.
+     ══════════════════════════════════════════════════════════════════════ */
+  var VIGILA = {
+    marge: 3,        // dies de cortesia abans de dir que no ha arribat
+    canvi: 0.05,     // 5 % de diferència ja és un canvi de preu
+    minim: 1         // €: per sota, no val la pena dir res
+  };
+
+  function vigilancia(mes) {
+    var avui = Utils.avui();
+    var mesAra = String(mes || avui).slice(0, 7);
+    /* Si mires un mes passat, ja s'ha acabat: tot el que havia d'arribar ha
+       tingut els seus trenta dies. Si mires el que corres, només ha vençut el
+       que ja ha passat. */
+    var diaAvui = (mesAra === avui.slice(0, 7)) ? Number(avui.slice(8, 10)) : 31;
+
+    var perClau = {};
+    moviments_(function (f) { return String(f.data).slice(0, 7) === mesAra; })
+      .forEach(function (m) {
+        var k = clauMemoria_(m.descripcio, m.tipus);
+        if (!k) return;
+        if (!perClau[k]) perClau[k] = [];
+        perClau[k].push({ data: String(m.data), import: num_(m['import']),
+                          descripcio: m.descripcio });
+      });
+
+    var compromes = 0, esperat = 0, arribat = 0;
+    var falten = [], canviats = [];
+
+    var llista = recurrents().filter(function (r) { return r.actiu; }).map(function (r) {
+      if (r.tipus === 'i') esperat += r.import; else compromes += r.import;
+
+      var vist = r.clau ? (perClau[r.clau] || [])[0] : null;
+      var e = { id: r.id, estat: 'esperant' };
+
+      if (vist) {
+        arribat += vist.import;
+        e.estat = 'arribat';
+        e.import = vist.import;
+        e.data = vist.data;
+        var dif = Math.round((vist.import - r.import) * 100) / 100;
+        /* Un cèntim amunt no és un canvi de preu. Es demana que sigui gros en
+           relatiu I en absolut: un 5 % de tres euros tampoc no ho és. */
+        if (Math.abs(dif) >= VIGILA.minim &&
+            r.import && Math.abs(dif) / r.import >= VIGILA.canvi) {
+          e.estat = 'canviat';
+          e.diferencia = dif;
+          e.percentatge = Math.round((dif / r.import) * 100);
+          canviats.push({ id: r.id, descripcio: r.descripcio, tipus: r.tipus,
+                          abans: r.import, ara: vist.import,
+                          diferencia: dif, percentatge: e.percentatge, clau: r.clau });
+        }
+      } else if (r.dia + VIGILA.marge <= diaAvui) {
+        e.estat = 'falta';
+        falten.push({ id: r.id, descripcio: r.descripcio, tipus: r.tipus,
+                      import: r.import, dia: r.dia,
+                      dies: diaAvui - r.dia });
+      }
+      return e;
+    });
+
+    return {
+      mes: mesAra,
+      compromes: Math.round(compromes * 100) / 100,
+      esperat: Math.round(esperat * 100) / 100,
+      arribat: Math.round(arribat * 100) / 100,
+      perRecurrent: llista,
+      falten: falten,
+      canviats: canviats,
+      llindars: VIGILA
+    };
+  }
+
+  /**
+   * El que val la pena que et piqui al telèfon.
+   *
+   * Només dues coses, i totes dues són esdeveniments i no estats: una cosa que
+   * havia d'arribar i no ha arribat, i una que ha canviat de preu. El que ja
+   * saps —que cada mes surten vuit-cents euros— no és un avís, és una xifra, i
+   * va a la pantalla.
+   */
+  function senyalsFinances() {
+    var v;
+    try { v = vigilancia(); } catch (err) { return []; }
+    var out = [];
+
+    v.falten.forEach(function (f) {
+      out.push({
+        id: 'fin_falta:' + f.id + ':' + v.mes,
+        titol: f.tipus === 'i' ? 'No ha entrat: ' + f.descripcio
+                               : 'No ha arribat: ' + f.descripcio,
+        text: 'Feia ' + eur_(f.import) + ' el dia ' + f.dia + ' i en portem ' + f.dies +
+              ' de retard. Mira si segueix viu.',
+        urgencia: f.tipus === 'i' ? 2 : 1,
+        accio: 'finances'
+      });
+    });
+
+    v.canviats.forEach(function (c) {
+      var amunt = c.diferencia > 0;
+      out.push({
+        id: 'fin_puja:' + c.id + ':' + v.mes,
+        titol: c.descripcio + (amunt ? ' ha pujat' : ' ha baixat'),
+        text: 'Pagaves ' + eur_(c.abans) + ' i aquest mes són ' + eur_(c.ara) +
+              ' (' + (amunt ? '+' : '') + c.percentatge + ' %).',
+        urgencia: amunt ? 1 : 0,
+        accio: 'finances'
+      });
+    });
+
+    return out;
+  }
+
+  function eur_(n) {
+    return String(Math.round(Number(n) * 100) / 100).replace('.', ',') + ' €';
+  }
+
   /** Un «no» es recorda: d'aquest comerç no se'n torna a proposar cap. */
   function descartaCandidat(clau) {
     clau = String(clau || '').trim();
@@ -1525,6 +1689,12 @@ var Finances = (function () {
                   } catch (err) {
                     Log.avis('finances.candidats', 'No he pogut mirar els candidats: ' + err.message);
                     r.propostes = []; r.triables = [];
+                  }
+                  try {
+                    r.vigilancia = vigilancia();
+                  } catch (err2) {
+                    Log.avis('finances.vigila', 'No he pogut vigilar el mes: ' + err2.message);
+                    r.vigilancia = null;
                   }
                   return r;
                 })()
@@ -2003,7 +2173,10 @@ var Finances = (function () {
     recurrents: recurrents,
     candidatsRecurrents: candidatsRecurrents,
     descartaCandidat: descartaCandidat,
+    vigilancia: vigilancia,
+    senyals: senyalsFinances,
     RECURRENT: RECURRENT,
+    VIGILA: VIGILA,
     patrimoni: patrimoni,
     estatDelBanc: estatDelBanc_,
     desaActiu: desaActiu,

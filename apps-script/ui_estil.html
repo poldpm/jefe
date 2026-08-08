@@ -1186,6 +1186,32 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* EL VIGILANT. El que no ha arribat i el que ha canviat de preu: les dues
+   úniques coses que la llista de moviments no pot dir, perquè una no hi és i
+   l'altra hi és disfressada de línia normal. El fil encès a l'esquerra i la
+   icona: el nivell no pot dependre només del color. */
+.vigila { display: flex; flex-direction: column; gap: var(--e2); }
+.vigila-fila { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto;
+               align-items: center; gap: var(--e2) var(--e3);
+               padding: var(--e3); border: 1px solid var(--neatline);
+               background: var(--paper2); font-size: .875rem; line-height: 1.45; }
+.vigila-fila > span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.vigila-fila .ic { width: 18px; height: 18px; flex: none; align-self: flex-start;
+                   margin-top: 2px; }
+.vigila-fila[data-mena="falta"] { border-left: 3px solid var(--avis); }
+.vigila-fila[data-mena="falta"] .ic { color: var(--avis); }
+.vigila-fila[data-mena="puja"] { border-left: 3px solid var(--gr); }
+.vigila-fila[data-mena="puja"] .ic { color: var(--gr); }
+.vigila-fila[data-mena="baixa"] { border-left: 3px solid var(--utm); }
+.vigila-fila[data-mena="baixa"] .ic { color: var(--utm); }
+.vigila-fila .btn { grid-column: 2 / -1; justify-self: start; }
+
+/* La fila del recurrent, segons com hagi anat el mes. El que falta crida; el
+   que ha arribat s'apaga una mica, que ja no demana res. */
+.rec-fila[data-estat="falta"] .rec-dia { border-color: var(--avis); color: var(--avis); }
+.rec-fila[data-estat="canviat"] .rec-dia { border-color: var(--gr); color: var(--gr); }
+.rec-fila[data-estat="arribat"] .rec-dia { opacity: .5; }
+
 /* Triant-lo dels moviments no hi ha dia: encara no és un rebut, és un comerç
    que has vist unes quantes vegades. La columna del dia sobra i la fila torna
    a ser de dues. */
