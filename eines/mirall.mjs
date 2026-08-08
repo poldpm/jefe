@@ -75,6 +75,11 @@ const MOCK = `
   var CONV_HIST   = ${j(D.conversaHistorial())};
   var INICI       = ${j(D.nucliInici())};
   var SEGUIMENT   = ${j(D.segPantalla())};
+  /* Cinc setmanes cuinades. La del 20 de juliol son quatre sortides planes i
+     la del 27 tres amb desnivell: es el cas que en Pol demanava veure. */
+  var ENTRENA     = ${j(Object.fromEntries(
+    ['2026-07-06', '2026-07-13', '2026-07-20', '2026-07-27', '2026-08-03']
+      .map((dl) => [dl, D.entPantalla(dl)])))};
   var ESCOLA      = ${j(D.escPantalla())};
   var ESC_VIU     = ${j(D.escPantalla().dia.pendents.filter((x) => x.llista))};
   var DIA_BASE    = ${j(D.elDia({}))};
@@ -271,6 +276,47 @@ const MOCK = `
         window.__ultimaUllada = p;
         return { comentari: 'Lectura inventada del mirall: aqui no hi ha cap IA ni cap foto.',
                  data: p.data, fotos: 3, desde: '2026-06-12' };
+      }
+    }
+
+    if (modul === 'entrenaments') {
+      if (accio === 'pantalla') {
+        /* La setmana que demani, o la mes recent que hi hagi cuinada. */
+        var claus = Object.keys(ENTRENA).sort();
+        var vol = p && p.desde ? p.desde : claus[claus.length - 1];
+        var tria = claus[0];
+        for (var ci = 0; ci < claus.length; ci++) if (claus[ci] <= vol) tria = claus[ci];
+        return copia(ENTRENA[tria]);
+      }
+      if (accio === 'desa') return { desat: true, id: 'ent_mirall', data: p.data };
+      if (accio === 'esborra') return { tret: true };
+      if (accio === 'desaPassos') return { desat: true, dilluns: p.dilluns,
+        total: p.total || (p.mitjana || 0) * 7, mitjana: p.mitjana || Math.round((p.total || 0) / 7) };
+      /* La lectura de la captura. Aqui no s obre cap imatge ni es crida ningu:
+         es torna una proposta cuinada —amb una fila dubtosa a posta— per poder
+         provar que es pugui repassar, corregir la data i desar nomes el que
+         s hagi marcat. */
+      if (accio === 'llegeixCaptura') {
+        window.__ultimaCaptura = { mena: p.mena, mida: String(p.contingut || '').length };
+        if (p.mena === 'passos') {
+          return { mena: 'passos', dilluns: p.dilluns,
+                   passos: { total: 81250, mitjana: null }, avis: '' };
+        }
+        return { mena: p.mena, dilluns: p.dilluns, avis: '', sessions: [
+          { data: '2026-07-28', mena: 'trail', titol: 'Sèries a la pujada', km: 7.8,
+            desnivell: 480, minuts: 62, pulsacions: 163, font: 'captura',
+            kmEsforc: 12.6, dubtosa: false },
+          { data: '2026-07-29', mena: 'forca', titol: 'Esquena i espatlles', km: null,
+            desnivell: null, minuts: 38, pulsacions: null, font: 'captura',
+            kmEsforc: null, dubtosa: false },
+          { data: null, mena: 'trail', titol: 'Sortida sense dia', km: 5.4,
+            desnivell: 120, minuts: 36, pulsacions: 150, font: 'captura',
+            kmEsforc: 6.6, dubtosa: true }
+        ] };
+      }
+      if (accio === 'confirmaCaptura') {
+        window.__ultimaConfirmacio = p;
+        return { desats: (p.sessions || []).length };
       }
     }
 
@@ -756,7 +802,8 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
 const VISTES = ['inici', 'habits', 'tasques', 'nutricio', 'finances',
-                'seguiment', 'escola', 'diari', 'focus', 'dia', 'setmana', 'relacions', 'memoria'];
+                'seguiment', 'entrenaments', 'escola', 'diari', 'focus', 'dia', 'setmana',
+                'relacions', 'memoria'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>
 <style>

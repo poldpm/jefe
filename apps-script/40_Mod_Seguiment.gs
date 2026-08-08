@@ -528,6 +528,52 @@ var Seguiment = (function () {
     return 'Setmana correcta';
   }
 
+  // -------------------------------------------------- EL QUE HA ENTRENAT
+  /**
+   * La càrrega de cada setmana, si el mòdul d'entrenaments hi és.
+   *
+   * PER QUÈ AMB `typeof` I DINS D'UN `try`. Perquè aquí el que mana és el cos:
+   * el pes, la cintura i les fotos han de seguir sortint sencers encara que
+   * els entrenaments s'apaguin al full `_Moduls`, o encara que el seu full
+   * peti. La càrrega és context, i el context que falta no ha de tombar la
+   * pantalla que l'anava a fer servir.
+   *
+   * I ES LLEGEIX UN SOL COP. `Entrenaments.setmana` accepta la llista ja
+   * llegida justament per això: vuit controls no poden ser vuit lectures del
+   * mateix full.
+   */
+  function carregues_(h) {
+    if (typeof Entrenaments === 'undefined') return {};
+    try {
+      var totes = Entrenaments.sessions();
+      if (!totes.length) return {};
+      var m = {};
+      h.forEach(function (c) {
+        var dl = dillunsDe(c.data);
+        if (m[dl] !== undefined) return;
+        var s = Entrenaments.setmana(dl, totes);
+        m[dl] = s.sessions ? {
+          sessions: s.sessions, trail: s.trail, forca: s.forca,
+          km: s.km, desnivell: s.desnivell, kmEsforc: s.kmEsforc, llargues: s.llargues
+        } : null;
+      });
+      return m;
+    } catch (err) {
+      Log.avis('seguiment.carrega', 'No he pogut llegir els entrenaments: ' + err.message);
+      return {};
+    }
+  }
+
+  /** La càrrega d'una setmana, dita en una línia. Buida si no n'hi ha. */
+  function liniaCarrega_(c) {
+    if (!c) return '';
+    var t = [coma(c.kmEsforc) + ' km-esforç'];
+    t.push(c.sessions + (c.sessions === 1 ? ' sessió' : ' sessions'));
+    if (c.desnivell) t.push(Math.round(c.desnivell) + ' m D+');
+    if (c.llargues) t.push(c.llargues + (c.llargues === 1 ? ' de llarga' : ' de llargues'));
+    return t.join(', ');
+  }
+
   // ------------------------------------------------------------- LA PANTALLA
   function pantalla() {
     var h = controls();
@@ -540,7 +586,11 @@ var Seguiment = (function () {
       fase: faseDe(plaM, avui),
       estat: estat(avui),
       llindars: LLINDAR,
-      comEsMesura: COM_ES_MESURA
+      comEsMesura: COM_ES_MESURA,
+      /* La càrrega real de cada setmana amb control, per dilluns. Buit si
+         encara no hi ha cap entrenament apuntat: la pantalla ho sap gestionar
+         i no ha de saber per què. */
+      carregues: carregues_(h)
     };
   }
 
@@ -772,8 +822,15 @@ var Seguiment = (function () {
        dir «fa un mes que», que és exactament el que un sol control no permet. */
     var desde = Math.max(0, i - 7);
     var tram = [];
+    /* LA CÀRREGA DE DEBÒ AL COSTAT DE CADA CONTROL. «3 trail» no distingeix una
+       setmana de sortides planes d'una de mil sis-cents metres de desnivell, i
+       aquesta és justament la diferència que explica per què una setmana ha
+       anat com ha anat. Sense això li estàvem demanant que ho endevinés. */
+    var carr = carregues_(h);
     for (var t = desde; t <= i; t++) {
+      var lc = liniaCarrega_(carr[dillunsDe(h[t].data)]);
       tram.push('- ' + h[t].data + ': ' + linia_(h[t]) +
+                (lc ? '\n    entrenat: ' + lc : '') +
                 (t === i ? '   ← aquest' : ''));
     }
 
@@ -799,6 +856,11 @@ var Seguiment = (function () {
                'Mira el tram sencer abans de parlar, no només l\'última fila: el que val és ' +
                'la tendència i si aquesta setmana la trenca o la segueix. Digues on és ' +
                'respecte del que demana la fase.\n' +
+               'Quan hi hagi la línia «entrenat», fes-la servir: els quilòmetres d\'esforç ' +
+               '(km + desnivell/100) diuen el que va costar la setmana, i el nombre de ' +
+               'sortides no. Una setmana de molta càrrega explica un pes que no baixa, una ' +
+               'energia baixa o una gana disparada; una de poca càrrega n\'explica unes ' +
+               'altres. No parlis de sortides quan tinguis la càrrega.\n' +
                'Els avisos de les regles ja els té escrits a la pantalla, o sigui que no els ' +
                'repeteixis tal qual: lliga\'ls i digues què volen dir de conjunt.\n' +
                'Reconeix clarament el que ha fet bé. Quan una dada no quadra, digues-ho sense ' +

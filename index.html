@@ -1949,6 +1949,23 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-delta { font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
              font-variant-numeric: tabular-nums; }
 
+/* La càrrega de la setmana, sota les quatre xifres del cos. No és una mesura
+   més: és el que hi ha fet, i per això va separada per la línia i porta fletxa
+   —d'aquí se'n va a la pantalla que la té sencera—. */
+.seg-carrega { display: flex; align-items: center; gap: var(--e2);
+               width: 100%; margin-top: var(--e3); padding: var(--e2) 0 0;
+               border: 0; border-top: 1px solid var(--neatline);
+               background: transparent; color: var(--ink); text-align: left;
+               font-size: .8125rem; }
+.seg-carrega .ic { flex: none; color: var(--utm); }
+.seg-carrega > span:first-of-type { flex: 1; min-width: 0;
+               font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.seg-carrega .menut { flex: none; }
+.seg-carrega:active { opacity: .7; }
+@media (hover: hover) and (pointer: fine) {
+  .seg-carrega:hover .menut { color: var(--utm); }
+}
+
 /* ELS AVISOS. Cadascun amb la seva icona, perquè el nivell no depengui només
    del color: qui no distingeixi el cian de l'ambre ha de poder llegir-ho. */
 .seg-avisos { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e3) 0; }
@@ -2032,6 +2049,83 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-check { display: flex; align-items: center; gap: var(--e2); margin-top: var(--e2);
              font-size: .8125rem; color: var(--ink-suau); }
 .seg-check input { width: 18px; height: 18px; flex: none; accent-color: var(--utm); }
+
+/* ==========================================================================
+   ENTRENAMENTS
+
+   Una sola xifra mana i es veu de lluny: els quilòmetres d'esforç de la
+   setmana. Tota la resta —sessions, quilòmetres, desnivell, temps— és de què
+   està feta. La fórmula va escrita sota el número i s'hi queda: una mesura que
+   has d'anar a buscar què vol dir no la faràs servir mai.
+   ========================================================================== */
+
+.ent-nav { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--e2); margin-bottom: var(--e3); }
+.ent-nav .marge { margin: 0; }
+
+.ent-carrega[data-dura="1"] { border-color: var(--utm); }
+.ent-gran { display: block; margin: var(--e2) 0 0;
+            font-family: var(--mono); font-size: 2.5rem; font-weight: 600;
+            line-height: 1; font-variant-numeric: tabular-nums; }
+.ent-gran i { font-style: normal; font-size: .75rem; font-weight: 400;
+              color: var(--ink-suau); margin-left: var(--e2);
+              text-transform: uppercase; letter-spacing: .06em; }
+.ent-formula { margin: var(--e2) 0 var(--e3); }
+.ent-xifres { display: grid; grid-template-columns: repeat(2, 1fr);
+              gap: var(--e3) var(--e2);
+              border-top: 1px solid var(--neatline); padding-top: var(--e3); }
+@media (min-width: 420px) { .ent-xifres { grid-template-columns: repeat(4, 1fr); } }
+.ent-xifres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-xifres b { font-family: var(--mono); font-size: 1.25rem; font-weight: 600;
+                line-height: 1; font-variant-numeric: tabular-nums; }
+.ent-xifres b i { font-style: normal; font-size: .6875rem; color: var(--ink-suau);
+                  margin-left: 3px; font-weight: 400; }
+
+/* Els passos a la seva fitxa: no són entrenament, són el que et mous la resta
+   del dia. Barrejar-los amb la càrrega hauria dit que són el mateix. */
+.ent-passos { display: flex; align-items: center; justify-content: space-between;
+              gap: var(--e3); width: 100%; margin-top: var(--e3); padding: var(--e3);
+              border: 1px solid var(--neatline); background: var(--paper2);
+              color: var(--ink); text-align: left;
+              transition: background-color .16s var(--entra), transform .12s var(--entra); }
+.ent-passos > span:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-passos:active { transform: scale(.995); }
+.ent-passos-buit { border-style: dashed; }
+@media (hover: hover) and (pointer: fine) {
+  .ent-passos:hover { background: var(--utm-suau); }
+}
+
+/* DOTZE SETMANES EN BARRES. Una setmana és una capsa tancada i no un punt
+   d'una corba: entre un dilluns i el següent no hi ha res per interpolar. */
+.ent-corba { margin-top: var(--e3); }
+.ent-barres { display: flex; align-items: flex-end; gap: 3px;
+              height: 88px; margin-top: var(--e2); }
+.ent-barra { flex: 1; min-width: 0; height: 100%; padding: 0;
+             display: flex; align-items: flex-end;
+             border: 0; background: transparent; }
+.ent-barra > span { display: block; width: 100%; background: var(--corba);
+                    transition: background-color .16s var(--entra); }
+.ent-barra[aria-current="true"] > span { background: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .ent-barra:hover > span { background: var(--utm); }
+}
+
+/* Una sortida de les que buiden es marca al fil, i no només amb el número:
+   el número el pots llegir, però la fila la veus passant amb el dit. */
+.ent-fila[data-llarga="1"] { border-left: 3px solid var(--utm); }
+
+/* LA PROPOSTA DE LA CAPTURA. Cada fila es pot treure i la data es pot
+   corregir: són les dues coses que la lectura d'una pantalla falla. */
+.ent-prop { padding: var(--e3); border: 1px solid var(--neatline);
+            background: var(--paper2); }
+.ent-prop + .ent-prop { margin-top: calc(-1 * var(--e2)); }
+.ent-prop-dubte { border-left: 3px solid var(--avis); }
+.ent-prop-cap { display: flex; align-items: flex-start; gap: var(--e2);
+                margin-bottom: var(--e2); cursor: pointer; }
+.ent-prop-cap input { width: 20px; height: 20px; flex: none; margin-top: 2px;
+                      accent-color: var(--utm); }
+.ent-prop-cap > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-prop .entrada { width: 100%; }
 
 /* La tria de tres opcions: energia, son, gana, dieta. Botons de debò, prou
    grossos per al dit, i l'estat el diu l'atribut i no només el color. */
@@ -2872,7 +2966,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 09:39 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 11:50 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2914,6 +3008,16 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
     <rect x="3.4" y="3.6" width="17.2" height="16.8" rx="2.6"/>
     <path d="M8.4 8h7.2v3.8H8.4z"/>
     <path d="M7.4 15.6h3.2M13.4 15.6h3.2"/>
+  </symbol>
+
+  <!-- Entrenaments: el perfil d etapa amb el cim marcat. Ni una sabatilla ni
+       una halterofilia: el que aquest apartat afegeix a comptar sortides es el
+       DESNIVELL, i el perfil es el dibuix que ho diu. Es tambe l unica icona
+       que parla el mateix idioma que el fons de corbes de nivell. -->
+  <symbol id="ic-entrenaments" viewBox="0 0 24 24">
+    <path d="M2.8 19.8h18.4"/>
+    <path d="M3.8 17.2 7.6 13.4l2.8 2.6 3.4-8.2 3.4 6 2.6-2.6"/>
+    <circle cx="13.8" cy="7.8" r="1.4"/>
   </symbol>
 
   <!-- Escola: l edifici amb la bandereta. No una motxilla ni una poma: el
@@ -3249,7 +3353,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 09:39 · en curs";
+window.MARCA_JEFE = "2026-08-08 11:50 · en curs";
 </script>
 
 <script>
@@ -8614,6 +8718,7 @@ App.registraVista('seguiment', {
                       ? cur.trailGros + (cur.trailGros === 1 ? ' llarga' : ' llargues')
                       : objectiu('trail')) +
             '</div>' +
+            laCarrega(cur) +
           '</section>' +
 
           (avisos.length
@@ -8667,6 +8772,34 @@ App.registraVista('seguiment', {
     function objectiu(quin) {
       var f = d && d.fase;
       return f && f[quin] ? 'de ' + f[quin] : '';
+    }
+
+    /* LA CÀRREGA DE LA SETMANA DEL CONTROL.
+       «Força 2 · Trail 3» diu quantes vegades, i el que va costar la setmana
+       no ho diu ningú: tres sortides planes i tres amb mil sis-cents metres
+       són el mateix número. La línia va SOTA les quatre xifres i no com una
+       cinquena columna perquè no és una mesura del cos —és el que hi ha fet—,
+       i porta a la pantalla que la té sencera.
+       No hi és quan no hi ha res apuntat: una línia que diu «0» faria pensar
+       que aquella setmana no vas moure't, i el que passa és que no la vas
+       importar. */
+    function laCarrega(cur) {
+      var c = (d.carregues || {})[dillunsDe(cur.data)];
+      if (!c) return '';
+      var t = [coma(c.kmEsforc, 1) + ' km-esforç'];
+      if (c.desnivell) t.push(Math.round(c.desnivell).toLocaleString('ca-ES') + ' m D+');
+      if (c.km) t.push(coma(c.km, 1) + ' km');
+      return '<button class="seg-carrega" data-entrena="1">' +
+        ic('entrenaments', 'ic-p') +
+        '<span>' + esc(t.join(' · ')) + '</span>' +
+        '<span class="menut">Els entrenaments ›</span>' +
+      '</button>';
+    }
+
+    function dillunsDe(iso) {
+      var x = new Date(iso + 'T12:00:00');
+      x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+      return x.toISOString().slice(0, 10);
     }
 
     function mena(avisos) {
@@ -8881,6 +9014,11 @@ App.registraVista('seguiment', {
       var t = arrel.querySelector('[data-torna]');
       if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
+      var ent = arrel.querySelector('[data-entrena]');
+      if (ent) ent.addEventListener('click', function () {
+        App.ves('entrenaments', { desde: dillunsDe(triat || d.estat.avui) });
+      });
+
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { obreControl(null); });
       });
@@ -9045,6 +9183,533 @@ App.registraVista('seguiment', {
     }
 
     if (params && params.data) triat = params.data;
+    carrega(false);
+  }
+});
+</script>
+
+<script>
+/* JEFE — MÒDUL · Entrenaments
+
+   LA XIFRA QUE MANA ÉS LA CÀRREGA, no el nombre de sortides. Tot el que hi ha
+   en aquesta pantalla està ordenat per aquesta idea: primer els quilòmetres
+   d'esforç de la setmana, després de què estan fets, i al final cada sessió.
+   Comptar sortides ja es feia i no deia res: tres de dos quilòmetres i tres de
+   sis amb mil de desnivell donaven el mateix «3».
+
+   ELS QUILÒMETRES D'ESFORÇ SURTEN EXPLICATS A LA PANTALLA. Una mesura que has
+   d'anar a buscar què vol dir és una mesura que no faràs servir: la fórmula és
+   una línia de text sota el número i s'hi queda per sempre. */
+
+App.registraVista('entrenaments', {
+  render: function (arrel, params) {
+
+    var d = null;
+    var dilluns = (params && params.desde) || null;
+
+    // ------------------------------------------------------------ utilitats
+    function coma(n, dec) {
+      if (n === null || n === undefined || n === '') return '—';
+      var v = Number(n);
+      return (dec === undefined ? String(v) : v.toFixed(dec)).replace('.', ',');
+    }
+    function curta(iso) {
+      var p = String(iso).split('-');
+      return Number(p[2]) + ' ' + ['gen','feb','març','abr','maig','juny',
+        'jul','ag','set','oct','nov','des'][Number(p[1]) - 1];
+    }
+    function suma(iso, dies) {
+      var x = new Date(iso + 'T12:00:00');
+      x.setDate(x.getDate() + dies);
+      return x.toISOString().slice(0, 10);
+    }
+    /* «1 h 2» es llegeix com una hora i vint tant sovint com com una hora i
+       dos. Amb el zero al davant no hi ha manera de confondre-ho. */
+    function hores(min) {
+      if (!min) return '';
+      var h = Math.floor(min / 60), m = Math.round(min % 60);
+      return h ? h + ' h ' + (m < 10 ? '0' : '') + m : m + ' min';
+    }
+
+    /* Els milers separats. Mil sis-cents i setze mil metres de desnivell són
+       coses molt diferents i, sense el punt, «1600» i «16000» s'assemblen
+       massa per a una xifra que es mira de passada. */
+    function mil(n) {
+      return Math.round(Number(n) || 0).toLocaleString('ca-ES');
+    }
+
+    // ------------------------------------------------------------ capçalera
+    function capcalera() {
+      var s = d.setmana;
+      return '<header class="capcalera"><div class="capcalera-fila">' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<h1 style="font-size:1.0625rem;margin:0">Entrenaments</h1>' +
+          '<p class="marge" style="margin:2px 0 0">' +
+            esc(curta(s.dilluns) + ' — ' + curta(s.fins)) + '</p>' +
+        '</div>' +
+        '<button class="btn btn-primari" data-captura="1">' + ic('captura') + 'Captura</button>' +
+      '</div></header>';
+    }
+
+    // ----------------------------------------------------------------- pinta
+    function pinta() {
+      var s = d.setmana;
+      var esAquesta = d.dilluns === thisMonday();
+
+      arrel.innerHTML = capcalera() +
+        '<div class="pagina">' +
+
+          /* LA NAVEGACIÓ PER SETMANES. Fletxes de debò i no un calendari: el
+             que fas és mirar la d'abans, no saltar al març. */
+          '<div class="ent-nav">' +
+            '<button class="btn btn-fantasma btn-icona" data-set="' + esc(suma(s.dilluns, -7)) +
+              '" aria-label="Setmana anterior">' + ic('esquerra', 'ic-p') + '</button>' +
+            '<span class="marge">' + esc(esAquesta ? 'aquesta setmana' : curta(s.dilluns)) + '</span>' +
+            '<button class="btn btn-fantasma btn-icona" data-set="' + esc(suma(s.dilluns, 7)) +
+              '" aria-label="Setmana següent"' + (esAquesta ? ' disabled' : '') + '>' +
+              ic('dreta', 'ic-p') + '</button>' +
+          '</div>' +
+
+          /* LA CÀRREGA, QUE ÉS EL QUE HA VINGUT A SABER. */
+          '<section class="fitxa viu ent-carrega" data-dura="' + (s.dura ? '1' : '0') + '">' +
+            '<p class="marge">Càrrega de la setmana</p>' +
+            '<b class="ent-gran">' + coma(s.kmEsforc, 1) + '<i>km-esforç</i></b>' +
+            '<p class="menut ent-formula">km + desnivell ÷ 100. Sis quilòmetres amb mil de ' +
+              'desnivell són 16; dos de plans, 2.</p>' +
+            '<div class="ent-xifres">' +
+              cel('Sessions', s.sessions, '', (s.trail ? s.trail + ' trail' : '') +
+                  (s.trail && s.forca ? ' · ' : '') + (s.forca ? s.forca + ' força' : '')) +
+              cel('Quilòmetres', coma(s.km, 1), 'km', '') +
+              cel('Desnivell', mil(s.desnivell), 'm', s.llargues
+                  ? s.llargues + (s.llargues === 1 ? ' de llarga' : ' de llargues') : '') +
+              cel('Temps', hores(s.minuts) || '—', '', '') +
+            '</div>' +
+          '</section>' +
+
+          passosFitxa(s) +
+          corba() +
+          llista(s) +
+
+          '<button class="btn btn-secundari" data-nou="1" style="width:100%;margin-top:var(--e3)">' +
+            ic('mes') + 'Afegeix-ne un a mà</button>' +
+        '</div>';
+
+      lliga();
+    }
+
+    function cel(nom, valor, unitat, sota) {
+      return '<div><span class="marge">' + esc(nom) + '</span>' +
+        '<b>' + esc(String(valor)) + (unitat ? '<i>' + esc(unitat) + '</i>' : '') + '</b>' +
+        '<span class="seg-delta">' + esc(sota || '') + '</span></div>';
+    }
+
+    // -------------------------------------------------------------- passos
+    /* A LA SEVA FITXA I NO BARREJATS AMB LA CÀRREGA. Els passos no són
+       entrenament: són el que es mou la resta del dia, i justament per això
+       valen —dues setmanes amb la mateixa càrrega i vint mil passos de
+       diferència no són la mateixa setmana—. */
+    function passosFitxa(s) {
+      if (!s.passos) {
+        return '<button class="ent-passos ent-passos-buit" data-passos="1">' +
+          '<span><b>Passos</b><span class="menut">Encara no n\'hi ha d\'aquesta setmana</span></span>' +
+          '<span class="menut">Afegeix-los</span></button>';
+      }
+      return '<button class="ent-passos" data-passos="1">' +
+        '<span><b>Passos</b><span class="menut">' +
+          esc(mil(s.passos.total) + ' en set dies') + '</span></span>' +
+        '<span class="franja-cota"><span class="n">' + esc(mil(s.passos.mitjana)) +
+          '</span><span class="u">al dia</span></span>' +
+      '</button>';
+    }
+
+    // --------------------------------------------------------------- corba
+    /* DOTZE SETMANES EN BARRES I NO EN LÍNIA. Una setmana és una capsa
+       tancada, no un punt d'una corba contínua: no hi ha res entremig del
+       dilluns i el següent. Les barres ho diuen; una línia s'ho inventaria. */
+    function corba() {
+      var c = d.corba || [];
+      var max = 0;
+      c.forEach(function (x) { if (x.kmEsforc > max) max = x.kmEsforc; });
+      if (!max) return '';
+      return '<section class="fitxa ent-corba">' +
+        '<p class="marge">Dotze setmanes</p>' +
+        '<div class="ent-barres">' + c.map(function (x) {
+          var alt = Math.max(2, Math.round((x.kmEsforc / max) * 100));
+          return '<button class="ent-barra" data-set="' + esc(x.dilluns) + '"' +
+            (x.dilluns === d.dilluns ? ' aria-current="true"' : '') +
+            ' aria-label="' + esc('Setmana del ' + curta(x.dilluns) + ': ' +
+              coma(x.kmEsforc, 1) + ' km-esforç') + '">' +
+            '<span style="height:' + alt + '%"></span></button>';
+        }).join('') + '</div>' +
+        '<div class="seg-eix"><span>' + esc(curta(c[0].dilluns)) + '</span>' +
+          '<span>' + esc(coma(max, 0) + ' km-e màx') + '</span></div>' +
+      '</section>';
+    }
+
+    // -------------------------------------------------------------- llista
+    function llista(s) {
+      if (!s.llista.length) {
+        return '<div class="estat" style="margin-top:var(--e4)">' + ic('entrenaments', 'ic-g') +
+          '<h2>Cap entrenament aquesta setmana</h2>' +
+          '<p>Passa la captura de la llista de la setmana i s\'ompliran tots de cop, ' +
+          'amb els quilòmetres i el desnivell de cadascun.</p>' +
+          '<button class="btn btn-primari" data-captura="1">' + ic('captura') + 'Passa la captura</button>' +
+        '</div>';
+      }
+      var ordre = s.llista.slice().sort(function (a, b) { return a.data < b.data ? 1 : -1; });
+      return '<section>' +
+        '<p class="marge" style="margin:var(--e4) 0 var(--e2)">Les sessions</p>' +
+        '<div class="seg-controls">' + ordre.map(function (x) {
+          return '<div class="franja-fila"><button class="franja seg-fila ent-fila" data-obre="' +
+            esc(x.id) + '"' + (x.llarga ? ' data-llarga="1"' : '') + '>' +
+            '<span><span class="franja-nom">' +
+              esc(x.titol || (x.mena === 'forca' ? 'Força' : 'Sortida')) + '</span>' +
+            '<span class="franja-sota">' + esc(curta(x.data) + ' · ' +
+              [x.km ? coma(x.km, 1) + ' km' : '',
+               x.desnivell ? mil(x.desnivell) + ' m D+' : '',
+               x.minuts ? hores(x.minuts) : ''].filter(Boolean).join(' · ')) + '</span></span>' +
+            /* UNA SESSIÓ DE FORÇA NO TÉ QUILÒMETRES D'ESFORÇ i posar-hi un
+               guionet és ocupar la columna amb un no-res. Els minuts sí que
+               en diuen alguna cosa, i és el que la fa comparable amb les
+               altres sessions de força. */
+            '<span class="franja-cota">' + (x.kmEsforc === null
+              ? '<span class="n">' + (x.minuts ? Math.round(x.minuts) : '—') + '</span>' +
+                '<span class="u">min</span>'
+              : '<span class="n">' + coma(x.kmEsforc, 1) + '</span>' +
+                '<span class="u">km-e</span>') + '</span>' +
+          '</button></div>';
+        }).join('') + '</div>' +
+      '</section>';
+    }
+
+    function thisMonday() {
+      var x = new Date(d.avui + 'T12:00:00');
+      var dia = x.getDay() === 0 ? 7 : x.getDay();
+      x.setDate(x.getDate() - (dia - 1));
+      return x.toISOString().slice(0, 10);
+    }
+
+    // ═══════════════════════════════════════════════════════════ LA CAPTURA
+    /* TRES MENES DE CAPTURA I UNA SOLA PORTA. Es tria primer què és, perquè
+       el que se li demana al model no és igual: d'una llista de Strava en surt
+       una sessió per fila, i de l'informe del rellotge en surt un sol número. */
+    function obreCaptura() {
+      var cos = App.modal('Passa una captura',
+        '<div class="formulari">' +
+          '<p class="menut">Es llegeix la imatge i et dic què hi he vist. No es desa res ' +
+            'fins que ho confirmis: una lectura d\'una pantalla s\'equivoca, i una xifra ' +
+            'inventada dins de la sèrie és pitjor que un forat.</p>' +
+          '<label class="btn btn-secundari" style="width:100%">' + ic('entrenaments') +
+            'Llista d\'entrenaments (Strava)' +
+            '<input type="file" accept="image/*" hidden data-cap="trail"></label>' +
+          '<label class="btn btn-secundari" style="width:100%">' + ic('h-forca') +
+            'App de força' +
+            '<input type="file" accept="image/*" hidden data-cap="forca"></label>' +
+          '<label class="btn btn-secundari" style="width:100%">' + ic('h-petjada') +
+            'Informe de passos del rellotge' +
+            '<input type="file" accept="image/*" hidden data-cap="passos"></label>' +
+        '</div>');
+
+      cos.querySelectorAll('[data-cap]').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          var f = inp.files && inp.files[0];
+          if (!f) return;
+          var mena = inp.dataset.cap;
+          cos.innerHTML = '<div class="formulari">' +
+            '<p class="menut">Llegint la captura…</p>' +
+            '<div class="esquelet" style="height:120px"></div></div>';
+          redueix(f).then(function (dataUrl) {
+            return crida('entrenaments', 'llegeixCaptura',
+              { contingut: dataUrl, mena: mena, dilluns: d.dilluns });
+          }).then(function (r) {
+            if (r.mena === 'passos') proposaPassos(r);
+            else proposaSessions(r);
+          }).catch(function (err) {
+            App.tancaModal();
+            App.brindis(err.message, 'error');
+          });
+        });
+      });
+    }
+
+    /* LA PROPOSTA. Cada fila es pot treure i la data es pot corregir: són les
+       dues coses que la lectura falla, i les dues que fan mal si passen. */
+    function proposaSessions(r) {
+      var l = r.sessions;
+      var cos = App.modal('He llegit ' + l.length + (l.length === 1 ? ' sessió' : ' sessions'),
+        '<form class="formulari" id="f-prop">' +
+          (r.avis ? '<p class="seg-avis" data-n="avis">' + ic('avis') +
+                    '<span>' + esc(r.avis) + '</span></p>' : '') +
+          '<p class="menut">Repassa-ho i treu el que no vagi bé. El que deixis marcat és el ' +
+            'que es desarà.</p>' +
+          l.map(function (s, i) {
+            return '<div class="ent-prop' + (s.dubtosa ? ' ent-prop-dubte' : '') + '">' +
+              '<label class="ent-prop-cap">' +
+                '<input type="checkbox" data-tria="' + i + '"' + (s.data ? ' checked' : '') + '>' +
+                '<span><b>' + esc(s.titol || (s.mena === 'forca' ? 'Força' : 'Sortida')) + '</b>' +
+                '<span class="menut">' + esc([
+                    s.km ? coma(s.km, 1) + ' km' : '',
+                    s.desnivell ? Math.round(s.desnivell) + ' m D+' : '',
+                    s.minuts ? hores(s.minuts) : '',
+                    s.kmEsforc !== null ? coma(s.kmEsforc, 1) + ' km-esforç' : ''
+                  ].filter(Boolean).join(' · ') || 'sense xifres') + '</span></span>' +
+              '</label>' +
+              /* SENSE `required`, I A POSTA. Amb l'atribut, una fila que has
+                 DESMARCAT perquè no la vols bloquejava el desat de tota la
+                 resta: el navegador no deixa enviar el formulari i no diu per
+                 què d'una manera que es pugui entendre. Aquí la comprovació la
+                 fa el codi, que sap quines files compten. */
+              '<input class="entrada" type="date" data-dia="' + i + '" value="' +
+                esc(s.data || '') + '">' +
+              (s.dubtosa ? '<p class="menut">' + esc(s.data
+                  ? 'Aquest dia cau fora de la setmana que estàs important. Comprova\'l.'
+                  : 'No he sabut veure quin dia era. Posa-l\'hi tu.') + '</p>' : '') +
+            '</div>';
+          }).join('') +
+          '<button class="btn btn-primari" type="submit" style="width:100%">Desa el que he marcat</button>' +
+        '</form>');
+
+      cos.querySelector('#f-prop').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var tria = [], falta = null;
+        l.forEach(function (s, i) {
+          if (!cos.querySelector('[data-tria="' + i + '"]').checked) return;
+          var camp = cos.querySelector('[data-dia="' + i + '"]');
+          /* MARCADA I SENSE DIA: es para i es diu quina. Deixar-la caure en
+             silenci seria pitjor que l'error, perquè te'n vas convençut que
+             s'ha desat tot. */
+          if (!camp.value) { if (!falta) falta = { camp: camp, titol: s.titol }; return; }
+          tria.push({ data: camp.value, mena: s.mena, titol: s.titol, km: s.km,
+                      desnivell: s.desnivell, minuts: s.minuts, pulsacions: s.pulsacions });
+        });
+        if (falta) {
+          App.brindis('Falta el dia de «' + (falta.titol || 'una sessió') + '»', 'error');
+          falta.camp.focus();
+          return;
+        }
+        if (!tria.length) { App.brindis('No has deixat cap sessió marcada', 'error'); return; }
+
+        var bt = cos.querySelector('button[type="submit"]');
+        bt.disabled = true; bt.textContent = 'Desant…';
+        crida('entrenaments', 'confirmaCaptura', { sessions: tria }).then(function (x) {
+          App.tancaModal();
+          App.brindis(x.desats + (x.desats === 1 ? ' sessió desada' : ' sessions desades'));
+          carrega(true);
+        }).catch(function (err) {
+          bt.disabled = false; bt.textContent = 'Desa el que he marcat';
+          App.brindis(err.message, 'error');
+        });
+      });
+    }
+
+    function proposaPassos(r) {
+      obrePassos(r.passos.total, r.passos.mitjana, r.avis);
+    }
+
+    function obrePassos(total, mitjana, avis) {
+      var cos = App.modal('Passos de la setmana',
+        '<form class="formulari" id="f-pas">' +
+          (avis ? '<p class="seg-avis" data-n="avis">' + ic('avis') +
+                  '<span>' + esc(avis) + '</span></p>' : '') +
+          '<div class="camp"><label for="p-total">Total de la setmana</label>' +
+            '<input class="entrada" id="p-total" type="number" min="0" inputmode="numeric" ' +
+              'value="' + (total === null || total === undefined ? '' : total) + '"></div>' +
+          '<div class="camp"><label for="p-mitjana">Mitjana al dia</label>' +
+            '<input class="entrada" id="p-mitjana" type="number" min="0" inputmode="numeric" ' +
+              'value="' + (mitjana === null || mitjana === undefined ? '' : mitjana) + '">' +
+            '<p class="menut">Amb una de les dues n\'hi ha prou: l\'altra surt sola.</p></div>' +
+          '<button class="btn btn-primari" type="submit" style="width:100%">Desa els passos</button>' +
+        '</form>');
+
+      cos.querySelector('#f-pas').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var bt = cos.querySelector('button[type="submit"]');
+        bt.disabled = true; bt.textContent = 'Desant…';
+        var buit = function (id) {
+          var v = cos.querySelector(id).value.trim();
+          return v === '' ? null : Number(v);
+        };
+        crida('entrenaments', 'desaPassos', {
+          dilluns: d.dilluns, total: buit('#p-total'), mitjana: buit('#p-mitjana'),
+          font: total !== null && total !== undefined ? 'captura' : 'ma'
+        }).then(function () {
+          App.tancaModal();
+          App.brindis('Passos desats');
+          carrega(true);
+        }).catch(function (err) {
+          bt.disabled = false; bt.textContent = 'Desa els passos';
+          App.brindis(err.message, 'error');
+        });
+      });
+    }
+
+    // ------------------------------------------------------- una sessió a mà
+    function obreSessio(s) {
+      var v = s || { data: d.avui, mena: 'trail', titol: '', km: null,
+                     desnivell: null, minuts: null, pulsacions: null };
+      var val = function (x) { return x === null || x === undefined ? '' : x; };
+
+      var cos = App.modal(s ? 'Entrenament del ' + curta(v.data) : 'Entrenament nou',
+        '<form id="f-ent" class="formulari">' +
+          '<div class="camp"><label for="e-data">Dia</label>' +
+            '<input class="entrada" id="e-data" type="date" value="' + esc(v.data) + '" required></div>' +
+
+          '<div class="camp"><label>Mena</label><div class="tria-fila">' +
+            [['trail', 'Trail'], ['forca', 'Força'], ['altre', 'Altre']].map(function (m) {
+              return '<button type="button" class="tria-bt" data-mena="' + m[0] + '"' +
+                (v.mena === m[0] ? ' aria-pressed="true"' : '') + '>' + m[1] + '</button>';
+            }).join('') + '</div></div>' +
+
+          '<div class="camp"><label for="e-titol">Com se\'n diu</label>' +
+            '<input class="entrada" id="e-titol" type="text" autocomplete="off" ' +
+              'value="' + esc(v.titol || '') + '" placeholder="Matinal al Montseny"></div>' +
+
+          '<div class="camp-fila">' +
+            '<div class="camp"><label for="e-km">Km</label>' +
+              '<input class="entrada" id="e-km" type="text" inputmode="decimal" ' +
+                'pattern="[0-9]+([.,][0-9]+)?" value="' + esc(String(val(v.km))) + '"></div>' +
+            '<div class="camp"><label for="e-des">Desnivell</label>' +
+              '<input class="entrada" id="e-des" type="number" min="0" max="12000" ' +
+                'inputmode="numeric" value="' + esc(String(val(v.desnivell))) + '"></div>' +
+            '<div class="camp"><label for="e-min">Minuts</label>' +
+              '<input class="entrada" id="e-min" type="number" min="0" max="1440" ' +
+                'inputmode="numeric" value="' + esc(String(val(v.minuts))) + '"></div>' +
+          '</div>' +
+          '<p class="menut" style="margin:calc(-1 * var(--e2)) 0 0">El desnivell és el ' +
+            'positiu, el que has pujat. És el que fa que una sortida compti el que compta.</p>' +
+
+          '<button class="btn btn-primari" type="submit" style="width:100%">' +
+            (s ? 'Desa els canvis' : 'Desa l\'entrenament') + '</button>' +
+          (s ? '<button class="btn btn-perill" type="button" data-fora="1" style="width:100%">' +
+               'Treu-lo</button>' : '') +
+        '</form>');
+
+      var mena = v.mena;
+      cos.querySelectorAll('[data-mena]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          mena = b.dataset.mena;
+          cos.querySelectorAll('[data-mena]').forEach(function (x) {
+            x.setAttribute('aria-pressed', x.dataset.mena === mena ? 'true' : 'false');
+          });
+        });
+      });
+
+      var fora = cos.querySelector('[data-fora]');
+      if (fora) fora.addEventListener('click', function () {
+        fora.disabled = true; fora.textContent = 'Traient-lo…';
+        crida('entrenaments', 'esborra', { id: s.id }).then(function () {
+          App.tancaModal(); App.brindis('Entrenament tret'); carrega(true);
+        }).catch(function (err) {
+          fora.disabled = false; fora.textContent = 'Treu-lo';
+          App.brindis(err.message, 'error');
+        });
+      });
+
+      cos.querySelector('#f-ent').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var bt = cos.querySelector('button[type="submit"]');
+        bt.disabled = true; bt.textContent = 'Desant…';
+        var buit = function (id) {
+          var x = cos.querySelector(id).value.trim();
+          return x === '' ? null : Number(x.replace(',', '.'));
+        };
+        crida('entrenaments', 'desa', {
+          id: s ? s.id : null,
+          data: cos.querySelector('#e-data').value,
+          mena: mena,
+          titol: cos.querySelector('#e-titol').value.trim(),
+          km: buit('#e-km'), desnivell: buit('#e-des'), minuts: buit('#e-min'),
+          font: s ? s.font : 'ma'
+        }).then(function () {
+          App.tancaModal(); App.brindis('Entrenament desat'); carrega(true);
+        }).catch(function (err) {
+          bt.disabled = false;
+          bt.textContent = s ? 'Desa els canvis' : 'Desa l\'entrenament';
+          App.brindis(err.message, 'error');
+        });
+      });
+    }
+
+    /* LES CAPTURES NO ES REDUEIXEN TANT COM LES FOTOS. Una foto del cos es
+       compara de lluny i amb mil dos-cents píxels n'hi ha de sobra; d'una
+       captura se n'ha de llegir un «1.482» sense confondre'l amb un «1482»,
+       i a mil dos-cents píxels els números petits es desfan. */
+    function redueix(fitxer) {
+      return new Promise(function (ok, no) {
+        var lector = new FileReader();
+        lector.onerror = function () { no(new Error('No he pogut llegir la imatge.')); };
+        lector.onload = function () {
+          var img = new Image();
+          img.onerror = function () { no(new Error('Això no sembla una imatge.')); };
+          img.onload = function () {
+            var MAX = 1600;
+            var e = Math.min(1, MAX / Math.max(img.width, img.height));
+            var c = document.createElement('canvas');
+            c.width = Math.round(img.width * e); c.height = Math.round(img.height * e);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            ok(c.toDataURL('image/jpeg', 0.92));
+          };
+          img.src = lector.result;
+        };
+        lector.readAsDataURL(fitxer);
+      });
+    }
+
+    // ------------------------------------------------------------------ lliga
+    function lliga() {
+      var t = arrel.querySelector('[data-torna]');
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
+
+      arrel.querySelectorAll('[data-set]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          dilluns = b.dataset.set;
+          carrega(true);
+        });
+      });
+
+      arrel.querySelectorAll('[data-captura]').forEach(function (b) {
+        b.addEventListener('click', obreCaptura);
+      });
+
+      var n = arrel.querySelector('[data-nou]');
+      if (n) n.addEventListener('click', function () { obreSessio(null); });
+
+      var p = arrel.querySelector('[data-passos]');
+      if (p) p.addEventListener('click', function () {
+        var pa = d.setmana.passos;
+        obrePassos(pa ? pa.total : null, pa ? pa.mitjana : null, '');
+      });
+
+      arrel.querySelectorAll('[data-obre]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var s = d.setmana.llista.filter(function (x) { return x.id === b.dataset.obre; })[0];
+          if (s) obreSessio(s);
+        });
+      });
+    }
+
+    // ----------------------------------------------------------------- càrrega
+    function carrega(refresca) {
+      var clau = 'entrenaments' + (dilluns ? '.' + dilluns : '');
+      var cau = Cau.get(clau, null);
+      if (cau && !refresca) { d = cau; pinta(); }
+      else if (!cau) arrel.innerHTML = Comp.carregant(3);
+
+      crida('entrenaments', 'pantalla', { desde: dilluns }).then(function (r) {
+        d = r; dilluns = r.dilluns;
+        Cau.set('entrenaments.' + r.dilluns, r);
+        pinta();
+      }).catch(function (err) {
+        if (d) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
+        arrel.innerHTML = Comp.error(err, true);
+        var b = arrel.querySelector('[data-reintenta]');
+        if (b) b.addEventListener('click', function () { App.ves('entrenaments'); });
+      });
+    }
+
     carrega(false);
   }
 });

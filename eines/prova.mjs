@@ -2170,6 +2170,238 @@ console.log('\nSeguiment: les fotos es comparen, no s\'ensenyen');
       /2026-06-19.*← aquest/.test(quediu), quediu);
   cal('i té espai per lligar-ho', ditAlCoach.maxTokens >= 500,
       String(ditAlCoach.maxTokens));
+
+  /* LA CÀRREGA DE DEBÒ AL COSTAT DEL CONTROL.
+     «3 trail» no distingeix tres sortides planes de tres amb mil sis-cents
+     metres, i aquesta és justament la diferència que explica per què una
+     setmana ha anat com ha anat. Aquí es prova que hi arribi —i, sobretot,
+     que el seguiment segueixi sencer si el mòdul d'entrenaments no hi és: el
+     que mana en aquesta pantalla és el cos, i la càrrega és context. */
+  cal('sense el mòdul d\'entrenaments, el seguiment funciona igual',
+      !/entrenat:/.test(quediu) && ctxC.Seguiment.pantalla().carregues &&
+      Object.keys(ctxC.Seguiment.pantalla().carregues).length === 0);
+
+  let ditAmbCarrega = null;
+  const ctxE = Object.assign({}, ctxC, {
+    IA: { disponible: () => true, motiu: () => null,
+          genera: (p) => { ditAmbCarrega = p; return { text: 'x' }; } },
+    Entrenaments: {
+      sessions: () => [{ data: '2026-06-19', mena: 'trail', kmEsforc: 25 }],
+      setmana: (dl) => (dl === '2026-06-15'
+        ? { sessions: 3, trail: 3, forca: 0, km: 30, desnivell: 1600,
+            kmEsforc: 46, llargues: 2 }
+        : { sessions: 0, trail: 0, forca: 0, km: 0, desnivell: 0, kmEsforc: 0, llargues: 0 })
+    }
+  });
+  vm.createContext(ctxE);
+  vm.runInContext(srvFont, ctxE);
+
+  const ambC = ctxE.Seguiment.pantalla().carregues;
+  cal('amb el mòdul, la càrrega arriba a la pantalla per dilluns',
+      ambC['2026-06-15'] && ambC['2026-06-15'].kmEsforc === 46, JSON.stringify(ambC));
+  cal('i les setmanes sense cap entrenament queden a null, no a zero',
+      ambC['2026-06-08'] === null || ambC['2026-06-08'] === undefined,
+      JSON.stringify(ambC));
+
+  ctxE.Seguiment.comenta('2026-06-19');
+  const textC = String(ditAmbCarrega.missatges[0].parts[0].text);
+  cal('i al comentari hi va la càrrega de la setmana, no el nombre de sortides',
+      /entrenat: 46 km-esforç/.test(textC) && /1600 m D\+/.test(textC),
+      textC.slice(0, 400));
+  cal('i se li diu que no parli de sortides quan tingui la càrrega',
+      /No parlis de sortides quan tinguis la càrrega/.test(String(ditAmbCarrega.sistema)));
+}
+
+// ------------------------------------------------- els entrenaments: la càrrega
+/* LA QUEIXA, LITERAL: «canvia molt un entreno de 2 km amb 0 de desnivell a un de
+   6 km amb 1000 de desnivell». Comptant sortides els dos són «1». Això prova que
+   els quilòmetres d'esforç els separin, i que la setmana sencera també: quatre
+   sortides planes contra tres amb desnivell de debò. Si algú toqués la fórmula,
+   aquestes dues assercions cauen abans que ningú s'ho miri a la pantalla. */
+console.log('\nEntrenaments: dues sortides no són dues sortides');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Entrenaments.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Entrenaments = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+
+  const munta = (files, opcions) => {
+    const o = opcions || {};
+    let desats = [], seguit = 0, ditAlModel = null;
+    const ctx = {
+      Utils: {
+        avui: () => o.avui || '2026-08-03',
+        talla: (s, n) => String(s).slice(0, n),
+        esDataValida: (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')),
+        dillunsDe: (iso) => {
+          const d = new Date(iso + 'T12:00:00');
+          d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          return d.toISOString().slice(0, 10);
+        },
+        sumaDies: (iso, n) => {
+          const d = new Date(iso + 'T12:00:00');
+          d.setDate(d.getDate() + n);
+          return d.toISOString().slice(0, 10);
+        },
+        rangDates: (a, b) => {
+          const l = []; let d = new Date(a + 'T12:00:00');
+          const f = new Date(b + 'T12:00:00');
+          while (d <= f) { l.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+          return l;
+        },
+        desJson: (t, x) => { try { return JSON.parse(t); } catch (e) { return x; } }
+      },
+      Dades: {
+        llegeix: (full) => (full === 'Entrenaments' ? files
+                          : full === 'EntrenamentsPassos' ? (o.passos || []) : []),
+        desa: (full, fila, claus, prefix) => {
+          desats.push({ full, fila });
+          return { id: prefix + (++seguit) };
+        },
+        perId: (full, id) => files.filter((f) => f.id === id)[0] || null,
+        actualitza: (full, id, canvis) => { desats.push({ full, id, canvis }); }
+      },
+      Log: { info() {}, avis() {}, error() {} },
+      IA: {
+        disponible: () => o.ia !== false, motiu: () => 'no hi ha clau',
+        genera: (p) => { ditAlModel = p; return { text: o.resposta || '{}' }; }
+      },
+      Memoria: {}, Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+    };
+    vm.createContext(ctx);
+    vm.runInContext(srvFont, ctx);
+    return { E: ctx.Entrenaments, desats, dit: () => ditAlModel };
+  };
+
+  const s = (data, mena, titol, km, des, min) =>
+    ({ id: 'e' + data + titol, data, mena, titol, km, desnivell: des, minuts: min,
+       kcal: '', pulsacions: '', font: 'captura', notes: '' });
+
+  /* Els dos exemples seus, clavats. */
+  const dos = munta([]).E;
+  cal('6 km amb 1000 de desnivell són 16 km-esforç',
+      dos.kmEsforc({ km: 6, desnivell: 1000 }) === 16,
+      String(dos.kmEsforc({ km: 6, desnivell: 1000 })));
+  cal('i 2 km plans en són 2, o sigui vuit vegades menys',
+      dos.kmEsforc({ km: 2, desnivell: 0 }) === 2,
+      String(dos.kmEsforc({ km: 2, desnivell: 0 })));
+  cal('una sessió de força sense km ni desnivell no en té',
+      dos.kmEsforc({ km: null, desnivell: null }) === null);
+
+  /* LA SETMANA, QUE ÉS ON ES VEIA EL FORAT. Quatre sortides planes contra tres
+     amb desnivell: amb el número de sortides la primera setmana guanya. */
+  const planes = munta([
+    s('2026-07-20', 'trail', 'A', 5, 30, 30), s('2026-07-21', 'trail', 'B', 5, 20, 30),
+    s('2026-07-22', 'trail', 'C', 6, 40, 35), s('2026-07-23', 'trail', 'D', 5, 10, 30)
+  ]).E.setmana('2026-07-20');
+  const dures = munta([
+    s('2026-07-27', 'trail', 'A', 8, 500, 60), s('2026-07-28', 'trail', 'B', 7, 450, 55),
+    s('2026-07-29', 'trail', 'C', 14, 1100, 150)
+  ]).E.setmana('2026-07-27');
+
+  cal('comptant sortides, la setmana plana en té MÉS',
+      planes.sessions === 4 && dures.sessions === 3,
+      planes.sessions + ' vs ' + dures.sessions);
+  cal('però amb més sortides no arriba ni a la meitat de la càrrega',
+      planes.kmEsforc * 2 < dures.kmEsforc,
+      planes.kmEsforc + ' vs ' + dures.kmEsforc);
+  cal('i la més dura de la setmana és la de catorze quilòmetres i mil cent',
+      dures.mesLlarga.titol === 'C' && dures.mesLlarga.kmEsforc === 25,
+      JSON.stringify(dures.mesLlarga.kmEsforc));
+  cal('les que buiden es marquen: dues de les tres',
+      dures.llargues === 2, String(dures.llargues));
+  cal('i cap de les planes no ho és', planes.llargues === 0);
+
+  // -------------------------------------------------------------- la captura
+  /* LA PROPIETAT QUE NO ES POT PERDRE MAI: llegir una captura no escriu res.
+     Una lectura d'imatge s'equivoca en silenci, i una xifra falsa dins de la
+     sèrie se la creuen les regles i les gràfiques. */
+  const bo = JSON.stringify({ sessions: [
+    { data: '2026-07-28', mena: 'trail', titol: 'Sèries', km: 7.8, desnivell: 480, minuts: 62 },
+    { data: null, mena: 'trail', titol: 'Sense dia', km: 5, desnivell: 100, minuts: 30 },
+    { data: '2025-07-29', mena: 'forca', titol: 'Any mal llegit', km: null, desnivell: null, minuts: 40 }
+  ], avis: '' });
+
+  const cap = munta([], { resposta: bo });
+  const r = cap.E.llegeixCaptura({ contingut: 'data:image/jpeg;base64,AQID',
+                                   mena: 'trail', dilluns: '2026-07-27' });
+
+  cal('llegir una captura no escriu absolutament res', cap.desats.length === 0,
+      JSON.stringify(cap.desats));
+  cal('i torna una sessió per fila llegida', r.sessions.length === 3,
+      String(r.sessions.length));
+  cal('la que porta dia bo no és dubtosa i ja té la seva càrrega',
+      r.sessions[0].dubtosa === false && r.sessions[0].kmEsforc === 12.6,
+      JSON.stringify(r.sessions[0]));
+  cal('la que no té dia queda marcada, no se n\'hi inventa cap',
+      r.sessions[1].dubtosa === true && r.sessions[1].data === null);
+  /* L any mal llegit es el error tipic d aquestes pantalles: no hi surt mai. */
+  cal('i una data fora de la setmana que s\'importa també queda marcada',
+      r.sessions[2].dubtosa === true && r.sessions[2].data === '2025-07-29');
+
+  /* I se li ha de DEMANAR que no endevini: sense aquesta frase, omple el buit. */
+  const demanat = cap.dit().missatges[0].parts[0].text;
+  cal('al model se li diu que deixi la data en blanc si no la sap',
+      /posa null\. No l'endevinis/.test(demanat) || /No l'endevinis/.test(demanat), demanat.slice(0, 200));
+  cal('i que la imatge hi va de debò',
+      cap.dit().missatges[0].parts.some((x) => x.inlineData));
+  cal('i que contesti JSON i res més', cap.dit().json === true);
+
+  /* Confirmar sí que escriu, i només el que porta dia. */
+  const conf = munta([], {});
+  const x = conf.E.confirmaCaptura({ sessions: [
+    { data: '2026-07-28', mena: 'trail', titol: 'Sèries', km: 7.8, desnivell: 480, minuts: 62 },
+    { data: null, mena: 'trail', titol: 'Sense dia', km: 5 }
+  ] });
+  cal('confirmar-la desa només les que tenen dia',
+      x.desats === 1 && conf.desats.length === 1, JSON.stringify(x));
+  cal('i queden marcades com a vingudes d\'una captura',
+      conf.desats[0].fila.font === 'captura');
+
+  let quePassa = '';
+  try { munta([], { ia: false }).E.llegeixCaptura({ contingut: 'x', mena: 'trail' }); }
+  catch (e) { quePassa = e.message; }
+  cal('sense capa d\'IA no es fa veure que ha llegit res', /no hi ha clau/.test(quePassa),
+      quePassa);
+
+  /* TREURE-NE UNA LA DEIXA SENSE DIA, i una fila sense dia no és de cap
+     setmana. Si passa el filtre, `dillunsDe('')` no és cap dilluns i les
+     sèries peten senceres: una setmana amb una sessió esborrada s'enduria la
+     pantalla d'entrenaments i la de relacions. */
+  const ambTreta = munta([
+    s('2026-07-28', 'trail', 'A', 8, 500, 60),
+    { id: 'e0', data: '', mena: 'trail', titol: '(esborrada) B', km: 5,
+      desnivell: 100, minuts: 30, kcal: '', pulsacions: '', font: 'ma', notes: '' }
+  ], {}).E;
+  cal('una sessió treta no compta enlloc', ambTreta.sessions().length === 1,
+      JSON.stringify(ambTreta.sessions().map((x) => x.data)));
+  let peta = '';
+  try { ambTreta.seriesDiaries('2026-07-06', '2026-08-02'); }
+  catch (e) { peta = e.message; }
+  cal('i no fa petar les sèries', peta === '', peta);
+
+  // --------------------------------------------------------------- els passos
+  const pas = munta([], {});
+  const p1 = pas.E.desaPassos({ dilluns: '2026-07-27', total: 81250 });
+  cal('amb el total de la setmana, la mitjana surt sola', p1.mitjana === 11607,
+      String(p1.mitjana));
+  const p2 = munta([], {}).E.desaPassos({ dilluns: '2026-07-27', mitjana: 10000 });
+  cal('i amb la mitjana, el total', p2.total === 70000, String(p2.total));
+
+  // ------------------------------------------------- el que es pot creuar
+  /* Un dimarts sense sortida d'una setmana importada és descans i val zero. Un
+     dimarts d'una setmana que no has importat mai no és un zero: no se sap. */
+  const ser = munta([s('2026-07-21', 'trail', 'Z', 4, 100, 25),
+                     s('2026-07-28', 'trail', 'A', 8, 500, 60)], {
+    passos: [{ id: 'p1', dilluns: '2026-07-27', total: 81250, mitjana: 11607, font: 'captura' }]
+  }).E.seriesDiaries('2026-07-06', '2026-08-02');
+  const carrega = ser.filter((x) => x.id === 'esforc')[0];
+  /* Quatre setmanes al rang i només dues importades: catorze dies, no vint-i-vuit. */
+  cal('només compten els dies de setmanes que has importat',
+      carrega && Object.keys(carrega.dies).length === 14,
+      carrega ? String(Object.keys(carrega.dies).length) : 'no hi és');
+  cal('i dins d\'aquella setmana, un dia sense sortida sí que és un zero',
+      carrega && carrega.dies['2026-07-29'] === 0 && carrega.dies['2026-07-28'] === 13,
+      carrega ? JSON.stringify(carrega.dies) : '');
 }
 
 // ------------------------------------------- la pantalla del seguiment, per parts
@@ -3186,6 +3418,73 @@ console.log('\nEl verdicte del dia: el navegador i el servidor diuen el mateix')
       /dades\.verdicte = verdicteLocal\(/.test(vista) &&
       vista.indexOf('dades.verdicte = verdicteLocal(') <
       vista.indexOf("escriu('nutricio', 'activitat'"));
+}
+
+// ------------- les calories cremades, que ja les escriu cada dia i no es creuaven
+/* La xifra que dona el rellotge era l'única mesura diària del que s'ha mogut de
+   debò que hi ha a l'app, i només sortia dins del dèficit. El dèficit barreja
+   dues coses: un dia de sortida llarga i un dia de menjar poc donen el mateix
+   número i no són el mateix dia. Aquí es comprova que les cremades surtin soles
+   —perquè es puguin creuar amb el pes, la cintura, el son— i que segueixin a la
+   família del dèficit, que és el que evita la troballa que no ho és. */
+console.log('\nLes calories cremades es poden creuar amb la resta');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Nutricio.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Nutricio = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+
+  /* Quaranta dies: prou perquè la sèrie tingui vida (en demana catorze). Els
+     parells amb cremades, els senars sense: així es comprova que un dia sense
+     la xifra del rellotge no compti com un zero. */
+  const dies = [];
+  for (let n = 1; n <= 40; n++) {
+    dies.push('2026-06-' + String(n <= 30 ? n : n - 30).padStart(2, '0'));
+  }
+  const calendari = [];
+  for (let n = 1; n <= 30; n++) calendari.push('2026-06-' + String(n).padStart(2, '0'));
+
+  const ctx = {
+    Utils: { rangDates: () => calendari, avui: () => '2026-06-30' },
+    Config: { getNum: () => 0, get: () => '', esSi: () => false },
+    Log: { info() {}, avis() {}, error() {} },
+    Dades: {
+      llegeix: (full, filtre) => {
+        if (full === 'Ingestes') {
+          return calendari.map((d) => ({ id: 'i' + d, data: d, grams: 100,
+            kcal100: 2000, prot100: 120 })).filter((f) => !filtre || filtre(f));
+        }
+        if (full === 'NutricioDies') {
+          return calendari.filter((d, k) => k % 2 === 0)
+            .map((d) => ({ data: d, activitat: 2500 }))
+            .filter((f) => !filtre || filtre(f));
+        }
+        return [];
+      }
+    },
+    Memoria: {}, Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+  };
+  vm.createContext(ctx);
+  vm.runInContext(srvFont, ctx);
+
+  const series = ctx.Nutricio.seriesDiaries('2026-06-01', '2026-06-30');
+  const perId = {};
+  series.forEach((s) => { perId[s.id] = s; });
+
+  cal('les cremades surten com a sèrie pròpia', !!perId.cremades,
+      series.map((s) => s.id).join(', '));
+  cal('i porten la unitat, que és el que la fa llegible',
+      perId.cremades && perId.cremades.unitat === 'kcal al dia',
+      perId.cremades && perId.cremades.unitat);
+  /* Amb el dèficit comparteixen la meitat de la xifra: «els dies que cremes
+     més tens més dèficit» és aritmètica, no una troballa. La família ho tapa. */
+  cal('i van a la família del dèficit perquè no es creuin entre elles',
+      perId.cremades && perId.deficit &&
+      perId.cremades.familia === perId.deficit.familia,
+      perId.cremades && perId.cremades.familia);
+  cal('un dia sense la xifra del rellotge no compta com un zero',
+      Object.keys(perId.cremades.dies).length === 15 &&
+      Object.keys(perId.cremades.dies).every((d) => perId.cremades.dies[d] === 2500),
+      String(Object.keys(perId.cremades.dies).length));
 }
 
 // ---------------- els comptadors, dibuixats a la pantalla d'hàbits

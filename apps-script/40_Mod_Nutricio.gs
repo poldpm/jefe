@@ -540,16 +540,28 @@ var Nutricio = (function () {
    * convé saber.
    */
   /**
-   * Les tres coses que d'aquí es poden creuar amb la resta.
+   * Les quatre coses que d'aquí es poden creuar amb la resta.
    *
    * `net` són les cremades menys les ingerides, o sigui el dèficit: només hi
    * és els dies que tens totes dues xifres, i per això va a part i no dins de
    * la mateixa família que les calories. Un dia amb les ingerides i sense les
    * cremades no diu res del dèficit i no s'inventa.
+   *
+   * LES CREMADES SOLES TAMBÉ SURTEN, i abans no. Hi eren només dins del
+   * dèficit, i el dèficit barreja dues coses ben diferents: el que has menjat i
+   * el que t'has mogut. Un dia de sortida llarga i un dia de menjar poc donen
+   * el mateix dèficit i no són el mateix dia. Les cremades soles són l'única
+   * mesura diària del que s'ha mogut de debò que hi ha a l'app, i la va
+   * escrivint cada dia: és la que es pot creuar amb el pes, amb la cintura,
+   * amb el son o amb l'energia i dir alguna cosa.
+   *
+   * Van a la família del balanç i no a una de pròpia a posta: amb el dèficit
+   * comparteixen la meitat de la xifra, i «els dies que cremes més tens més
+   * dèficit» no és cap troballa, és aritmètica.
    */
   function seriesDiaries(desde, fins) {
     var r = agregat_(Utils.rangDates(desde, fins));
-    var kcal = {}, prot = {}, net = {};
+    var kcal = {}, prot = {}, net = {}, crem = {};
 
     r.dies.forEach(function (d) {
       if (!d.apuntat) return;                    // no apuntat no és zero
@@ -558,6 +570,7 @@ var Nutricio = (function () {
         prot[d.data] = Math.round(d.proteina);
       }
       if (d.net !== null) net[d.data] = Math.round(d.net);
+      if (d.cremades !== null) crem[d.data] = Math.round(d.cremades);
     });
 
     var fes = function (id, nom, unitat, dies, familia) {
@@ -569,6 +582,7 @@ var Nutricio = (function () {
     return [
       fes('kcal', 'calories', 'kcal al dia', kcal, 'menjar'),
       fes('proteina', 'proteïna', 'g al dia', prot, 'menjar'),
+      fes('cremades', 'calories cremades', 'kcal al dia', crem, 'balanc'),
       fes('deficit', 'dèficit', 'kcal al dia', net, 'balanc')
     ].filter(Boolean);
   }

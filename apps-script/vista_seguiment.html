@@ -392,6 +392,7 @@ App.registraVista('seguiment', {
                       ? cur.trailGros + (cur.trailGros === 1 ? ' llarga' : ' llargues')
                       : objectiu('trail')) +
             '</div>' +
+            laCarrega(cur) +
           '</section>' +
 
           (avisos.length
@@ -445,6 +446,34 @@ App.registraVista('seguiment', {
     function objectiu(quin) {
       var f = d && d.fase;
       return f && f[quin] ? 'de ' + f[quin] : '';
+    }
+
+    /* LA CÀRREGA DE LA SETMANA DEL CONTROL.
+       «Força 2 · Trail 3» diu quantes vegades, i el que va costar la setmana
+       no ho diu ningú: tres sortides planes i tres amb mil sis-cents metres
+       són el mateix número. La línia va SOTA les quatre xifres i no com una
+       cinquena columna perquè no és una mesura del cos —és el que hi ha fet—,
+       i porta a la pantalla que la té sencera.
+       No hi és quan no hi ha res apuntat: una línia que diu «0» faria pensar
+       que aquella setmana no vas moure't, i el que passa és que no la vas
+       importar. */
+    function laCarrega(cur) {
+      var c = (d.carregues || {})[dillunsDe(cur.data)];
+      if (!c) return '';
+      var t = [coma(c.kmEsforc, 1) + ' km-esforç'];
+      if (c.desnivell) t.push(Math.round(c.desnivell).toLocaleString('ca-ES') + ' m D+');
+      if (c.km) t.push(coma(c.km, 1) + ' km');
+      return '<button class="seg-carrega" data-entrena="1">' +
+        ic('entrenaments', 'ic-p') +
+        '<span>' + esc(t.join(' · ')) + '</span>' +
+        '<span class="menut">Els entrenaments ›</span>' +
+      '</button>';
+    }
+
+    function dillunsDe(iso) {
+      var x = new Date(iso + 'T12:00:00');
+      x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+      return x.toISOString().slice(0, 10);
     }
 
     function mena(avisos) {
@@ -658,6 +687,11 @@ App.registraVista('seguiment', {
 
       var t = arrel.querySelector('[data-torna]');
       if (t) t.addEventListener('click', function () { App.ves('inici'); });
+
+      var ent = arrel.querySelector('[data-entrena]');
+      if (ent) ent.addEventListener('click', function () {
+        App.ves('entrenaments', { desde: dillunsDe(triat || d.estat.avui) });
+      });
 
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { obreControl(null); });

@@ -711,8 +711,88 @@ export function dades(AVUI, menys) {
       pes: 'Matí, en dejú, després del lavabo. Si pots, mitjana de 2-3 dies.',
       cintura: 'Matí, en dejú, dret i relaxat. Expiració normal. Cinta al melic, sense estrènyer.',
       fotos: 'Mateix lloc, mateixa llum, mateixa hora, mateixa roba.'
+    },
+    /* La carrega de les setmanes que tenen control. La del 19 de juny hi es a
+       posta amb desnivell de debo i la del 26 no: aixi es veu que la linia
+       apareix quan hi ha dades i desapareix quan no n hi ha. */
+    carregues: {
+      '2026-06-15': { sessions: 4, trail: 3, forca: 1, km: 18.2, desnivell: 240,
+                      kmEsforc: 20.6, llargues: 0 },
+      '2026-06-22': null
     }
   });
+  // -------------------------------------------------------- entrenaments
+  /* Inventat, com tot el mirall. Les setmanes estan fetes a posta perquè es
+     vegi la diferencia que en Pol demanava: la del 20 de juliol son quatre
+     sortides curtes i planes, la del 27 son tres sortides amb desnivell de
+     debo. Amb «sortides: 4» i «sortides: 3» la primera semblava la mes dura;
+     amb quilometres d esforc no s hi assemblen. */
+  const entSessions = () => ([
+    { id: 'ent_1', data: '2026-07-20', mena: 'trail', titol: 'Volta pel canal',
+      km: 5.2, desnivell: 40, minuts: 31, kcal: 340, pulsacions: 148, font: 'captura', notes: '' },
+    { id: 'ent_2', data: '2026-07-22', mena: 'forca', titol: 'Tren superior',
+      km: null, desnivell: null, minuts: 42, kcal: 210, pulsacions: null, font: 'captura', notes: '' },
+    { id: 'ent_3', data: '2026-07-23', mena: 'trail', titol: 'Suau de tarda',
+      km: 6.1, desnivell: 90, minuts: 38, kcal: 400, pulsacions: 151, font: 'captura', notes: '' },
+    { id: 'ent_4', data: '2026-07-25', mena: 'trail', titol: 'Sortida del dissabte',
+      km: 8.4, desnivell: 210, minuts: 54, kcal: 560, pulsacions: 155, font: 'captura', notes: '' },
+    { id: 'ent_5', data: '2026-07-28', mena: 'trail', titol: 'Sèries a la pujada',
+      km: 7.8, desnivell: 480, minuts: 62, kcal: 640, pulsacions: 163, font: 'captura', notes: '' },
+    { id: 'ent_6', data: '2026-07-29', mena: 'forca', titol: 'Esquena i espatlles',
+      km: null, desnivell: null, minuts: 38, kcal: 190, pulsacions: null, font: 'ma', notes: '' },
+    { id: 'ent_7', data: '2026-08-01', mena: 'trail', titol: 'Matinal al Montseny',
+      km: 14.6, desnivell: 1120, minuts: 158, kcal: 1420, pulsacions: 149, font: 'captura', notes: '' }
+  ]);
+
+  const entSetmana = (dl) => {
+    const fins = suma(dl, 6);
+    const dins = entSessions().filter((s) => s.data >= dl && s.data <= fins)
+      .map((s) => {
+        const e = (s.km || s.desnivell)
+          ? Math.round(((s.km || 0) + (s.desnivell || 0) / 100) * 10) / 10 : null;
+        return Object.assign({}, s, { kmEsforc: e, llarga: e !== null && e >= 12 });
+      });
+    const sumaCamp = (c) => dins.reduce((t, s) => t + (s[c] || 0), 0);
+    const kmE = Math.round(sumaCamp('kmEsforc') * 10) / 10;
+    let mesLlarga = null;
+    dins.forEach((s) => {
+      if (s.kmEsforc !== null && (!mesLlarga || s.kmEsforc > mesLlarga.kmEsforc)) mesLlarga = s;
+    });
+    return {
+      dilluns: dl, fins,
+      sessions: dins.length,
+      trail: dins.filter((s) => s.mena === 'trail').length,
+      forca: dins.filter((s) => s.mena === 'forca').length,
+      altres: dins.filter((s) => s.mena === 'altre').length,
+      km: Math.round(sumaCamp('km') * 10) / 10,
+      desnivell: sumaCamp('desnivell'),
+      minuts: sumaCamp('minuts'),
+      kmEsforc: kmE,
+      llargues: dins.filter((s) => s.llarga).length,
+      mesLlarga, llista: dins, dura: kmE >= 60
+    };
+  };
+
+  const ENT_PASSOS = { '2026-07-20': { dilluns: '2026-07-20', total: 68420, mitjana: 9774, font: 'captura', id: 'pas_1' },
+                       '2026-07-27': { dilluns: '2026-07-27', total: 81250, mitjana: 11607, font: 'captura', id: 'pas_2' } };
+
+  const entPantalla = (desde) => {
+    const dl = dillunsDe(desde || AVUI);
+    const corba = [];
+    let cur = dl;
+    for (let i = 0; i < 12; i++) {
+      const s = entSetmana(cur);
+      corba.unshift({ dilluns: cur, kmEsforc: s.kmEsforc, sessions: s.sessions,
+                      desnivell: s.desnivell, passos: ENT_PASSOS[cur] ? ENT_PASSOS[cur].total : null });
+      cur = suma(cur, -7);
+    }
+    const ara = entSetmana(dl);
+    ara.passos = ENT_PASSOS[dl] || null;
+    return { avui: AVUI, dilluns: dl, setmana: ara, corba,
+             total: entSessions().length,
+             llindars: { llarga: 12, setmanaDura: 60 } };
+  };
+
   // ------------------------------------------------------------------ inici
 
   /* Les relacions entre dades. Inventades, com tot el mirall, pero amb la
@@ -763,6 +843,7 @@ export function dades(AVUI, menys) {
       { id: 'finances', nom: 'Finances', icona: 'finances', ordre: 30, teVista: true },
       { id: 'calendari', nom: 'Calendari', icona: 'calendari', ordre: 5, teVista: true },
       { id: 'seguiment', nom: 'Seguiment FitFat', icona: 'seguiment', ordre: 25, teVista: true },
+      { id: 'entrenaments', nom: 'Entrenaments', icona: 'entrenaments', ordre: 26, teVista: true },
       /* Escola hi faltava. No ho havia trencat res: senzillament no s'havia
          afegit mai a la llista, i per això el tauler d'apartats del mirall
          ensenyava vuit botons on l'app en té nou. Justament el tauler és on
@@ -791,5 +872,6 @@ export function dades(AVUI, menys) {
   return { HABITS, habitsDia, habitsMes, habitsHistoric, ALIMENTS, nutriPantalla,
            CALENDARIS, calendariPantalla, elDia, laSetmana,
            CATEGORIES, finPantalla, tasquesPantalla, relacions, focusPantalla, tasquesFetes, diariPantalla,
-           conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla };
+           conversaEstat, conversaHistorial, nucliInici, segPantalla, escPantalla,
+           entPantalla, entSetmana };
 }

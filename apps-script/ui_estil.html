@@ -1921,6 +1921,23 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-delta { font-family: var(--mono); font-size: .6875rem; color: var(--ink-suau);
              font-variant-numeric: tabular-nums; }
 
+/* La càrrega de la setmana, sota les quatre xifres del cos. No és una mesura
+   més: és el que hi ha fet, i per això va separada per la línia i porta fletxa
+   —d'aquí se'n va a la pantalla que la té sencera—. */
+.seg-carrega { display: flex; align-items: center; gap: var(--e2);
+               width: 100%; margin-top: var(--e3); padding: var(--e2) 0 0;
+               border: 0; border-top: 1px solid var(--neatline);
+               background: transparent; color: var(--ink); text-align: left;
+               font-size: .8125rem; }
+.seg-carrega .ic { flex: none; color: var(--utm); }
+.seg-carrega > span:first-of-type { flex: 1; min-width: 0;
+               font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.seg-carrega .menut { flex: none; }
+.seg-carrega:active { opacity: .7; }
+@media (hover: hover) and (pointer: fine) {
+  .seg-carrega:hover .menut { color: var(--utm); }
+}
+
 /* ELS AVISOS. Cadascun amb la seva icona, perquè el nivell no depengui només
    del color: qui no distingeixi el cian de l'ambre ha de poder llegir-ho. */
 .seg-avisos { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e3) 0; }
@@ -2004,6 +2021,83 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-check { display: flex; align-items: center; gap: var(--e2); margin-top: var(--e2);
              font-size: .8125rem; color: var(--ink-suau); }
 .seg-check input { width: 18px; height: 18px; flex: none; accent-color: var(--utm); }
+
+/* ==========================================================================
+   ENTRENAMENTS
+
+   Una sola xifra mana i es veu de lluny: els quilòmetres d'esforç de la
+   setmana. Tota la resta —sessions, quilòmetres, desnivell, temps— és de què
+   està feta. La fórmula va escrita sota el número i s'hi queda: una mesura que
+   has d'anar a buscar què vol dir no la faràs servir mai.
+   ========================================================================== */
+
+.ent-nav { display: flex; align-items: center; justify-content: space-between;
+           gap: var(--e2); margin-bottom: var(--e3); }
+.ent-nav .marge { margin: 0; }
+
+.ent-carrega[data-dura="1"] { border-color: var(--utm); }
+.ent-gran { display: block; margin: var(--e2) 0 0;
+            font-family: var(--mono); font-size: 2.5rem; font-weight: 600;
+            line-height: 1; font-variant-numeric: tabular-nums; }
+.ent-gran i { font-style: normal; font-size: .75rem; font-weight: 400;
+              color: var(--ink-suau); margin-left: var(--e2);
+              text-transform: uppercase; letter-spacing: .06em; }
+.ent-formula { margin: var(--e2) 0 var(--e3); }
+.ent-xifres { display: grid; grid-template-columns: repeat(2, 1fr);
+              gap: var(--e3) var(--e2);
+              border-top: 1px solid var(--neatline); padding-top: var(--e3); }
+@media (min-width: 420px) { .ent-xifres { grid-template-columns: repeat(4, 1fr); } }
+.ent-xifres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-xifres b { font-family: var(--mono); font-size: 1.25rem; font-weight: 600;
+                line-height: 1; font-variant-numeric: tabular-nums; }
+.ent-xifres b i { font-style: normal; font-size: .6875rem; color: var(--ink-suau);
+                  margin-left: 3px; font-weight: 400; }
+
+/* Els passos a la seva fitxa: no són entrenament, són el que et mous la resta
+   del dia. Barrejar-los amb la càrrega hauria dit que són el mateix. */
+.ent-passos { display: flex; align-items: center; justify-content: space-between;
+              gap: var(--e3); width: 100%; margin-top: var(--e3); padding: var(--e3);
+              border: 1px solid var(--neatline); background: var(--paper2);
+              color: var(--ink); text-align: left;
+              transition: background-color .16s var(--entra), transform .12s var(--entra); }
+.ent-passos > span:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-passos:active { transform: scale(.995); }
+.ent-passos-buit { border-style: dashed; }
+@media (hover: hover) and (pointer: fine) {
+  .ent-passos:hover { background: var(--utm-suau); }
+}
+
+/* DOTZE SETMANES EN BARRES. Una setmana és una capsa tancada i no un punt
+   d'una corba: entre un dilluns i el següent no hi ha res per interpolar. */
+.ent-corba { margin-top: var(--e3); }
+.ent-barres { display: flex; align-items: flex-end; gap: 3px;
+              height: 88px; margin-top: var(--e2); }
+.ent-barra { flex: 1; min-width: 0; height: 100%; padding: 0;
+             display: flex; align-items: flex-end;
+             border: 0; background: transparent; }
+.ent-barra > span { display: block; width: 100%; background: var(--corba);
+                    transition: background-color .16s var(--entra); }
+.ent-barra[aria-current="true"] > span { background: var(--utm); }
+@media (hover: hover) and (pointer: fine) {
+  .ent-barra:hover > span { background: var(--utm); }
+}
+
+/* Una sortida de les que buiden es marca al fil, i no només amb el número:
+   el número el pots llegir, però la fila la veus passant amb el dit. */
+.ent-fila[data-llarga="1"] { border-left: 3px solid var(--utm); }
+
+/* LA PROPOSTA DE LA CAPTURA. Cada fila es pot treure i la data es pot
+   corregir: són les dues coses que la lectura d'una pantalla falla. */
+.ent-prop { padding: var(--e3); border: 1px solid var(--neatline);
+            background: var(--paper2); }
+.ent-prop + .ent-prop { margin-top: calc(-1 * var(--e2)); }
+.ent-prop-dubte { border-left: 3px solid var(--avis); }
+.ent-prop-cap { display: flex; align-items: flex-start; gap: var(--e2);
+                margin-bottom: var(--e2); cursor: pointer; }
+.ent-prop-cap input { width: 20px; height: 20px; flex: none; margin-top: 2px;
+                      accent-color: var(--utm); }
+.ent-prop-cap > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ent-prop .entrada { width: 100%; }
 
 /* La tria de tres opcions: energia, son, gana, dieta. Botons de debò, prou
    grossos per al dit, i l'estat el diu l'atribut i no només el color. */
