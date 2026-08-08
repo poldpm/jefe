@@ -3,8 +3,8 @@
  *
  * EL FORAT QUE TAPA, i és l'única raó per la qual això existeix: un xat no pot
  * obrir conversa sol. El control setmanal depenia de recordar-se'n. Aquí no:
- * divendres al matí el sistema pica, i el control es queda pendent —al dia i a
- * l'inici— fins que el despatxes.
+ * el dia que toca —diumenge— el sistema pica a les sis del matí, i el control
+ * es queda pendent —al dia i a l'inici— fins que el despatxes.
  *
  * QUÈ HI HA AQUÍ I QUÈ NO.
  * Aquest fitxer va a un repositori PÚBLIC. Per tant aquí hi ha només el que és
@@ -133,12 +133,12 @@ function MODUL_SEGUIMENT() {
       };
     },
 
-    /* EL PIC DE DIVENDRES AL MATÍ, que és per això que existeix tot això.
+    /* EL PIC DEL MATÍ, que és per això que existeix tot això.
        L'hora és la que és a posta: el que has de fer és pesar-te i mesurar-te
        EN DEJÚ, abans de cafè i abans de moure't. Omplir sis camps ja ho faràs
        quan puguis —el control es queda pendent al dia i a l'inici fins que el
        despatxis—, però la mesura, si te la saltes, ja no la pots recuperar
-       fins divendres que ve.
+       fins la setmana que ve.
 
        PER QUÈ LES SIS I NO LES SET. Perquè a les set ja no hi ets. Amb l'avís
        a les set arribava amb el dia començat —un divendres va picar a les
@@ -147,12 +147,25 @@ function MODUL_SEGUIMENT() {
        el pic arriba abans que et moguis, que és l'únic moment en què encara la
        pots fer.
 
+       PER QUÈ EL DIA NO ÉS UN NÚMERO. Era un 5 —divendres— i el mateix dia
+       també estava escrit al full del pla, a `control.dia`. Dues xifres que
+       han de dir el mateix mai no és una: quan en Pol va voler passar-ho a
+       diumenge, el full hauria dit diumenge i l'avís hauria seguit picant
+       divendres sense que res es queixés. Ara el dia el diu el full i prou.
+
+       I EL DIA ÉS DIUMENGE PERQUÈ LA SETMANA S'ACABA EL DIUMENGE. El va triar
+       divendres per por dels caps de setmana —un desfasament, un àpat lliure,
+       la bàscula el dilluns—, i la realitat va resultar ser una altra: els
+       caps de setmana és quan més esport fa. Amb el control el diumenge, la
+       xifra tanca la mateixa setmana que tanquen els entrenaments i la revisió
+       setmanal. Divendres mesurava una setmana a mig fer.
+
        Si ja l'has fet, no pica: un avís que arriba tant si toca com si no
        deixa de voler dir res al cap de tres setmanes. */
     avisos: [{
       id: 'control',
       hora: 6,
-      dia: 5,
+      dia: function () { return Seguiment.diaDelControl(); },
       mira: function () {
         var e = Seguiment.estat();
         if (e.fetAquestaSetmana) return null;
@@ -361,10 +374,26 @@ var Seguiment = (function () {
   // ------------------------------------------------------- ESTAT DEL CONTROL
   /* Quin dia toca i si està fet. El dia el diu el pla (`control.dia`), perquè
      canviar-lo no ha de voler dir tocar codi. */
+  /**
+   * QUIN DIA TOCA EL CONTROL. Un sol lloc, i és el full del pla.
+   *
+   * Ho llegeixen dos: aquesta pantalla, per saber si el control d'aquesta
+   * setmana està pendent, i l'avís de les sis del matí, per saber si avui ha
+   * de picar. Fins ara el segon el portava escrit al codi i podien dir coses
+   * diferents sense que res ho digués.
+   *
+   * Per defecte, diumenge: és quan s'acaba la setmana que compten els
+   * entrenaments i la revisió setmanal, i mesurar-se a mitja setmana era
+   * tancar un compte que encara corria.
+   */
+  function diaDelControl() {
+    var d = Number(pla()['control.dia']);
+    return (d >= 1 && d <= 7) ? d : 7;      // 1 = dilluns … 7 = diumenge
+  }
+
   function estat(data) {
     var avui = data || Utils.avui();
-    var plaM = pla();
-    var diaSetmana = Number(plaM['control.dia'] || 5);   // 1 = dilluns … 7 = diumenge
+    var diaSetmana = diaDelControl();
     var h = controls();
     var ultim = h.length ? h[h.length - 1] : null;
     var fa = ultim ? diesEntre(ultim.data, avui) : null;
@@ -1202,6 +1231,7 @@ var Seguiment = (function () {
     senyals: senyals,
     pantalla: pantalla,
     estat: estat,
+    diaDelControl: diaDelControl,
     desaControl: desaControl,
     apuntaPerNom: apuntaPerNom,
     carpetaFotos: carpeta_,

@@ -696,14 +696,14 @@ export function dades(AVUI, menys) {
         dieta: 'bé', fotos: { frontal: 'fals_4f', perfil: '', esquena: 'fals_4e' }, notes: '' }
     ],
     pla: {
-      'control.dia': '5',
+      'control.dia': '7',
       'pla.resum': 'Dèficit moderat, proteïna alta, trail com a prioritat.',
       'fase.1.desde': '2026-06-01', 'fase.1.nom': 'Base',
       'fase.1.objectiu': 'més magre i en forma aeròbica'
     },
     fase: { desde: '2026-06-01', nom: 'Base', objectiu: 'més magre i en forma aeròbica',
             kcal: 2000, proteina: 150, forca: 2, trail: 3 },
-    estat: { avui: AVUI, dia: 5, toca: true, pendent: true, fetAquestaSetmana: false,
+    estat: { avui: AVUI, dia: 7, toca: true, pendent: true, fetAquestaSetmana: false,
              fa: 38, ultim: '2026-06-26' },
     llindars: { perdSana: [0.4, 0.7], perdRapida: 0.8, saltImpossible: 3.0,
                 cinturaIncoherent: 2.5, pesEstable: 0.3, forcaMinima: 2, diesTolerats: [5, 10] },

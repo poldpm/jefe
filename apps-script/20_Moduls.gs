@@ -317,11 +317,42 @@ var Moduls = (function () {
           Log.avis('moduls.avisos', 'Avís de ' + m[i].id + ' sense hora vàlida. Ignorat.');
           continue;
         }
+        /* EL DIA POT SER UNA FUNCIÓ, i és un contracte nou que el nucli ofereix
+           a tothom. El seguiment en tenia dos, de dies: el `5` escrit aquí i el
+           `control.dia` del seu full de pla, i tots dos deien quan toca fer el
+           control setmanal. Mentre coincidien no es notava. En Pol el va voler
+           moure a diumenge i el que hauria passat és que el full diria diumenge
+           i l'avís seguiria picant divendres, sense que cap error ho digués.
+           Amb una funció, el mòdul contesta amb el que llegeix del seu full i
+           només hi ha un lloc on canviar-ho.
+
+           Es demana AQUÍ i no en crear el trigger perquè es demana a cada
+           execució: canviar el dia al full té efecte de seguida, sense tornar a
+           instal·lar res. L'hora no pot fer això —el trigger la fixa quan
+           neix—, i per això l'hora segueix sent un número. */
+        var dia = a.dia;
+        if (typeof dia === 'function') {
+          try {
+            dia = dia();
+          } catch (err) {
+            /* NO SABER QUIN DIA ÉS NO POT VOLER DIR «CADA DIA».
+               `dia: null` vol dir diàriament, i caure-hi per un error seria
+               convertir una avaria silenciosa en un avís cada matí a les sis
+               fins que algú se n'adonés. Un zero no és cap dia de la setmana
+               —van d'1 a 7—, o sigui que aquest avís no picarà, i al registre
+               hi queda per què. Perdre'n un de setmanal es recupera; que piqui
+               cada dia set dies seguits, no. */
+            Log.avis('moduls.avisos', 'Avís de ' + m[i].id + '.' + (a.id || k) +
+                     ': no he pogut saber quin dia toca (' + err.message + '). No pica.');
+            dia = 0;
+          }
+        }
+
         out.push({
           modul: m[i].id,
           id: a.id || (m[i].id + '.' + k),
           hora: hora,
-          dia: a.dia === undefined || a.dia === null ? null : Number(a.dia),
+          dia: dia === undefined || dia === null ? null : Number(dia),
           mira: a.mira
         });
       }

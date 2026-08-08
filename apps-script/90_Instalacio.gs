@@ -1793,6 +1793,46 @@ function provaAvisCremades() {
 
 
 /**
+ * EL CONTROL SETMANAL PASSA A DIUMENGE.
+ *
+ * El va posar divendres per por dels caps de setmana: un àpat lliure, un
+ * descuit, i la bàscula del dilluns castigant-lo per una cosa que no era greix.
+ * La realitat va resultar ser una altra —fa temps que no es desfasa i els caps
+ * de setmana és quan més esport fa—, i divendres tenia un preu que sí que es
+ * paga cada setmana: mesurava una setmana a mig fer. Els entrenaments van de
+ * dilluns a diumenge i la revisió setmanal és diumenge a la nit; el control
+ * era l'únic que tancava el compte dos dies abans d'hora.
+ *
+ * Això escriu la xifra al full del pla, que és l'únic lloc on viu: la pantalla
+ * i l'avís de les sis del matí la llegeixen tots dos d'aquí. No cal tornar a
+ * instal·lar cap trigger, perquè l'hora no canvia i el dia es mira a cada
+ * execució.
+ *
+ * Per a qualsevol altre dia, canvia `control.dia` al full `SeguimentPla`:
+ * 1 és dilluns i 7 és diumenge.
+ */
+function controlSetmanalAlDiumenge() {
+  var NOMS = ['dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge'];
+  var abans = Seguiment.diaDelControl();
+
+  Dades.desa('SeguimentPla', { clau: 'control.dia', valor: '7' }, ['clau']);
+  Dades.invalida('SeguimentPla');
+  Memoria.oblida('seguiment');
+
+  var ara = Seguiment.diaDelControl();
+  var l = [
+    'Control setmanal: ' + NOMS[abans - 1] + ' → ' + NOMS[ara - 1],
+    'L\'avís de les 6:00 el llegeix del full, o sigui que ja pica el ' + NOMS[ara - 1] + '.',
+    'No cal tornar a instal·lar cap trigger: l\'hora no ha canviat.'
+  ];
+  if (ara !== 7) l.push('ATENCIÓ: no s\'ha desat. Mira el full SeguimentPla.');
+  var t = l.join('\n');
+  Logger.log(t);
+  return t;
+}
+
+
+/**
  * ══════════════════════════════════════════════════════════════════════════
  * ESTÀ LLEST EL MÒDUL D'ENTRENAMENTS?
  * ══════════════════════════════════════════════════════════════════════════

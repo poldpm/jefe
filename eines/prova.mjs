@@ -1858,8 +1858,14 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
       seus[0].minut === 0, JSON.stringify(seus));
 
   /* Les combinacions que importen. La que ha d'enviar és una de sola:
-     divendres, a les sis, i amb el control encara per fer. */
+     DIUMENGE, a les sis, i amb el control encara per fer.
+
+     El dia ja no és un número escrit al codi: el mòdul el llegeix del seu full
+     de pla. Aquí es falseja aquesta lectura, que és exactament el forat pel
+     qual el dia i l'avís es podrien tornar a separar. */
   const quan = (iso) => { ctx.Date = class extends Date { constructor() { super(iso); } }; };
+  let diaDelPla = 7;
+  ctx.Seguiment.diaDelControl = () => diaDelPla;
   const prova = (iso, fet) => {
     enviades = [];
     ctx.Seguiment.estat = () => ({ fetAquestaSetmana: fet });
@@ -1868,30 +1874,51 @@ console.log('\nAvisos: un mòdul pot demanar hora sense que el nucli el conegui'
     return enviades.length;
   };
 
-  cal('divendres a les 6 amb el control per fer: pica',
-      prova('2026-08-07T06:10:00', false) === 1);
-  cal('divendres a les 6 amb el control ja fet: calla',
-      prova('2026-08-07T06:10:00', true) === 0);
-  cal('dijous a les 6: no és el seu dia',
-      prova('2026-08-06T06:10:00', false) === 0);
-  cal('divendres a les 15: no és la seva hora',
-      prova('2026-08-07T15:15:00', false) === 0);
-  cal('divendres a les 7: l\'avís de les sis ja ha passat, no es repeteix',
-      prova('2026-08-07T07:15:00', false) === 0);
+  cal('diumenge a les 6 amb el control per fer: pica',
+      prova('2026-08-09T06:10:00', false) === 1);
+  cal('diumenge a les 6 amb el control ja fet: calla',
+      prova('2026-08-09T06:10:00', true) === 0);
+  cal('dissabte a les 6: no és el seu dia',
+      prova('2026-08-08T06:10:00', false) === 0);
+  cal('divendres a les 6 ja no pica: el dia s\'ha mogut',
+      prova('2026-08-07T06:10:00', false) === 0);
+  cal('diumenge a les 15: no és la seva hora',
+      prova('2026-08-09T15:15:00', false) === 0);
+  cal('diumenge a les 7: l\'avís de les sis ja ha passat, no es repeteix',
+      prova('2026-08-09T07:15:00', false) === 0);
 
   /* EL QUART DE MENYS. `nearMinute(0)` pot picar ABANS de l'hora, i llavors el
      rellotge diu una hora que ningú no ha demanat. Si això no s'arrodonís,
      l'avís no s'enviaria i no ho sabria ningú. */
-  cal('divendres a les 5:50 encara compta com l\'avís de les sis',
-      prova('2026-08-07T05:50:00', false) === 1);
-  cal('divendres a les 5:30 encara no toca',
-      prova('2026-08-07T05:30:00', false) === 0);
+  cal('diumenge a les 5:50 encara compta com l\'avís de les sis',
+      prova('2026-08-09T05:50:00', false) === 1);
+  cal('diumenge a les 5:30 encara no toca',
+      prova('2026-08-09T05:30:00', false) === 0);
 
   /* I l'arrodoniment ha de moure el DIA quan travessa la mitjanit: a les 23:50
-     de dijous, l'avís de les 0h és el de divendres. Aquí es comprova al revés
-     —dijous a les 23:50 no és divendres a les sis— però amb la mateixa peça. */
-  cal('dijous a les 23:50 no dispara res de divendres que no sigui de les 0h',
-      prova('2026-08-06T23:50:00', false) === 0);
+     de dissabte, l'avís de les 0h és el de diumenge. Aquí es comprova al revés
+     —dissabte a les 23:50 no és diumenge a les sis— però amb la mateixa peça. */
+  cal('dissabte a les 23:50 no dispara res de diumenge que no sigui de les 0h',
+      prova('2026-08-08T23:50:00', false) === 0);
+
+  /* CANVIAR EL DIA AL FULL HA DE MOURE L'AVÍS, sense tornar a instal·lar res.
+     Aquest és tot el motiu del canvi: abans el dia estava escrit dos cops —al
+     full i al codi— i moure'n un deixava l'altre picant on no tocava. */
+  diaDelPla = 3;
+  cal('si al full hi posa dimecres, pica dimecres',
+      prova('2026-08-05T06:10:00', false) === 1);
+  cal('i llavors el diumenge calla', prova('2026-08-09T06:10:00', false) === 0);
+
+  /* I si no es pot saber quin dia toca, NO pica cada dia. `dia: null` vol dir
+     diàriament, i caure-hi per una avaria seria un avís cada matí a les sis
+     fins que algú se n'adonés. */
+  diaDelPla = null;
+  ctx.Seguiment.diaDelControl = () => { throw new Error('el full de pla no hi és'); };
+  const capDia = [prova('2026-08-09T06:10:00', false), prova('2026-08-05T06:10:00', false),
+                  prova('2026-08-07T06:10:00', false)];
+  cal('si no se sap quin dia toca, no pica cap dia',
+      capDia.join('') === '000', capDia.join(''));
+  ctx.Seguiment.diaDelControl = () => 7;
 
   /* Un mòdul que peti no se n'ha d'emportar cap altre: és la mateixa regla que
      a `elDia` i a `resumInici`, i aquí encara importa més perquè ningú no ho
@@ -2011,6 +2038,21 @@ console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mat
   cal('les dues còpies donen les mateixes regles a tots els casos',
       diferents.length === 0, '\n      ' + diferents.join('\n      '));
   cal('i s\'han comparat prou casos', iguals >= 20, iguals + ' comparacions');
+
+  /* EL DIA DEL CONTROL, EN UN SOL LLOC.
+     N'hi havia dos que havien de dir el mateix: el `dia: 5` del descriptor de
+     l'avís i el `control.dia` del full del pla. Mentre coincidien no es notava;
+     moure'n un hauria deixat l'altre picant on no toca, i en silenci. */
+  const fontSeg = fs.readFileSync('apps-script/40_Mod_Seguiment.gs', 'utf8');
+  cal('el dia de l\'avís no és un número escrit al codi',
+      /dia: function \(\) \{ return Seguiment\.diaDelControl\(\); \}/.test(fontSeg));
+  cal('i la pantalla llegeix el mateix dia que l\'avís',
+      /var diaSetmana = diaDelControl\(\);/.test(fontSeg));
+  cal('i per defecte és diumenge, que és quan s\'acaba la setmana',
+      /return \(d >= 1 && d <= 7\) \? d : 7;/.test(fontSeg));
+  const fontMod = fs.readFileSync('apps-script/20_Moduls.gs', 'utf8');
+  cal('el nucli sap demanar el dia en calent',
+      /if \(typeof dia === 'function'\)/.test(fontMod));
 
   /* Els tres arreglos respecte del motor de referència, comprovats un per un
      perquè si algú els desfés, la prova de dalt seguiria passant —les dues
