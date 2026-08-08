@@ -339,24 +339,6 @@ var Conversa = (function () {
       };
     }
 
-    /* I SI SEMBLA QUE VULGUI OBRIR UNA COSA QUE NO ÉS CAP APARTAT, tampoc s'hi
-       gasta res. Des d'aquí no hi ha manera de saber si «l'informe de la
-       batuda» és un fitxer del seu ordinador, una web o una pregunta rara: qui
-       ho sap és la pantalla, que té l'ajudant a l'altra banda i ho pot buscar
-       en tres-cents mil·lisegons. Se li torna la transcripció i prou.
-
-       NO ES POT PERDRE RES: si la pantalla no en surt, la frase torna aquí pel
-       camí de sempre i es contesta com sempre. Només pot estalviar la volta
-       quan encerta. */
-    if (Moduls.semblaObrir(text)) {
-      return {
-        id_conversa: p.id_conversa || null,
-        pregunta: text,
-        obreAlPC: true,
-        temps: { total: msVeu, veu: msVeu, ia: 0, context: 0, eines: 0, voltes: 0, rumiat: 0 }
-      };
-    }
-
     var r = envia(text, p.id_conversa);
     if (r.temps) { r.temps.veu = msVeu; r.temps.total += msVeu; }
     return r;

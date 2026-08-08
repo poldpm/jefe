@@ -772,101 +772,16 @@ var Jefe = (function () {
     temaActual: function () { return 'fosc'; }
   };
 
-  /* ==========================================================================
-     L'ORDINADOR
-
-     L'única part de JEFE que no parla amb el servidor. Truca a un programa
-     que corre a la mateixa màquina que el navegador —`ordinador/
-     jefe-ordinador.mjs`—, i per això només funciona a l'ordinador on el
-     tinguis obert. Des del mòbil, no; i això no és cap error: el PC és allà
-     i el telèfon aquí.
-
-     PER QUÈ `127.0.0.1` I NO `localhost`. Perquè `localhost` es resol, i
-     resoldre'l pot anar a parar a `::1` mentre el programa escolta a l'altra.
-     L'adreça literal no depèn de res.
-
-     I PER QUÈ UNA PÀGINA SEGURA POT TRUCAR A UNA ADREÇA QUE NO HO ÉS: perquè
-     `127.0.0.1` és l'única excepció que fa Chrome a la regla de no barrejar
-     https amb http, i la fa justament perquè el trànsit no surt de la
-     màquina. No hi ha res enmig que el pugui escoltar.
-     ========================================================================== */
-  var Ordinador = {
-    URL: 'http://127.0.0.1:8787/',
-
-    clau: function () { return String(Cau.get('ordinador.clau', '') || ''); },
-    desaClau: function (c) { Cau.set('ordinador.clau', String(c || '').trim()); },
-    oblida: function () { Cau.treu('ordinador.clau'); Cau.treu('ordinador.qui'); },
-
-    /* L'última salutació, per poder dir de quina màquina parlem sense haver
-       de tornar a trucar. */
-    qui: function () { return Cau.get('ordinador.qui', null); },
-
-    /**
-     * Una ordre a l'ajudant.
-     *
-     * AMB RELLOTGE, i és necessari: buscar per tot el disc pot trigar sis
-     * segons, i si el port l'ocupés un altre programa que no contesta mai, la
-     * conversa es quedaria penjada per sempre. `AbortController` és l'única
-     * manera de posar-li un límit a un `fetch`.
-     */
-    truca: function (verb, args, segons) {
-      var clau = Ordinador.clau();
-      if (!clau) {
-        return Promise.reject(new Error('Encara no has enganxat la clau de l\'ordinador.'));
-      }
-      var aturador = new AbortController();
-      var temps = setTimeout(function () { aturador.abort(); }, (segons || 12) * 1000);
-
-      return fetch(Ordinador.URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Jefe-Clau': clau },
-        body: JSON.stringify({ verb: verb, args: args || {} }),
-        signal: aturador.signal
-      }).then(function (r) {
-        clearTimeout(temps);
-        if (r.status === 401) throw new Error('La clau de l\'ordinador no és correcta.');
-        if (!r.ok) throw new Error('L\'ajudant ha contestat ' + r.status + '.');
-        return r.json();
-      }).then(function (d) {
-        /* L'ajudant contesta 200 tant si ha pogut com si no: el que separa
-           les dues coses és `fet`. Així un «aquest camí queda fora» arriba com
-           un missatge i no com una petada. */
-        if (d && d.fet === false) throw new Error(d.error || 'No ha pogut.');
-        return d;
-      })['catch'](function (err) {
-        clearTimeout(temps);
-        if (err.name === 'AbortError') throw new Error('L\'ordinador no contesta.');
-        /* `Failed to fetch` vol dir que no hi ha ningú al port. És el cas de
-           cada dia —el programa no està obert, o ets al mòbil— i mereix una
-           frase que es pugui entendre i no la del navegador. */
-        if (/failed to fetch|networkerror|load failed/i.test(err.message)) {
-          throw new Error('No arribo a l\'ordinador. Té l\'ajudant obert?');
-        }
-        throw err;
-      });
-    },
-
-    /** Hi ets? Desa qui ha contestat, per poder-ho dir després. */
-    saluda: function () {
-      return Ordinador.truca('hola', {}, 5).then(function (d) {
-        Cau.set('ordinador.qui', { maquina: d.maquina, arrels: d.arrels, quan: Date.now() });
-        return d;
-      });
-    }
-  };
-
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
   });
 
   return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, escriu: escriu,
-           esc: esc, ic: ic, fmt: fmt, Servidor: Servidor, dinsAppsScript: dinsAppsScript,
-           Ordinador: Ordinador };
+           esc: esc, ic: ic, fmt: fmt, Servidor: Servidor, dinsAppsScript: dinsAppsScript };
 })();
 
 var App = Jefe.App, Comp = Jefe.Comp, Cau = Jefe.Cau, Cua = Jefe.Cua;
 var crida = Jefe.crida, escriu = Jefe.escriu;
 var esc = Jefe.esc, ic = Jefe.ic, fmt = Jefe.fmt;
 var Servidor = Jefe.Servidor, dinsAppsScript = Jefe.dinsAppsScript;
-var Ordinador = Jefe.Ordinador;
 </script>

@@ -281,14 +281,6 @@ var Assistent = (function () {
            Només hi va si ELL ha demanat veure-ho: les eines porten un
            `ensenya` que el model posa quan la pregunta era «ensenya'm» i no
            «quant». Si no, es contesta amb paraules i no s'obre res. */
-        /* I `_ordinador`: UNA EINA POT DEMANAR UNA COSA AL PC.
-           El quart d'aquesta família, i el que arriba més lluny. Apps Script
-           corre als servidors de Google, i des d'allà `127.0.0.1` és Google,
-           no la màquina d'en Pol: el servidor no hi pot arribar de cap manera,
-           i tampoc no n'hi ha d'haver. Qui hi arriba és el navegador, perquè
-           quan li parla des de l'ordinador ja hi és a dins.
-           Igual que els altres tres, el nucli el porta sense mirar-hi dins: no
-           sap quins verbs hi ha ni què fan. Vegeu 40_Mod_Ordinador.gs. */
         einesUsades.push({
           eina: c.nom, args: c.args || {},
           obre: eina && eina.obre ? eina.obre : undefined,
@@ -296,7 +288,6 @@ var Assistent = (function () {
           obreAmb: (eina && (eina.obre || eina.mostra) && resultat && resultat._params)
                      ? resultat._params : undefined,
           visor: (resultat && resultat._visor) ? visorRetallat_(resultat._visor) : undefined,
-          ordinador: (resultat && resultat._ordinador) ? resultat._ordinador : undefined,
           files: (resultat && resultat.files !== undefined) ? resultat.files : null
         });
         resultats.push({ nom: c.nom, resultat: retalla_(resultat) });

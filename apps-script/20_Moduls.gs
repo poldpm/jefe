@@ -548,74 +548,7 @@ var Moduls = (function () {
         if (net.indexOf(l[i].frases[j]) !== -1) return l[i];
       }
     }
-    return obrirUnApartat_(net);
-  }
-
-  /**
-   * ══════════════════════════════════════════════════════════════════════
-   * «OBRE'M LES FINANCES», DIT AMB LA BOCA
-   * ══════════════════════════════════════════════════════════════════════
-   *
-   * Això ja es resolia al navegador i era instantani... quan hi escrivies.
-   * Dit de veu no: l'àudio se'n va al servidor a transcriure's, i des d'aquí
-   * el camí curt del navegador no existeix. Vint segons per obrir una
-   * pantalla que és a un toc. En Pol hi va estar dues rondes i jo buscant
-   * fantasmes: no era la connexió amb el PC ni el codi vell, és que li
-   * parlava en comptes d'escriure-li.
-   *
-   * La llista de frases de `dreceres()` no serveix per a això: un mòdul no
-   * pot escriure totes les maneres de demanar-se. El que sí que se sap és
-   * com es diu cada apartat, i el nom ja és a la seva fitxa.
-   *
-   * NOMÉS SI ENCAIXA SENCER —tret de les tres paraules de farciment que
-   * tothom hi posa—. «Obre'm una altra conversa» porta la paraula «conversa»
-   * i no vol dir això.
-   */
-  var VERB_OBRIR_ = /^(obre|obri|obrir|obrim|posa|posam|engega)\s+(?:m\s+)?(.+)$/;
-  var PALLA_ = /^(el|la|els|les|un|una|uns|unes|al|als)\s+/;
-  var MES_PALLA_ = /^(pagina|pantalla|resum|apartat|seccio|llista)\s+(de la |del |de |d )?/;
-  var DE_CASA_ = /(^|\s)(conversa|converses|microfon|teclat|ajust|ajustos)(\s|$)/;
-
-  function obrirUnApartat_(net) {
-    var m = net.match(VERB_OBRIR_);
-    if (!m) return null;
-    var que = m[2].replace(PALLA_, '').replace(MES_PALLA_, '').replace(PALLA_, '').trim();
-    if (que.length < 2 || DE_CASA_.test(que)) return null;
-
-    var quines = {};
-    actius().forEach(function (mod) {
-      if (!mod.vista) return;
-      quines[Utils.aixafa(mod.id)] = mod.id;
-      if (mod.nom) quines[Utils.aixafa(mod.nom)] = mod.id;
-    });
-    /* Les dues pantalles del nucli que no són de cap mòdul. */
-    quines['dia'] = 'dia'; quines['el dia'] = 'dia';
-    quines['setmana'] = 'setmana'; quines['la setmana'] = 'setmana';
-
-    return quines[que] ? { vista: quines[que], params: null } : null;
-  }
-
-  /**
-   * «Sembla que vulgui obrir alguna cosa, però no és cap apartat.»
-   *
-   * Serveix per a una cosa molt concreta: NO GASTAR-HI RES. Quan et diu «obre'm
-   * l'informe de la batuda», des d'aquí no hi ha manera de saber si és un
-   * fitxer del seu ordinador, una web o una manera rara de preguntar. Qui ho
-   * sap és la pantalla —ella sap si té l'ajudant a l'altra banda i pot
-   * buscar-ho en tres-cents mil·lisegons—, i per tant el millor que pot fer el
-   * servidor és tornar la transcripció i callar.
-   *
-   * Si la pantalla no en surt, la pregunta torna aquí pel camí de sempre i es
-   * contesta com sempre. O sigui que això no pot fer perdre res: només pot
-   * estalviar la volta sencera quan encerta.
-   */
-  function semblaObrir(text) {
-    var net = Utils.aixafa(text);
-    if (!net) return false;
-    var m = net.match(VERB_OBRIR_);
-    if (!m) return false;
-    var que = m[2].replace(PALLA_, '').replace(MES_PALLA_, '').replace(PALLA_, '').trim();
-    return que.length >= 2 && !DE_CASA_.test(que);
+    return null;
   }
 
   /** Metadades per a la interfície (sense funcions, serialitzable). */
@@ -650,7 +583,6 @@ var Moduls = (function () {
     einesIA: einesIA,
     dreceres: dreceres,
     drecera: drecera,
-    semblaObrir: semblaObrir,
     perAlClient: perAlClient
   };
 })();
