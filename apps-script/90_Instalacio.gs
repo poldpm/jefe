@@ -1902,28 +1902,43 @@ function provaQuiCobra() {
      ═══════════════════════════════════════════════════════════════════════ */
   try {
     var c = Finances.candidatsRecurrents();
-    var tots = c.propostes.concat(
-      c.tots.filter(function (g) {
-        return c.propostes.indexOf(g) === -1 && g.mesos >= 3;
-      }));
-    var ambIdentitat = tots.filter(function (g) { return g.fiable; });
+    var L = c.llindars;
+    var linia = function (g) {
+      return '   ' + (g.fiable ? '✓' : '·') + ' ' + Utils.talla(g.descripcio, 32) +
+             '  (' + g.font + ', ' + g.mesos + '/' + g.mesosMirats + ' mesos)';
+    };
 
-    a('DELS QUE SEMBLEN UN REBUT FIX:');
-    a('   candidats trobats .......... ' + tots.length);
-    a('   identificats pel banc ...... ' + ambIdentitat.length);
-    if (tots.length) {
-      a('');
-      tots.slice(0, 12).forEach(function (g) {
-        a('   ' + (g.fiable ? '✓' : '·') + ' ' + Utils.talla(g.descripcio, 34) +
-          '  (' + g.font + ', ' + g.mesos + ' mesos)');
-      });
-      if (tots.length > 12) a('   … i ' + (tots.length - 12) + ' més');
+    /* LES QUE ES PROPOSARIEN, I LA RESTA A PART.
+       La primera versió d'això barrejava les propostes de debò amb tot el que
+       tingués tres mesos, i llavors la llista ensenyava dotze coses que no es
+       proposaran mai. Semblava que el detector fos generós quan el que passava
+       és que la comprovació mentia. */
+    a('ES PROPOSARIEN ARA .......... ' + c.propostes.length);
+    c.propostes.forEach(function (g) { a(linia(g)); });
+    if (!c.propostes.length) {
+      a('   (cap: en calen ' + Math.ceil(L.finestra * L.presencia) + ' mesos dels ' +
+        L.finestra + ' que es miren)');
     }
     a('');
-    a('   ✓ = el banc diu qui cobra: aquest no es perdrà encara que li');
-    a('       canviïn el concepte cada mes.');
-    a('   · = va pel text. Ara el text ja no porta ni números ni noms de');
-    a('       mes, o sigui que «RECIBO 08» i «RECIBO 09» ja són el mateix.');
+
+    var aprop = c.tots.filter(function (g) {
+      return c.propostes.indexOf(g) === -1 && g.mesos >= L.mesosMinims;
+    });
+    if (aprop.length) {
+      a('HI SÓN A PROP, PERÒ NO HI ARRIBEN .. ' + aprop.length);
+      aprop.slice(0, 10).forEach(function (g) {
+        var per = g.variacio > L.variacio ? 'l\'import balla'
+                : g.perMes > L.perMes ? 'hi compres més d\'un cop al mes'
+                : 'li falten mesos';
+        a(linia(g) + '  → ' + per);
+      });
+      if (aprop.length > 10) a('   … i ' + (aprop.length - 10) + ' més');
+      a('');
+    }
+
+    a('   ✓ = el banc diu qui cobra: no es perdrà encara que li canviïn');
+    a('       el concepte cada mes.');
+    a('   · = va pel text, que ara ja no porta ni números ni noms de mes.');
     a('');
   } catch (err) {
     a('No he pogut mirar els candidats: ' + err.message);

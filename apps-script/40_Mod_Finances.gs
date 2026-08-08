@@ -858,6 +858,14 @@ var Finances = (function () {
     /^COMPRA (TARJ|TARG)/,
     /^(TRANSFERENCIA|TRANSFERENCIA|TRANSFERÈNCIA|TRASPAS|TRASPÀS)$/,
     /^(BIZUM|REBUT|RECIBO|ABONO|CARREC|CARGO|MOVIMENT|MOVIMIENTO)$/,
+    /* UNA DEVOLUCIÓ NO ÉS UN COMERÇ. A les dades d'en Pol, «DEVOLUCIO COMPRA»
+       sortia proposat com a rebut fix: passava quatre mesos seguits i per un
+       import semblant, però són quatre devolucions de quatre compres que no
+       tenen res a veure. Igual que «COMPRA AMB TARGETA»: és el que hi posa el
+       banc quan no hi ha ningú a l'altra banda. */
+    /^(DEVOLUCIO|DEVOLUCION|DEVOLUCIÓ|ABONAMENT|REINTEGRAMENT|REINTEGRO)\b/,
+    /^(TRASPAS|TRASPASO|TRANSFERENCIA|TRANSFERÈNCIA)\b/,
+    /^(INGRES|INGRESO|EFECTIU|EFECTIVO|CAIXER|CAJERO)\b/,
     /^(COMPRA|PAGAMENT|PAGO|TARGETA|TARJETA)$/,
     /^\d+$/                                    // el que queda quan tot era un número
   ];
@@ -1242,6 +1250,31 @@ var Finances = (function () {
     return x.length % 2 ? x[m] : Math.round(((x[m - 1] + x[m]) / 2) * 100) / 100;
   }
 
+  /**
+   * Com se'n diu, per ensenyar-ho.
+   *
+   * Si el text es repeteix, aquell: és com el veu al banc i el reconeixerà.
+   * Però n'hi ha que porten el número de factura o el mes a dins i llavors
+   * cap no es repeteix mai —«Sueldo/Salar00022966/202604Factura…»—, i triar-ne
+   * un a l'atzar és ensenyar-li el d'un mes concret com si fos el nom de la
+   * cosa. En aquell cas val més el text net, que és lleig però és el que tenen
+   * en comú tots.
+   */
+  function comEnDiem_(noms) {
+    var c = {}, millor = null, quants = 0;
+    noms.forEach(function (v) {
+      if (!v) return;
+      c[v] = (c[v] || 0) + 1;
+      if (c[v] > quants) { quants = c[v]; millor = v; }
+    });
+    if (quants >= 2) return millor;
+    if (typeof FinancesRegles !== 'undefined' && FinancesRegles.clauNom) {
+      var net = FinancesRegles.clauNom(noms[0]);
+      if (net.length >= 3) return net;
+    }
+    return millor || noms[0] || '';
+  }
+
   function mesRepetit_(l) {
     var c = {}, millor = null, quants = 0;
     l.forEach(function (v) {
@@ -1266,9 +1299,18 @@ var Finances = (function () {
     var fins = mesEnrere_(mesAra, 1);
 
     var cats = indexCategories_();
+    /* ELS TRASPASSOS ENTRE ELS TEUS COMPTES NO SÓN CAP REBUT.
+       A les dades d'en Pol hi sortien proposats el seu propi nom dues vegades:
+       «Pol del Pozo Talla L» i «Pol;del Pozo Murgou». Passar-te diners d'una
+       butxaca a l'altra cada mes és regular i és del mateix import, o sigui
+       que tots els filtres el deixaven passar. L'app ja sap quines categories
+       queden fora dels comptes —ho diu el full, no el codi— i és exactament
+       la mateixa llista que cal aquí. */
+    var fora = exclosos_();
     var dins = moviments_(function (f) {
       var mes = String(f.data).slice(0, 7);
-      return mes >= desde && mes <= fins;
+      if (mes < desde || mes > fins) return false;
+      return !fora[f.categoria];
     });
 
     /* PRIMER ES DECIDEIX QUI ÉS QUI, I DESPRÉS S'AGRUPA.
@@ -1340,7 +1382,7 @@ var Finances = (function () {
            saber de quins ens podem refiar. */
         fiable: esForta_(g.clau),
         tipus: g.tipus,
-        descripcio: mesRepetit_(g.noms) || g.noms[0],
+        descripcio: comEnDiem_(g.noms),
         import: mediana_(g.imports),
         minim: Math.round(min * 100) / 100,
         maxim: Math.round(max * 100) / 100,

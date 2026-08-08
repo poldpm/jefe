@@ -2699,6 +2699,70 @@ console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
       ct.propostes.length === 1 && ct.propostes[0].font === 'text' &&
       ct.propostes[0].fiable === false,
       JSON.stringify(ct.propostes.map((g) => [g.font, g.fiable])));
+
+  /* ══════════════════════════════════════════════════════════════════════
+     ELS FALSOS POSITIUS QUE VAN SORTIR AMB LES DADES DE DEBÒ
+
+     La primera versió va proposar, entre altres, «DEVOLUCIO COMPRA» i el nom
+     d'ell mateix dues vegades. Totes dues passaven els filtres: eren regulars
+     i de l'import semblant. El que fallava no era el filtre d'import, era que
+     allò no és un comerç.
+     ══════════════════════════════════════════════════════════════════════ */
+  const sis = ['02', '03', '04', '05', '06', '07'];
+  const fes = (desc, cat) => sis.map((m, i) => ({
+    id: desc + i, data: '2026-' + m + '-10', tipus: 'd', import: 30,
+    categoria: cat || 'c_casa', descripcio: desc, metode: 'targeta',
+    origen: 'banc', contrapart: '', revisat: 'SI' }));
+
+  const ambDevolucions = munta(fes('DEVOLUCIO COMPRA'), [], '2026-08-08')
+    .candidatsRecurrents('2026-08-08');
+  cal('una devolució no es proposa mai: no és cap comerç',
+      ambDevolucions.propostes.length === 0 && ambDevolucions.tots.length === 0,
+      JSON.stringify(ambDevolucions.tots.map((g) => g.descripcio)));
+
+  /* I un traspàs entre els seus comptes tampoc. Ho diu el full de categories
+     amb `exclou`, que és la llista que l'app ja fa servir per no comptar-los
+     com a despesa: aquí és exactament la mateixa. */
+  const ctxCat = munta([], [], '2026-08-08');
+  const ambTraspas = (function () {
+    const movs = fes('Pol del Pozo Murgou', 'c_trasp');
+    const ctx2 = { Categories: [{ id: 'c_trasp', nom: 'Traspàs', mena: 'd', exclou: 'SI' }] };
+    return { movs: movs, cats: ctx2.Categories };
+  })();
+  const F2 = (function () {
+    const ctx = {
+      Utils: { avui: () => '2026-08-08', ara: () => 'x', talla: (s, x) => String(s).slice(0, x),
+               esDataValida: () => true, nouId: (p) => p },
+      Dades: { llegeix: (full, filtre) => (full === 'Moviments' ? ambTraspas.movs
+                        : full === 'Categories' ? ambTraspas.cats : [])
+                        .filter((f) => !filtre || filtre(f)),
+               un: () => null, perId: () => null, insereix: (f, x, p) => ({ id: p }),
+               actualitza: () => ({}), desa: () => ({ id: 'x' }) },
+      Config: { get: () => '', getNum: (k, d) => d, esSi: () => false },
+      Log: { info() {}, avis() {}, error() {} },
+      Memoria: { recorda: (a, b, fer) => fer(), oblida() {} },
+      Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp
+    };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync('apps-script/43_Finances_Regles.gs', 'utf8'), ctx);
+    vm.runInContext(srvFont, ctx);
+    return ctx.Finances;
+  })();
+  cal('un traspàs entre els teus comptes tampoc: ja és fora dels comptes',
+      F2.candidatsRecurrents('2026-08-08').tots.length === 0,
+      JSON.stringify(F2.candidatsRecurrents('2026-08-08').tots.map((g) => g.descripcio)));
+
+  /* I el nom que s'ensenya: si cada mes porta un número de factura diferent,
+     cap no es repeteix i triar-ne un és ensenyar-li el d'un mes com si fos el
+     nom de la cosa. */
+  const ambFactura = munta(sis.map((m, i) => ({
+    id: 'f' + i, data: '2026-' + m + '-10', tipus: 'i', import: 1840,
+    categoria: 'i_nomi', descripcio: 'Sueldo/Salar000229' + i + '/2026' + m + 'Factura',
+    metode: 'transf', origen: 'banc', contrapart: '', revisat: 'SI' })), [], '2026-08-08')
+    .candidatsRecurrents('2026-08-08');
+  cal('quan cada mes porta un número diferent, s\'ensenya el que tenen en comú',
+      ambFactura.tots.length === 1 && !/\d/.test(ambFactura.tots[0].descripcio),
+      JSON.stringify(ambFactura.tots.map((g) => g.descripcio)));
 }
 
 // ------------------- el vigilant: el que NO ha passat i el que ha passat diferent
