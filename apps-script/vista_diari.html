@@ -33,8 +33,8 @@ App.registraVista('diari', {
       var r = dades ? dades.ratxa : 0;
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<span class="titol-periode" style="cursor:default">' +
             '<b>Diari</b>' +
             '<span>' + (r ? r + (r === 1 ? ' dia seguit' : ' dies seguits') : 'sense ratxa') + '</span>' +
@@ -151,7 +151,7 @@ App.registraVista('diari', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {

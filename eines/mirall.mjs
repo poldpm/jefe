@@ -736,7 +736,7 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
-const VISTES = ['conversa', 'inici', 'habits', 'tasques', 'nutricio', 'finances',
+const VISTES = ['inici', 'habits', 'tasques', 'nutricio', 'finances',
                 'seguiment', 'escola', 'diari', 'focus', 'dia', 'setmana', 'relacions', 'memoria'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>

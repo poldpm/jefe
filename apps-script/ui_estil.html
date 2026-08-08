@@ -2241,6 +2241,158 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   EL FULL ÍNDEX
+
+   La pantalla d'arrencada. Abans hi havia una esfera animada i una caixa per
+   parlar-hi; es va treure perquè per fer una cosa és més ràpid fer-la que
+   demanar-la.
+
+   LES PARCEL·LES COMPARTEIXEN LES VORES, I ÉS TOTA LA IDEA.
+   El buit de la graella és d'un píxel i el fons que hi ha a sota és el color
+   de les línies de marc: el que separa dues parcel·les no és aire, és una
+   línia dibuixada, com els quadrants d'un full topogràfic. Sis targetes
+   flotants amb ombra i cantonada rodona serien sis coses independents; això
+   és una cosa partida en sis, que és el que aquesta app és.
+
+   I EL PENDENT ÉS EL TERRENY. Cada parcel·la porta les seves corbes de
+   nivell: alt i tancat quan estàs al dia, baix i obert quan et reclama. La
+   cota —el triangle i la xifra, com un punt geodèsic— s'omple quan allò
+   espera. No hi ha cap punt vermell enlloc a posta: un mapa no crida.
+   ========================================================================== */
+
+.full-marge {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--e4); flex-wrap: wrap;
+}
+.full-estat {
+  margin: 0; font-family: var(--mono); font-size: .6875rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-suau);
+  white-space: nowrap;
+}
+.full-estat[data-cap="1"] { color: var(--avis); }
+
+.full-pagina { padding-top: var(--e3); }
+
+/* LA LÍNIA LA DIBUIXA CADA PARCEL·LA, NO EL FONS DE LA GRAELLA.
+   La primera versió pintava el fons del contenidor del color de les línies i
+   deixava un buit d'1px perquè es veiessin. Funciona fins que l'última fila
+   no s'omple: llavors el tros sense parcel·les es queda com un rectangle
+   massís del color de la línia, i a l'escriptori —quatre columnes i sis
+   apartats— hi havia mig full pintat de blau. Amb una ombra d'1px a cada
+   parcel·la, les vores es toquen i comparteixen línia igual, i on no hi ha
+   parcel·la no hi ha res. */
+.full {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+}
+@media (min-width: 600px) { .full { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 920px) { .full { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.parcela {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  gap: var(--e4);
+  min-height: 116px;
+  padding: var(--e3);
+  background: var(--paper2);
+  border: 0; margin: 0;
+  box-shadow: 0 0 0 1px var(--neatline);
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer;
+  transition: background-color .18s var(--entra);
+}
+/* EL TERRENY VA A BAIX, I LA SEVA ALÇADA ÉS LA DADA.
+   Ocupant la parcel·la sencera, les corbes passaven per darrere del nom i
+   competien amb el text. A baix fan de terra sota la cota, que és on van a un
+   mapa: la xifra descansa sobre el relleu i el nom queda net.
+
+   I QUANT PUGEN ÉS EL QUE HAS DE VEURE. Confinades sempre a la mateixa
+   alçada, un apartat al dia i un que et reclama es distingien només per
+   comptar corbes, que no ho fa ningú. Ara el terreny puja de debò quan estàs
+   al dia i es queda arran de terra quan alguna cosa espera: ho veus abans de
+   llegir cap paraula, que és per a l'únic que serveix. */
+.parcela .corbes {
+  position: absolute; inset: auto 0 0 0; height: var(--terra, 60%);
+  width: 100%; pointer-events: none;
+  transition: height .3s var(--sortida);
+}
+@media (prefers-reduced-motion: reduce) { .parcela .corbes { transition: none; } }
+.parcela > * { position: relative; }
+
+.parcela-cap { display: flex; align-items: center; gap: var(--e2); min-width: 0; }
+.parcela-cap .ic-simbol { width: 18px; height: 18px; flex: none; color: var(--ink-suau); }
+.parcela-nom {
+  font-size: .8125rem; font-weight: 600; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* LA COTA. Un punt geodèsic d'un mapa: el triangle i, al costat, l'alçada.
+   Xifres monoespaiades perquè dues parcel·les seguides quedin alineades. */
+.parcela-cota { display: flex; align-items: center; gap: var(--e2); line-height: 1; }
+.parcela-cota .fita { width: 10px; height: 9px; flex: none; }
+.parcela-cota .fita path { fill: none; stroke: var(--corba-mestra); stroke-width: 1.2; }
+.parcela-cota .n {
+  font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.parcela-nota {
+  font-size: .6875rem; color: var(--gr);
+  position: absolute; left: var(--e3); right: var(--e3); bottom: var(--e3);
+}
+
+.parcela[data-estat="be"]      { --terra: 66%; }
+.parcela[data-estat="pendent"] { --terra: 26%; }
+.parcela[data-estat="error"]   { --terra: 16%; }
+
+.parcela[data-estat="pendent"] { background: color-mix(in srgb, var(--avis-fons) 55%, var(--paper2)); }
+.parcela[data-estat="pendent"] .fita path { fill: var(--avis); stroke: var(--avis); }
+.parcela[data-estat="pendent"] .parcela-nom { color: var(--ink); }
+.parcela[data-estat="error"] .fita path { fill: var(--gr); stroke: var(--gr); }
+.parcela[data-estat="error"] .parcela-cota .n { color: var(--ink-suau); }
+
+.parcela:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
+.parcela:active { background: var(--utm-suau); }
+@media (hover: hover) and (pointer: fine) {
+  .parcela:hover { background: var(--utm-suau); }
+  .parcela:hover .parcela-cap .ic-simbol { color: var(--utm); }
+}
+
+.esquelet.parcela-fantasma { min-height: 116px; border-bottom: 0; }
+.full-cau { margin-top: var(--e4); }
+
+/* ELS ALTRES FULLS. Els apartats que no reporten cap xifra. Mateixa família
+   —línia de marc, sense cantonades rodones— i mitja alçada: són portes, no
+   parcel·les. Al marge d'un mapa és on van els fulls veïns. */
+.full-altres-cap { margin: var(--e5) 0 var(--e2); }
+.full-altres {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px; padding: 1px;
+}
+@media (min-width: 600px) { .full-altres { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 920px) { .full-altres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.fulla {
+  display: flex; align-items: center; gap: var(--e2);
+  min-height: var(--toc); padding: var(--e2) var(--e3);
+  background: var(--paper2); border: 0; margin: 0;
+  box-shadow: 0 0 0 1px var(--neatline);
+  color: var(--ink-suau); font: inherit; font-size: .8125rem; text-align: left;
+  cursor: pointer;
+  transition: color .16s var(--entra), background-color .16s var(--entra);
+}
+.fulla .ic-simbol { width: 16px; height: 16px; flex: none; }
+.fulla span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fulla:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
+.fulla:active { color: var(--ink); background: var(--utm-suau); }
+@media (hover: hover) and (pointer: fine) {
+  .fulla:hover { color: var(--ink); background: var(--utm-suau); }
+}
+
+
+/* ==========================================================================
    LA MARCA DE VERSIÓ
 
    A la cantonada, petita i sense demanar res. No és decoració: és la
@@ -2262,15 +2414,6 @@ input[type="checkbox"] { accent-color: var(--utm); }
   font-family: var(--mono); font-size: .5625rem; letter-spacing: .06em;
   color: var(--ink-suau);
 }
-/* A la conversa estava pujada 84 px per no topar amb el micròfon, i el que
-   passava és que quedava a l'alçada dels botons i semblava que en formés
-   part. A baix de tot no hi topa amb res: el micròfon i el llapis van
-   centrats i el botó d'apartats també, o sigui que la cantonada dreta de
-   l'última franja és l'únic tros de pantalla que no fa res. Que és
-   exactament on ha de viure una cosa que no mires mai.
-   El color sí que canvia: sobre el fons del HUD, el gris de la resta de
-   pantalles es queda curt. */
-body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 
 /* ==========================================================================

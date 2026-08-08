@@ -297,8 +297,8 @@ App.registraVista('seguiment', {
     function capcalera() {
       var f = d && d.fase;
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Seguiment FitFat</h1>' +
           '<p class="marge" style="margin:2px 0 0">' +
@@ -381,7 +381,7 @@ App.registraVista('seguiment', {
 
           '<div id="seg-comentari"></div>' +
           '<button class="btn btn-secundari" data-comenta="' + esc(cur.data) + '" style="width:100%">' +
-            ic('conversa') + 'Què en penses?</button>' +
+            ic('mapa') + 'Què en penses?</button>' +
 
           /* Les gràfiques */
           '<section class="seg-grafiques">' +
@@ -576,7 +576,7 @@ App.registraVista('seguiment', {
       }
 
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { obreControl(null); });
@@ -596,7 +596,7 @@ App.registraVista('seguiment', {
           c.remove();
         }).catch(function (err) {
           caixa.innerHTML = '';
-          c.disabled = false; c.innerHTML = ic('conversa') + 'Què en penses?';
+          c.disabled = false; c.innerHTML = ic('mapa') + 'Què en penses?';
           App.brindis(err.message, 'error');
         });
       });

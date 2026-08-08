@@ -41,8 +41,8 @@ App.registraVista('tasques', {
       var n = dades ? dades.tasques.length : 0;
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<span class="titol-periode" style="cursor:default">' +
             '<b>Tasques</b>' +
             '<span>' + (dades ? n + (n === 1 ? ' pendent' : ' pendents') : '') +
@@ -193,7 +193,7 @@ App.registraVista('tasques', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       var ba = arrel.querySelector('[data-ajustos]');
       if (ba) ba.addEventListener('click', obreAjustos);

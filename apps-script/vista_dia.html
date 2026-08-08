@@ -34,8 +34,8 @@ App.registraVista('dia', {
       arrel.innerHTML =
         '<header class="capcalera capcalera-nutri">' +
           '<div class="capcalera-fila">' +
-            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-              ic('conversa', 'ic-p') + '</button>' +
+            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+              ic('mapa', 'ic-p') + '</button>' +
             '<span class="titol-periode" style="cursor:default">' +
               '<b>' + esc(fmt.relativa(d.data)) + '</b>' +
               '<span>' + esc(fmt.llarga(d.data)) + '</span>' +
@@ -134,7 +134,7 @@ App.registraVista('dia', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });

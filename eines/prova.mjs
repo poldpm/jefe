@@ -823,7 +823,7 @@ console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
   // Cap pantalla les pot gastar: només els tres automatismes i el botó de mà.
   const dolents = [];
   ['apps-script/vista_finances.html', 'apps-script/vista_dia.html',
-   'apps-script/vista_conversa.html', 'apps-script/40_Mod_Finances.gs'].forEach(function (f) {
+   'apps-script/40_Mod_Finances.gs'].forEach(function (f) {
     const t = fs.readFileSync(f, 'utf8');
     if (/refrescaBanc|sincronitzaSiCal/.test(t)) dolents.push(f);
   });
@@ -3815,113 +3815,6 @@ console.log('\nEl primer pas: què es diu d\'una tasca encallada, i què no');
   cal('i un pas buit no es desa', /primer pas/.test(error), error);
 }
 
-// ------------------------------------------------------------------ bateria
-console.log('\nEl nucli: un sol bucle viu, i els orfes es moren');
-{
-  /* PER QUÈ AIXÒ ÉS UNA PROVA I NO UNA MIRADA AL CODI.
-     `App.ves` buida `#vista` i torna a cridar `render()` cada vegada que
-     entres en una pantalla, o sigui que cada entrada a la conversa creava un
-     nucli nou amb el seu `requestAnimationFrame` i ningú aturava l'anterior:
-     el canvas vell quedava despenjat i el seu bucle seguia dibuixant
-     tres-centes partícules seixanta cops per segon, per sempre.
-     Mesurat al mirall: cinc anades i tornades = SIS bucles vius alhora.
-     Això ho torna a comptar cada vegada que es passin les proves. */
-  const src = fs.readFileSync('apps-script/ui_nucli.html', 'utf8')
-    .replace(/^<script>/, '').replace(/<\/script>\s*$/, '');
-
-  // Un DOM de mentida, just el que el nucli toca
-  const fesElement = () => {
-    const el = {
-      isConnected: false, style: {}, width: 0, height: 0,
-      setAttribute() {}, getBoundingClientRect: () => ({ width: 200, height: 200 }),
-      getContext: () => new Proxy({}, {
-        get: (o, k) => (k === 'createRadialGradient'
-          ? () => ({ addColorStop() {} })
-          : (k === 'setTransform' || typeof k === 'string' ? () => {} : undefined))
-      })
-    };
-    return el;
-  };
-
-  let cua = [], seguent = 0;
-  const ctx = {
-    Math, Object, Array, String, Number, JSON, console,
-    requestAnimationFrame: (cb) => { cua.push(cb); return ++seguent; },
-    cancelAnimationFrame: (id) => {},
-    window: { devicePixelRatio: 1, matchMedia: () => ({ matches: false }) },
-    document: {
-      createElement: fesElement,
-      hidden: false,
-      addEventListener() {}, removeEventListener() {}
-    }
-  };
-  ctx.globalThis = ctx;
-  ctx.matchMedia = ctx.window.matchMedia;
-  vm.createContext(ctx);
-  vm.runInContext(src, ctx);
-
-  /* Un contenidor que «connecta» el que hi pengen, com fa el navegador. */
-  const contenidor = () => ({
-    appendChild(el) { el.isConnected = true; this.fill = el; },
-    getBoundingClientRect: () => ({ width: 200, height: 200 })
-  });
-
-  const tic = (ms) => { const ara = cua; cua = []; ara.forEach((cb) => cb(ms)); return cua.length; };
-
-  const c1 = contenidor();
-  ctx.Nucli.crea(c1);
-  cal('en crear-ne un, hi ha un bucle', tic(100) === 1, cua.length);
-
-  /* Cinc entrades més a la conversa. Cada vegada, `App.ves` s'ha endut el
-     canvas anterior: aquí es simula despenjant-lo. */
-  const caixes = [c1];
-  for (let i = 0; i < 5; i++) {
-    caixes[caixes.length - 1].fill.isConnected = false;   // el DOM se l'ha endut
-    const c = contenidor();
-    ctx.Nucli.crea(c);
-    caixes.push(c);
-  }
-
-  const vius = tic(200);
-  cal('després de cinc entrades més, segueix havent-hi UN sol bucle', vius === 1, vius);
-  cal('i al segon fotograma també', tic(233) === 1);
-  cal('els cinc canvas vells han quedat despenjats',
-      caixes.slice(0, 5).every((c) => !c.fill.isConnected));
-
-  /* I si el que queda també es despenja, no queda res corrent: sortir de la
-     conversa no pot deixar res dibuixant. */
-  caixes[caixes.length - 1].fill.isConnected = false;
-  cal('i en sortir de la conversa, no queda cap bucle', tic(300) === 0);
-
-  /* EL FRE EN REPÒS. Seixanta fotogrames per segon per a un núvol que gira
-     lent és cremar bateria per no res. */
-  const c = contenidor();
-  const n = ctx.Nucli.crea(c);
-  tic(1000);
-  let pintats = 0;
-  const original = ctx.Math.sin;
-  ctx.Math.sin = function (x) { pintats++; return original(x); };
-  for (let ms = 1016; ms <= 1116; ms += 16) tic(ms);      // ~7 fotogrames de pantalla
-  ctx.Math.sin = original;
-  cal('en repòs no dibuixa a cada fotograma', pintats > 0 && pintats < 300 * 7, pintats);
-
-  /* Que això no es torni a colar per cap altre costat: qualsevol bucle
-     d'animació de la interfície ha de mirar si encara es veu. */
-  const vistes = fs.readdirSync('apps-script')
-    .filter((f) => f.endsWith('.html'))
-    .filter((f) => {
-      const t = fs.readFileSync('apps-script/' + f, 'utf8');
-      const bucles = (t.match(/requestAnimationFrame\s*\(\s*(function|\w+)/g) || []);
-      if (!bucles.length) return false;
-      /* Un `requestAnimationFrame` d'un sol cop —per esperar una pintada— no
-         és un bucle. Els que ho són es reprogramen sols. */
-      return /corrent = requestAnimationFrame|= requestAnimationFrame\(bucle/.test(t) &&
-             !/isConnected/.test(t);
-    });
-  cal('cap altre bucle d\'animació sense fre', vistes.length === 0, vistes.join(', '));
-}
-
-// ---------------------------------------------------------------- la quota
 console.log('\nLa quota és per model: si el bo diu prou, la pregunta passa al petit');
 {
   const ctx = carregaTotElServidor();
@@ -4113,9 +4006,9 @@ console.log('\nEl visor: qualsevol eina pot ensenyar el que ha trobat');
   /* I que el pas del servidor a la pantalla hi sigui de debò: sense això,
      l'eina retorna el visor i no s'obre res mai. */
   cal('l\'assistent el fa viatjar', /visor: \(resultat && resultat\._visor\)/.test(src));
-  const conv = fs.readFileSync('apps-script/vista_conversa.html', 'utf8');
-  cal('i la conversa l\'obre', /App\.obreVisor\('nucli\.dades', mostrador\.visor\)/.test(conv));
-  cal('però no si ja s\'obria una pantalla sencera', /if \(mostrador && !ober\)/.test(conv));
+  /* Qui l'obria era la pantalla de la conversa, i ja no hi és. El visor es
+     queda —el fan servir els mòduls per ensenyar coses— però la comprovació
+     de qui el recull tornarà el dia que hi torni la IA, amagada. */
 
   /* LES EINES QUE DIUEN QUE SABEN ENSENYAR, HO HAN DE FER.
      No es compta quantes n'hi ha —això creixerà— sinó que cap declari
@@ -4144,280 +4037,47 @@ console.log('\nEl visor: qualsevol eina pot ensenyar el que ha trobat');
       /què SÍ que li pots donar/.test(src));
 }
 
-// ═══════════════════════════════════════════════════ TOT ES POT FER PARLANT
-/* JEFE es podia PREGUNTAR de veu des del primer dia, però no es podia FER
-   servir: cada escriptura acaba en una proposta, i confirmar-la volia dir
-   prémer un botó. Amb el telèfon a la butxaca o les mans al volant, allà
-   s'acabava tot.
+// ═══════════════════════════════════════════════ EL FULL ÍNDEX: CAP SENSE PORTA
+/* La pantalla d'arrencada era la conversa, i des d'allà un botó de quadrícula
+   obria el tauler amb TOTS els apartats. En treure-la, aquell botó se'n va
+   anar amb ella i sis pantalles es van quedar sense manera d'obrir-se: hi
+   eren, funcionaven, i no s'hi podia arribar. Ho vaig veure comptant portes,
+   no provant-ho —i és exactament la mena de cosa que no es nota fins que un
+   dia en necessites una.
 
-   Aquí es comprova la peça que ho desbloqueja —dir «sí» és el botó— i les
-   eines que faltaven per poder-ho fer TOT parlant: apuntar el control
-   setmanal, despatxar els avisos de l'escola, esborrar el diari d'un dia,
-   treure un hàbit i aturar un bloc de focus. */
-
-console.log('\nParlar-li: «sí» ha de valer tant com prémer el botó');
-{
-  const vista = fs.readFileSync('apps-script/vista_conversa.html', 'utf8');
-
-  /* La funció de debò, treta del fitxer: si algú li canvia les llistes o la
-     regla de la frase sencera, això ho ha de veure. */
-  const c = { String, RegExp, console };
-  vm.createContext(c);
-  vm.runInContext(
-    vista.slice(vista.indexOf('function neteja(t) {'), vista.indexOf('/**\n     * ALGUNES ORDRES')) +
-    vista.slice(vista.indexOf('var PARAULES_SI'), vista.indexOf('function respostaAUnaProposta')) +
-    `
-    function quina(text) {
-      var net = neteja(text);
-      if (PARAULES_SI.indexOf(net) !== -1) return 'si';
-      if (PARAULES_NO.indexOf(net) !== -1) return 'no';
-      return null;
-    }`, c);
-
-  cal('«sí» confirma', c.quina('Sí') === 'si');
-  cal('«fes-ho» confirma', c.quina('Fes-ho') === 'si');
-  cal('«d\'acord» confirma', c.quina("D'acord") === 'si', String(c.quina("D'acord")));
-  cal('«endavant» confirma', c.quina('endavant') === 'si');
-  cal('«no» descarta', c.quina('No') === 'no');
-  cal('«deixa-ho» descarta', c.quina('deixa-ho') === 'no');
-  cal('«cancel·la» descarta', c.quina('cancel·la') === 'no', String(c.quina('cancel·la')));
-
-  /* LA PART QUE IMPORTA. Amb «conté un sí» n'hi hauria prou perquè «sí, però
-     a les cinc» confirmés l'hora dolenta i «no, millor demà» no canviés res.
-     Tot el que no sigui exactament una d'aquestes paraules ha de tornar a ser
-     una frase per al model. */
-  cal('«sí, però a les cinc» NO confirma res: és una frase',
-      c.quina('sí, però a les cinc') === null, String(c.quina('sí, però a les cinc')));
-  cal('«no, millor demà» tampoc',
-      c.quina('no, millor demà') === null, String(c.quina('no, millor demà')));
-  cal('«sí que tinc gana» tampoc',
-      c.quina('sí que tinc gana') === null, String(c.quina('sí que tinc gana')));
-  cal('i una pregunta qualsevol, tampoc',
-      c.quina('quant pesava el mes passat?') === null);
-
-  /* I la conversa ha de dir en veu alta QUÈ confirma: amb el telèfon a la
-     butxaca, dir que sí a una etiqueta que no has sentit és dir que sí a
-     qualsevol cosa. */
-  cal('el que s\'ha de confirmar es diu en veu alta',
-      /function ambLesPropostes/.test(vista) &&
-      /parla\(ambLesPropostes\(r\.resposta, r\.propostes\)\)/.test(vista));
-
-  /* I dit, no llegit: l'etiqueta està escrita per mirar-la de reüll dins d'un
-     requadre —«30,00 € · gasolina · avui»— i els punts volats no sonen. */
-  {
-    const c2 = { String, Boolean, RegExp };
-    vm.createContext(c2);
-    vm.runInContext(vista.slice(vista.indexOf('function ambLesPropostes'),
-                                vista.indexOf('function parla(text)')) +
-                    '\nvar __a = ambLesPropostes;', c2);
-    cal('sense res a confirmar, la resposta se sent tal qual',
-        c2.__a('Aquest mes portes 320 €.', []) === 'Aquest mes portes 320 €.');
-    cal('amb una proposta, es diu QUÈ es confirma i es pregunta',
-        c2.__a('Ho deixo preparat.', [{ etiqueta: '30,00 € · gasolina · avui' }]) ===
-        'Ho deixo preparat. 30,00 €, gasolina, avui Ho faig?',
-        c2.__a('Ho deixo preparat.', [{ etiqueta: '30,00 € · gasolina · avui' }]));
-    cal('i amb dues, es diuen totes dues',
-        /Ho faig tot\?$/.test(c2.__a('Va.', [{ etiqueta: 'A' }, { etiqueta: 'B' }])),
-        c2.__a('Va.', [{ etiqueta: 'A' }, { etiqueta: 'B' }]));
-  }
-  cal('i el «sí» es mira abans de tocar el servidor',
-      vista.indexOf('respostaAUnaProposta(text)') < vista.indexOf('var d = drecera(text)'));
-  cal('el micròfon segueix escoltant després de confirmar',
-      /El micròfon ha de tornar a escoltar/.test(vista));
-
-  /* CONFIRMAR DEIXA VELLA LA PANTALLA D'AQUELL MÒDUL, i si no s'oblida el que
-     hi ha desat, obrir-la just després t'ensenya el de fa una estona. Cada
-     família que la precàrrega desa ha de sortir a la llista que s'oblida.
-
-     Va sense punt final a posta: `Cau.oblida` va per prefix i les claus de
-     l'escola i del seguiment són la paraula pelada. Amb «escola.» no
-     s'haurien esborrat mai —i això no ho hauria notat ningú. */
-  cal('en confirmar s\'oblida el que hi ha desat del mòdul que ha escrit',
-      /if \(p\.modul\) Cau\.oblida\(p\.modul\);/.test(vista));
-  /* I NO D'UNA LLISTA ESCRITA A MÀ. Hi havia els vuit noms posats un a un, i
-     això volia dir que el dia que hi hagi un mòdul nou, confirmar-li una
-     escriptura li deixaria la pantalla amb el de fa una estona. Afegir un
-     mòdul ha de ser un fitxer i prou, també per aquesta banda. */
-  cal('i no d\'una llista de mòduls escrita a la conversa',
-      !/\['habits',\s*'nutricio'/.test(vista), 'la llista encara hi és');
-  cal('la clau del desat és el nom del mòdul, que és el que fa que això funcioni',
-      /case 'habits':\s*return 'habits\./.test(fs.readFileSync('apps-script/ui_app.html', 'utf8')));
-  cal('i sense punt final, que si no el prefix no encaixa',
-      !/'(escola|seguiment)\.'/.test(vista), 'n\'hi ha alguna amb punt');
-  {
-    const assistent = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
-    cal('i al model se li diu que NO parli de prémer botons',
-        /NO li diguis mai que/.test(assistent) && /ha de prémer res/.test(assistent));
-    cal('i que confirmar-ho dient-ho també val',
-        /dient-t\\'ho/.test(assistent), '');
-  }
-}
-
-console.log('\nParlar-li: les eines que faltaven per poder-ho fer tot');
+   Ara l'índex les llista totes: les que reporten una xifra van a la graella
+   i la resta a la tira de sota. Això ho comprova. */
+console.log('\nEl full índex: cap apartat es pot quedar sense porta');
 {
   const ctx = carregaTotElServidor();
-  ctx.Utils.avui = () => '2026-08-07';
-  ctx.Utils.ara = () => '2026-08-07T10:00:00+02:00';
   ctx.Log = { info() {}, avis() {}, error() {} };
-  ctx.Memoria = { oblida() {}, recorda: (a, b, fn) => fn() };
-  ctx.Config = { get: () => null, getNum: (k, d) => d, zonaHoraria: () => 'Europe/Madrid' };
-  /* El bloqueig té la seva pròpia prova; aquí només ha de deixar passar. */
-  ctx.ambBloqueig_ = (fn) => fn();
+  ctx.Dades = { llegeix: () => [] };
+  ctx.Config = { get: () => null, getNum: (k, v) => v, esSi: () => false };
 
-  /* Un full en memòria per a tots els mòduls d'aquest bloc. */
-  const fulls = { Seguiment: [], Escola: [], Diari: [], Habits: [], HabitsRegistre: [] };
-  let seguit = 0;
-  const viu = (f) => fulls[f].filter((x) => !x.esborrat_el);
-  ctx.Dades = {
-    /* `llegeix` accepta una funció O un objecte de camps, com el de debò:
-       `definicions()` li passa `{ actiu: 'SI' }` i el diari li passa una
-       funció. Doblar-ne només una fa petar l'altre. */
-    llegeix: (full, filtre) => viu(full).filter((f) => {
-      if (!filtre) return true;
-      if (typeof filtre === 'function') return filtre(f);
-      return Object.keys(filtre).every((k) => String(f[k]) === String(filtre[k]));
-    }),
-    perId: (full, id) => viu(full).filter((f) => f.id === id)[0] || null,
-    un: (full, q) => viu(full).filter((f) => Object.keys(q).every((k) => f[k] === q[k]))[0] || null,
-    insereix: (full, fila, prefix) => {
-      const f = Object.assign({ id: (prefix || 'x') + (++seguit) }, fila);
-      fulls[full].push(f); return f;
-    },
-    actualitza: (full, id, canvis) => {
-      const f = fulls[full].filter((x) => x.id === id)[0];
-      if (f) Object.assign(f, canvis);
-      return f || null;
-    },
-    /* `desa` és el de debò en petit: per clau, i si hi és actualitza. És el
-       que fa que tornar a desar el control del mateix divendres corregeixi en
-       comptes de crear-ne un de bessó. */
-    desa: (full, fila, claus, prefix) => {
-      const ja = viu(full).filter((f) => claus.every((k) => String(f[k]) === String(fila[k])))[0];
-      if (ja) { Object.assign(ja, fila); return ja; }
-      const f = Object.assign({ id: (prefix || 'x') + (++seguit) }, fila);
-      fulls[full].push(f); return f;
-    }
-  };
+  const ambVista = ctx.Moduls.perAlClient().filter((m) => m.teVista);
+  cal('hi ha mòduls amb pantalla', ambVista.length >= 8, String(ambVista.length));
 
-  // ─────────────────────────────────────────────── el control, dit a trossos
-  /* És la raó de ser del mòdul: el pic arriba a les sis del matí, en dejú,
-     i omplir sis camps allà és el moment en què no ho faràs. */
-  ctx.Seguiment.apuntaPerNom({ pes: 78.4 });
-  let c = ctx.Seguiment.apuntaPerNom({ cintura: 86, forca: 3 });
-  const fila = fulls.Seguiment[0];
-  cal('dues frases fan un sol control, no dos',
-      fulls.Seguiment.length === 1, String(fulls.Seguiment.length));
-  cal('i la segona NO esborra el que deia la primera',
-      Number(fila.pes) === 78.4 && Number(fila.cintura) === 86 && Number(fila.forca) === 3,
-      JSON.stringify(fila));
-  cal('diu què ha entrat aquesta vegada',
-      c.posats.join(',') === 'cintura,força', c.posats.join(','));
+  const inici = fs.readFileSync('apps-script/vista_inici.html', 'utf8');
+  cal('l\'índex pinta els mòduls que reporten xifra',
+      /ordenades\.map\(parcela\)/.test(inici));
+  cal('i els que no, a la tira dels altres fulls',
+      /function altres\(moduls, targetes\)/.test(inici) && /m\.teVista && !ambCota\[m\.id\]/.test(inici));
 
-  ctx.Seguiment.apuntaPerNom({ notes: 'genoll tocat' });
-  ctx.Seguiment.apuntaPerNom({ notes: 'i poc son' });
-  cal('les notes s\'acumulen: la segona no esborra la primera',
-      /genoll tocat/.test(fila.notes) && /poc son/.test(fila.notes), fila.notes);
+  /* Les pantalles que no són de cap mòdul s'han d'afegir a mà, i per tant són
+     les que es poden oblidar. Aquestes dues han de tenir porta sempre: el dia
+     per la data, la setmana per la tira. */
+  cal('el dia s\'obre des de la data', /data-ves="dia"/.test(inici));
+  cal('i la setmana és a la tira', /id: 'setmana'/.test(inici));
 
-  let buit = false;
-  try { ctx.Seguiment.apuntaPerNom({}); } catch (e) { buit = true; }
-  cal('i sense cap dada no desa res', buit, 'ho ha desat');
-
-  let impossible = false;
-  try { ctx.Seguiment.apuntaPerNom({ pes: 784 }); } catch (e) { impossible = true; }
-  cal('un pes impossible no passa ni dit de veu', impossible, 'l\'ha acceptat');
-
-  // ─────────────────────────────────────────────── els avisos de l'escola
-  fulls.Escola.push(
-    { id: 'e1', rebut_el: '2026-08-01T08:00:00', mena: 'avis', titol: 'Menjador de setembre', cos: 'x', llegit_el: '' },
-    { id: 'e2', rebut_el: '2026-08-02T08:00:00', mena: 'acta', titol: 'Acta del claustre', cos: 'y', llegit_el: '' },
-    { id: 'e3', rebut_el: '2026-07-01T08:00:00', mena: 'avis', titol: 'Vell', cos: 'z', llegit_el: '2026-07-02T09:00:00' });
-
-  let m = ctx.Escola.marcaPerNom({ conte: 'menjador' });
-  cal('marca només el que li has dit', m.fets === 1 && fulls.Escola[0].llegit_el, JSON.stringify(m));
-  cal('i diu quants en queden', m.queden === 1, String(m.queden));
-  cal('no toca la data de lectura dels que ja havies llegit',
-      fulls.Escola[2].llegit_el === '2026-07-02T09:00:00', fulls.Escola[2].llegit_el);
-
-  m = ctx.Escola.marcaPerNom({});
-  cal('sense dir-ne cap, els marca tots els que queden', m.fets === 1 && m.queden === 0, JSON.stringify(m));
-  m = ctx.Escola.marcaPerNom({});
-  cal('i si no en queda cap, ho diu en comptes de fer veure que ha fet res',
-      m.fets === 0 && /No en queda cap/.test(m.motiu), JSON.stringify(m));
-
-  // ─────────────────────────────────────────────── esborrar el diari d'un dia
-  /* Dictar té una manera de fallar que escriure no té: el reconeixedor sent
-     una altra cosa. Si no es pot desdir sense mirar la pantalla, no t'hi
-     fiaràs mai. */
-  ctx.Diari.escriu('2026-08-07', 'He anat a córrer.', 4, 'conversa');
-  const t = ctx.Diari.treuPerNom({});
-  cal('esborra l\'entrada d\'avui sense haver-li de dir la data',
-      t.tret && ctx.Diari.entrada('2026-08-07') === null, JSON.stringify(t));
-  cal('i diu què hi havia, per si t\'has equivocat', /córrer/.test(t.era), t.era);
-  cal('la fila NO s\'esborra: es marca',
-      fulls.Diari.length === 1 && !!fulls.Diari[0].esborrat_el,
-      JSON.stringify(fulls.Diari));
-
-  let capDia = false;
-  try { ctx.Diari.treuPerNom({ data: '2026-08-01' }); } catch (e) { capDia = true; }
-  cal('i d\'un dia sense res escrit, ho diu', capDia, 'ha fet veure que esborrava');
-
-  // ─────────────────────────────────────────────── treure un hàbit
-  /* ARXIVA, NO ESBORRA. Als hàbits l'històric és tot el que hi ha, i una
-     frase mal sentida no pot carregar-se tres anys de registres. */
-  fulls.Habits.push(
-    { id: 'h1', nom: 'Llegir', tipus: 'si_no', actiu: 'SI', ordre: 1, frequencia: 'diaria' },
-    { id: 'h2', nom: 'Llegir el diari', tipus: 'si_no', actiu: 'SI', ordre: 2, frequencia: 'diaria' },
-    { id: 'h3', nom: 'Córrer', tipus: 'si_no', actiu: 'SI', ordre: 3, frequencia: 'diaria' });
-
-  let ambigu = false;
-  try { ctx.Habits.arxivaPerNom({ nom_habit: 'llegir' }); } catch (e) { ambigu = true; }
-  cal('amb dos hàbits que encaixen, pregunta en comptes de triar',
-      ambigu && fulls.Habits.every((h) => h.actiu === 'SI'), 'n\'ha triat un');
-
-  const a = ctx.Habits.arxivaPerNom({ nom_habit: 'córrer' });
-  cal('treu l\'hàbit que li has dit',
-      a.arxivat && fulls.Habits[2].actiu === 'NO', JSON.stringify(fulls.Habits[2]));
-  cal('i la fila hi és igualment: no s\'ha perdut cap històric',
-      fulls.Habits.length === 3 && !fulls.Habits[2].esborrat_el,
-      String(fulls.Habits.length));
-
-  // ─────────────────────────────────────────────── aturar un bloc de focus
-  /* Aquesta és l'única que sembla que escrigui i no ho fa: el rellotge corre
-     al telèfon i al full no hi ha res fins que el bloc s'acaba. */
-  const f = ctx.Focus.aturaPerNom();
-  cal('aturar un bloc no escriu res al servidor: obre la pantalla i li diu que pari',
-      f._params && f._params.atura === true, JSON.stringify(f));
-  const vf = fs.readFileSync('apps-script/vista_focus.html', 'utf8');
-  cal('i la pantalla del focus sap què fer amb això',
-      /params\.atura && estat/.test(vf) && /tanca\(false\)/.test(vf));
-  cal('sense cap bloc en marxa, ho diu i no apunta res',
-      /Ara mateix no hi ha cap bloc en marxa/.test(vf));
-
-  // ─────────────────────────────────────────────── i que hi siguin totes
-  /* La llista del que es pot FER parlant. Si un mòdul perd la seva eina
-     d'escriure, tornaria a caldre la pantalla i no ho notaria ningú fins
-     que ho provessis amb les mans ocupades. */
-  const cal_hi = [
-    ['40_Mod_Seguiment.gs', 'apunta_el_control'],
-    ['40_Mod_Escola.gs', 'marca_els_avisos'],
-    ['40_Mod_Diari.gs', 'esborra_del_diari'],
-    ['40_Mod_Habits.gs', 'treu_habit'],
-    ['40_Mod_Focus.gs', 'atura_el_bloc']
-  ];
-  const falten = cal_hi.filter(([f2, e]) =>
-    !new RegExp("nom: '" + e + "'").test(fs.readFileSync('apps-script/' + f2, 'utf8')));
-  cal('cada mòdul manté la seva eina per fer-ho parlant', falten.length === 0,
-      falten.map((x) => x[1]).join(', '));
-
-  /* I cap no pot escriure sense passar per la confirmació. */
-  const senseConfirmar = cal_hi.filter(([f2, e]) => {
-    if (e === 'atura_el_bloc') return false;          // no escriu: obre la pantalla
-    const t2 = fs.readFileSync('apps-script/' + f2, 'utf8');
-    const i = t2.indexOf("nom: '" + e + "'");
-    return !/escriu: true/.test(t2.slice(i, i + 2500));
-  });
-  cal('i cap escriu sense que ho confirmis', senseConfirmar.length === 0,
-      senseConfirmar.map((x) => x[1]).join(', '));
+  /* I LA LLISTA DEL MIRALL NO POT ANAR PER LLIURE. S'ha desincronitzat dues
+     vegades —primer hi faltava l'escola, després la memòria—, i des del
+     mirall no es nota: senzillament hi ha una porta menys que a l'app. */
+  const dades = fs.readFileSync('eines/mirall-dades.mjs', 'utf8');
+  const bloc = dades.slice(dades.indexOf('const nucliInici'), dades.indexOf('targetes:', dades.indexOf('const nucliInici')));
+  const alMirall = (bloc.match(/id: '([a-z]+)'/g) || []).map((s) => s.slice(5, -1));
+  const falten = ambVista.map((m) => m.id).filter((id) => alMirall.indexOf(id) === -1);
+  cal('el mirall ensenya els mateixos apartats que l\'app', falten.length === 0,
+      'al mirall hi falta: ' + falten.join(', '));
 }
 
 console.log(falles ? '\n' + falles + ' falla(des).\n' : '\nTot correcte.\n');

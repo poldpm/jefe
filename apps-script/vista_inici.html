@@ -1,91 +1,160 @@
 <script>
-/* JEFE — NUCLI · Pantalla d'inici
-   És el full índex del mapa: quins fulls hi ha i què hi ha pendent a cadascun.
-   Cada mòdul hi aporta una línia amb `resumInici()`. Un mòdul nou hi surt sol. */
+/* =========================================================================
+   JEFE — EL FULL ÍNDEX
+   =========================================================================
+
+   És la pantalla d'arrencada. Abans ho era la conversa —una esfera i una
+   caixa per escriure-hi— i s'ha tret: en Pol la va fer servir i la conclusió
+   va ser que per fer una cosa és més ràpid fer-la que demanar-la.
+
+   QUÈ HA DE CONTESTAR, EN AQUEST ORDRE:
+     1. Què em queda pendent, ara, sense llegir res.
+     2. On és cada cosa, i quantes n'hi ha.
+     3. Quin dia és, i com anar al dia sencer.
+
+   PER QUÈ ÉS UN FULL DE MAPA I NO SIS TARGETES
+   L'app ja parlava aquest idioma abans que jo hi arribés: paper, línies de
+   marc, corbes de nivell fetes amb les seves dades, tintes hipsomètriques.
+   L'esfera de ciència-ficció era l'única cosa que en desdeia. Un dashboard
+   de targetes amb ombres i cantonades rodones hauria estat el mateix error
+   una altra vegada, i el més fàcil de fer.
+
+   Per això les parcel·les NO tenen separació: comparteixen les vores, com
+   els quadrants d'un full topogràfic. Sis targetes flotants són sis coses;
+   un full partit en sis és UNA cosa amb sis parts, que és el que això és.
+
+   EL PENDENT NO ÉS UN PUNT VERMELL: ÉS EL TERRENY.
+   Cada parcel·la porta les seves corbes, i com més alt el terreny, més al
+   dia estàs. El que et reclama surt baix i obert. A sobre hi ha la cota
+   —el triangle i la xifra, com un punt geodèsic d'un mapa de debò—, plena
+   quan allò espera. Un mapa no et crida: et diu on és el pendent.
+   ========================================================================= */
 
 App.registraVista('inici', {
   render: function (arrel) {
 
-    function pinta(targetes, dEnCau) {
+    /* Quant «amunt» va una parcel·la. Del 0 al 100, i el terreny en surt.
+       No és cap percentatge de progrés: és què tan tranquil pots estar amb
+       aquell apartat ara mateix, que és l'única cosa que has de veure d'un
+       cop d'ull. */
+    function alcada(t) {
+      if (t.error) return 8;
+      if (t.urgent) return 22;
+      return 88;
+    }
+
+    function parcela(t) {
+      var estat = t.error ? 'error' : (t.urgent ? 'pendent' : 'be');
+      var h = alcada(t);
+      return '<button class="parcela" data-ves="' + esc(t.accio || t.modul) + '"' +
+             ' data-estat="' + estat + '">' +
+        Relleu.franja(h, Relleu.llavor(t.modul)) +
+        '<span class="parcela-cap">' +
+          '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
+            esc(t.icona || t.modul || 'modul') + '"/></svg>' +
+          '<span class="parcela-nom">' + esc(t.etiqueta) + '</span>' +
+        '</span>' +
+        '<span class="parcela-cota">' +
+          '<svg class="fita" viewBox="0 0 10 9" aria-hidden="true">' +
+            '<path d="M5 0.6 9.3 8.4 0.7 8.4Z"/></svg>' +
+          '<span class="n">' + esc(t.valor) + '</span>' +
+        '</span>' +
+        (t.error ? '<span class="parcela-nota">No s\'ha pogut llegir</span>' : '') +
+      '</button>';
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       ELS ALTRES FULLS.
+       Sis apartats no reporten res a l'índex —el calendari, l'escola, el
+       focus, la setmana, les relacions i la memòria—: no tenen cap xifra que
+       resumeixi com van. Quan la porta era la conversa, s'hi arribava per un
+       botó de quadrícula que hi havia allà; treta la conversa, es van quedar
+       sense manera d'obrir-se. Ho vaig veure comptant portes, no provant.
+
+       No van a la graella gran perquè no tenen estat: una parcel·la sense
+       cota és una parcel·la a mig fer. Van a sota, en una tira, que és on un
+       full de mapa posa els fulls veïns. */
+    function altres(moduls, targetes) {
+      var ambCota = {};
+      (targetes || []).forEach(function (t) { ambCota[t.accio || t.modul] = true; });
+
+      var l = (moduls || []).filter(function (m) {
+        return m.teVista && !ambCota[m.id];
+      }).map(function (m) {
+        return { id: m.id, nom: m.nom || m.id, icona: m.icona || 'modul' };
+      });
+
+      /* La setmana és una pantalla del nucli i no de cap mòdul, o sigui que
+         no surt de la llista de mòduls i s'hi ha d'afegir a mà. */
+      if (App.vistes.setmana) l.push({ id: 'setmana', nom: 'La setmana', icona: 'setmana' });
+      if (!l.length) return '';
+
+      return '<p class="marge full-altres-cap">Altres fulls</p>' +
+        '<div class="full-altres">' + l.map(function (m) {
+          return '<button class="fulla" data-ves="' + esc(m.id) + '">' +
+            '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' + esc(m.icona) + '"/></svg>' +
+            '<span>' + esc(m.nom) + '</span>' +
+          '</button>';
+        }).join('') + '</div>';
+    }
+
+    function pinta(targetes, moduls, dEnCau) {
       var avui = fmt.avui();
+      var pendents = (targetes || []).filter(function (t) { return t.urgent && !t.error; });
 
+      /* LA MARGINALIA DEL FULL. En un mapa, el marge diu de quin territori és
+         i de quan. Aquí: quin dia, i quantes coses reclamen. La data és un
+         botó cap al dia sencer —ja ho era i funcionava: la porta és allà on
+         mires la data. */
       var html =
-        '<header class="capcalera"><div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa') + '</button>' +
-          /* LA DATA OBRE LA PÀGINA DEL DIA.
-             Aquella pantalla només s'obria demanant-l'hi a JEFE, i això vol
-             dir que passava per la capa d'IA: el dia que el proveïdor diu que
-             prou —i va dir-ho—, una pantalla que només ensenya les teves
-             dades es quedava inabastable. Una porta que depèn d'un servei de
-             fora no és una porta.
-
-             No és un botó nou a la fila de sota, que era el que no volíem:
-             és la data, que ja hi era, i tocar-la per veure el dia és el que
-             sembla que hagi de passar. */
+        '<header class="capcalera full-marge">' +
           '<button class="dia-porta" data-ves="dia" aria-label="Obre la pàgina del dia">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
           '</button>' +
-          '<div style="text-align:right">' +
-            '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
-            '<p class="marge" style="margin:4px 0 0">JEFE</p>' +
-          '</div>' +
-        '</div></header>' +
-        '<div class="pagina">';
+          '<p class="full-estat" data-cap="' + (pendents.length ? '1' : '0') + '">' +
+            (pendents.length
+              ? esc(pendents.length === 1 ? '1 cosa et reclama' : pendents.length + ' coses et reclamen')
+              : 'Res et reclama') +
+          '</p>' +
+        '</header>' +
+        '<div class="pagina full-pagina">';
 
       if (!targetes || !targetes.length) {
         html += '<div class="estat">' + ic('mapa', 'ic-g') +
-          '<h2>Consola en repòs</h2>' +
+          '<h2>El full és en blanc</h2>' +
           '<p>Encara no hi ha res registrat. Comença pels hàbits: amb un de sol ' +
           'ja té sentit obrir això cada dia.</p>' +
           '<button class="btn btn-primari" data-ves="habits">' + ic('habits') + 'Comença</button></div>';
       } else {
-        html += '<p class="marge" style="margin:0 0 var(--e2)">Situació</p><div class="terreny">';
-        targetes.forEach(function (t) {
-          var estat = t.error ? 'nofet' : (t.urgent ? 'pendent' : 'fet');
-          html +=
-            '<div class="franja-fila"><button class="franja" data-ves="' +
-              esc(t.accio || t.modul) + '" data-estat="' + estat + '">' +
-              Relleu.franja(t.urgent ? 25 : 90, Relleu.llavor(t.modul)) +
-              /* LA ICONA LA DIU EL MÒDUL.
-                 Aquí hi havia «si és hàbits posa hàbits, si no la genèrica», i
-                 el resultat era que finances, tasques, nutrició, diari,
-                 calendari i seguiment sortien tots amb la mateixa quadrícula de
-                 quatre caselles —tot i tenir cadascun la seva icona dibuixada
-                 des del primer dia—. Sis targetes idèntiques no es distingeixen
-                 d'un cop d'ull, que és per a l'únic que serveix una icona. */
-              '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
-                esc(t.icona || t.modul || 'modul') + '"/></svg>' +
-              '<span>' +
-                '<span class="franja-nom">' + esc(t.etiqueta) + '</span>' +
-                (t.error ? '<span class="franja-sota">No s\'ha pogut llegir</span>' : '') +
-              '</span>' +
-              '<span class="franja-cota"><span class="n">' + esc(t.valor) + '</span></span>' +
-            '</button></div>';
-        });
-        html += '</div>';
+        /* EL QUE RECLAMA, PRIMER. Un full índex per ordre de mòdul t'obliga a
+           llegir-lo sencer cada matí per trobar-hi el que ha canviat. Dins de
+           cada grup es respecta l'ordre que van decidir els mòduls. */
+        var ordenades = pendents.concat((targetes || []).filter(function (t) {
+          return !(t.urgent && !t.error);
+        }));
+        html += '<div class="full">' + ordenades.map(parcela).join('') + '</div>';
+        html += altres(moduls, targetes);
       }
 
-      if (dEnCau) html += '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>';
+      if (dEnCau) html += '<p class="menut full-cau">Última còpia desada al telèfon.</p>';
       html += '</div>';
       arrel.innerHTML = html;
 
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
       });
-      var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
     }
 
     var cau = Cau.get('inici', null);
-    if (cau) pinta(cau.targetes, true);
-    else arrel.innerHTML = '<div class="pagina"><div class="terreny">' +
-      '<div class="esquelet franja-fantasma"></div><div class="esquelet franja-fantasma"></div>' +
+    if (cau) pinta(cau.targetes, cau.moduls || Cau.get('moduls', []), true);
+    else arrel.innerHTML = '<div class="pagina full-pagina"><div class="full">' +
+      '<div class="esquelet parcela-fantasma"></div><div class="esquelet parcela-fantasma"></div>' +
+      '<div class="esquelet parcela-fantasma"></div><div class="esquelet parcela-fantasma"></div>' +
       '</div></div>';
 
     crida('nucli', 'inici', {}).then(function (d) {
-      Cau.set('inici', d); Cau.set('moduls', d.moduls); pinta(d.targetes, false);
+      Cau.set('inici', d); Cau.set('moduls', d.moduls); pinta(d.targetes, d.moduls, false);
     }).catch(function (err) {
       if (cau) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
       arrel.innerHTML = Comp.error(err, true);

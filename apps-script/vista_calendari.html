@@ -46,8 +46,8 @@ App.registraVista('calendari', {
       var esActual = d.mes === d.avui.slice(0, 7);
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
           '<button class="titol-periode" data-avui="1">' +
@@ -164,7 +164,7 @@ App.registraVista('calendari', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {

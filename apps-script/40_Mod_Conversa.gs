@@ -1,17 +1,28 @@
 /**
  * JEFE — MÒDUL · Conversa
  *
- * La pantalla on parles amb les teves pròpies dades.
- * Ordre 5: va davant de tot, perquè és el que has d'obrir primer.
+ * AQUEST MÒDUL JA NO TÉ PANTALLA, i és a posta.
  *
- * L'historial viu al full `Converses`, no al navegador: comences una conversa
- * al mòbil i la continues a l'ordinador.
+ * En tenia una —una esfera i una caixa per parlar-hi, la primera cosa que
+ * veies en obrir l'app— i en Pol la va treure després de fer-la servir: per
+ * fer una cosa és més ràpid fer-la que demanar-la. El que s'obre ara és el
+ * full índex.
+ *
+ * QUÈ HI QUEDA I PER QUÈ NO S'ESBORRA:
+ *   · `elDia` i `laSetmana`, que són qui munta la pàgina del dia i la de la
+ *     setmana. No tenen res a veure amb la IA: ajunten el que diuen tots els
+ *     mòduls, i les dues pantalles funcionen igual amb la IA apagada.
+ *   · `envia`, `enviaVeu` i `confirma`, que són la capa d'assistent. Ara no
+ *     els crida ningú. Es queden perquè la IA ha de tornar —amagada, no com
+ *     una caixa per escriure-hi— i llavors aquesta és la porta.
+ *
+ * L'historial viu al full `Converses`, no al navegador.
  */
 function MODUL_CONVERSA() {
   return {
     id: 'conversa',
     nom: 'JEFE',
-    icona: 'conversa',
+    icona: 'mapa',
     ordre: 5,
     versioEsquema: 1,
 
@@ -137,7 +148,9 @@ function MODUL_CONVERSA() {
       executa: function (a) { return Conversa.laSetmanaIA(a); }
     }],
 
-    vista: 'vista_conversa'
+    /* Sense pantalla: el que feia es fa des del full índex, i la de la
+       setmana i la del dia són pantalles del nucli, no d'aquest mòdul. */
+    vista: null
   };
 }
 

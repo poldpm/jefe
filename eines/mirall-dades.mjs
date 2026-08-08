@@ -770,7 +770,12 @@ export function dades(AVUI, menys) {
       { id: 'escola', nom: 'Escola', icona: 'escola', ordre: 35, teVista: true },
       { id: 'diari', nom: 'Diari', icona: 'diari', ordre: 40, teVista: true },
       { id: 'focus', nom: 'Focus', icona: 'focus', ordre: 18, teVista: true },
-      { id: 'relacions', nom: 'Relacions', icona: 'relacions', ordre: 45, teVista: true }
+      { id: 'relacions', nom: 'Relacions', icona: 'relacions', ordre: 45, teVista: true },
+      /* I la memòria hi faltava, com abans hi faltava l'escola. La llista es
+         torna a desincronitzar cada cop que neix un mòdul, i des del mirall
+         no es nota: senzillament hi ha una porta menys. Ara hi ha una prova
+         que compara aquesta llista amb la dels mòduls de debò. */
+      { id: 'memoria', nom: 'Memòria', icona: 'modul', ordre: 50, teVista: true }
     ],
     targetes: [
       { modul: 'habits', icona: 'habits', etiqueta: 'Hàbits pendents', valor: 4, urgent: true, accio: 'habits' },

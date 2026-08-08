@@ -387,8 +387,8 @@ var Jefe = (function () {
          Registrar-los no costa res ni depèn de tenir servidor. El que depèn
          del servidor és què s'ensenya, i això va més avall. */
       window.addEventListener('popstate', function (ev) {
-        var id = (ev.state && ev.state.vista) || 'conversa';
-        App.ves(App.vistes[id] ? id : 'conversa', null, true);
+        var id = (ev.state && ev.state.vista) || 'inici';
+        App.ves(App.vistes[id] ? id : 'inici', null, true);
       });
       document.addEventListener('visibilitychange', function () {
         if (!document.hidden) Cua.envia();
@@ -398,19 +398,23 @@ var Jefe = (function () {
 
       // Servida des de fora i encara sense servidor: primer connectar.
       if (!dinsAppsScript() && !Servidor.config()) {
-        App.ves('conversa');
+        App.ves('inici');
         setTimeout(function () { App.connecta(); }, 300);
         return;
       }
 
-      // La conversa és la pantalla d'arrencada: és l'assistent, no el formulari.
-      // I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar l'última
-      // vista convertia qualsevol pantalla sense sortida en una trampa que ni
-      // reinstal·lant l'app es desfeia, perquè la cau sobreviu a la instal·lació.
-      //
-      // L'única excepció és una destinació demanada explícitament a l'adreça,
-      // que és com arriben les notificacions: tocar «falten les cremades» ha
-      // de dur a Nutrició i no a la conversa. Es consumeix i prou: no es desa.
+      /* EL FULL ÍNDEX ÉS LA PANTALLA D'ARRENCADA.
+         Ho era la conversa —l'assistent— i s'ha tret: en Pol el va fer servir
+         i la conclusió va ser que per fer una cosa és més ràpid fer-la que
+         demanar-la. El que ha de sortir en obrir l'app és on és tot i què
+         queda pendent, no una caixa per escriure-hi.
+         I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar
+         l'última convertia qualsevol pantalla sense sortida en una trampa que
+         ni reinstal·lant l'app es desfeia, perquè la cau sobreviu a la
+         instal·lació.
+         L'única excepció és una destinació demanada explícitament a l'adreça,
+         que és com arriben les notificacions: tocar «falten les cremades» ha
+         de dur a Nutrició i no a l'índex. Es consumeix i prou: no es desa. */
       /* EL HASH POT PORTAR UNA DATA: «#dia:2026-08-05».
          Sense això, el resum de les onze i mitja —que parla de demà— t'obria
          la pàgina d'avui, que és justament el dia del qual no et parlava. */
@@ -419,7 +423,7 @@ var Jefe = (function () {
         try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
         App.ves(d.vista, d.params);
       } else {
-        App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+        App.ves('inici');
       }
 
       /* TOCAR UNA NOTIFICACIÓ AMB L'APP JA OBERTA.

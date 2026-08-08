@@ -2269,6 +2269,158 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
+   EL FULL ÍNDEX
+
+   La pantalla d'arrencada. Abans hi havia una esfera animada i una caixa per
+   parlar-hi; es va treure perquè per fer una cosa és més ràpid fer-la que
+   demanar-la.
+
+   LES PARCEL·LES COMPARTEIXEN LES VORES, I ÉS TOTA LA IDEA.
+   El buit de la graella és d'un píxel i el fons que hi ha a sota és el color
+   de les línies de marc: el que separa dues parcel·les no és aire, és una
+   línia dibuixada, com els quadrants d'un full topogràfic. Sis targetes
+   flotants amb ombra i cantonada rodona serien sis coses independents; això
+   és una cosa partida en sis, que és el que aquesta app és.
+
+   I EL PENDENT ÉS EL TERRENY. Cada parcel·la porta les seves corbes de
+   nivell: alt i tancat quan estàs al dia, baix i obert quan et reclama. La
+   cota —el triangle i la xifra, com un punt geodèsic— s'omple quan allò
+   espera. No hi ha cap punt vermell enlloc a posta: un mapa no crida.
+   ========================================================================== */
+
+.full-marge {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--e4); flex-wrap: wrap;
+}
+.full-estat {
+  margin: 0; font-family: var(--mono); font-size: .6875rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-suau);
+  white-space: nowrap;
+}
+.full-estat[data-cap="1"] { color: var(--avis); }
+
+.full-pagina { padding-top: var(--e3); }
+
+/* LA LÍNIA LA DIBUIXA CADA PARCEL·LA, NO EL FONS DE LA GRAELLA.
+   La primera versió pintava el fons del contenidor del color de les línies i
+   deixava un buit d'1px perquè es veiessin. Funciona fins que l'última fila
+   no s'omple: llavors el tros sense parcel·les es queda com un rectangle
+   massís del color de la línia, i a l'escriptori —quatre columnes i sis
+   apartats— hi havia mig full pintat de blau. Amb una ombra d'1px a cada
+   parcel·la, les vores es toquen i comparteixen línia igual, i on no hi ha
+   parcel·la no hi ha res. */
+.full {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+}
+@media (min-width: 600px) { .full { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 920px) { .full { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.parcela {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  gap: var(--e4);
+  min-height: 116px;
+  padding: var(--e3);
+  background: var(--paper2);
+  border: 0; margin: 0;
+  box-shadow: 0 0 0 1px var(--neatline);
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer;
+  transition: background-color .18s var(--entra);
+}
+/* EL TERRENY VA A BAIX, I LA SEVA ALÇADA ÉS LA DADA.
+   Ocupant la parcel·la sencera, les corbes passaven per darrere del nom i
+   competien amb el text. A baix fan de terra sota la cota, que és on van a un
+   mapa: la xifra descansa sobre el relleu i el nom queda net.
+
+   I QUANT PUGEN ÉS EL QUE HAS DE VEURE. Confinades sempre a la mateixa
+   alçada, un apartat al dia i un que et reclama es distingien només per
+   comptar corbes, que no ho fa ningú. Ara el terreny puja de debò quan estàs
+   al dia i es queda arran de terra quan alguna cosa espera: ho veus abans de
+   llegir cap paraula, que és per a l'únic que serveix. */
+.parcela .corbes {
+  position: absolute; inset: auto 0 0 0; height: var(--terra, 60%);
+  width: 100%; pointer-events: none;
+  transition: height .3s var(--sortida);
+}
+@media (prefers-reduced-motion: reduce) { .parcela .corbes { transition: none; } }
+.parcela > * { position: relative; }
+
+.parcela-cap { display: flex; align-items: center; gap: var(--e2); min-width: 0; }
+.parcela-cap .ic-simbol { width: 18px; height: 18px; flex: none; color: var(--ink-suau); }
+.parcela-nom {
+  font-size: .8125rem; font-weight: 600; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* LA COTA. Un punt geodèsic d'un mapa: el triangle i, al costat, l'alçada.
+   Xifres monoespaiades perquè dues parcel·les seguides quedin alineades. */
+.parcela-cota { display: flex; align-items: center; gap: var(--e2); line-height: 1; }
+.parcela-cota .fita { width: 10px; height: 9px; flex: none; }
+.parcela-cota .fita path { fill: none; stroke: var(--corba-mestra); stroke-width: 1.2; }
+.parcela-cota .n {
+  font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.parcela-nota {
+  font-size: .6875rem; color: var(--gr);
+  position: absolute; left: var(--e3); right: var(--e3); bottom: var(--e3);
+}
+
+.parcela[data-estat="be"]      { --terra: 66%; }
+.parcela[data-estat="pendent"] { --terra: 26%; }
+.parcela[data-estat="error"]   { --terra: 16%; }
+
+.parcela[data-estat="pendent"] { background: color-mix(in srgb, var(--avis-fons) 55%, var(--paper2)); }
+.parcela[data-estat="pendent"] .fita path { fill: var(--avis); stroke: var(--avis); }
+.parcela[data-estat="pendent"] .parcela-nom { color: var(--ink); }
+.parcela[data-estat="error"] .fita path { fill: var(--gr); stroke: var(--gr); }
+.parcela[data-estat="error"] .parcela-cota .n { color: var(--ink-suau); }
+
+.parcela:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
+.parcela:active { background: var(--utm-suau); }
+@media (hover: hover) and (pointer: fine) {
+  .parcela:hover { background: var(--utm-suau); }
+  .parcela:hover .parcela-cap .ic-simbol { color: var(--utm); }
+}
+
+.esquelet.parcela-fantasma { min-height: 116px; border-bottom: 0; }
+.full-cau { margin-top: var(--e4); }
+
+/* ELS ALTRES FULLS. Els apartats que no reporten cap xifra. Mateixa família
+   —línia de marc, sense cantonades rodones— i mitja alçada: són portes, no
+   parcel·les. Al marge d'un mapa és on van els fulls veïns. */
+.full-altres-cap { margin: var(--e5) 0 var(--e2); }
+.full-altres {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px; padding: 1px;
+}
+@media (min-width: 600px) { .full-altres { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 920px) { .full-altres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.fulla {
+  display: flex; align-items: center; gap: var(--e2);
+  min-height: var(--toc); padding: var(--e2) var(--e3);
+  background: var(--paper2); border: 0; margin: 0;
+  box-shadow: 0 0 0 1px var(--neatline);
+  color: var(--ink-suau); font: inherit; font-size: .8125rem; text-align: left;
+  cursor: pointer;
+  transition: color .16s var(--entra), background-color .16s var(--entra);
+}
+.fulla .ic-simbol { width: 16px; height: 16px; flex: none; }
+.fulla span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fulla:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
+.fulla:active { color: var(--ink); background: var(--utm-suau); }
+@media (hover: hover) and (pointer: fine) {
+  .fulla:hover { color: var(--ink); background: var(--utm-suau); }
+}
+
+
+/* ==========================================================================
    LA MARCA DE VERSIÓ
 
    A la cantonada, petita i sense demanar res. No és decoració: és la
@@ -2290,15 +2442,6 @@ input[type="checkbox"] { accent-color: var(--utm); }
   font-family: var(--mono); font-size: .5625rem; letter-spacing: .06em;
   color: var(--ink-suau);
 }
-/* A la conversa estava pujada 84 px per no topar amb el micròfon, i el que
-   passava és que quedava a l'alçada dels botons i semblava que en formés
-   part. A baix de tot no hi topa amb res: el micròfon i el llapis van
-   centrats i el botó d'apartats també, o sigui que la cantonada dreta de
-   l'última franja és l'únic tros de pantalla que no fa res. Que és
-   exactament on ha de viure una cosa que no mires mai.
-   El color sí que canvia: sobre el fons del HUD, el gris de la resta de
-   pantalles es queda curt. */
-body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 
 /* ==========================================================================
@@ -2705,7 +2848,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 07:48 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 08:12 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -2768,21 +2911,6 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
     <path d="M12 3.6V2.2"/>
   </symbol>
 
-  <!-- ---- consola ---- -->
-  <symbol id="ic-conversa" viewBox="0 0 24 24">
-    <path d="M3.5 5.5h17v11h-9.5L6 20.5v-4H3.5z"/><path d="M7.5 10h9M7.5 13h6"/>
-  </symbol>
-  <symbol id="ic-micro" viewBox="0 0 24 24">
-    <rect x="9" y="2.5" width="6" height="11" rx="3"/>
-    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v3.5"/><path d="M8.5 21.5h7"/>
-  </symbol>
-  <symbol id="ic-envia" viewBox="0 0 24 24">
-    <path d="M3.5 12 20.5 4l-4 16-5-6z"/><path d="M11.5 14 20.5 4"/>
-  </symbol>
-  <symbol id="ic-veu" viewBox="0 0 24 24">
-    <path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/>
-    <path d="M15.5 9.5a4 4 0 0 1 0 5"/><path d="M18 7a7.5 7.5 0 0 1 0 10"/>
-  </symbol>
 
   <!-- ---- interfície ---- -->
   <symbol id="ic-inici" viewBox="0 0 24 24">
@@ -3073,7 +3201,7 @@ body[data-vista="conversa"] .marca-versio { color: #6f93a6; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 07:48 · en curs";
+window.MARCA_JEFE = "2026-08-08 08:12 · en curs";
 </script>
 
 <script>
@@ -3465,8 +3593,8 @@ var Jefe = (function () {
          Registrar-los no costa res ni depèn de tenir servidor. El que depèn
          del servidor és què s'ensenya, i això va més avall. */
       window.addEventListener('popstate', function (ev) {
-        var id = (ev.state && ev.state.vista) || 'conversa';
-        App.ves(App.vistes[id] ? id : 'conversa', null, true);
+        var id = (ev.state && ev.state.vista) || 'inici';
+        App.ves(App.vistes[id] ? id : 'inici', null, true);
       });
       document.addEventListener('visibilitychange', function () {
         if (!document.hidden) Cua.envia();
@@ -3476,19 +3604,23 @@ var Jefe = (function () {
 
       // Servida des de fora i encara sense servidor: primer connectar.
       if (!dinsAppsScript() && !Servidor.config()) {
-        App.ves('conversa');
+        App.ves('inici');
         setTimeout(function () { App.connecta(); }, 300);
         return;
       }
 
-      // La conversa és la pantalla d'arrencada: és l'assistent, no el formulari.
-      // I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar l'última
-      // vista convertia qualsevol pantalla sense sortida en una trampa que ni
-      // reinstal·lant l'app es desfeia, perquè la cau sobreviu a la instal·lació.
-      //
-      // L'única excepció és una destinació demanada explícitament a l'adreça,
-      // que és com arriben les notificacions: tocar «falten les cremades» ha
-      // de dur a Nutrició i no a la conversa. Es consumeix i prou: no es desa.
+      /* EL FULL ÍNDEX ÉS LA PANTALLA D'ARRENCADA.
+         Ho era la conversa —l'assistent— i s'ha tret: en Pol el va fer servir
+         i la conclusió va ser que per fer una cosa és més ràpid fer-la que
+         demanar-la. El que ha de sortir en obrir l'app és on és tot i què
+         queda pendent, no una caixa per escriure-hi.
+         I SEMPRE, encara que ahir sortissis d'una altra vista. Recordar
+         l'última convertia qualsevol pantalla sense sortida en una trampa que
+         ni reinstal·lant l'app es desfeia, perquè la cau sobreviu a la
+         instal·lació.
+         L'única excepció és una destinació demanada explícitament a l'adreça,
+         que és com arriben les notificacions: tocar «falten les cremades» ha
+         de dur a Nutrició i no a l'índex. Es consumeix i prou: no es desa. */
       /* EL HASH POT PORTAR UNA DATA: «#dia:2026-08-05».
          Sense això, el resum de les onze i mitja —que parla de demà— t'obria
          la pàgina d'avui, que és justament el dia del qual no et parlava. */
@@ -3497,7 +3629,7 @@ var Jefe = (function () {
         try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
         App.ves(d.vista, d.params);
       } else {
-        App.ves(App.vistes.conversa ? 'conversa' : 'inici');
+        App.ves('inici');
       }
 
       /* TOCAR UNA NOTIFICACIÓ AMB L'APP JA OBERTA.
@@ -4263,246 +4395,6 @@ var Relleu = (function () {
 
 <script>
 /* =========================================================================
-   JEFE — el nucli
-   L'esfera de partícules que és la cara de l'assistent.
-
-   Quatre estats, i cadascun es veu diferent de lluny:
-     repos      → gira lent, centre tranquil
-     escoltant  → l'anell exterior s'obre i batega amb la teva veu
-     pensant    → les partícules s'acceleren i el centre s'encén
-     parlant    → l'ona de veu envolta el nucli
-
-   Es dibuixa en canvas perquè són centenars de partícules per fotograma.
-   Es pausa sol quan la pestanya no es veu: no cremarà bateria al mòbil.
-   ========================================================================= */
-
-var Nucli = (function () {
-
-  var CIAN = '#4fd6e0', BLAU = '#2b7fd4', BLANC = '#dff6f9';
-
-  function crea(contenidor) {
-    var canvas = document.createElement('canvas');
-    canvas.setAttribute('aria-hidden', 'true');
-    canvas.style.cssText = 'display:block;width:100%;height:100%';
-    contenidor.appendChild(canvas);
-
-    var ctx = canvas.getContext('2d');
-    var w = 0, h = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
-    var particules = [], anells = [], t = 0, corrent = null;
-    var estat = 'repos', energia = 0, energiaObjectiu = 0, nivellVeu = 0;
-    var reduit = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    function mida() {
-      var r = contenidor.getBoundingClientRect();
-      w = Math.max(80, r.width); h = Math.max(80, r.height);
-      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function sembra() {
-      particules = [];
-      var n = Math.round(Math.min(320, Math.max(90, w * 0.7)));
-      for (var i = 0; i < n; i++) {
-        particules.push({
-          a: Math.random() * Math.PI * 2,
-          r: Math.pow(Math.random(), 0.65),          // més densitat al centre
-          v: (0.0004 + Math.random() * 0.0022) * (Math.random() < 0.25 ? -1 : 1),
-          mida: 0.5 + Math.random() * 1.5,
-          fase: Math.random() * Math.PI * 2
-        });
-      }
-      // Anells fragmentats, com les marques d'un radar
-      anells = [
-        { r: 0.94, gruix: 1.4, segments: 3, buit: 0.42, v: 0.00022, color: CIAN, alfa: 0.85 },
-        { r: 0.86, gruix: 0.8, segments: 9, buit: 0.62, v: -0.00042, color: BLAU, alfa: 0.65 },
-        { r: 0.70, gruix: 0.7, segments: 2, buit: 0.30, v: 0.00034, color: CIAN, alfa: 0.4 },
-        { r: 0.55, gruix: 0.6, segments: 24, buit: 0.5, v: -0.0007, color: BLAU, alfa: 0.35 }
-      ];
-    }
-
-    function arc(cx, cy, radi, d0, d1, color, gruix, alfa) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, radi, d0, d1);
-      ctx.strokeStyle = color; ctx.lineWidth = gruix;
-      ctx.globalAlpha = alfa; ctx.stroke(); ctx.globalAlpha = 1;
-    }
-
-    function dibuixa() {
-      ctx.clearRect(0, 0, w, h);
-      var cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 2;
-
-      energia += (energiaObjectiu - energia) * 0.06;
-      var e = energia;
-
-      // --- anells ---
-      for (var i = 0; i < anells.length; i++) {
-        var an = anells[i];
-        var gir = t * an.v * (1 + e * 2.2);
-        var pas = (Math.PI * 2) / an.segments;
-        for (var s = 0; s < an.segments; s++) {
-          var d0 = gir + s * pas;
-          arc(cx, cy, R * an.r, d0, d0 + pas * (1 - an.buit), an.color,
-              an.gruix * (1 + e * 0.5), an.alfa * (0.55 + e * 0.45));
-        }
-      }
-
-      // --- marques radials, com les d'un radar ---
-      var marques = 48;
-      for (var m = 0; m < marques; m++) {
-        var ang = (m / marques) * Math.PI * 2 + t * 0.00008;
-        var llarg = (m % 6 === 0) ? 0.075 : 0.035;
-        var r0 = R * 0.965, r1 = R * (0.965 + llarg * 0.4);
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(ang) * r0, cy + Math.sin(ang) * r0);
-        ctx.lineTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
-        ctx.strokeStyle = (m % 6 === 0) ? CIAN : BLAU;
-        ctx.globalAlpha = (m % 6 === 0) ? 0.7 : 0.3;
-        ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
-      }
-
-      // --- núvol de partícules ---
-      for (var p = 0; p < particules.length; p++) {
-        var q = particules[p];
-        q.a += q.v * (1 + e * 3.4);
-        var respira = Math.sin(t * 0.0011 + q.fase) * (0.018 + e * 0.05);
-        var rr = (q.r + respira) * R * 0.62;
-        var x = cx + Math.cos(q.a) * rr, y = cy + Math.sin(q.a) * rr;
-        var prox = 1 - q.r;
-        ctx.beginPath();
-        ctx.arc(x, y, q.mida * (0.7 + prox * 0.9 + e * 0.5), 0, Math.PI * 2);
-        ctx.fillStyle = prox > 0.55 ? BLANC : CIAN;
-        ctx.globalAlpha = (0.18 + prox * 0.6) * (0.55 + e * 0.45);
-        ctx.fill(); ctx.globalAlpha = 1;
-      }
-
-      // --- el centre: el punt de llum ---
-      var rc = R * (0.20 + e * 0.05 + Math.sin(t * 0.002) * 0.012);
-      var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rc);
-      g.addColorStop(0, 'rgba(240,253,255,' + (0.85 + e * 0.15) + ')');
-      g.addColorStop(0.18, 'rgba(120,235,250,' + (0.7 + e * 0.3) + ')');
-      g.addColorStop(0.55, 'rgba(43,127,212,' + (0.28 + e * 0.22) + ')');
-      g.addColorStop(1, 'rgba(43,127,212,0)');
-      ctx.beginPath(); ctx.arc(cx, cy, rc, 0, Math.PI * 2);
-      ctx.fillStyle = g; ctx.fill();
-
-      // --- ona de veu: només quan escolta o parla ---
-      if (nivellVeu > 0.01) {
-        var punts = 96, base = R * 0.99;
-        ctx.beginPath();
-        for (var k = 0; k <= punts; k++) {
-          var ak = (k / punts) * Math.PI * 2;
-          var amp = Math.sin(ak * 7 + t * 0.006) * Math.sin(ak * 3 - t * 0.004);
-          var rk = base + amp * nivellVeu * R * 0.07;
-          var xk = cx + Math.cos(ak) * rk, yk = cy + Math.sin(ak) * rk;
-          k ? ctx.lineTo(xk, yk) : ctx.moveTo(xk, yk);
-        }
-        ctx.closePath();
-        ctx.strokeStyle = BLANC; ctx.lineWidth = 1.2;
-        ctx.globalAlpha = 0.55 * nivellVeu; ctx.stroke(); ctx.globalAlpha = 1;
-      }
-    }
-
-    /**
-     * EL BUCLE ES MATA SOL QUAN JA NO ES VEU, i això no és una optimització:
-     * era una fuita de bateria de manual.
-     *
-     * `App.ves` buida `#vista` i torna a cridar `render()` CADA vegada que
-     * entres en una pantalla. O sigui que cada entrada a la conversa creava
-     * un nucli nou amb el seu `requestAnimationFrame`, i ningú aturava
-     * l'anterior: el canvas vell quedava despenjat del document però el seu
-     * bucle seguia dibuixant tres-centes partícules i tres degradats radials
-     * seixanta cops per segon, per sempre i sense que es veiés res.
-     *
-     * Deu anades i tornades entre la conversa i qualsevol apartat = deu
-     * bucles alhora. El comentari de dalt d'aquest fitxer deia que es pausava
-     * sol i era veritat només per a la pestanya amagada, que és un cas que al
-     * mòbil no passa mentre fas servir l'app.
-     *
-     * Es comprova `isConnected` i prou: qualsevol bucle orfe mor al primer
-     * fotograma, i no cal que ningú se'n recordi de netejar-lo.
-     */
-    var mort = false;
-
-    /* EN REPÒS, TRENTA FOTOGRAMES I NO SEIXANTA. El núvol gira lentament i
-       ningú nota la diferència; el que sí que es nota és que el telèfon no
-       es calenta mentre el mires sense dir-li res, que és el 90% del temps
-       que aquesta pantalla és oberta. Quan escolta, pensa o parla, torna a
-       anar a la velocitat que hi hagi. */
-    var ultimPintat = 0;
-
-    function bucle(ara) {
-      if (!canvas.isConnected) { mata(); return; }
-      corrent = requestAnimationFrame(bucle);
-
-      var pausat = estat === 'repos' && nivellVeu < 0.01;
-      if (pausat && ara - ultimPintat < 33) return;
-      ultimPintat = ara;
-
-      t = ara;
-      if (nivellVeu > 0) nivellVeu *= 0.94;
-      dibuixa();
-    }
-
-    function arrenca() {
-      if (corrent || reduit || mort) { if (reduit && !mort) dibuixa(); return; }
-      corrent = requestAnimationFrame(bucle);
-    }
-    function atura() {
-      if (corrent) { cancelAnimationFrame(corrent); corrent = null; }
-    }
-    function mata() {
-      atura();
-      mort = true;
-      document.removeEventListener('visibilitychange', quanCanviaLaVista);
-    }
-
-    var api = {
-      /** 'repos' | 'escoltant' | 'pensant' | 'parlant' */
-      estat: function (nou) {
-        estat = nou;
-        energiaObjectiu = nou === 'pensant' ? 1
-                        : nou === 'parlant' ? 0.7
-                        : nou === 'escoltant' ? 0.45 : 0.06;
-        if (nou === 'escoltant' || nou === 'parlant') api.pols(0.8);
-        return api;
-      },
-      /** Un cop d'energia: la veu, un missatge que arriba. */
-      pols: function (n) { nivellVeu = Math.max(nivellVeu, Math.min(1, n || 0.6)); return api; },
-      redimensiona: function () { mida(); sembra(); if (reduit) dibuixa(); },
-      atura: atura,
-      arrenca: arrenca,
-      mata: mata,
-      element: canvas
-    };
-
-    mida(); sembra(); arrenca();
-
-    function quanCanviaLaVista() {
-      document.hidden ? atura() : arrenca();
-    }
-    document.addEventListener('visibilitychange', quanCanviaLaVista);
-
-    return api;
-  }
-
-  /* I EL DE DEBÒ ÉS UN DE SOL. `isConnected` ja mata els orfes, però ho fa al
-     fotograma següent: si en aquell moment n'hi hagués deu esperant torn,
-     serien deu dibuixades de més. Aquí es tanca l'anterior abans d'obrir el
-     nou, que és el que hauria d'haver passat sempre. */
-  var viu = null;
-
-  return {
-    crea: function (contenidor) {
-      if (viu) { try { viu.mata(); } catch (e) {} }
-      viu = crea(contenidor);
-      return viu;
-    }
-  };
-})();
-</script>
-
-<script>
-/* =========================================================================
    JEFE — notificacions al mòbil (client)
 
    Demana permís, obté la fitxa del dispositiu i la registra al servidor.
@@ -4683,2108 +4575,167 @@ var Notificacions = (function () {
 </script>
 
 <script>
-/* JEFE — NUCLI · Pantalla d'inici
-   És el full índex del mapa: quins fulls hi ha i què hi ha pendent a cadascun.
-   Cada mòdul hi aporta una línia amb `resumInici()`. Un mòdul nou hi surt sol. */
+/* =========================================================================
+   JEFE — EL FULL ÍNDEX
+   =========================================================================
+
+   És la pantalla d'arrencada. Abans ho era la conversa —una esfera i una
+   caixa per escriure-hi— i s'ha tret: en Pol la va fer servir i la conclusió
+   va ser que per fer una cosa és més ràpid fer-la que demanar-la.
+
+   QUÈ HA DE CONTESTAR, EN AQUEST ORDRE:
+     1. Què em queda pendent, ara, sense llegir res.
+     2. On és cada cosa, i quantes n'hi ha.
+     3. Quin dia és, i com anar al dia sencer.
+
+   PER QUÈ ÉS UN FULL DE MAPA I NO SIS TARGETES
+   L'app ja parlava aquest idioma abans que jo hi arribés: paper, línies de
+   marc, corbes de nivell fetes amb les seves dades, tintes hipsomètriques.
+   L'esfera de ciència-ficció era l'única cosa que en desdeia. Un dashboard
+   de targetes amb ombres i cantonades rodones hauria estat el mateix error
+   una altra vegada, i el més fàcil de fer.
+
+   Per això les parcel·les NO tenen separació: comparteixen les vores, com
+   els quadrants d'un full topogràfic. Sis targetes flotants són sis coses;
+   un full partit en sis és UNA cosa amb sis parts, que és el que això és.
+
+   EL PENDENT NO ÉS UN PUNT VERMELL: ÉS EL TERRENY.
+   Cada parcel·la porta les seves corbes, i com més alt el terreny, més al
+   dia estàs. El que et reclama surt baix i obert. A sobre hi ha la cota
+   —el triangle i la xifra, com un punt geodèsic d'un mapa de debò—, plena
+   quan allò espera. Un mapa no et crida: et diu on és el pendent.
+   ========================================================================= */
 
 App.registraVista('inici', {
   render: function (arrel) {
 
-    function pinta(targetes, dEnCau) {
+    /* Quant «amunt» va una parcel·la. Del 0 al 100, i el terreny en surt.
+       No és cap percentatge de progrés: és què tan tranquil pots estar amb
+       aquell apartat ara mateix, que és l'única cosa que has de veure d'un
+       cop d'ull. */
+    function alcada(t) {
+      if (t.error) return 8;
+      if (t.urgent) return 22;
+      return 88;
+    }
+
+    function parcela(t) {
+      var estat = t.error ? 'error' : (t.urgent ? 'pendent' : 'be');
+      var h = alcada(t);
+      return '<button class="parcela" data-ves="' + esc(t.accio || t.modul) + '"' +
+             ' data-estat="' + estat + '">' +
+        Relleu.franja(h, Relleu.llavor(t.modul)) +
+        '<span class="parcela-cap">' +
+          '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
+            esc(t.icona || t.modul || 'modul') + '"/></svg>' +
+          '<span class="parcela-nom">' + esc(t.etiqueta) + '</span>' +
+        '</span>' +
+        '<span class="parcela-cota">' +
+          '<svg class="fita" viewBox="0 0 10 9" aria-hidden="true">' +
+            '<path d="M5 0.6 9.3 8.4 0.7 8.4Z"/></svg>' +
+          '<span class="n">' + esc(t.valor) + '</span>' +
+        '</span>' +
+        (t.error ? '<span class="parcela-nota">No s\'ha pogut llegir</span>' : '') +
+      '</button>';
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       ELS ALTRES FULLS.
+       Sis apartats no reporten res a l'índex —el calendari, l'escola, el
+       focus, la setmana, les relacions i la memòria—: no tenen cap xifra que
+       resumeixi com van. Quan la porta era la conversa, s'hi arribava per un
+       botó de quadrícula que hi havia allà; treta la conversa, es van quedar
+       sense manera d'obrir-se. Ho vaig veure comptant portes, no provant.
+
+       No van a la graella gran perquè no tenen estat: una parcel·la sense
+       cota és una parcel·la a mig fer. Van a sota, en una tira, que és on un
+       full de mapa posa els fulls veïns. */
+    function altres(moduls, targetes) {
+      var ambCota = {};
+      (targetes || []).forEach(function (t) { ambCota[t.accio || t.modul] = true; });
+
+      var l = (moduls || []).filter(function (m) {
+        return m.teVista && !ambCota[m.id];
+      }).map(function (m) {
+        return { id: m.id, nom: m.nom || m.id, icona: m.icona || 'modul' };
+      });
+
+      /* La setmana és una pantalla del nucli i no de cap mòdul, o sigui que
+         no surt de la llista de mòduls i s'hi ha d'afegir a mà. */
+      if (App.vistes.setmana) l.push({ id: 'setmana', nom: 'La setmana', icona: 'setmana' });
+      if (!l.length) return '';
+
+      return '<p class="marge full-altres-cap">Altres fulls</p>' +
+        '<div class="full-altres">' + l.map(function (m) {
+          return '<button class="fulla" data-ves="' + esc(m.id) + '">' +
+            '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' + esc(m.icona) + '"/></svg>' +
+            '<span>' + esc(m.nom) + '</span>' +
+          '</button>';
+        }).join('') + '</div>';
+    }
+
+    function pinta(targetes, moduls, dEnCau) {
       var avui = fmt.avui();
+      var pendents = (targetes || []).filter(function (t) { return t.urgent && !t.error; });
 
+      /* LA MARGINALIA DEL FULL. En un mapa, el marge diu de quin territori és
+         i de quan. Aquí: quin dia, i quantes coses reclamen. La data és un
+         botó cap al dia sencer —ja ho era i funcionava: la porta és allà on
+         mires la data. */
       var html =
-        '<header class="capcalera"><div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa') + '</button>' +
-          /* LA DATA OBRE LA PÀGINA DEL DIA.
-             Aquella pantalla només s'obria demanant-l'hi a JEFE, i això vol
-             dir que passava per la capa d'IA: el dia que el proveïdor diu que
-             prou —i va dir-ho—, una pantalla que només ensenya les teves
-             dades es quedava inabastable. Una porta que depèn d'un servei de
-             fora no és una porta.
-
-             No és un botó nou a la fila de sota, que era el que no volíem:
-             és la data, que ja hi era, i tocar-la per veure el dia és el que
-             sembla que hagi de passar. */
+        '<header class="capcalera full-marge">' +
           '<button class="dia-porta" data-ves="dia" aria-label="Obre la pàgina del dia">' +
             '<p class="marge">' + esc(fmt.relativa(avui)) + '</p>' +
             '<h1>' + esc(fmt.llarga(avui)) + '</h1>' +
           '</button>' +
-          '<div style="text-align:right">' +
-            '<div class="escala" style="margin-left:auto"><i></i><i></i><i></i><i></i></div>' +
-            '<p class="marge" style="margin:4px 0 0">JEFE</p>' +
-          '</div>' +
-        '</div></header>' +
-        '<div class="pagina">';
+          '<p class="full-estat" data-cap="' + (pendents.length ? '1' : '0') + '">' +
+            (pendents.length
+              ? esc(pendents.length === 1 ? '1 cosa et reclama' : pendents.length + ' coses et reclamen')
+              : 'Res et reclama') +
+          '</p>' +
+        '</header>' +
+        '<div class="pagina full-pagina">';
 
       if (!targetes || !targetes.length) {
         html += '<div class="estat">' + ic('mapa', 'ic-g') +
-          '<h2>Consola en repòs</h2>' +
+          '<h2>El full és en blanc</h2>' +
           '<p>Encara no hi ha res registrat. Comença pels hàbits: amb un de sol ' +
           'ja té sentit obrir això cada dia.</p>' +
           '<button class="btn btn-primari" data-ves="habits">' + ic('habits') + 'Comença</button></div>';
       } else {
-        html += '<p class="marge" style="margin:0 0 var(--e2)">Situació</p><div class="terreny">';
-        targetes.forEach(function (t) {
-          var estat = t.error ? 'nofet' : (t.urgent ? 'pendent' : 'fet');
-          html +=
-            '<div class="franja-fila"><button class="franja" data-ves="' +
-              esc(t.accio || t.modul) + '" data-estat="' + estat + '">' +
-              Relleu.franja(t.urgent ? 25 : 90, Relleu.llavor(t.modul)) +
-              /* LA ICONA LA DIU EL MÒDUL.
-                 Aquí hi havia «si és hàbits posa hàbits, si no la genèrica», i
-                 el resultat era que finances, tasques, nutrició, diari,
-                 calendari i seguiment sortien tots amb la mateixa quadrícula de
-                 quatre caselles —tot i tenir cadascun la seva icona dibuixada
-                 des del primer dia—. Sis targetes idèntiques no es distingeixen
-                 d'un cop d'ull, que és per a l'únic que serveix una icona. */
-              '<svg class="ic ic-simbol" aria-hidden="true"><use href="#ic-' +
-                esc(t.icona || t.modul || 'modul') + '"/></svg>' +
-              '<span>' +
-                '<span class="franja-nom">' + esc(t.etiqueta) + '</span>' +
-                (t.error ? '<span class="franja-sota">No s\'ha pogut llegir</span>' : '') +
-              '</span>' +
-              '<span class="franja-cota"><span class="n">' + esc(t.valor) + '</span></span>' +
-            '</button></div>';
-        });
-        html += '</div>';
+        /* EL QUE RECLAMA, PRIMER. Un full índex per ordre de mòdul t'obliga a
+           llegir-lo sencer cada matí per trobar-hi el que ha canviat. Dins de
+           cada grup es respecta l'ordre que van decidir els mòduls. */
+        var ordenades = pendents.concat((targetes || []).filter(function (t) {
+          return !(t.urgent && !t.error);
+        }));
+        html += '<div class="full">' + ordenades.map(parcela).join('') + '</div>';
+        html += altres(moduls, targetes);
       }
 
-      if (dEnCau) html += '<p class="menut" style="margin-top:var(--e4)">Última còpia desada al telèfon.</p>';
+      if (dEnCau) html += '<p class="menut full-cau">Última còpia desada al telèfon.</p>';
       html += '</div>';
       arrel.innerHTML = html;
 
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
       });
-      var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
     }
 
     var cau = Cau.get('inici', null);
-    if (cau) pinta(cau.targetes, true);
-    else arrel.innerHTML = '<div class="pagina"><div class="terreny">' +
-      '<div class="esquelet franja-fantasma"></div><div class="esquelet franja-fantasma"></div>' +
+    if (cau) pinta(cau.targetes, cau.moduls || Cau.get('moduls', []), true);
+    else arrel.innerHTML = '<div class="pagina full-pagina"><div class="full">' +
+      '<div class="esquelet parcela-fantasma"></div><div class="esquelet parcela-fantasma"></div>' +
+      '<div class="esquelet parcela-fantasma"></div><div class="esquelet parcela-fantasma"></div>' +
       '</div></div>';
 
     crida('nucli', 'inici', {}).then(function (d) {
-      Cau.set('inici', d); Cau.set('moduls', d.moduls); pinta(d.targetes, false);
+      Cau.set('inici', d); Cau.set('moduls', d.moduls); pinta(d.targetes, d.moduls, false);
     }).catch(function (err) {
       if (cau) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
       arrel.innerHTML = Comp.error(err, true);
       var r = arrel.querySelector('[data-reintenta]');
       if (r) r.addEventListener('click', function () { App.ves('inici'); });
-    });
-  }
-});
-</script>
-
-<style>
-/* =========================================================================
-   JEFE — sala de comandament
-   Fons gairebé negre, quadrícula fina, nucli de partícules al centre,
-   marc de cantonades i telemetria als marges.
-
-   Diferència deliberada amb la referència: allà la telemetria és decorativa
-   i il·legible. Aquí són dades teves de veritat —què ha consultat, quantes
-   files, quants tokens, l'hora— i es poden llegir.
-   ========================================================================= */
-
-.hud {
-  --neg:    #04070b;
-  --fosc:   #071019;
-  --linia:  #12293a;
-  --cian:   #4fd6e0;
-  --blau:   #2b7fd4;
-  --clar:   #dff6f9;
-  --apagat: #6f93a6;
-  --calent: #e8a33c;
-  --alerta: #ef5f52;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-
-  position: fixed; left: 0; right: 0; top: 0;
-  bottom: env(safe-area-inset-bottom, 0px);
-  display: flex; flex-direction: column;
-  /* Fosc al centre i clar cap a les vores: el nucli es retalla contra el buit
-     en comptes de competir-hi, i el terreny apareix on hi ha lloc per mirar-lo.
-     A l'inrevés —clar al mig— el nucli i el fons il·luminat es barallaven. */
-  background:
-    radial-gradient(ellipse 78% 58% at 50% 44%, var(--neg) 22%, transparent 76%),
-    #0b2137;
-  color: var(--clar);
-  padding-top: env(safe-area-inset-top, 0px);
-  overflow: hidden;
-}
-@media (min-width: 900px) { .hud { top: 0; bottom: 0; padding-top: 0; } }
-
-/* Corbes de nivell de fons.
-   Abans hi havia una quadrícula de línies rectes. Mateix color, mateix gruix
-   i mateix esvaïment: només canvia que ara el terreny és de debò, calculat
-   amb el mateix marching squares que el full de mes. */
-/* La màscara va a l'inrevés que abans: el terreny s'esvaeix al centre, on hi
-   ha el nucli, i es veu cap a fora. Les corbes deixen de passar per darrere
-   les partícules, que és on molestaven i on no es podien llegir. */
-.reticula {
-  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  mask-image: radial-gradient(ellipse 72% 56% at 50% 44%, transparent 26%, #000 68%);
-  -webkit-mask-image: radial-gradient(ellipse 72% 56% at 50% 44%, transparent 26%, #000 68%);
-}
-
-/* ---------------------------------------------------------------- capçalera */
-
-.hud-cap {
-  position: relative; z-index: 2; flex: none;
-  display: flex; align-items: center; gap: var(--e2);
-  padding: var(--e2) var(--guia);
-  font-family: var(--mono); font-size: .625rem; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--apagat);
-}
-@media (max-width: 359px) {
-  .hud-cap #etiqueta-estat { max-width: 10ch; overflow: hidden; text-overflow: ellipsis;
-                             white-space: nowrap; }
-}
-.hud-cap .creix { flex: 1; }
-/* L'etiqueta d'estat és un botó, però no ha de semblar-ne un: el que fa és
-   secundari i el que diu és informació. El que canvia en encendre el mode
-   tècnic és el color, com a tota la resta de l'app. */
-.bt-estat {
-  border: 0; background: transparent; color: inherit; font: inherit;
-  letter-spacing: inherit; text-transform: inherit; padding: 6px 0; margin: -6px 0;
-  cursor: pointer; transition: color .16s var(--entra);
-}
-.bt-estat[aria-pressed="true"] { color: var(--cian); }
-.llum { width: 7px; height: 7px; border-radius: 50%; background: var(--apagat); flex: none; }
-.hud[data-estat="repos"]     .llum { background: var(--cian); box-shadow: 0 0 8px var(--cian); }
-.hud[data-estat="pensant"]   .llum { background: var(--cian); box-shadow: 0 0 14px var(--cian); animation: bat .8s infinite; }
-.hud[data-estat="escoltant"] .llum { background: var(--alerta); box-shadow: 0 0 12px var(--alerta); animation: bat .9s infinite; }
-.hud[data-estat="apagat"]    .llum { background: var(--calent); }
-@keyframes bat { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-
-/* Marc de cantonades. Apagades mentre no fa res, enceses quan t'escolta:
-   així el marc no és decoració, és l'estat de l'aparell.
-
-   El color va per variable i no per regla d'estat. Amb regles, un estat sense
-   la seva —«apagat», per exemple— es quedava amb el color del text i les L
-   sortien blanques i brillants: més cridaneres quan res funciona que quan tot
-   va bé. Amb una variable, cap estat pot quedar-se sense color. */
-/* UNA SOLA GUIA PER A TOT.
-   Les L viuen als 8 px i fan 22, o sigui que arriben als 30. Tot el que és
-   contingut comença als 38 i cap element no en trepitja cap altre. Abans cada
-   cosa tenia el seu marge i el resultat era que la telemetria queia just
-   damunt de la cantonada. */
-.hud { --marc: rgba(79,214,224,.38); --guia: 38px; }
-.hud[data-estat="escoltant"], .hud[data-estat="parlant"] { --marc: var(--cian); }
-.hud[data-estat="apagat"] { --marc: rgba(232,163,60,.5); }
-
-.cantonada { position: absolute; width: 22px; height: 22px; pointer-events: none; z-index: 3;
-             transition: border-color .35s ease; }
-.cantonada.dg { top: 8px; left: 8px;
-                border-top: 2px solid var(--marc); border-left: 2px solid var(--marc); }
-.cantonada.dd { top: 8px; right: 8px;
-                border-top: 2px solid var(--marc); border-right: 2px solid var(--marc); }
-.cantonada.bg { bottom: 8px; left: 8px;
-                border-bottom: 2px solid var(--marc); border-left: 2px solid var(--marc); }
-.cantonada.bd { bottom: 8px; right: 8px;
-                border-bottom: 2px solid var(--marc); border-right: 2px solid var(--marc); }
-
-/* LA VORA QUE RESPIRA.
-   Mentre t'escolta, tota la pantalla batega amb el color del nucli. És l'únic
-   moviment de la pantalla, i és el que et diu de lluny —sense mirar cap
-   etiqueta, amb el telèfon damunt la taula— que el micròfon està obert. Un
-   estat que no es veu des de l'altra punta de l'habitació no serveix de res. */
-.vora {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
-  box-shadow: inset 0 0 30px 1px rgba(79,214,224,.55),
-              inset 0 0 96px 20px rgba(79,214,224,.20);
-  transition: opacity .45s ease;
-}
-.hud[data-estat="escoltant"] .vora { animation: respira 2.3s ease-in-out infinite; }
-.hud[data-estat="parlant"] .vora { opacity: .55; }
-@keyframes respira { 0%, 100% { opacity: .18; } 50% { opacity: 1; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .hud[data-estat="escoltant"] .vora { animation: none; opacity: .8; }
-}
-
-/* Telemetria de cantonada: dades teves de veritat —què ha consultat, quantes
-   files, quants tokens—, no farciment decoratiu. Petita i al marge, però
-   llegible: al 9 px ja és prou discreta sense haver de rebaixar-ne el
-   contrast fins a fer-la endevinable. */
-/* Els blocs de cantonada van amb la traça: números per diagnosticar, no per
-   llegir. Es tornen a encendre pel mateix interruptor. */
-.telemetria { display: none; }
-.hud[data-tecnic="1"] .telemetria {
-  display: block;
-  position: absolute; top: 64px; z-index: 1; pointer-events: none;
-  font-family: var(--mono); font-size: .5625rem; line-height: 1.75;
-  color: var(--apagat); letter-spacing: .04em; max-width: 34%;
-}
-.telemetria.esq { left: var(--guia); }
-.telemetria.dre { right: var(--guia); text-align: right; }
-.telemetria b { color: var(--cian); font-weight: 400; }
-.telemetria .val { color: var(--clar); font-variant-numeric: tabular-nums; }
-
-/* ------------------------------------------------------------------- cos
-
-   El nucli al mig i res més. La conversa no viu aquí: apareix quan hi ha
-   alguna cosa a dir i se'n va quan ja s'ha dit. Una transcripció permanent
-   converteix una sala de comandament en una finestra de xat, i el que ha de
-   manar aquí és l'ordre, no l'historial. */
-
-.jefe-centre {
-  position: relative; z-index: 2; flex: 1; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--e3); padding: var(--e4) var(--e4) 0; text-align: center;
-  /* XARXA DE SEGURETAT. La fitxa es mesura i no hauria de sortir mai d'aquí,
-     però si un dia se'n surt val més que quedi tallada que no pas que passi
-     per sota de la barra d'escriure —que és el que feia— i et tapi l'última
-     línia de la resposta amb el que estàs dictant. */
-  overflow: hidden;
-}
-
-/* Sense nom a sota: el nucli ja diu qui és. La marca només repetia una
-   paraula que ja saps, i li prenia lloc al que de debò mires. */
-/* L'ESFERA CEDEIX ESPAI QUAN HI HA UNA RESPOSTA.
-   Mesurat al mòbil: amb l'esfera a mida completa quedaven 102 píxels per
-   llegir, que són quatre línies. No és que la fitxa fos petita: és que
-   l'esfera se n'estava emportant tot l'espai en el moment en què el que
-   importa és el text. Torna a créixer quan despatxes la resposta. */
-.nucli-caixa {
-  flex: none; width: min(82vw, 46vh); aspect-ratio: 1;
-  transition: width .38s var(--entra);
-}
-.hud[data-resposta="1"] .nucli-caixa { width: min(54vw, 30vh); }
-@media (prefers-reduced-motion: reduce) { .nucli-caixa { transition: none; } }
-
-/* ------------------------------------------------------------- transcripció */
-
-/* Només l'última resposta, i només mentre serveix de res.
-   NO ÉS ELL QUI FA SCROLL: qui es mou és el text de dins de la fitxa. */
-.transcripcio {
-  width: 100%; margin: 0 auto; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; text-align: left;
-}
-.transcripcio:empty { display: none; }
-.torn { width: 100%; display: flex; flex-direction: column; align-items: center; }
-
-/* EL FIL. Baixa del centre de l'esfera fins a la fitxa: la resposta SURT
-   d'ella, no hi és al costat. Ha estat la manera de treure l'etiqueta «JEFE»
-   sense que la resposta quedi surant: qui parla ja ho diu el nucli, i
-   repetir-ho amb text gastava la línia més visible de la pantalla. */
-.fil-resposta {
-  flex: none; width: 1px; height: 16px; transform-origin: top;
-  background: linear-gradient(var(--cian), rgba(79, 214, 224, .25));
-  animation: baixa .28s var(--sortida) both;
-}
-@keyframes baixa { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-
-/* LA FITXA. És un instrument d'aquesta consola i no un globus de xat: les
-   claus de cantonada que emmarquen la pantalla entren a emmarcar la resposta,
-   i la superfície és un panell més. */
-.torn-fitxa {
-  position: relative; width: 100%; max-width: 58ch;
-  padding: var(--e3) var(--e3) var(--e3) calc(var(--e3) + 2px);
-  background: linear-gradient(180deg, rgba(10, 26, 38, .92), rgba(7, 16, 25, .78));
-  border: 1px solid var(--linia);
-  animation: entra-fitxa .3s var(--sortida) both;
-}
-@keyframes entra-fitxa { from { transform: translateY(-4px); } to { transform: none; } }
-
-/* EL RAIL DIU QUANT EN PORTES LLEGIT. Amb tot a la vista va ple —ho tens
-   tot—; si no, creix mentre baixes. És el que substitueix la barra de scroll,
-   i diu una cosa que la barra no deia: no on ets, sinó quant te'n queda.
-   S'anima amb `transform` i no amb `height`: una alçada animada obliga el
-   navegador a recalcular la disposició a cada fotograma. */
-.torn-rail {
-  position: absolute; left: -1px; top: -1px; bottom: -1px; width: 2px;
-  background: var(--cian); transform: scaleY(0); transform-origin: top;
-  transition: transform .45s var(--entra) .1s;
-}
-.torn-clau { position: absolute; width: 9px; height: 9px; border: 0 solid var(--cian); }
-.torn-clau.a { top: -1px; right: -1px; border-top-width: 1px; border-right-width: 1px; }
-.torn-clau.b { bottom: -1px; right: -1px; border-bottom-width: 1px; border-right-width: 1px; }
-
-/* EL SCROLL VA A DINS I NO TÉ BARRA.
-   Una barra de scroll és un tros de finestra dins d'una consola. Es treu i el
-   text es mou igual amb el dit i amb la roda; el que cal llavors és dir que
-   n'hi ha més, perquè un text tallat en sec sembla un text que s'ha acabat.
-   Ho diu el TEXT ESVAINT-SE pel marge on queda cosa. No és una capa pintada a
-   sobre —el fons de la fitxa és mig transparent i es notaria—: és una màscara
-   sobre el contingut, o sigui que el que s'esvaeix és la lletra. */
-.torn-cursa {
-  max-height: var(--sostre, 40vh); overflow-y: auto; overscroll-behavior: contain;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
-                      #000 var(--m2, 100%), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--m1, 0px),
-              #000 var(--m2, 100%), transparent 100%);
-}
-.torn-cursa::-webkit-scrollbar { display: none; width: 0; height: 0; }
-
-/* La primera línia en blanc pur: un titular sense haver-ne d'escriure cap. */
-.torn .diu { margin: 0; font-size: 1rem; line-height: 1.55; }
-.torn .diu::first-line { color: #fff; }
-/* Una línia per bloc. El `pre-wrap` es queda per si el model deixa espais
-   alineats a dins d'una línia, però els salts ja els fan els blocs. */
-.torn .diu .l { display: block; white-space: pre-wrap; }
-.torn .diu .l:empty { height: .55em; }
-/* Sagnat penjat a les llistes: quan «15:00 · Dinar amb els caçadors» dona la
-   volta, la segona part queda sota el text i no sota el pic. */
-.torn .diu .l[data-pic] { padding-left: 1.05em; text-indent: -1.05em; }
-.torn .diu .l[data-pic]::before { content: '·\00a0'; color: var(--cian); }
-.torn .diu b { font-weight: 600; color: #fff; }
-.torn .diu code { font-family: var(--mono); font-size: .875em;
-                  background: rgba(79, 214, 224, .1); padding: 0 4px; }
-
-@media (prefers-reduced-motion: reduce) {
-  .fil-resposta, .torn-fitxa { animation: none; }
-  .torn-rail { transition: none; }
-}
-
-/* LA TELEMETRIA NO ES VEU, PERÒ NO S'HA PERDUT.
-   Quantes files ha llegit cada eina i on se n'ha anat el temps m'interessen a
-   mi per saber per què una cosa va lenta; a ell, mentre llegeix una resposta,
-   li són soroll al mig. Es guarden igual al full de converses i es poden
-   tornar a ensenyar tocant la capçalera. */
-.traca { display: none; margin-top: var(--e2); font-family: var(--mono);
-         font-size: .625rem; color: var(--apagat); flex-wrap: wrap; gap: var(--e2); }
-.hud[data-tecnic="1"] .traca { display: flex; }
-.traca span { border: 1px solid var(--linia); padding: 2px 7px; }
-.traca b { color: var(--cian); font-weight: 400; }
-
-.proposta { margin-top: var(--e3); border: 1px solid var(--calent);
-            background: rgba(232,163,60,.08); padding: var(--e3) var(--e4); }
-.proposta p { margin: 0 0 var(--e3); font-size: .9375rem; }
-.proposta .accions { display: flex; gap: var(--e2); }
-.proposta button { min-height: 44px; padding: 0 var(--e4); font: inherit; font-size: .875rem;
-                   font-weight: 600; border: 1px solid var(--linia); background: transparent; color: var(--clar); }
-.proposta button[data-si] { background: var(--calent); border-color: var(--calent); color: #171104; }
-
-.avis-apagat { margin: var(--e4) var(--e5); padding: var(--e4); border: 1px solid var(--calent);
-               background: rgba(232,163,60,.07); font-size: .875rem; line-height: 1.55; }
-.avis-apagat strong { display: block; margin-bottom: var(--e2); color: var(--calent);
-                      font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; font-size: .75rem; }
-.hud code { font-family: var(--mono); background: var(--fosc); border: 1px solid var(--linia);
-            padding: 1px 5px; color: var(--cian); }
-
-/* ------------------------------------------------------------------ entrada */
-
-.hud-entrada { position: relative; z-index: 2; flex: none;
-               padding: var(--e3) var(--e4) 0; }
-/* Barra del que està sentint. Sense això no pots saber si el micròfon
-   t'ha sentit, t'ha entès una altra cosa, o directament ha petat. */
-.oida { display: flex; align-items: center; gap: var(--e2); width: 100%; max-width: 62ch;
-        margin: 0 auto; text-align: left;
-        padding: var(--e2) var(--e3); border: 1px solid var(--alerta);
-        background: rgba(239,95,82,.08); font-family: var(--mono); font-size: .6875rem; }
-.oida-text { flex: 1; min-width: 0; color: var(--clar); overflow: hidden;
-             text-overflow: ellipsis; white-space: nowrap; }
-.oida[data-error="1"] { border-color: var(--calent); background: rgba(232,163,60,.1); }
-.oida[data-error="1"] .oida-text { color: var(--calent); white-space: normal; }
-.oida-clau { flex: none; min-height: 32px; padding: 0 var(--e2); border: 1px solid var(--linia);
-             background: transparent; color: var(--apagat); font: inherit; font-size: .625rem; }
-.oida-clau[aria-pressed="true"] { color: var(--cian); border-color: var(--cian); }
-
-.ona { display: flex; align-items: flex-end; gap: 2px; height: 14px; flex: none; }
-.ona i { width: 3px; background: var(--alerta); animation: ona .9s ease-in-out infinite; }
-.ona i:nth-child(1) { height: 40%; animation-delay: 0s; }
-.ona i:nth-child(2) { height: 90%; animation-delay: .15s; }
-.ona i:nth-child(3) { height: 60%; animation-delay: .3s; }
-.ona i:nth-child(4) { height: 100%; animation-delay: .45s; }
-@keyframes ona { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
-
-/* --------------------------------------------------------------- les ordres
-
-   Dues maneres de manar, i totes dues a l'abast del polze. La veu és la
-   principal; el llapis hi és perquè hi ha llocs —una reunió, una classe— on
-   parlar-li en veu alta no és una opció, i sense escriptura l'assistent
-   deixaria de servir just quan més el necessites. */
-
-.jefe-ordre { position: relative; z-index: 2; flex: none;
-              padding: var(--e4) var(--e4) var(--e3); }
-.jefe-botons { display: flex; align-items: center; justify-content: center; gap: var(--e5); }
-
-.ordre-bt {
-  width: 76px; height: 76px; border-radius: 50%; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--linia); background: rgba(7,16,25,.7); color: var(--clar);
-  transition: border-color .18s ease, color .18s ease, transform .18s var(--sortida);
-}
-.ordre-bt .ic { width: 30px; height: 30px; }
-.ordre-bt:active { transform: scale(.94); }
-#b-micro { border-color: var(--cian); color: var(--cian); }
-#b-micro[data-actiu="1"] { border-color: var(--alerta); color: var(--alerta);
-                           animation: pulsa2 1.4s ease-in-out infinite; }
-@keyframes pulsa2 { 0%,100% { box-shadow: 0 0 0 0 rgba(239,95,82,.4); }
-                    50% { box-shadow: 0 0 0 14px rgba(239,95,82,0); } }
-
-.jefe-escriu { display: flex; align-items: flex-end; gap: var(--e2);
-               max-width: 62ch; margin: 0 auto; }
-.jefe-escriu textarea { flex: 1; min-width: 0; min-height: 52px; max-height: 150px; resize: none;
-                        background: transparent; border: 1px solid var(--linia); color: var(--clar);
-                        padding: var(--e3); font: inherit; line-height: 1.4; }
-.jefe-escriu textarea:focus { outline: none; border-color: var(--cian); box-shadow: 0 0 0 1px var(--cian); }
-.jefe-escriu textarea::placeholder { color: var(--apagat); }
-
-.bt { flex: none; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--linia); background: transparent; color: var(--clar); }
-.bt[data-primari] { border-color: var(--cian); color: var(--cian); }
-.bt:disabled { opacity: .3; }
-.bt-p { width: 44px; height: 44px; border-color: transparent; }
-.bt-p[aria-pressed="true"] { color: var(--cian); }
-
-/* ------------------------------------------------------------- els apartats */
-
-/* Un sol boto, centrat sota les dues ordres grans. No es una tercera rodona:
-   les rodones son per parlar-li i escriure-li, i aixo no li parla, nomes obre
-   un calaix. Per aixo pren la forma dels botons quadrats de la barra —mateix
-   fil, mateixa lletra de maquina— i no competeix amb el microfon. */
-.jefe-moduls { position: relative; z-index: 2; flex: none;
-               display: flex; justify-content: center;
-               padding: var(--e2) var(--guia) calc(var(--e2) + env(safe-area-inset-bottom, 0px)); }
-
-.porta-apartats {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 48px; height: 48px;
-  border: 1px solid var(--linia); background: rgba(7,16,25,.7); color: var(--cian);
-  transition: border-color .16s var(--entra), transform .12s var(--entra);
-}
-.porta-apartats .ic { width: 20px; height: 20px; }
-.porta-apartats:active { border-color: var(--cian); transform: scale(.94); }
-@media (hover: hover) and (pointer: fine) {
-  .porta-apartats:hover { border-color: var(--cian); }
-}
-/* El tauler: dues columnes al mobil, quatre a l escriptori. Cada apartat es
-   un panell amb les seves claus de cantonada, com a la resta de l app. */
-.reixa-apartats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--e2); }
-.apartat {
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--e2);
-  min-height: 88px; padding: var(--e3);
-  color: var(--ink); text-align: left;
-  transition: background-color .16s var(--entra), transform .12s var(--entra);
-}
-.apartat-ample { grid-column: 1 / -1; flex-direction: row; align-items: center; min-height: 60px; }
-/* La fila del dia i la setmana. Ocupa l amplada sencera i la parteix en dos:
-   aixi es veuen de costat tant si a sota hi ha dues columnes com quatre, i el
-   dia no s encongeix a mesura que la pantalla creix. */
-.apartats-quan {
-  grid-column: 1 / -1;
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2);
-}
-.apartat .ic { width: 22px; height: 22px; color: var(--utm); }
-.apartat span { font-size: .875rem; font-weight: 600; line-height: 1.2; }
-.apartat:active { background: var(--utm-suau); transform: scale(.98); }
-@media (hover: hover) and (pointer: fine) {
-  .apartat:hover { background: var(--utm-suau); }
-}
-@media (min-width: 560px) { .reixa-apartats { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .reixa-apartats { grid-template-columns: repeat(4, 1fr); } }
-@media (min-width: 900px) {
-  .hud { --guia: 56px; }
-  .nucli-caixa { width: min(42vw, 62vh); }
-  .jefe-centre { gap: var(--e4); }
-  .ordre-bt { width: 84px; height: 84px; }
-}
-</style>
-
-<script>
-/* JEFE — MÒDUL · Conversa (sala de comandament) */
-
-App.registraVista('conversa', {
-  render: function (arrel) {
-
-    var idConversa = Cau.get('conversa.id', null);
-    var missatges = Cau.get('conversa.missatges', []) || [];
-    var ocupat = false, veuActiva = Cau.get('conversa.veu', false);
-    var tokensSessio = 0, ultimesEines = [], estatIA = null, nucli = null, reconeixedor = null;
-
-    var potEscoltar = !!(window.SpeechRecognition || window.webkitSpeechRecognition ||
-                         (navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-    var potParlar = !!window.speechSynthesis;
-
-    arrel.innerHTML =
-      '<div class="hud" id="hud" data-estat="repos">' +
-        '<div class="reticula" id="reticula"></div>' +
-        '<div class="vora"></div>' +
-        '<i class="cantonada dg"></i><i class="cantonada dd"></i>' +
-        '<i class="cantonada bg"></i><i class="cantonada bd"></i>' +
-
-        '<div class="hud-cap">' +
-          '<span class="llum"></span>' +
-          /* L'ETIQUETA D'ESTAT ÉS L'INTERRUPTOR DEL MODE TÈCNIC.
-             Els números de què ha consultat i quant ha trigat serveixen per
-             saber per què una cosa va lenta, no per llegir una resposta. Van
-             amagats, i es tornen a ensenyar tocant aquí: no calia cap botó
-             nou per a una cosa que es fa dos cops l'any. */
-          '<button class="bt-estat" id="etiqueta-estat" aria-pressed="false"' +
-            ' aria-label="Ensenya o amaga els números tècnics">iniciant</button>' +
-          '<span class="creix"></span>' +
-          (potParlar ? '<button class="bt bt-p" id="b-veu" aria-pressed="false" aria-label="Llegir en veu alta">' +
-            ic('veu', 'ic-p') + '</button>' : '') +
-          '<button class="bt bt-p" id="b-nova" aria-label="Comença de nou">' + ic('mes', 'ic-p') + '</button>' +
-          '<button class="bt bt-p" id="b-vistes" aria-label="Ajustos de JEFE">' + ic('ajust', 'ic-p') + '</button>' +
-        '</div>' +
-
-        '<div class="telemetria esq" id="tel-esq"></div>' +
-        '<div class="telemetria dre" id="tel-dre"></div>' +
-
-        '<div class="jefe-centre">' +
-          '<div class="nucli-caixa" id="nucli-caixa"></div>' +
-          '<div class="transcripcio" id="transcripcio"></div>' +
-        '</div>' +
-
-        '<div class="hud-entrada">' +
-          '<div class="oida" id="oida" hidden>' +
-            '<span class="ona"><i></i><i></i><i></i><i></i></span>' +
-            '<span class="oida-text" id="oida-text">escoltant…</span>' +
-            '<button class="oida-clau" id="b-clau" aria-pressed="false">paraula clau: OFF</button>' +
-            /* Què ha sentit de debò. No és un caprici de programador: quan la
-               transcripció falla, això és l'única manera de saber si el que
-               arriba dolent és el que sent Chrome o el que en fem nosaltres. */
-            '<button class="oida-clau" id="b-oida-log">què he sentit</button>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="jefe-ordre">' +
-          '<div class="jefe-botons" id="botons">' +
-            (potEscoltar ? '<button class="ordre-bt" id="b-micro" aria-label="Parla-li">' +
-              ic('micro') + '</button>' : '') +
-            '<button class="ordre-bt" id="b-llapis" aria-label="Escriu-li">' + ic('llapis') + '</button>' +
-          '</div>' +
-          '<div class="jefe-escriu" id="escriu" hidden>' +
-            '<textarea id="camp" rows="1" placeholder="Escriu-li…" autocomplete="off"></textarea>' +
-            '<button class="bt" data-primari id="b-envia" aria-label="Envia">' + ic('envia') + '</button>' +
-          '</div>' +
-        '</div>' +
-
-        /* UN SOL BOTO PER A TOTS ELS APARTATS.
-           La fila de sota tenia una rodona per modul, i cada modul nou n'hi
-           afegia una: amb vuit ja competien entre elles i cap no es llegia.
-           Aquesta pantalla es per parlar-li; els apartats son on vas quan no
-           vols parlar, i aixo es una decisio, no vuit. */
-        '<div class="jefe-moduls">' +
-          /* Sense text: la icona sola. El nom viu a l'`aria-label`, que és
-             el que llegeix qui no la veu —treure la paraula de la pantalla
-             no vol dir treure-la de l'app. */
-          '<button class="porta-apartats" id="b-apartats" aria-label="Apartats">' +
-            ic('modul') +
-          '</button>' +
-        '</div>' +
-      '</div>';
-
-    var hud = arrel.querySelector('#hud');
-    var tr = arrel.querySelector('#transcripcio');
-    var camp = arrel.querySelector('#camp');
-
-    nucli = Nucli.crea(arrel.querySelector('#nucli-caixa'));
-
-    /* QUAN L'ESFERA ACABA DE CANVIAR DE MIDA. El canvas té la seva pròpia
-       resolució: si la caixa creix o s'encongeix i ningú l'hi diu, el dibuix
-       s'estira i queda borrós. I un cop sabuda la mida nova, es torna a
-       mesurar l'espai que li queda a la fitxa. */
-    arrel.querySelector('#nucli-caixa').addEventListener('transitionend', function (ev) {
-      if (ev.propertyName !== 'width') return;
-      nucli.redimensiona();
-      var c = tr.querySelector('.torn-cursa');
-      if (c) { capALaFitxa(c); marcaLaLectura(); }
-    });
-
-    /* El terreny del fons es genera un sol cop: el SVG escala sol amb el
-       contenidor, i la llavor és fixa perquè no balli a cada repintada. */
-    arrel.querySelector('#reticula').innerHTML =
-      // Més marcades que abans: ara viuen al marge il·luminat, no darrere del
-      // nucli, i allà una línia al 16% no s'arriba a veure.
-      Relleu.fons(1000, 1000, { color: 'rgba(79,214,224,.30)', gruix: 1, nivells: 14 });
-
-    /* EL MODE TÈCNIC, recordat entre visites. Si l'encén per ensenyar-me una
-       lentitud, no ha de tornar-lo a encendre cada cop que entra. */
-    (function () {
-      var boto = arrel.querySelector('#etiqueta-estat');
-      var posa = function (si) {
-        hud.dataset.tecnic = si ? '1' : '0';
-        boto.setAttribute('aria-pressed', si ? 'true' : 'false');
-      };
-      posa(Cau.get('conversa.tecnic', false));
-      boto.addEventListener('click', function () {
-        var nou = hud.dataset.tecnic !== '1';
-        Cau.set('conversa.tecnic', nou);
-        posa(nou);
-      });
-    })();
-
-    function posaEstat(e, etiqueta) {
-      hud.dataset.estat = e;
-      arrel.querySelector('#etiqueta-estat').textContent = etiqueta;
-      nucli.estat(e === 'apagat' ? 'repos' : e);
-      pintaTelemetria();
-    }
-
-    // --------------------------------------------------------- telemetria real
-
-    function pintaTelemetria() {
-      var esq = [];
-      esq.push('<b>SESSIÓ</b>');
-      esq.push('torns <span class="val">' + missatges.length + '</span>');
-      esq.push('tokens <span class="val">' + tokensSessio + '</span>');
-      if (ultimesEines.length) {
-        esq.push('');
-        esq.push('<b>ÚLTIMA CONSULTA</b>');
-        ultimesEines.slice(0, 4).forEach(function (e) {
-          esq.push(e.eina + ' <span class="val">' + (e.files === null ? '—' : e.files) + '</span>');
-        });
-      }
-      var dre = ['<b>SISTEMA</b>'];
-      /* La marca de la construcció. Apps Script no deixa preguntar amb quina
-         versió s'està servint una pàgina, i sense això no hi ha manera de
-         saber si el que tens obert és el que s'acaba de desplegar o el d'abans
-         amb la memòria del navegador pel mig. */
-      if (window.MARCA_JEFE) {
-        dre.push('versió <span class="val">' + esc(window.MARCA_JEFE) + '</span>');
-      }
-      dre.push('estat <span class="val">' + hud.dataset.estat + '</span>');
-      if (estatIA && estatIA.model) dre.push('model <span class="val">' + esc(estatIA.model) + '</span>');
-
-      /* QUANTES PETICIONS PORTES. Google no diu quantes te'n queden —no hi ha
-         manera de preguntar-ho—, o sigui que aquí hi ha el que hem gastat
-         nosaltres i quan ens van dir que prou. Cap percentatge: caldria un
-         límit escrit a mà i un tant per cent contra un denominador suposat
-         sembla una dada sense ser-ho. */
-      var c = estatIA && estatIA.consum;
-      if (c) {
-        dre.push('peticions avui <span class="val">' + c.avui + '</span>');
-        if (c.faSegons !== null) {
-          dre.push('últim límit <span class="val">' +
-                   (c.faSegons < 90 ? 'fa ' + c.faSegons + 's'
-                                    : 'fa ' + Math.round(c.faSegons / 60) + ' min') + '</span>');
-        }
-      }
-
-      dre.push('veu <span class="val">' + (veuActiva ? 'ON' : 'OFF') + '</span>');
-      dre.push('escolta <span class="val">' + (continua ? 'CONTÍNUA' : 'OFF') + '</span>');
-      dre.push('micro <span class="val">' + (potEscoltar ? 'OK' : 'NO') + '</span>');
-
-      telemetriaActual = { esquerra: esq.join('<br>'), dreta: dre.join('<br>') };
-
-      var e = arrel.querySelector('#tel-esq'), d = arrel.querySelector('#tel-dre');
-      if (e) e.innerHTML = telemetriaActual.esquerra;
-      if (d) d.innerHTML = telemetriaActual.dreta;
-    }
-    var telemetriaActual = { esquerra: '', dreta: '' };
-
-    // ------------------------------------------------------------------ pintura
-
-    /* LA RESPOSTA NOMÉS MENTRE ÉS D'ARA.
-       En obrir l'app no s'ensenya res: una resposta d'ahir penjada sota el
-       nucli no és informació, és brutícia. Apareix quan acaba de contestar i
-       marxa al toc següent o quan tornes a preguntar.
-
-       L'excepció són les propostes: una escriptura pendent de confirmar no pot
-       desaparèixer sola, perquè llavors no la confirmaries mai. */
-    var respostaFresca = false;
-
-    function pinta() {
-      var ultim = null;
-      if (respostaFresca) {
-        for (var i = missatges.length - 1; i >= 0; i--) {
-          if (missatges[i].rol === 'assistent') { ultim = missatges[i]; break; }
-        }
-      }
-      tr.innerHTML = ultim ? torn(ultim) : '';
-      hud.dataset.resposta = ultim ? '1' : '0';
-      lligaPropostes();
-      var cursa = tr.querySelector('.torn-cursa');
-      if (cursa) {
-        cursa.scrollTop = 0;
-        cursa.addEventListener('scroll', marcaLaLectura);
-        /* Dos cops: ara, amb l'esfera encara gran —perquè la fitxa no
-           trepitgi res mentre s'encongeix— i quan ha acabat d'encongir-se,
-           que és quan es coneix l'espai de debò. */
-        capALaFitxa(cursa);
-        marcaLaLectura();
-      }
-      pintaTelemetria();
-    }
-
-    function amagaResposta() {
-      /* Una proposta PENDENT no pot desaparèixer sola: llavors no la
-         confirmaries mai. Però una que ja has confirmat o descartat sí que
-         pot: abans es mirava només si el missatge en portava, i n'hi hagués
-         hagut o no, la resposta es quedava a la pantalla per sempre. */
-      var m = missatges[missatges.length - 1];
-      var pendents = (m && m.propostes || []).filter(function (p) { return !p.resolta; });
-      if (pendents.length) return;
-      respostaFresca = false;
-      tr.innerHTML = '';
-    }
-
-    tr.addEventListener('click', function (ev) {
-      if (ev.target.closest('.proposta') || ev.target.closest('button')) return;
-      amagaResposta();
-    });
-
-    /**
-     * EL QUE ESCRIU EL MODEL, LLEGIBLE.
-     *
-     * Els models escriuen en markdown encara que els diguis que no, i sortia
-     * tal qual: «Tot el dia: **Aniversari de Mama**» amb els asteriscs a la
-     * vista. Un assistent que ensenya el codi de la negreta sembla trencat.
-     *
-     * NO S'HI POSA CAP LLIBRERIA DE MARKDOWN. D'aquí només en surten tres
-     * coses —negreta, guions de llista i alguna cursiva—, i el pes d'una
-     * dependència es pagaria a cada obertura per resoldre-les. Amb el que hi
-     * ha aquí n'hi ha prou.
-     *
-     * PRIMER S'ESCAPA I DESPRÉS ES FORMATA, mai al revés: així el que ve del
-     * model no pot escriure etiquetes. El poc HTML que hi ha el posem
-     * nosaltres, i sobre text que ja és inofensiu.
-     */
-    function formata(text) {
-      return String(text || '').split('\n').map(function (linia) {
-        var pic = /^[ \t]*[-*•·]\s+/.test(linia);
-        var cos = esc(pic ? linia.replace(/^[ \t]*[-*•·]\s+/, '') : linia)
-          /* La negreta del model. Sense saltar de línia a dins: un asterisc
-             solt enmig d'un text no ha de menjar-se mig missatge. */
-          .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
-          .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:!?]|$)/g, '$1<i>$2</i>')
-          .replace(/`([^`\n]+)`/g, '<code>$1</code>');
-        /* Una línia per bloc, i les de llista amb sagnat penjat: quan una
-           línia de «15:00 · Dinar amb els caçadors» dona la volta, la segona
-           part ha de quedar sota el text i no sota el pic. */
-        return '<span class="l"' + (pic ? ' data-pic="1"' : '') + '>' + cos + '</span>';
-      }).join('');
-    }
-
-    function torn(m) {
-      var h = '<div class="torn" data-rol="' + esc(m.rol) + '">' +
-        '<div class="fil-resposta"></div>' +
-        '<div class="torn-fitxa">' +
-          '<div class="torn-rail"></div>' +
-          '<div class="torn-clau a"></div><div class="torn-clau b"></div>' +
-          '<div class="torn-cursa">' +
-        '<div class="diu">' + formata(m.text) + '</div>';
-      if ((m.eines && m.eines.length) || m.temps) {
-        h += '<div class="traca">' +
-          (m.eines || []).map(function (e) {
-            return '<span><b>' + esc(e.eina) + '</b> · ' +
-                   (e.files === null || e.files === undefined ? 'ok' : e.files + ' files') + '</span>';
-          }).join('') +
-          (m.temps ? '<span title="on se n\'ha anat el temps"><b>' +
-             (m.temps.total / 1000).toFixed(1) + 's</b> · ia ' + (m.temps.ia / 1000).toFixed(1) +
-             ' · dades ' + ((m.temps.context + m.temps.eines) / 1000).toFixed(1) +
-             (m.temps.veu ? ' · veu ' + (m.temps.veu / 1000).toFixed(1) : '') +
-             ' · ' + m.temps.voltes + (m.temps.voltes === 1 ? ' volta' : ' voltes') +
-             /* Només si ha rumiat. Li demanem que no ho faci perquè costa
-                segons, i no tots els models fan cas: si un dia torna a anar
-                lent, aquí es veu de seguida si és això o és una altra cosa.
-                La xifra és de Google, no una suposició nostra. */
-             (m.temps.rumiat ? ' · <b>ha rumiat ' + m.temps.rumiat + ' tokens</b>' : '') +
-             '</span>' : '') +
-        '</div>';
-      }
-      /* Aquí s'acaba el que fa scroll. LES PROPOSTES QUEDEN FORA:
-         una escriptura per confirmar no pot quedar amagada sota el text ni
-         esvaïda pel marge —hi ha un botó que has de poder prémer—, i per això
-         viu sota la fitxa i sempre a la vista. */
-      h += '</div>';
-      if (m.propostes && m.propostes.length) {
-        h += m.propostes.map(function (p, i) {
-          /* COM HA QUEDAT, SI JA ESTÀ RESOLTA. Fins ara el resultat només
-             s'escrivia al requadre en prémer el botó, i com que prémer un
-             botó no repinta res, allà s'hi quedava. Dient «sí» sí que es
-             repinta —la pantalla ha de dir alguna cosa més—, i llavors el
-             «Fet.» desapareixia i tornaven a sortir els dos botons d'una
-             cosa que ja estava feta. */
-          var estat = p.resolta ? fiDeProposta_(p) : '';
-          return '<div class="proposta" data-proposta="' + i + '"><p>' + esc(p.etiqueta) + '</p>' +
-            (estat || '<div class="accions"><button data-si="1">Confirma</button>' +
-                      '<button data-no="1">Deixa-ho</button></div>') + '</div>';
-        }).join('');
-      }
-      return h + '</div></div>';
-    }
-
-    /**
-     * FINS ON POT ARRIBAR LA FITXA, MESURAT I NO ENDEVINAT.
-     *
-     * Ho tenia posat a «40 de l'alçada de la pantalla» i era una xifra
-     * inventada: amb una resposta llarga i la barra del micròfon oberta, la
-     * fitxa passava per sota de la barra d'escriure i l'última línia quedava
-     * tapada pel que estaves dictant. Es va veure a la primera captura.
-     *
-     * Ara es mira l'espai que queda de debò —el que sobra del centre un cop
-     * hi és l'esfera— i se li resta el que la fitxa ocupa sense text: el fil,
-     * les vores, el coixí i, si n'hi ha, la proposta a confirmar. El que
-     * queda és el sostre. No hi ha cap número escrit a mà.
-     */
-    function capALaFitxa(cursa) {
-      var centre = arrel.querySelector('.jefe-centre');
-      var caixa = arrel.querySelector('.nucli-caixa');
-      var elTorn = tr.querySelector('.torn');
-      if (!centre || !caixa || !elTorn) return;
-
-      /* `clientHeight` INCLOU EL COIXÍ, i el centre en té a dalt. Sense
-         restar-lo sortien setze píxels de més: just els que feien que
-         l'última línia quedés sota la barra d'escriure. */
-      var e = window.getComputedStyle(centre);
-      var coixi = (parseFloat(e.paddingTop) || 0) + (parseFloat(e.paddingBottom) || 0);
-      var separacio = parseFloat(e.rowGap) || 12;
-      var disponible = centre.clientHeight - coixi - caixa.offsetHeight - separacio;
-
-      /* El que ocupa el torn sense comptar el text: mesurat, no calculat a
-         partir del CSS, que és on s'acumulen les errades d'un píxel. */
-      var extra = elTorn.offsetHeight - cursa.clientHeight;
-      var sostre = Math.max(88, Math.round(disponible - extra));
-      cursa.style.setProperty('--sostre', sostre + 'px');
-    }
-
-    /* ON S'ESVAEIX EL TEXT I QUANT EN PORTES LLEGIT.
-       Es fa aquí i no amb CSS sol perquè les dues coses depenen d'una mesura:
-       quant sobra i on ets. Sense scroll possible, no s'esvaeix per enlloc i
-       el rail va ple: un text sencer no s'ha d'esvair per res. */
-    function marcaLaLectura() {
-      var c = tr.querySelector('.torn-cursa');
-      var rail = tr.querySelector('.torn-rail');
-      if (!c || !rail) return;
-
-      var sobra = c.scrollHeight - c.clientHeight;
-      var dalt = sobra > 1 && c.scrollTop > 2;
-      var baix = sobra > 1 && c.scrollTop < sobra - 2;
-      c.style.setProperty('--m1', dalt ? '22px' : '0px');
-      c.style.setProperty('--m2', baix ? 'calc(100% - 22px)' : '100%');
-
-      var f = sobra <= 1 ? 1 : Math.min(1, (c.scrollTop + c.clientHeight) / c.scrollHeight);
-      rail.style.transform = 'scaleY(' + f + ')';
-    }
-
-    /* Les propostes del darrer torn que encara no has ni confirmat ni
-       descartat. Tant els botons com la veu treballen sobre aquesta llista. */
-    function propostesPendents() {
-      var m = missatges[missatges.length - 1];
-      return (m && m.propostes || []).filter(function (p) { return !p.resolta; });
-    }
-
-    function caixaDe_(p) {
-      var m = missatges[missatges.length - 1];
-      var i = (m && m.propostes || []).indexOf(p);
-      return i === -1 ? null : tr.querySelector('.proposta[data-proposta="' + i + '"]');
-    }
-
-    /* Com queda un requadre un cop resolt. Ha de sortir igual tant si el
-       repintat el torna a construir com si s'escriu al vol. */
-    function fiDeProposta_(p) {
-      if (p.com === 'fet') return '<p style="margin:0;color:var(--cian)">Fet.</p>';
-      if (p.com === 'descartat') return '<p style="margin:0;color:var(--apagat)">Descartat.</p>';
-      return '<p style="margin:0;color:var(--alerta)">' + esc(p.com || 'No s\'ha pogut fer.') + '</p>';
-    }
-
-    function acaba_(p, com) {
-      p.resolta = true;
-      p.com = com;
-      var el = caixaDe_(p);
-      if (el) el.innerHTML = '<p>' + esc(p.etiqueta) + '</p>' + fiDeProposta_(p);
-    }
-
-    function descarta_(p) { acaba_(p, 'descartat'); }
-
-    function confirma_(p) {
-      var el = caixaDe_(p);
-      var boto = el && el.querySelector('[data-si]');
-      if (boto) { boto.disabled = true; boto.textContent = 'Desant…'; }
-      return crida('conversa', 'confirma', { eina: p.eina, args: p.args })
-        .then(function () {
-          acaba_(p, 'fet');
-          /* ACABA D'ESCRIURE UNA DADA: el que hi ha desat d'aquell mòdul ja no
-             val. Sense això, obrir finances just després ensenyaria el mes
-             sense el que acabes de confirmar.
-
-             S'OBLIDA EL MÒDUL DE LA PROPOSTA, no una llista escrita a mà.
-             Aquí hi havia els vuit noms escrits, i això volia dir que el dia
-             que hi hagi un mòdul nou, confirmar-li una escriptura deixaria la
-             seva pantalla amb el de fa una estona —i no ho notaria ningú fins
-             que passés. Afegir un mòdul ha de ser un fitxer i prou, també per
-             aquesta banda. La clau del desat és el nom del mòdul: mateix nom,
-             mateixa família.
-
-             SENSE PUNT AL FINAL: `oblida` va per prefix, i les claus de
-             l'escola i del seguiment són la paraula pelada —«escola», no
-             «escola.res»—. Amb el punt no s'haurien esborrat mai. */
-          if (p.modul) Cau.oblida(p.modul);
-          Cau.treu('inici');
-          nucli.pols(1);
-          return true;
-        })
-        .catch(function (err) {
-          acaba_(p, err.message);              // resolta amb error: ja no espera res
-          throw err;
-        });
-    }
-
-    function lligaPropostes() {
-      tr.querySelectorAll('.proposta').forEach(function (el) {
-        var m = missatges[missatges.length - 1];
-        var p = m && m.propostes ? m.propostes[Number(el.dataset.proposta)] : null;
-        /* Una de resolta ja no té botons: només diu com ha quedat. Buscar-los
-           igualment tornava `null` i petava aquí mateix, i com que això passa
-           dins del repintat, el que es trencava era tot el que venia després
-           —el nucli es quedava dient «desant» per sempre. */
-        if (!p || p.resolta) return;
-        el.querySelector('[data-no]').addEventListener('click', function () { descarta_(p); });
-        el.querySelector('[data-si]').addEventListener('click', function () {
-          confirma_(p)['catch'](function () {});
-        });
-      });
-    }
-
-    /**
-     * ══════════════════════════════════════════════════════════════════════
-     * DIR «SÍ» TAMBÉ CONFIRMA
-     * ══════════════════════════════════════════════════════════════════════
-     *
-     * Res del que JEFE escriu passa sense que ho confirmis: és la regla que
-     * fa que se li pugui deixar tocar el full. Però l'única manera de
-     * confirmar era prémer un botó, i això trencava pel mig l'única cosa que
-     * hauria de funcionar sense mans: parlar-li mentre condueixes, mentre
-     * cuines o amb el telèfon a la butxaca. Deies «apunta trenta euros de
-     * gasolina», ell ho preparava, i allà es quedava.
-     *
-     * Aquí «sí» no és una pregunta al model: és el botó. Si hi ha alguna
-     * proposta esperant i el que has dit ÉS una d'aquestes paraules —tota la
-     * frase, no una part—, es confirma o es descarta sense sortir de la
-     * pantalla i sense gastar cap petició.
-     *
-     * LA FRASE SENCERA I NO UN TROS, i és la part important. Amb «conté un
-     * sí» n'hi hauria prou perquè «sí, però a les cinc» confirmés l'hora
-     * dolenta i «no, millor demà» no en canviés cap. Tot el que no sigui
-     * exactament una d'aquestes paraules torna a ser una frase per al model,
-     * que és qui sap què vol dir.
-     */
-    var PARAULES_SI = ['si', 'si si', 'sisi', 'fes ho', 'fes la', 'fes les', 'fes',
-                       'endavant', 'confirma', 'confirma ho', 'confirmat', 'd acord',
-                       'dacord', 'va', 'som hi', 'tira', 'correcte', 'exacte', 'aixo',
-                       'aixo mateix', 'perfecte', 'apunta ho', 'desa ho', 'guarda ho', 'ok'];
-    var PARAULES_NO = ['no', 'no no', 'deixa ho', 'deixa la', 'deixa les', 'deixa estar',
-                       'cancel la', 'anul la', 'oblida ho', 'millor no', 'res', 'para',
-                       'atura ho', 'no ho facis', 'descarta ho'];
-
-    function respostaAUnaProposta(text) {
-      if (!propostesPendents().length) return null;
-      var net = neteja(text);
-      if (!net) return null;
-      if (PARAULES_SI.indexOf(net) !== -1) return 'si';
-      if (PARAULES_NO.indexOf(net) !== -1) return 'no';
-      return null;
-    }
-
-    /* Amb la veu no veus la pantalla: el que passa s'ha de sentir. Per això
-       aquí es diu en veu alta què s'ha fet, i amb el compte quan n'hi ha més
-       d'una —«dos fets» no és el mateix que «fet». */
-    function resolPerVeu(quina) {
-      var pendents = propostesPendents();
-      if (!pendents.length) return;
-
-      if (quina === 'no') {
-        pendents.forEach(descarta_);
-        if (veuActiva) parla(pendents.length === 1 ? 'Deixat.' : 'Deixades.');
-        App.brindis(pendents.length === 1 ? 'Descartat' : 'Descartades');
-        pinta();
-        return;
-      }
-
-      posaEstat('pensant', 'desant');
-      var fets = 0, error = null;
-      var cua = pendents.reduce(function (abans, p) {
-        return abans.then(function () { return confirma_(p).then(function () { fets++; }); })
-          ['catch'](function (err) { error = error || err; });
-      }, Promise.resolve());
-
-      cua.then(function () {
-        if (error && !fets) {
-          if (veuActiva) parla('No he pogut: ' + error.message);
-          App.brindis(error.message, 'error');
-        } else {
-          var diu = fets === 1 ? 'Fet.' : fets + ' fets.';
-          if (veuActiva) parla(diu);
-          App.brindis(error ? diu + ' Una ha fallat.' : diu);
-        }
-        pinta();
-        /* El micròfon ha de tornar a escoltar: si no, «sí» seria l'última
-           cosa que li pots dir sense tornar a tocar la pantalla. */
-        if (continua && veu.engegat) {
-          posaEstat('escoltant', 'escoltant');
-          mostraOida('escoltant… parla quan vulguis', false);
-        } else {
-          posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
-                    estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
-        }
-      });
-    }
-
-    /* Dos problemes ben diferents que abans es mostraven igual: no arribar al
-       servidor no és el mateix que arribar-hi i que no tingui clau d'IA. */
-    function avisApagat(motiu, esXarxa) {
-      var m = String(motiu || '');
-      var noArriba = esXarxa || /failed to fetch|network|servidor ha respost|connexió/i.test(m);
-
-      tr.innerHTML = noArriba
-        ? '<div class="avis-apagat"><strong>No arribo al servidor</strong>' + esc(m) +
-          '<p style="margin:var(--e3) 0 var(--e2)">Coses que ho provoquen, per ordre:</p>' +
-          '<ol style="margin:0;padding-left:1.2em;line-height:1.8">' +
-          '<li>El desplegament no és d\'accés <b>Qualsevol</b>. És la causa més freqüent, ' +
-              'i torna a passar si es crea una versió nova amb el manifest mal posat.</li>' +
-          '<li>L\'URL no acaba en <code>/exec</code>, o és la de <code>/dev</code>, ' +
-              'que exigeix sessió de Google i no serveix des de fora.</li>' +
-          '<li>No hi ha connexió.</li></ol>' +
-          '<button class="btn btn-secundari btn-ple" data-reconnecta="1" ' +
-          'style="margin-top:var(--e4)">Revisa l\'URL i la clau</button></div>'
-
-        : '<div class="avis-apagat"><strong>Sense clau d\'IA</strong>' + esc(m) +
-          '<p style="margin:var(--e3) 0 var(--e2)">Per engegar-me:</p>' +
-          '<ol style="margin:0;padding-left:1.2em;line-height:1.8">' +
-          '<li>Clau a <code>aistudio.google.com</code></li>' +
-          '<li>Apps Script → Configuració del projecte → Propietats de l\'script → <code>CLAU_IA</code></li>' +
-          '<li>Full <code>_Config</code> → <code>ia_activa</code> = <code>SI</code></li>' +
-          '<li>Executa <code>triaModels</code> i després <code>provaIA</code></li></ol></div>';
-
-      var b = tr.querySelector('[data-reconnecta]');
-      if (b) b.addEventListener('click', function () { App.connecta(m); });
-    }
-
-    // -------------------------------------------------------------------- enviar
-
-    /* Text a mà oberta: sense accents, sense signes, un sol espai. Així
-       «Ensenya'm la pàgina del dia» i «obre la pagina del dia» són la
-       mateixa cosa, que és com les diu una persona. */
-    function neteja(t) {
-      var s = String(t || '').toLowerCase();
-      /* Les vocals accentuades a pèl i no amb `normalize`: aquí es veu què
-         es converteix en què, i el dia que falti una lletra es veu de seguida. */
-      var amb = 'àáâäèéêëìíîïòóôöùúûüñç';
-      var sense = 'aaaaeeeeiiiioooouuuunc';
-      var out = '';
-      for (var i = 0; i < s.length; i++) {
-        var n = amb.indexOf(s.charAt(i));
-        var c = n === -1 ? s.charAt(i) : sense.charAt(n);
-        out += /[a-z0-9]/.test(c) ? c : ' ';
-      }
-      return out.replace(/\s+/g, ' ').trim();
-    }
-
-    /**
-     * ALGUNES ORDRES NO SÓN PREGUNTES.
-     *
-     * «Ensenya'm la pàgina del dia» és un botó dit amb la boca. Passar-la pel
-     * model volia dir muntar la fitxa, esperar-lo, i que decidís que la
-     * resposta ja la tenia i te la recités en comptes d'obrir res. Aquí no hi
-     * ha res a pensar: s'hi va i punt, sense tocar el servidor.
-     *
-     * Les frases les posen els mòduls, no aquesta pantalla. Vegeu
-     * `Moduls.dreceres`.
-     */
-    function drecera(text) {
-      var net = neteja(text);
-      if (!net) return null;
-      var l = (estatIA && estatIA.dreceres) || [];
-      for (var i = 0; i < l.length; i++) {
-        for (var j = 0; j < l[i].frases.length; j++) {
-          if (net.indexOf(l[i].frases[j]) !== -1 && App.vistes[l[i].vista]) return l[i];
-        }
-      }
-      return null;
-    }
-
-    function envia() {
-      var text = camp.value.trim();
-      if (!text || ocupat) return;
-
-      /* «Sí» amb una proposta esperant és el botó, no una pregunta. Va abans
-         que les dreceres i abans que el servidor: no gasta cap petició i no
-         canvia de pantalla. */
-      var resposta = respostaAUnaProposta(text);
-      if (resposta) {
-        camp.value = ''; camp.style.height = 'auto';
-        if (App._tancaEscriptura) App._tancaEscriptura();
-        resolPerVeu(resposta);
-        return;
-      }
-
-      var d = drecera(text);
-      if (d) {
-        camp.value = ''; camp.style.height = 'auto';
-        if (App._tancaEscriptura) App._tancaEscriptura();
-        App.ves(d.vista, d.params || null);
-        return;
-      }
-
-      ocupat = true; camp.value = ''; camp.style.height = 'auto';
-      arrel.querySelector('#b-envia').disabled = true;
-      // Enviada l'ordre, el camp se'n va i torna a manar el nucli.
-      if (App._tancaEscriptura) App._tancaEscriptura();
-
-      missatges.push({ rol: 'usuari', text: text });
-      respostaFresca = false;          // la d'abans ja no val
-      pinta();
-      posaEstat('pensant', 'consultant dades');
-      nucli.pols(1);
-
-      // Comptador visible: si triga, que se sàpiga que està treballant i quant.
-      var t0 = Date.now();
-      clearInterval(App._cronometre);
-      App._cronometre = setInterval(function () {
-        var s = Math.round((Date.now() - t0) / 1000);
-        var el = arrel.querySelector('#etiqueta-estat');
-        if (el && ocupat) el.textContent = 'consultant · ' + s + 's';
-      }, 1000);
-
-      crida('conversa', 'envia', { text: text, id_conversa: idConversa })
-        .then(rebResposta)
-        .catch(function (err) { missatges.push({ rol: 'assistent', text: err.message }); acaba(); });
-    }
-
-    /* La resposta es tracta igual tant si li has escrit com si li has parlat:
-       una sola funció, perquè el dia que canviï una cosa canviï per als dos. */
-    function rebResposta(r) {
-      idConversa = r.id_conversa; Cau.set('conversa.id', idConversa);
-      if (r.consum && estatIA) estatIA.consum = r.consum;
-
-      /* Si venia de veu, ara ja sabem què has dit: la bombolla del micròfon
-         es queda amb el text en comptes dels segons que durava. */
-      if (r.pregunta) {
-        for (var k = missatges.length - 1; k >= 0; k--) {
-          if (missatges[k].esVeu) { missatges[k].text = r.pregunta; delete missatges[k].esVeu; break; }
-        }
-      }
-
-      /* UNA ORDRE DITA DE VEU NO PASSA PEL MODEL.
-         El servidor l'ha reconeguda just després de transcriure-la i no ha
-         arribat a preguntar res: aquí només queda anar-hi. Sense el respir de
-         les eines, que aquí no hi ha cap resposta per llegir. */
-      if (r.drecera && App.vistes[r.drecera.vista]) {
-        Cau.set('conversa.missatges', missatges.slice(-40));
-        acaba();
-        App.ves(r.drecera.vista, r.drecera.params || null);
-        return;
-      }
-
-      if (r.error) {
-        missatges.push({ rol: 'assistent', text: r.error });
-      } else {
-        ultimesEines = r.eines || [];
-        if (r.tokens) tokensSessio += (r.tokens.entrada || 0) + (r.tokens.sortida || 0);
-        missatges.push({ rol: 'assistent', text: r.resposta, eines: r.eines,
-                         propostes: r.propostes, temps: r.temps });
-        /* AMB VEU, LA PROPOSTA S'HA DE SENTIR. El que has de confirmar és
-           l'etiqueta —«30,00 € · gasolina · avui»—, i viu al requadre, no al
-           text. Sense dir-la en veu alta, confirmar sense mirar la pantalla
-           seria dir que sí a una cosa que no saps quina és. */
-        if (veuActiva) parla(ambLesPropostes(r.resposta, r.propostes));
-
-        /* UNA EINA POT DEMANAR QUE S'OBRI UNA PANTALLA.
-           És com «ensenya'm la pàgina del dia» acaba ensenyant-la, i és també
-           el camí de les ordres dites de veu: allà no hi ha cap llista de
-           frases, hi ha algú entenent-ho. La conversa no sap quines pantalles
-           hi ha ni quines eines les obren: només mira si l'eina ho ha demanat.
-
-           Va amb un respir: si canviéssim de pantalla a l'instant, no
-           arribaries a llegir el que t'acaba de dir. */
-        var ober = (r.eines || []).filter(function (e) { return e.obre; })[0];
-        if (ober) {
-          Cau.set('conversa.missatges', missatges.slice(-40));
-          setTimeout(function () {
-            if (App.vistes[ober.obre]) App.ves(ober.obre, ober.obreAmb || null);
-          }, 900);
-        }
-
-        /* I si el que demanava era VEURE una cosa, el plafó. Va més de pressa
-           que el canvi de pantalla —600 ms i no 900— perquè aquí no marxes de
-           lloc: el que passa és que et posen una cosa al davant.
-
-           DEMANAR UNA PÀGINA OBRE LA PÀGINA; demanar una cosa de dins d'una
-           pàgina la posa al plafó. Per això si una eina ja ha demanat obrir
-           una pantalla, el plafó no surt: seria posar-li una cosa al davant
-           just abans de canviar-lo de lloc. */
-        var mostrador = (r.eines || []).filter(function (e) { return e.mostra || e.visor; })[0];
-        if (mostrador && !ober) {
-          setTimeout(function () {
-            if (mostrador.visor) App.obreVisor('nucli.dades', mostrador.visor);
-            else App.obreVisor(mostrador.mostra, mostrador.obreAmb || null);
-          }, 600);
-        }
-      }
-      Cau.set('conversa.missatges', missatges.slice(-40));
-      acaba();
-    }
-
-    /* SI FALLA TRES VEGADES SEGUIDES, S'ATURA.
-       Amb el micròfon obert, cada frase que peta torna a escoltar i a petar:
-       et quedes mirant «escoltant · pensant · escoltant» sense saber que el
-       que passa és sempre el mateix error. Val més parar i dir-ho una vegada. */
-    var fallidesVeu = 0;
-
-    function acaba() {
-      ocupat = false;
-      respostaFresca = true;           // acaba de dir-ho: ara sí que es veu
-      clearInterval(App._cronometre);
-      arrel.querySelector('#b-envia').disabled = false;
-
-      /* Si el micròfon segueix obert, ha de tornar a dir que escolta. Deixar-hi
-         «pensant-hi…» fa creure que encara hi és i que no serveix de res
-         tornar-li a parlar. */
-      var ultim = missatges[missatges.length - 1];
-      var haAnatMalament = ultim && ultim.rol === 'assistent' &&
-                           /^(Error|No he pogut|El servei|Has arribat)/.test(ultim.text || '');
-      if (haAnatMalament && continua && veu.engegat) fallidesVeu++;
-
-      if (fallidesVeu >= 3 && continua) {
-        continua = false; aturaVoluntaria = true;
-        paraVeu(); pintaMicro();
-        mostraOida('Ho he intentat tres vegades i sempre falla. Micròfon aturat.', true);
-        App.brindis('Micròfon aturat: mira l\'error de sobre', 'error');
-        fallidesVeu = 0;
-        pinta();
-        return;
-      }
-
-      if (continua && veu.engegat) {
-        posaEstat('escoltant', 'escoltant');
-        mostraOida('escoltant… parla quan vulguis', false);
-      } else {
-        posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
-                  estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
-      }
-      pinta();
-    }
-
-    // ---------------------------------------------------------------------- veu
-
-    /**
-     * El text de la resposta, més el que hi ha per confirmar.
-     *
-     * L'etiqueta d'una proposta està escrita per llegir-se de reüll dins d'un
-     * requadre —«30,00 € · gasolina · avui»—, i dita en veu alta els punts
-     * volats no sonen. Es canvien per pauses, que és el que volen dir.
-     */
-    function ambLesPropostes(text, propostes) {
-      var p = propostes || [];
-      if (!p.length) return text;
-      var quines = p.map(function (x) {
-        return String(x.etiqueta || '').replace(/\s*·\s*/g, ', ');
-      });
-      return [String(text || '').trim()].concat(quines)
-        .concat([p.length === 1 ? 'Ho faig?' : 'Ho faig tot?'])
-        .filter(Boolean).join(' ');
-    }
-
-    function parla(text) {
-      if (!potParlar) return;
-      try {
-        speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(String(text).slice(0, 600));
-        u.lang = 'ca-ES'; u.rate = 1.05;
-        // Mentre parla, s'apaga l'escolta: si no, se sentiria a ell mateix
-        // i es respondria sol en bucle.
-        parlantAra = true;
-        if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
-
-        u.onstart = function () { posaEstat('parlant', 'parlant'); };
-        u.onboundary = function () { nucli.pols(0.7); };
-        u.onend = function () {
-          parlantAra = false;
-          if (continua) { posaEstat('escoltant', 'escoltant'); arrencaReconeixedor(); }
-          else posaEstat('repos', 'a punt');
-        };
-        speechSynthesis.speak(u);
-      } catch (e) {}
-    }
-
-    /* ---------------------------------------------------------------------
-       ESCOLTA CONTÍNUA
-
-       El botó del micròfon no és «prem i parla»: engega i es queda engegat.
-       Chrome talla el reconeixement cada pocs segons de silenci, així que
-       es torna a arrencar sol fins que l'apaguis.
-
-       Perquè no salti cada cop que dius qualsevol cosa a casa, només actua
-       quan sent la paraula clau. També s'atura mentre JEFE parla, per no
-       sentir-se a ell mateix.
-       --------------------------------------------------------------------- */
-
-    var CLAUS = ['jefe', 'jefa', 'xefe', 'chef', 'hefe', 'gefe', 'jefes', 'efe', 'sefe'];
-    var continua = false, aturaVoluntaria = false, parlantAra = false;
-    var buffer = '', tempsBuffer = null, consumitFinsA = 0;
-
-    /* La paraula clau és OPCIONAL i ve apagada de sèrie. Amb ella activada,
-       si el reconeixedor no encerta el nom, sembla que l'app no faci res.
-       Val més que enviï de més i que ho vegis, que no que calli sense dir res. */
-    var usaParaulaClau = Cau.get('conversa.paraulaClau', false);
-
-    function Utils_talla(t, n) {
-      t = String(t || '');
-      return t.length <= n ? t : t.slice(0, n) + '…';
-    }
-
-    function mostraOida(text, esError) {
-      var b = arrel.querySelector('#oida');
-      if (!b) return;
-      b.hidden = false;
-      b.dataset.error = esError ? '1' : '0';
-      arrel.querySelector('#oida-text').textContent = text;
-    }
-
-    function amagaOida() {
-      var b = arrel.querySelector('#oida');
-      if (b) b.hidden = true;
-    }
-
-    function teParaulaClau(t) {
-      var n = t.toLowerCase();
-      for (var i = 0; i < CLAUS.length; i++) {
-        var p = n.indexOf(CLAUS[i]);
-        if (p !== -1) return n.slice(p + CLAUS[i].length).replace(/^[\s,.:;!?]+/, '');
-      }
-      return null;
-    }
-
-    /* ======================================================================
-       PARLAR-LI DIRECTAMENT, SENSE TRANSCRIURE PEL CAMÍ
-
-       El reconeixedor del navegador feia una primera passada en català que
-       s'equivocava sovint: canviava paraules per altres que sonen igual i en
-       Pol ho havia de repetir vocalitzant com si parlés amb una màquina. Amb
-       l'àudio sencer aquell pas desapareix, i amb ell els seus errors.
-
-       Aquí no hi ha cap llista de frases per a les ordres d'acció: com que
-       hi ha algú entenent-ho de debò, «obre'm la pàgina del dia» arriba a
-       l'eina que l'obre igual que quan ho escrius.
-
-       COM SAP QUE HAS ACABAT DE PARLAR: mesurant el volum. Els primers tres
-       quarts de segon serveixen per prendre la mida del silenci de l'habitació
-       —no és el mateix el cotxe que la cuina— i a partir d'aquí, quan tornes a
-       baixar-hi durant un segon, la frase s'ha acabat.
-
-       ENVIA WAV DE 16 kHz i no el que doni el navegador: el que en surt de
-       sèrie a Chrome és webm, i el model no l'accepta. Setze mil mostres per
-       segon és el que fan servir tots els reconeixedors; més no serveix de res
-       i pesa el doble.
-       ====================================================================== */
-
-    var MOSTREIG = 16000;
-    var MAX_SEGONS = 15;               // passat d'aquí no és una pregunta
-    var SILENCI_MS = 1000;             // silenci que tanca la frase
-    var MIN_SEGONS = 0.35;             // menys que això és un cop de porta
-
-    var veu = {
-      flux: null, ctx: null, node: null, font: null,
-      trossos: [], gravant: false, engegat: false,
-      soroll: 0.004, mostresSoroll: 0, desDeSilenci: 0, msVeu: 0, mostresSilenci: 0
-    };
-
-    function potGravar() {
-      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
-                (window.AudioContext || window.webkitAudioContext));
-    }
-
-    function paraVeu() {
-      veu.engegat = false;
-      veu.gravant = false;
-      veu.trossos = [];
-      try { if (veu.node) veu.node.disconnect(); } catch (e) {}
-      try { if (veu.font) veu.font.disconnect(); } catch (e) {}
-      try { if (veu.ctx) veu.ctx.close(); } catch (e) {}
-      try { if (veu.flux) veu.flux.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-      veu.node = veu.font = veu.ctx = veu.flux = null;
-    }
-
-    function engegaVeu() {
-      if (veu.engegat) return;
-      mostraOida('engegant el micròfon…', false);
-
-      navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true,
-                 autoGainControl: true }
-      }).then(function (flux) {
-        var AC = window.AudioContext || window.webkitAudioContext;
-        veu.flux = flux;
-        veu.ctx = new AC();
-        veu.font = veu.ctx.createMediaStreamSource(flux);
-        /* `createScriptProcessor` està marcat d'antic, però és l'única manera
-           de llegir les mostres que funciona a tot arreu sense carregar un
-           fitxer a part, i aquí l'app ha de venir d'una sola peça. */
-        veu.node = veu.ctx.createScriptProcessor(4096, 1, 1);
-        veu.node.onaudioprocess = mossega;
-        veu.font.connect(veu.node);
-        veu.node.connect(veu.ctx.destination);
-
-        veu.engegat = true;
-        veu.gravant = false;
-        veu.trossos = [];
-        veu.soroll = 0.004; veu.mostresSoroll = 0; veu.desDeSilenci = 0;
-        veu.msVeu = 0; veu.mostresSilenci = 0;
-
-        posaEstat('escoltant', 'escoltant');
-        mostraOida('escoltant… parla quan vulguis', false);
-      }).catch(function (err) {
-        continua = false; aturaVoluntaria = true;
-        pintaMicro(); amagaOida();
-        if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) diagnosticMicro();
-        else mostraOida('No he pogut obrir el micròfon: ' + (err && err.name ? err.name : 'error'), true);
-      });
-    }
-
-    function mossega(ev) {
-      if (!veu.engegat) return;
-
-      /* Mentre pensa la resposta o mentre parla ell, no s'escolta: si no,
-         es gravaria a si mateix i es respondria sol. El que caigui aquí
-         enmig es llença, no s'acumula per enviar-ho després. */
-      if (ocupat || parlantAra) {
-        if (veu.gravant) { veu.gravant = false; veu.trossos = []; veu.desDeSilenci = 0; }
-        return;
-      }
-
-      var dades = ev.inputBuffer.getChannelData(0);
-
-      var suma = 0;
-      for (var i = 0; i < dades.length; i++) suma += dades[i] * dades[i];
-      var volum = Math.sqrt(suma / dades.length);
-
-      // Els primers instants només serveixen per saber com sona el silenci d'aquí.
-      if (veu.mostresSoroll < 8) {
-        veu.mostresSoroll++;
-        veu.soroll = Math.max(0.003, (veu.soroll * (veu.mostresSoroll - 1) + volum) / veu.mostresSoroll);
-        return;
-      }
-
-      var llindar = Math.max(veu.soroll * 2.5, 0.008);
-      var msTros = (dades.length / veu.ctx.sampleRate) * 1000;
-
-      if (volum > llindar) {
-        if (!veu.gravant) {
-          veu.gravant = true;
-          veu.trossos = [];
-          veu.msVeu = 0;
-          veu.mostresSilenci = 0;
-          mostraOida('sentint-te…', false);
-        }
-        veu.desDeSilenci = 0;
-        veu.msVeu += msTros;
-        veu.mostresSilenci = 0;
-      } else if (veu.gravant) {
-        veu.desDeSilenci += msTros;
-        veu.mostresSilenci += dades.length;
-      }
-
-      if (!veu.gravant) return;
-
-      // Una còpia: el buffer que dona el navegador es reaprofita.
-      var copia = new Float32Array(dades.length);
-      copia.set(dades);
-      veu.trossos.push(copia);
-      nucli.pols(Math.min(1, 0.3 + volum * 8));
-
-      var segons = mostresTotals() / veu.ctx.sampleRate;
-      if (veu.desDeSilenci >= SILENCI_MS || segons >= MAX_SEGONS) tancaFrase();
-    }
-
-    function mostresTotals() {
-      var n = 0;
-      for (var i = 0; i < veu.trossos.length; i++) n += veu.trossos[i].length;
-      return n;
-    }
-
-    function tancaFrase() {
-      var trossos = veu.trossos;
-      var mostres = mostresTotals();
-      var msVeu = veu.msVeu;
-      /* El silenci del final s'hi ha gravat també: se'n treu tot menys un pam,
-         que fa un terç menys de fitxer i un terç menys d'espera per pujar-lo. */
-      var sobren = Math.max(0, veu.mostresSilenci - Math.round(0.25 * (veu.ctx ? veu.ctx.sampleRate : MOSTREIG)));
-
-      veu.gravant = false;
-      veu.trossos = [];
-      veu.desDeSilenci = 0;
-      veu.msVeu = 0;
-      veu.mostresSilenci = 0;
-      if (!veu.ctx) return;
-
-      /* El mínim es mesura amb el que HAS DIT, no amb el que s'ha gravat: un
-         cop de porta dura dues dècimes però arrossega un segon de silenci
-         darrere, i comptant-ho tot semblava una frase. */
-      if (msVeu < MIN_SEGONS * 1000) { mostraOida('escoltant… parla quan vulguis', false); return; }
-
-      mostres = Math.max(0, mostres - sobren);
-      var segons = mostres / veu.ctx.sampleRate;
-      var wav = fesWav(trossos, mostres, veu.ctx.sampleRate);
-      apuntaVeu(segons, wav.length);
-      mostraOida('pensant-hi…', false);
-      enviaSo(wav, segons);
-    }
-
-    /** Les mostres, ajuntades i baixades a 16 kHz, dins d'un fitxer WAV. */
-    function fesWav(trossos, mostres, mostreigOriginal) {
-      var tot = new Float32Array(mostres), pos = 0;
-      for (var i = 0; i < trossos.length && pos < mostres; i++) {
-        var t = trossos[i];
-        if (pos + t.length > mostres) t = t.subarray(0, mostres - pos);
-        tot.set(t, pos); pos += t.length;
-      }
-
-      var rao = mostreigOriginal / MOSTREIG;
-      var quantes = Math.floor(mostres / rao);
-      var pcm = new Int16Array(quantes);
-      for (var j = 0; j < quantes; j++) {
-        var v = tot[Math.floor(j * rao)] || 0;
-        if (v > 1) v = 1; else if (v < -1) v = -1;
-        pcm[j] = v * 32767;
-      }
-
-      var cap = new DataView(new ArrayBuffer(44));
-      var mida = pcm.length * 2;
-      function txt(p, s) { for (var k = 0; k < s.length; k++) cap.setUint8(p + k, s.charCodeAt(k)); }
-      txt(0, 'RIFF');                 cap.setUint32(4, 36 + mida, true);
-      txt(8, 'WAVEfmt ');             cap.setUint32(16, 16, true);
-      cap.setUint16(20, 1, true);     cap.setUint16(22, 1, true);
-      cap.setUint32(24, MOSTREIG, true);
-      cap.setUint32(28, MOSTREIG * 2, true);
-      cap.setUint16(32, 2, true);     cap.setUint16(34, 16, true);
-      txt(36, 'data');                cap.setUint32(40, mida, true);
-
-      // A base64 a trossos: d'una tirada, `String.fromCharCode` peta amb pocs segons.
-      var bytes = new Uint8Array(44 + mida);
-      bytes.set(new Uint8Array(cap.buffer), 0);
-      bytes.set(new Uint8Array(pcm.buffer), 44);
-
-      var lletres = '';
-      for (var n = 0; n < bytes.length; n += 8192) {
-        lletres += String.fromCharCode.apply(null, bytes.subarray(n, n + 8192));
-      }
-      return btoa(lletres);
-    }
-
-    function enviaSo(base64, segons) {
-      if (ocupat) return;
-      ocupat = true;
-      arrel.querySelector('#b-envia').disabled = true;
-      /* La bombolla es posa buida i s'omple amb el que resulti que has dit:
-         el text arriba amb la resposta, no abans. Deixar-la sense res faria
-         semblar que no ha sentit res. */
-      missatges.push({ rol: 'usuari', text: '🎙 ' + segons.toFixed(1) + 's', esVeu: true });
-      respostaFresca = false;
-      pinta();
-      posaEstat('pensant', 'escoltant-te');
-
-      var t0 = Date.now();
-      clearInterval(App._cronometre);
-      App._cronometre = setInterval(function () {
-        var el = arrel.querySelector('#etiqueta-estat');
-        if (el && ocupat) el.textContent = 'consultant · ' + Math.round((Date.now() - t0) / 1000) + 's';
-      }, 1000);
-
-      crida('conversa', 'enviaVeu', { audio: base64, mime: 'audio/wav', id_conversa: idConversa })
-        .then(function (r) { if (!r.error) fallidesVeu = 0; rebResposta(r); })
-        .catch(function (err) { missatges.push({ rol: 'assistent', text: err.message }); acaba(); });
-    }
-
-    /* El que ha sentit, per si un dia torna a fallar: quant ha durat i quant
-       pesava. Sense text, perquè ara no n'hi ha pel camí. */
-    function apuntaVeu(segons, mida) {
-      diariOida.push({ quan: new Date(), provisional: '', tancat: true,
-                       definitiu: segons.toFixed(1) + ' s · ' + Math.round(mida / 1400) + ' kB enviats',
-                       confianca: null, alternatives: [] });
-      if (diariOida.length > 12) diariOida.shift();
-    }
-
-    /* EL DIARI DE L'OÏDA.
-       Les últimes frases sentides, amb el provisional, el definitiu i com de
-       segur n'estava Chrome. Quan la transcripció surt malament no hi ha
-       manera de saber de qui és la culpa sense veure això: si el definitiu ja
-       ve dolent és el reconeixedor, i si ve bé però s'envia dolent som
-       nosaltres. Viuen només a la memòria, no es desen enlloc. */
-    var diariOida = [];
-
-    function apuntaOida(fet, ara, confianca, ev) {
-      var alt = [];
-      try {
-        var r = ev.results[ev.results.length - 1];
-        for (var i = 0; i < r.length && i < 3; i++) alt.push(r[i].transcript);
-      } catch (e) {}
-
-      var ultim = diariOida[diariOida.length - 1];
-      if (ultim && !ultim.tancat) {
-        ultim.provisional = ara || ultim.provisional;
-        ultim.definitiu = fet || ultim.definitiu;
-        if (confianca !== null) ultim.confianca = confianca;
-        ultim.alternatives = alt;
-        if (fet && !ara) ultim.tancat = true;
-        return;
-      }
-      diariOida.push({ quan: new Date(), provisional: ara, definitiu: fet,
-                       confianca: confianca, alternatives: alt, tancat: !!(fet && !ara) });
-      if (diariOida.length > 12) diariOida.shift();
-    }
-
-    function ensenyaDiariOida() {
-      if (!diariOida.length) {
-        App.brindis('Encara no he sentit res en aquesta sessió');
-        return;
-      }
-      var hh = function (d) {
-        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) +
-               ':' + ('0' + d.getSeconds()).slice(-2);
-      };
-      App.modal('Què he sentit',
-        '<div class="form-ajustos">' +
-          '<p class="menut">Idioma demanat: <code>' + esc(IDIOMA_VEU) + '</code> · ' +
-            'navegador: <code>' + esc(navigator.userAgent.slice(0, 60)) + '</code></p>' +
-          diariOida.slice().reverse().map(function (o) {
-            return '<div style="border-top:1px solid var(--linia);padding:var(--e2) 0">' +
-              '<p class="menut">' + hh(o.quan) +
-                (typeof o.confianca === 'number'
-                  ? ' · seguretat ' + Math.round(o.confianca * 100) + '%' : '') + '</p>' +
-              (o.definitiu ? '<p><b>definitiu:</b> ' + esc(o.definitiu) + '</p>' : '') +
-              (o.provisional ? '<p class="menut">provisional: ' + esc(o.provisional) + '</p>' : '') +
-              (o.alternatives.length > 1
-                ? '<p class="menut">altres: ' + esc(o.alternatives.slice(1).join(' · ')) + '</p>' : '') +
-            '</div>';
-          }).join('') +
-        '</div>');
-    }
-
-    /* Chrome demana el codi complet. Si el telèfon no té el model de català
-       instal·lat, en fa servir un altre sense dir-ho i tot surt del revés:
-       per això el diari de sobre diu quin s'ha demanat. */
-    var IDIOMA_VEU = 'ca-ES';
-
-    function arrencaReconeixedor() {
-      var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!Rec || reconeixedor || parlantAra) return;
-
-      reconeixedor = new Rec();
-      reconeixedor.lang = IDIOMA_VEU;
-      reconeixedor.interimResults = true;
-      reconeixedor.continuous = true;
-      // Tres, per poder veure què més s'havia plantejat quan s'equivoca.
-      reconeixedor.maxAlternatives = 3;
-
-      reconeixedor.onstart = function () {
-        posaEstat('escoltant', 'escoltant');
-        mostraOida('escoltant…', false);
-      };
-
-      /* EL QUE S'ENVIA ÉS EL DEFINITIU, NO EL PROVISIONAL.
-         Chrome dona dues coses: una transcripció provisional mentre parles,
-         que va canviant a cada síl·laba, i una de definitiva quan tanca la
-         frase. La provisional és el primer intent en brut; la definitiva
-         passa pel model de llengua i corregeix mitja frase. Enviant la
-         provisional s'estava enviant el pitjor dels dos.
-
-         Es continua enviant per silenci —esperar que Chrome tanqui la sessió
-         voldria dir no enviar mai mentre parles—, però amb dues esperes: si
-         encara hi ha res provisional se li dona temps a acabar-se de decidir,
-         i si ja està tot tancat, s'envia de seguida. */
-      reconeixedor.onresult = function (ev) {
-        var fet = '', ara = '', confianca = null;
-        for (var i = consumitFinsA; i < ev.results.length; i++) {
-          var r = ev.results[i];
-          if (r.isFinal) {
-            fet += r[0].transcript;
-            if (confianca === null && typeof r[0].confidence === 'number') confianca = r[0].confidence;
-          } else {
-            ara += r[0].transcript;
-          }
-        }
-
-        var vist = (fet + ' ' + ara).trim();
-        if (!vist) return;
-
-        apuntaOida(fet, ara, confianca, ev);
-
-        mostraOida(vist + (ara ? ' …' : ''), false);
-        nucli.pols(Math.min(1, 0.35 + vist.length / 40));
-
-        // Amb res per tancar, s'envia de seguida el definitiu i prou.
-        var text = ara ? vist : fet.trim();
-
-        clearTimeout(tempsBuffer);
-        tempsBuffer = setTimeout(function () {
-          consumitFinsA = ev.results.length;      // el que ve després és una frase nova
-          var enviar = text;
-
-          if (usaParaulaClau) {
-            var ordre = teParaulaClau(enviar);
-            if (ordre === null) {
-              mostraOida('sentit «' + Utils_talla(enviar, 40) + '» · sense la paraula clau', false);
-              return;
-            }
-            enviar = ordre.trim();
-            if (enviar.length < 2) { mostraOida('has dit JEFE però res més', false); return; }
-          }
-
-          if (enviar.length < 2) return;
-          mostraOida('enviat: ' + Utils_talla(enviar, 50), false);
-          camp.value = enviar;
-          envia();
-        }, ara ? 1900 : 800);
-        /* Si encara hi ha res provisional, 1,9 s: és el temps que es dona a
-           Chrome per tancar la frase i corregir-la. Si ja està tot tancat,
-           0,8 s i endavant, que fer-lo esperar per res es nota. */
-      };
-
-      reconeixedor.onerror = function (ev) {
-        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
-          continua = false; aturaVoluntaria = true;
-          pintaMicro(); amagaOida(); diagnosticMicro();
-          return;
-        }
-        if (ev.error === 'no-speech' || ev.error === 'aborted') return;   // normals, es rearrenca sol
-
-        var explicacio = {
-          'network': 'El reconeixement de veu de Chrome necessita internet: la transcripció la fa un servidor de Google, no el telèfon.',
-          'audio-capture': 'No troba cap micròfon.',
-          'language-not-supported': 'Aquest navegador no sap transcriure català. Prova-ho des de Chrome.',
-          'bad-grammar': 'Error intern del reconeixedor.'
-        }[ev.error] || ('Error del reconeixedor: ' + ev.error);
-
-        mostraOida(explicacio, true);
-      };
-
-      reconeixedor.onend = function () {
-        reconeixedor = null;
-        consumitFinsA = 0;                 // sessió nova: els índexs tornen a zero
-        if (continua && !aturaVoluntaria && !parlantAra) {
-          setTimeout(arrencaReconeixedor, 250);          // Chrome talla sol: es rearrenca
-        } else if (!continua) {
-          posaEstat(estatIA && estatIA.disponible ? 'repos' : 'apagat',
-                    estatIA && estatIA.disponible ? 'a punt' : 'sense clau');
-        }
-      };
-
-      try { reconeixedor.start(); }
-      catch (e) { reconeixedor = null; }
-    }
-
-    /* DOS CAMINS PER PARLAR-LI, I EL BO ÉS EL PRIMER.
-       Si el navegador deixa gravar, l'àudio va sencer al model. Si no —algun
-       navegador vell, o el permís d'àudio en brut denegat—, es cau al
-       reconeixedor de Chrome, que transcriu pitjor però és millor que res. */
-    function veuDirecta() { return potGravar(); }
-
-    function alternaEscolta() {
-      if (continua) {
-        continua = false; aturaVoluntaria = true;
-        if (veuDirecta()) paraVeu();
-        else if (reconeixedor) { try { reconeixedor.stop(); } catch (e) {} }
-        buffer = '';
-        pintaMicro(); amagaOida();
-        posaEstat('repos', 'a punt');
-        App.brindis('Escolta aturada');
-        return;
-      }
-      continua = true; aturaVoluntaria = false;
-      pintaMicro();
-      mostraOida('engegant el micròfon…', false);
-
-      if (veuDirecta()) {
-        engegaVeu();
-        App.brindis('Escoltant. Parla quan vulguis.');
-      } else {
-        arrencaReconeixedor();
-        App.brindis(usaParaulaClau ? 'Escoltant. Digues «JEFE» i la pregunta.'
-                                   : 'Escoltant. Parla quan vulguis.');
-      }
-    }
-
-    function pintaMicro() {
-      var b = arrel.querySelector('#b-micro');
-      if (b) b.dataset.actiu = continua ? '1' : '0';
-      Cau.set('conversa.escolta', continua);
-      pintaTelemetria();
-    }
-
-    /**
-     * Per què no puc engegar el micròfon.
-     * Apps Script serveix la pàgina dins d'un iframe que no té permís de
-     * micròfon, i aleshores el navegador ni tan sols pregunta: falla de
-     * seguida. Això ho comprova i t'ho diu amb el nom exacte de l'error.
-     */
-    function diagnosticMicro() {
-      var dins = (window.self !== window.top);
-      function informa(detall) {
-        tr.insertAdjacentHTML('beforeend',
-          '<div class="avis-apagat"><strong>Micròfon bloquejat</strong>' +
-          esc(detall) +
-          (dins ? '<p style="margin:var(--e3) 0 0">La pàgina s\'està servint <b>dins d\'un iframe</b> ' +
-                  'd\'Apps Script, i aquest iframe no demana permís de micròfon. El navegador el ' +
-                  'bloqueja sense preguntar-te res: per això no et surt cap finestreta.</p>' : '') +
-          '<p style="margin:var(--e3) 0 var(--e2)"><b>Mentrestant pots dictar igual:</b></p>' +
-          '<ul style="margin:0;padding-left:1.2em;line-height:1.8">' +
-          '<li><b>Al mòbil:</b> toca el camp de text i prem el <b>micròfon del teclat</b> (Gboard). ' +
-          'Transcriu igual de bé i no necessita cap permís de la pàgina.</li>' +
-          '<li><b>Al PC:</b> clica el camp i prem <code>Windows + H</code> per dictar.</li>' +
-          '</ul></div>');
-        tr.scrollTop = tr.scrollHeight;
-      }
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        informa('El navegador no exposa cap API de micròfon en aquest context.');
-        return;
-      }
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(function (flux) {
-          flux.getTracks().forEach(function (t) { t.stop(); });
-          informa('El micròfon sí que és accessible, però el reconeixement de veu l\'ha rebutjat. ' +
-                  'Torna-ho a provar; si insisteix, revisa els permisos del lloc al navegador.');
-        })
-        .catch(function (err) {
-          informa('El navegador ha dit: ' + (err && err.name ? err.name : 'error desconegut') +
-                  (err && err.message ? ' — ' + err.message : ''));
-        });
-    }
-
-    function escolta() { alternaEscolta(); }
-
-    // ------------------------------------------------------------------ lligams
-
-    arrel.querySelector('#b-envia').addEventListener('click', envia);
-    camp.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); envia(); }
-    });
-    camp.addEventListener('input', function () {
-      camp.style.height = 'auto'; camp.style.height = Math.min(150, camp.scrollHeight) + 'px';
-    });
-    if (potEscoltar) arrel.querySelector('#b-micro').addEventListener('click', escolta);
-
-    /* El llapis. A una reunió o a classe no li pots parlar en veu alta, i
-       sense escriptura l'assistent deixaria de servir justament allà. El camp
-       apareix en lloc dels botons perquè, un cop escrivint, els botons rodons
-       només farien nosa. */
-    (function () {
-      var bl = arrel.querySelector('#b-llapis');
-      var botons = arrel.querySelector('#botons');
-      var escriu = arrel.querySelector('#escriu');
-
-      function obre() {
-        botons.hidden = true; escriu.hidden = false;
-        camp.focus();
-      }
-      function tanca() {
-        escriu.hidden = true; botons.hidden = false;
-        camp.value = ''; camp.style.height = 'auto';
-      }
-      App._tancaEscriptura = tanca;
-
-      bl.addEventListener('click', obre);
-      camp.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Escape') { ev.preventDefault(); tanca(); }
-      });
-      // Si el deixes buit i te'n vas, torna sol als botons: un camp de text
-      // obert i buit ocupa el lloc de l'ordre que sí que faràs servir.
-      camp.addEventListener('blur', function () {
-        setTimeout(function () {
-          if (!camp.value.trim() && document.activeElement !== camp &&
-              !escriu.contains(document.activeElement)) tanca();
-        }, 120);
-      });
-    })();
-
-    /* Els apartats, drets a la vora de sota. Surten sols del registre de
-       mòduls: un mòdul nou hi apareix sense tocar aquesta vista. */
-    /* EL TAULER DELS APARTATS.
-       Es munta amb el que digui el nucli: un modul nou hi surt sol, sense
-       tocar aquesta pantalla. Es el mateix contracte que tenia la fila. */
-    function reixaApartats(items) {
-      return '<div class="reixa-apartats">' +
-        /* EL DIA I LA SETMANA VAN PRIMER, i van junts en una fila seva.
-           Cap dels dos es un modul: son les dues respostes a la mateixa
-           pregunta a dues distancies —«que he de tenir en compte ara» i «quan
-           ho fare»— i per aixo es miren de costat i no barrejats amb els
-           apartats, que son llocs on vas a treballar. */
-        '<div class="apartats-quan">' +
-          '<button class="apartat viu apartat-ample" data-ves="dia">' +
-            ic('dia') + '<span>El dia</span></button>' +
-          '<button class="apartat viu apartat-ample" data-ves="setmana">' +
-            ic('setmana') + '<span>La setmana</span></button>' +
-        '</div>' +
-        items.map(function (m) {
-          return '<button class="apartat viu" data-ves="' + esc(m.id) + '">' +
-            ic(m.icona || 'modul') +
-            '<span>' + esc(m.nom) + '</span>' +
-          '</button>';
-        }).join('') +
-      '</div>';
-    }
-
-    function apartatsQueHiHa() {
-      var llista = (App.moduls && App.moduls.length) ? App.moduls : (Cau.get('moduls', []) || []);
-      return llista.filter(function (m) { return m.teVista && m.id !== 'conversa'; });
-    }
-
-    function endollaApartats(cos) {
-      cos.querySelectorAll('[data-ves]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          App.tancaModal();
-          App.ves(b.dataset.ves);
-        });
-      });
-    }
-
-    function obreApartats() {
-      var items = apartatsQueHiHa();
-      var cos = App.modal('Apartats', reixaApartats(items));
-      endollaApartats(cos);
-      if (items.length) return;
-
-      /* QUI OBRE L'APP I VE DIRECTE A PARLAR-LI no ha passat mai per l'inici,
-         i el registre de mòduls només hi arribava des d'allà: el tauler
-         s'obria amb «El dia» i res més. Es demana aquí, un sol cop, i es desa
-         al telèfon. No llegeix cap full ni gasta res: és el registre. */
-      crida('nucli', 'moduls', {}).then(function (d) {
-        App.moduls = d.moduls; Cau.set('moduls', d.moduls);
-        var ara = document.querySelector('.reixa-apartats');
-        if (!ara) return;                      // ja l'ha tancat: no facis res
-        ara.outerHTML = reixaApartats(apartatsQueHiHa());
-        endollaApartats(document.querySelector('.modal'));
-      }).catch(function () { /* es queda amb «El dia»: millor això que un error */ });
-    }
-
-    (function () {
-      var b = arrel.querySelector('#b-apartats');
-      if (b) b.addEventListener('click', obreApartats);
-    })();
-
-
-    (function () {
-      var bc = arrel.querySelector('#b-clau');
-      if (!bc) return;
-
-      /* La paraula clau només té sentit quan hi ha text pel camí. Amb l'àudio
-         anant directe al model, aquí no hi ha res on buscar «JEFE» abans
-         d'enviar-ho, i deixar el botó seria prometre una cosa que no passa. */
-      if (veuDirecta()) { bc.hidden = true; usaParaulaClau = false; }
-
-      function pintaClau() {
-        bc.setAttribute('aria-pressed', usaParaulaClau ? 'true' : 'false');
-        bc.textContent = 'paraula clau: ' + (usaParaulaClau ? 'ON' : 'OFF');
-      }
-      pintaClau();
-
-      var bl = arrel.querySelector('#b-oida-log');
-      if (bl) bl.addEventListener('click', ensenyaDiariOida);
-
-      bc.addEventListener('click', function () {
-        usaParaulaClau = !usaParaulaClau;
-        Cau.set('conversa.paraulaClau', usaParaulaClau);
-        pintaClau();
-        App.brindis(usaParaulaClau ? 'Ara cal dir «JEFE» abans de la pregunta'
-                                   : 'Ara envio tot el que sentis');
-      });
-    })();
-
-    if (potParlar) {
-      var bv = arrel.querySelector('#b-veu');
-      bv.setAttribute('aria-pressed', veuActiva ? 'true' : 'false');
-      bv.addEventListener('click', function () {
-        veuActiva = !veuActiva;
-        Cau.set('conversa.veu', veuActiva);
-        bv.setAttribute('aria-pressed', veuActiva ? 'true' : 'false');
-        if (!veuActiva) speechSynthesis.cancel();
-        App.brindis(veuActiva ? 'Et parlaré en veu alta' : 'Veu desactivada');
-        pintaTelemetria();
-      });
-    }
-
-    arrel.querySelector('#b-nova').addEventListener('click', function () {
-      crida('conversa', 'nova', {}).then(function (r) {
-        idConversa = r.id_conversa; missatges = []; ultimesEines = []; tokensSessio = 0;
-        Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', []);
-        pinta(); nucli.pols(1);
-      });
-    });
-
-    /* Els apartats ja són a la fila de sota. Aquí queda el que no s'ha de
-       veure cada dia: notificacions i com està el sistema. */
-    arrel.querySelector('#b-vistes').addEventListener('click', function () {
-      var n = Notificacions.estat();
-      var textNotif = !n.potSerHi ? 'Aquest navegador no en pot rebre'
-                    : n.activades ? 'Actives en aquest dispositiu'
-                    : n.permis === 'denied' ? 'Denegades — cal permetre-les al navegador'
-                    : 'JEFE et pot avisar amb l\'app tancada';
-
-      pintaTelemetria();
-      var cos = App.modal('JEFE',
-        '<p class="marge" style="margin:0 0 var(--e2)">Notificacions</p>' +
-        '<button class="btn btn-ple ' + (n.activades ? 'btn-secundari' : 'btn-primari') + '" ' +
-          'data-notifica="1"' + (n.activades || !n.potSerHi ? ' disabled' : '') + '>' +
-          (n.activades ? 'Ja estan actives' : 'Activa les notificacions') + '</button>' +
-        '<p class="menut" style="margin:var(--e2) 0 0" id="estat-notif">' + esc(textNotif) + '</p>' +
-
-        '<p class="marge" style="margin:var(--e5) 0 var(--e2)">Com està el sistema</p>' +
-        '<div class="menut" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));' +
-          'gap:var(--e4);line-height:1.7">' +
-          '<div>' + telemetriaActual.dreta + '</div>' +
-          '<div>' + telemetriaActual.esquerra + '</div>' +
-        '</div>');
-
-      var bn = cos.querySelector('[data-notifica]');
-      if (bn && !bn.disabled) bn.addEventListener('click', function () {
-        bn.dataset.carregant = '1';
-        // El permís s'ha de demanar des d'aquest toc: si es demana sol en
-        // carregar, Chrome el denega sense preguntar i ja no hi ha marxa enrere.
-        Notificacions.activa()
-          .then(function () {
-            bn.dataset.carregant = '0'; bn.disabled = true;
-            bn.textContent = 'Ja estan actives';
-            cos.querySelector('#estat-notif').textContent =
-              'Actives. Prova-ho amb provaNotificacio() des de l\'editor d\'Apps Script.';
-            App.brindis('Notificacions actives');
-          })
-          .catch(function (err) {
-            bn.dataset.carregant = '0';
-            cos.querySelector('#estat-notif').textContent = err.message;
-          });
-      });
-    });
-
-    window.addEventListener('resize', function () { if (nucli) nucli.redimensiona(); });
-
-    // ---------------------------------------------------------------- arrencada
-
-    pinta();
-    posaEstat('repos', 'connectant');
-
-    crida('conversa', 'estat',
-          { ambHistorial: !missatges.length, id_conversa: idConversa }).then(function (e) {
-      estatIA = e;
-      posaEstat(e.disponible ? 'repos' : 'apagat', e.disponible ? 'a punt' : 'sense clau');
-      if (!e.disponible) { avisApagat(e.motiu); return; }
-
-      /* Si l'escolta estava engegada, es torna a engegar sola en obrir.
-         Sense això havies de prémer el micròfon cada vegada que carregava
-         la pàgina, que és exactament el contrari de tenir-lo sempre escoltant.
-         Alguns navegadors exigeixen un toc previ; si peta, s'avisa i prou. */
-      if (potEscoltar && Cau.get('conversa.escolta', false)) {
-        continua = true; aturaVoluntaria = false;
-        pintaMicro();
-        mostraOida('reprenent l\'escolta…', false);
-        try { if (veuDirecta()) engegaVeu(); else arrencaReconeixedor(); }
-        catch (err) {
-          continua = false; pintaMicro();
-          mostraOida('toca el micròfon per reprendre l\'escolta', true);
-        }
-      }
-
-      /* L'historial ve dins d'`estat`: abans era una segona anada que
-         esperava la primera sense dependre'n. Vegeu `Conversa.estat`. */
-      var h = e.historial;
-      if (h && h.missatges && h.missatges.length && !missatges.length) {
-        idConversa = h.id_conversa; missatges = h.missatges;
-        Cau.set('conversa.id', idConversa); Cau.set('conversa.missatges', missatges.slice(-40));
-        pinta();
-      }
-    }).catch(function (err) {
-      estatIA = { disponible: false, motiu: err.message };
-      posaEstat('apagat', 'sense connexió');
-      avisApagat(err.message, true);
     });
   }
 });
@@ -6980,8 +4931,8 @@ App.registraVista('habits', {
 
       arrel.innerHTML =
         '<header class="capcalera"><div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa') + '</button>' +
           '<div class="selector-data" style="flex:1">' +
             '<button class="btn btn-secundari btn-icona" data-dia="-1" aria-label="Dia anterior">' +
               ic('esquerra') + '</button>' +
@@ -7267,7 +5218,7 @@ App.registraVista('habits', {
 
     function lligaCapcalera() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-dia]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -7884,8 +5835,8 @@ App.registraVista('nutricio', {
       var sota = (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Dia'])[1];
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
           '<button class="titol-periode" data-obre-periode="1">' +
@@ -8279,7 +6230,7 @@ App.registraVista('nutricio', {
 
     function lligaCapcalera() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -8823,8 +6774,8 @@ App.registraVista('finances', {
 
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           (mostraFletxes
             ? '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
               ic('esquerra', 'ic-p') + '</button>' : '') +
@@ -9582,7 +7533,7 @@ App.registraVista('finances', {
 
     function lligaCapcalera() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -10352,8 +8303,8 @@ App.registraVista('seguiment', {
     function capcalera() {
       var f = d && d.fase;
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Seguiment FitFat</h1>' +
           '<p class="marge" style="margin:2px 0 0">' +
@@ -10436,7 +8387,7 @@ App.registraVista('seguiment', {
 
           '<div id="seg-comentari"></div>' +
           '<button class="btn btn-secundari" data-comenta="' + esc(cur.data) + '" style="width:100%">' +
-            ic('conversa') + 'Què en penses?</button>' +
+            ic('mapa') + 'Què en penses?</button>' +
 
           /* Les gràfiques */
           '<section class="seg-grafiques">' +
@@ -10631,7 +8582,7 @@ App.registraVista('seguiment', {
       }
 
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-nou]').forEach(function (b) {
         b.addEventListener('click', function () { obreControl(null); });
@@ -10651,7 +8602,7 @@ App.registraVista('seguiment', {
           c.remove();
         }).catch(function (err) {
           caixa.innerHTML = '';
-          c.disabled = false; c.innerHTML = ic('conversa') + 'Què en penses?';
+          c.disabled = false; c.innerHTML = ic('mapa') + 'Què en penses?';
           App.brindis(err.message, 'error');
         });
       });
@@ -10842,8 +8793,8 @@ App.registraVista('escola', {
     function capcalera() {
       var n = d ? nous().length : 0;
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Escola</h1>' +
           '<p class="marge" id="esc-compte" style="margin:2px 0 0">' +
@@ -11185,7 +9136,7 @@ App.registraVista('escola', {
     // ------------------------------------------------------------------ lliga
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       lligaPendents();
 
@@ -11375,8 +9326,8 @@ App.registraVista('tasques', {
       var n = dades ? dades.tasques.length : 0;
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<span class="titol-periode" style="cursor:default">' +
             '<b>Tasques</b>' +
             '<span>' + (dades ? n + (n === 1 ? ' pendent' : ' pendents') : '') +
@@ -11527,7 +9478,7 @@ App.registraVista('tasques', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       var ba = arrel.querySelector('[data-ajustos]');
       if (ba) ba.addEventListener('click', obreAjustos);
@@ -11898,8 +9849,8 @@ App.registraVista('diari', {
       var r = dades ? dades.ratxa : 0;
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<span class="titol-periode" style="cursor:default">' +
             '<b>Diari</b>' +
             '<span>' + (r ? r + (r === 1 ? ' dia seguit' : ' dies seguits') : 'sense ratxa') + '</span>' +
@@ -12016,7 +9967,7 @@ App.registraVista('diari', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -12258,8 +10209,8 @@ App.registraVista('calendari', {
       var esActual = d.mes === d.avui.slice(0, 7);
       return '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
-          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-            ic('conversa', 'ic-p') + '</button>' +
+          '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+            ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
           '<button class="titol-periode" data-avui="1">' +
@@ -12376,7 +10327,7 @@ App.registraVista('calendari', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-salt]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -12908,8 +10859,8 @@ App.registraVista('dia', {
       arrel.innerHTML =
         '<header class="capcalera capcalera-nutri">' +
           '<div class="capcalera-fila">' +
-            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-              ic('conversa', 'ic-p') + '</button>' +
+            '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+              ic('mapa', 'ic-p') + '</button>' +
             '<span class="titol-periode" style="cursor:default">' +
               '<b>' + esc(fmt.relativa(d.data)) + '</b>' +
               '<span>' + esc(fmt.llarga(d.data)) + '</span>' +
@@ -13008,7 +10959,7 @@ App.registraVista('dia', {
 
     function lliga() {
       var bv = arrel.querySelector('[data-torna]');
-      if (bv) bv.addEventListener('click', function () { App.ves('conversa'); });
+      if (bv) bv.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
@@ -13320,8 +11271,8 @@ App.registraVista('focus', {
 
     function capcalera() {
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Focus</h1>' +
           '<p class="marge" style="margin:2px 0 0">' +
@@ -13510,7 +11461,7 @@ App.registraVista('focus', {
 
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-durada]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -13667,8 +11618,8 @@ App.registraVista('setmana', {
         ? (d.esAquesta ? 'Aquesta setmana' : fmt.relativa(d.desde) + ' → ' + fmt.relativa(d.fins))
         : '';
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<button class="btn btn-fantasma btn-icona" data-mou="-7" aria-label="La setmana abans">' +
           ic('esquerra', 'ic-p') + '</button>' +
         '<span class="titol-periode" style="cursor:default">' +
@@ -13774,7 +11725,7 @@ App.registraVista('setmana', {
 
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-mou]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -13909,8 +11860,8 @@ App.registraVista('relacions', {
 
     function capcalera() {
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Relacions</h1>' +
           '<p class="marge" style="margin:2px 0 0">' +
@@ -14034,7 +11985,7 @@ App.registraVista('relacions', {
 
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       arrel.querySelectorAll('[data-recalcula]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -14108,8 +12059,8 @@ App.registraVista('memoria', {
 
     function capcalera() {
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Memòria</h1>' +
           '<p class="marge" style="margin:2px 0 0">' +
@@ -14194,7 +12145,7 @@ App.registraVista('memoria', {
 
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       var camp = arrel.querySelector('#m-nou');
       var desa = function () {

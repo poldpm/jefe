@@ -86,8 +86,8 @@ App.registraVista('escola', {
     function capcalera() {
       var n = d ? nous().length : 0;
       return '<header class="capcalera"><div class="capcalera-fila">' +
-        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna a la conversa">' +
-          ic('conversa', 'ic-p') + '</button>' +
+        '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
+          ic('mapa', 'ic-p') + '</button>' +
         '<div style="flex:1;min-width:0">' +
           '<h1 style="font-size:1.0625rem;margin:0">Escola</h1>' +
           '<p class="marge" id="esc-compte" style="margin:2px 0 0">' +
@@ -429,7 +429,7 @@ App.registraVista('escola', {
     // ------------------------------------------------------------------ lliga
     function lliga() {
       var t = arrel.querySelector('[data-torna]');
-      if (t) t.addEventListener('click', function () { App.ves('conversa'); });
+      if (t) t.addEventListener('click', function () { App.ves('inici'); });
 
       lligaPendents();
 
