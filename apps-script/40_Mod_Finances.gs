@@ -86,6 +86,13 @@ function MODUL_FINANCES() {
           { nom: 'dia',             tipus: 'num'  },
           { nom: 'actiu',           tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'ultim_mes',       tipus: 'text' },
+          /* QUI EL COBRA, NORMALITZAT. És la mateixa clau amb què es recorda
+             un comerç, i serveix per a dues coses que abans no es podien fer:
+             lligar el recurrent amb el moviment de debò que arriba del banc
+             —i així no comptar-lo dues vegades— i recordar que d'aquest ja
+             se n'ha proposat un i el vas dir que no. */
+          { nom: 'clau',            tipus: 'text' },
+          { nom: 'descartat_el',    tipus: 'iso'  },
           { nom: 'esborrat_el',     tipus: 'iso'  },
           { nom: 'creat_el',        tipus: 'iso'  },
           { nom: 'actualitzat_el',  tipus: 'iso'  }
@@ -182,6 +189,10 @@ function MODUL_FINANCES() {
       anotaValor:     function (p) { return Finances.anotaValor(p.id, p.valor, p.data); },
       desaRecurrent:  function (p) { return Finances.desaRecurrent(p); },
       arxivaRecurrent:function (p) { return Finances.arxivaRecurrent(p.id); },
+      /* El que JEFE ha vist als moviments que ja tens, i el que hi ha per
+         triar sense haver-ho d'escriure. */
+      candidats:      function ()  { return Finances.candidatsRecurrents(); },
+      descarta:       function (p) { return Finances.descartaCandidat(p.clau); },
       categories:     function ()  { return Finances.categories(); },
       creaCategoria:  function (p) { return Finances.creaCategoria(p); },
       editaCategoria: function (p) { return Finances.editaCategoria(p.id, p); },
@@ -1090,7 +1101,12 @@ var Finances = (function () {
     var cats = indexCategories_();
     var f = [];
     try {
-      f = Dades.llegeix('Recurrents', function (x) { return !x.esborrat_el; });
+      /* Els descartats són files d'aquest mateix full —és on viu la memòria
+         del que ja s'ha proposat—, però no són recurrents: no han de sortir a
+         la llista ni sumar al que et surt cada mes. */
+      f = Dades.llegeix('Recurrents', function (x) {
+        return !x.esborrat_el && !x.descartat_el;
+      });
     } catch (err) { return []; }
 
     f.sort(function (a, b) { return (Number(a.dia) || 0) - (Number(b.dia) || 0); });
@@ -1101,9 +1117,186 @@ var Finances = (function () {
         categoria: x.categoria, categoriaNom: c.nom || x.categoria, emoji: c.emoji || '',
         descripcio: x.descripcio, metode: x.metode, dia: Number(x.dia) || 1,
         actiu: String(x.actiu).toUpperCase() !== 'NO',
+        clau: x.clau || '',
         ultimMes: x.ultim_mes
       };
     });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     QUÈ ÉS UN REBUT FIX I QUÈ NO HO ÉS
+
+     En Pol ho va dir millor que cap especificació: «a Bonpreu hi compro cada
+     mes, però no la mateixa quantitat ni gasto, i no m'interessa marcar-lo
+     com a cada mes... però del segur del cotxe cada mes igual i empresa la
+     mateixa, aquest sí que m'interessa».
+
+     O sigui que sortir cada mes NO és el criteri. Un supermercat surt cada
+     mes i no és un rebut. El que separa les dues coses és que l'import no es
+     mou i que hi ha un càrrec i prou al mes. Per això hi ha dos filtres
+     independents, i tots dos deixen Bonpreu fora per separat:
+
+       · `variacio` — si entre el més barat i el més car hi ha més d'un 12 %,
+         no és una quota, és una compra. L'assegurança dona 0; el súper, de
+         18 € a 90 €, dona 1,6.
+       · `perMes`   — més d'un càrrec i mig al mes és comprar-hi, no pagar-hi.
+
+     I encara un tercer, que és el que evita proposar coses per casualitat:
+     ha de sortir a gairebé tots els mesos de la finestra, no a tres de deu.
+     ══════════════════════════════════════════════════════════════════════ */
+  var RECURRENT = {
+    finestra: 6,        // mesos enrere que es miren
+    mesosMinims: 3,     // amb menys, «cada mes» no vol dir res
+    presencia: 0.7,     // ha de sortir a set de cada deu mesos mirats
+    variacio: 0.12,     // (màxim − mínim) / mitjana
+    marge: 1,           // €: per sota d'això la diferència no compta
+    perMes: 1.5         // càrrecs per mes: més amunt és comprar, no pagar
+  };
+
+  function mesEnrere_(mes, n) {
+    var a = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7)) - n;
+    while (m <= 0) { m += 12; a--; }
+    return a + '-' + ('0' + m).slice(-2);
+  }
+
+  function mediana_(l) {
+    var x = l.slice().sort(function (a, b) { return a - b; });
+    var m = Math.floor(x.length / 2);
+    return x.length % 2 ? x[m] : Math.round(((x[m - 1] + x[m]) / 2) * 100) / 100;
+  }
+
+  function mesRepetit_(l) {
+    var c = {}, millor = null, quants = 0;
+    l.forEach(function (v) {
+      if (!v) return;
+      c[v] = (c[v] || 0) + 1;
+      if (c[v] > quants) { quants = c[v]; millor = v; }
+    });
+    return millor;
+  }
+
+  /**
+   * Els grups de moviments que podrien ser un rebut fix.
+   *
+   * Es miren els sis mesos ANTERIORS a aquest i no el que portem: el mes en
+   * curs està a mitges per definició, i un rebut que encara no ha arribat
+   * comptaria com un mes fallat. Amb la finestra tancada, cada mes hi és
+   * sencer o no hi és.
+   */
+  function grupsDeMoviments_(avui) {
+    var mesAra = (avui || Utils.avui()).slice(0, 7);
+    var desde = mesEnrere_(mesAra, RECURRENT.finestra);
+    var fins = mesEnrere_(mesAra, 1);
+
+    var cats = indexCategories_();
+    var grups = {};
+    moviments_(function (f) {
+      var mes = String(f.data).slice(0, 7);
+      return mes >= desde && mes <= fins;
+    }).forEach(function (m) {
+      var clau = clauMemoria_(m.descripcio, m.tipus);
+      if (!clau || esGenerica_(clau)) return;      // «COMPRA AMB TARGETA» no és ningú
+      var imp = num_(m['import']);
+      if (!imp) return;
+      if (!grups[clau]) {
+        grups[clau] = { clau: clau, tipus: m.tipus, imports: [], mesos: {}, dies: [],
+                        categories: [], metodes: [], noms: [], moviments: 0 };
+      }
+      var g = grups[clau];
+      g.imports.push(imp);
+      g.mesos[String(m.data).slice(0, 7)] = true;
+      g.dies.push(Number(String(m.data).slice(8, 10)) || 1);
+      g.categories.push(m.categoria);
+      g.metodes.push(m.metode);
+      g.noms.push(m.descripcio);
+      g.moviments++;
+    });
+
+    var mesosMirats = RECURRENT.finestra;
+    return Object.keys(grups).map(function (k) {
+      var g = grups[k];
+      var mesos = Object.keys(g.mesos).length;
+      var min = Math.min.apply(null, g.imports);
+      var max = Math.max.apply(null, g.imports);
+      var mitjana = g.imports.reduce(function (s, v) { return s + v; }, 0) / g.imports.length;
+      /* Un euro de diferència en una quota de quaranta no la fa variable; en
+         una de tres, sí. Per això la diferència es mira en relatiu, però amb
+         un mínim absolut per no descartar quotes petites per un cèntim. */
+      var variacio = (max - min) <= RECURRENT.marge ? 0
+                   : (mitjana ? (max - min) / mitjana : 1);
+      var cat = mesRepetit_(g.categories);
+      return {
+        clau: g.clau,
+        tipus: g.tipus,
+        descripcio: mesRepetit_(g.noms) || g.noms[0],
+        import: mediana_(g.imports),
+        minim: Math.round(min * 100) / 100,
+        maxim: Math.round(max * 100) / 100,
+        variacio: Math.round(variacio * 100) / 100,
+        mesos: mesos,
+        mesosMirats: mesosMirats,
+        moviments: g.moviments,
+        perMes: Math.round((g.moviments / Math.max(1, mesos)) * 10) / 10,
+        dia: mediana_(g.dies),
+        categoria: cat,
+        categoriaNom: (cats[cat] || {}).nom || cat,
+        emoji: (cats[cat] || {}).emoji || '',
+        metode: mesRepetit_(g.metodes) || 'domic'
+      };
+    });
+  }
+
+  /** Passa els filtres per ser una proposta? */
+  function esFix_(g) {
+    if (g.mesos < RECURRENT.mesosMinims) return false;
+    if (g.mesos < Math.ceil(g.mesosMirats * RECURRENT.presencia)) return false;
+    if (g.perMes > RECURRENT.perMes) return false;
+    if (g.variacio > RECURRENT.variacio) return false;
+    return true;
+  }
+
+  /**
+   * Què proposa JEFE i què hi ha per triar.
+   *
+   * `propostes` són les que passen tots els filtres i que ell no ha vist mai:
+   * les que ja són recurrents i les que va dir que no queden fora, perquè
+   * tornar a preguntar el que ja s'ha contestat és la manera més segura que
+   * deixi de mirar-s'ho.
+   *
+   * `tots` són tots els grups, per si el vol triar ell d'una llista en comptes
+   * d'escriure'l. Hi van amb el que se sap de cadascun —quants mesos, quant
+   * balla l'import— perquè pugui decidir amb la mateixa informació que fa
+   * servir el filtre.
+   */
+  function candidatsRecurrents(avui) {
+    var vistos = {};
+    try {
+      Dades.llegeix('Recurrents', function (x) { return !x.esborrat_el; })
+        .forEach(function (x) { if (x.clau) vistos[String(x.clau)] = true; });
+    } catch (err) { /* encara no hi ha full */ }
+
+    var grups = grupsDeMoviments_(avui);
+    grups.sort(function (a, b) {
+      if (b.mesos !== a.mesos) return b.mesos - a.mesos;
+      return b.import - a.import;
+    });
+
+    return {
+      propostes: grups.filter(function (g) { return esFix_(g) && !vistos[g.clau]; }),
+      tots: grups.filter(function (g) { return !vistos[g.clau]; }),
+      llindars: RECURRENT
+    };
+  }
+
+  /** Un «no» es recorda: d'aquest comerç no se'n torna a proposar cap. */
+  function descartaCandidat(clau) {
+    clau = String(clau || '').trim();
+    if (!clau) throw new Error('Falta saber de quin es tracta.');
+    Dades.insereix('Recurrents', {
+      tipus: 'd', 'import': 0, categoria: '', descripcio: '(descartat) ' + clau,
+      metode: 'domic', dia: 1, actiu: 'NO', clau: clau, descartat_el: Utils.ara()
+    }, 'rec');
+    return { descartat: true, clau: clau };
   }
 
   function desaRecurrent(p) {
@@ -1124,7 +1317,10 @@ var Finances = (function () {
       descripcio: desc,
       metode: METODES.indexOf(p.metode) !== -1 ? p.metode : 'domic',
       dia: dia,
-      actiu: p.actiu === false ? 'NO' : 'SI'
+      actiu: p.actiu === false ? 'NO' : 'SI',
+      /* Si ve d'un moviment de debò, es queda amb qui el cobra. És el que
+         després permet no comptar-lo dues vegades quan arribi del banc. */
+      clau: String(p.clau || '').trim() || clauMemoria_(desc, tipus)
     };
 
     if (p.id) {
@@ -1156,10 +1352,37 @@ var Finances = (function () {
     var diaAvui = Number(avui.slice(8, 10));
     var fets = [];
 
+    /* QUI JA HA ARRIBAT AQUEST MES, per no apuntar-ho dues vegades.
+       El recurrent es va inventar quan no hi havia banc: llavors escriure'l
+       era l'única manera que el rebut existís. Amb el banc connectat, el
+       càrrec arriba sol, i crear-ne un de sintètic vol dir pagar el segur del
+       cotxe dos cops al full —una al balanç, una altra al pressupost de la
+       categoria— sense que res ho digui. El comentari del trigger ja deia que
+       el veuries «com un possible duplicat»; ara senzillament no hi és.
+
+       Es mira per la clau del comerç i no per l'import: una quota que puja de
+       42 a 43 segueix sent la mateixa quota, i crear-ne una de sintètica
+       perquè el número no quadra al cèntim seria el pitjor dels dos mons. */
+    var jaHiEs = {};
+    moviments_(function (f) { return String(f.data).slice(0, 7) === mesAra; })
+      .forEach(function (m) {
+        var k = clauMemoria_(m.descripcio, m.tipus);
+        if (k) jaHiEs[k] = true;
+      });
+
     recurrents().forEach(function (r) {
       if (!r.actiu) return;
       if (String(r.ultimMes) === mesAra) return;      // ja creat aquest mes
       if (r.dia > diaAvui) return;                    // encara no toca
+
+      if (r.clau && jaHiEs[r.clau]) {
+        /* Ja ha arribat de debò. Es marca el mes perquè no s'hi torni cada
+           nit, i no s'escriu res. */
+        Dades.actualitza('Recurrents', r.id, { ultim_mes: mesAra });
+        Log.info('finances.recurrents', 'El recurrent ja havia arribat del banc, no el dupliquem',
+                 { descripcio: r.descripcio });
+        return;
+      }
 
       afegeix({
         data: mesAra + '-' + ('0' + r.dia).slice(-2),
@@ -1289,7 +1512,22 @@ var Finances = (function () {
     var dades = quin === 'mesos' ? mesos(p.quants || 12)
               : quin === 'estad' ? estadistiques(p.mes)
               : quin === 'revisar' ? perRevisar()
-              : quin === 'recurrents' ? { llista: recurrents() }
+              /* Les propostes van amb la llista i no en una crida a part: qui
+                 obre «Cada mes» ve justament a decidir això, i fer-l'hi
+                 esperar un segon més per una cosa que ja podíem portar seria
+                 pagar dues anades pel mateix viatge. */
+              : quin === 'recurrents' ? (function () {
+                  var r = { llista: recurrents() };
+                  try {
+                    var c = candidatsRecurrents();
+                    r.propostes = c.propostes;
+                    r.triables = c.tots;
+                  } catch (err) {
+                    Log.avis('finances.candidats', 'No he pogut mirar els candidats: ' + err.message);
+                    r.propostes = []; r.triables = [];
+                  }
+                  return r;
+                })()
               : quin === 'patrimoni' ? patrimoni()
               : mes(p.mes);
 
@@ -1763,6 +2001,9 @@ var Finances = (function () {
     pressupostos: pressupostos,
     desaPressupost: desaPressupost,
     recurrents: recurrents,
+    candidatsRecurrents: candidatsRecurrents,
+    descartaCandidat: descartaCandidat,
+    RECURRENT: RECURRENT,
     patrimoni: patrimoni,
     estatDelBanc: estatDelBanc_,
     desaActiu: desaActiu,

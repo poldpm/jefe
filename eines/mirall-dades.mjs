@@ -287,6 +287,37 @@ export function dades(AVUI, menys) {
         { id: 'r2', descripcio: 'Assegurança del cotxe', import: 38.9, tipus: 'd',
           categoria: 'c_cotx', categoriaNom: 'Cotxe i benzina', metode: 'rebut', dia: 15,
           actiu: true, ultim_mes: '' }
+      ],
+      /* El que JEFE hauria vist als moviments. Inventat, com tot el mirall,
+         pero amb els casos que importen: dos que passen el filtre i, a la
+         llista de triar, el super que NO el passa. */
+      propostes: [
+        { clau: 'i|NOMINA ESCOLA VEDRUNA', tipus: 'i', descripcio: 'NOMINA ESCOLA VEDRUNA',
+          import: 1840, minim: 1840, maxim: 1840, variacio: 0, mesos: 6, mesosMirats: 6,
+          moviments: 6, perMes: 1, dia: 28, categoria: 'i_nomi', categoriaNom: 'Nomina',
+          emoji: '', metode: 'transf' },
+        { clau: 'd|SEGUROS CATALANA OCC', tipus: 'd', descripcio: 'SEGUROS CATALANA OCC',
+          import: 42.9, minim: 42.9, maxim: 42.9, variacio: 0, mesos: 6, mesosMirats: 6,
+          moviments: 6, perMes: 1, dia: 5, categoria: 'c_cotx',
+          categoriaNom: 'Cotxe i benzina', emoji: '', metode: 'domic' },
+        { clau: 'd|SPOTIFY AB', tipus: 'd', descripcio: 'SPOTIFY AB',
+          import: 10.99, minim: 10.99, maxim: 11, variacio: 0, mesos: 5, mesosMirats: 6,
+          moviments: 5, perMes: 1, dia: 18, categoria: 'c_oci', categoriaNom: 'Oci',
+          emoji: '', metode: 'targeta' }
+      ],
+      triables: [
+        { clau: 'i|NOMINA ESCOLA VEDRUNA', tipus: 'i', descripcio: 'NOMINA ESCOLA VEDRUNA',
+          import: 1840, minim: 1840, maxim: 1840, mesos: 6, mesosMirats: 6, dia: 28,
+          categoria: 'i_nomi', metode: 'transf' },
+        { clau: 'd|SEGUROS CATALANA OCC', tipus: 'd', descripcio: 'SEGUROS CATALANA OCC',
+          import: 42.9, minim: 42.9, maxim: 42.9, mesos: 6, mesosMirats: 6, dia: 5,
+          categoria: 'c_cotx', metode: 'domic' },
+        { clau: 'd|BONPREU ESCLAT', tipus: 'd', descripcio: 'BONPREU ESCLAT',
+          import: 62.15, minim: 18.4, maxim: 96.3, mesos: 6, mesosMirats: 6, dia: 12,
+          categoria: 'c_alim', metode: 'targeta' },
+        { clau: 'd|SPOTIFY AB', tipus: 'd', descripcio: 'SPOTIFY AB',
+          import: 10.99, minim: 10.99, maxim: 11, mesos: 5, mesosMirats: 6, dia: 18,
+          categoria: 'c_oci', metode: 'targeta' }
       ] };
     } else if (quin === 'patrimoni') {
       dades = {

@@ -1214,6 +1214,34 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* Triant-lo dels moviments no hi ha dia: encara no és un rebut, és un comerç
+   que has vist unes quantes vegades. La columna del dia sobra i la fila torna
+   a ser de dues. */
+.tria-mov .rec-fila { grid-template-columns: minmax(0, 1fr) auto; }
+.tria-mov { max-height: 46vh; overflow-y: auto; }
+
+/* LES PROPOSTES. Dues accions a la mateixa fila i no una: dir que sí obre el
+   formulari per confirmar-lo, i dir que no és un toc a la creu i no s'ha de
+   tornar a preguntar mai més. Amb un sol botó, el «no» no existiria i la
+   llista es quedaria plena de coses que ja has decidit. */
+.prop-fila { display: grid; grid-template-columns: minmax(0, 1fr) 44px;
+             align-items: center; border-bottom: 1px solid var(--utm-suau); }
+.prop-fila:last-child { border-bottom: 0; }
+.prop-cos { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center; gap: var(--e3); min-height: 56px;
+            background: none; border: 0; padding: var(--e2) 0;
+            text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.prop-nom { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.prop-nom b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prop-no { display: flex; align-items: center; justify-content: center;
+           width: 44px; height: 44px; padding: 0; border: 0; background: none;
+           color: var(--ink-suau); cursor: pointer; }
+.prop-no .ic { width: 16px; height: 16px; }
+.prop-no:active { color: var(--gr); }
+@media (hover: hover) and (pointer: fine) {
+  .prop-no:hover { color: var(--gr); }
+}
+
 /* Captura ràpida. El camp és el primer que hi ha i està sempre obert: si has
    de prémer un botó per obrir-lo, ja has perdut la meitat del que volies
    apuntar. */
@@ -2966,7 +2994,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 12:52 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 17:24 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3353,7 +3381,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 12:52 · en curs";
+window.MARCA_JEFE = "2026-08-08 17:24 · en curs";
 </script>
 
 <script>
@@ -7595,11 +7623,13 @@ App.registraVista('finances', {
               xifra('Entren', eurNum(totalI), '€') +
               xifra('Actius', llista.filter(function (r) { return r.actiu; }).length, '') +
             '</div>' +
-            '<p class="menut">Es creen sols de matinada el dia que toca. Si el dia ' +
-              'que hi poses ja ha passat aquest mes, el primer es crearà el mes que ve.</p>' +
-            '<button class="btn btn-primari" data-nou-rec style="width:100%;margin-top:var(--e3)">' +
+            '<p class="menut">El que et passa cada mes sense fer-hi res. Si el banc ja ' +
+              'el porta, no se n\'apunta cap de nou: es dona per arribat.</p>' +
+            '<button class="btn btn-primari" data-tria-rec style="width:100%;margin-top:var(--e3)">' +
               ic('mes') + 'Afegeix-ne un</button>' +
           '</section>' +
+
+          propostes(d) +
 
           '<section class="nutri-apats">' +
             (llista.length
@@ -7625,7 +7655,9 @@ App.registraVista('finances', {
         '</div>';
 
       lligaCapcalera();
-      arrel.querySelector('[data-nou-rec]').addEventListener('click', function () { obreRecurrent(null); });
+      arrel.querySelector('[data-tria-rec]').addEventListener('click', function () {
+        obreTriador(d.triables || []);
+      });
       arrel.querySelectorAll('[data-rec]').forEach(function (b) {
         b.addEventListener('click', function () {
           var r = null;
@@ -7633,13 +7665,128 @@ App.registraVista('finances', {
           if (r) obreRecurrent(r);
         });
       });
+
+      var props = d.propostes || [];
+      arrel.querySelectorAll('[data-prop]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var g = props.filter(function (x) { return x.clau === b.dataset.prop; })[0];
+          if (g) obreRecurrent(deGrup(g));
+        });
+      });
+      arrel.querySelectorAll('[data-fora]').forEach(function (b) {
+        b.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          b.disabled = true;
+          escriu('finances', 'descarta', { clau: b.dataset.fora }, quePinto())
+            .then(function (p) {
+              App.brindis('No te\'l tornaré a proposar');
+              Cau.oblida('finances.'); aplica(p);
+            })
+            .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+        });
+      });
     }
 
-    function obreRecurrent(r) {
-      var editant = !!r;
-      var tipus = editant ? r.tipus : 'd';
+    /* Un grup de moviments, vestit de recurrent perquè el formulari el pugui
+       obrir. Sense `id`: no és editar-ne cap, és crear-ne un que ja ve escrit. */
+    function deGrup(g) {
+      return { tipus: g.tipus, import: g.import, descripcio: g.descripcio,
+               categoria: g.categoria, metode: g.metode, dia: g.dia,
+               actiu: true, clau: g.clau };
+    }
 
-      var cos = App.modal(editant ? 'Edita el recurrent' : 'Nou recurrent',
+    /* ═══════════════════════════════════════════════════════════════════
+       EL QUE JEFE HA VIST ALS MOVIMENTS QUE JA TENS
+
+       No és una llista del que es repeteix: això seria el súper. És el que es
+       repeteix AMB EL MATEIX IMPORT i un sol cop al mes, que és el que fa que
+       una cosa sigui un rebut i no una compra. Cada proposta porta per què
+       s'ha proposat —quants mesos i quant balla— perquè decidir no impliqui
+       fiar-se'n.
+       ═══════════════════════════════════════════════════════════════════ */
+    function propostes(d) {
+      var p = d.propostes || [];
+      if (!p.length) return '';
+      return '<section class="nutri-apats">' +
+        '<p class="marge" style="margin:0 0 var(--e2)">JEFE ho ha vist als teus moviments</p>' +
+        '<div class="cats">' + p.map(function (g) {
+          return '<div class="prop-fila">' +
+            '<button class="prop-cos" data-prop="' + esc(g.clau) + '">' +
+              '<span class="prop-nom">' +
+                '<b>' + esc(g.descripcio) + '</b>' +
+                '<span class="menut">' + esc(g.mesos + ' mesos seguits · sempre ' +
+                  (g.minim === g.maxim ? eurNum(g.import) : eurNum(g.minim) + '–' + eurNum(g.maxim)) +
+                  ' € · dia ' + g.dia) + '</span>' +
+              '</span>' +
+              '<span class="rec-import num" data-costat="' +
+                (g.tipus === 'i' ? 'deficit' : '') + '">' +
+                (g.tipus === 'i' ? '+' : '−') + eur(g.import) + '</span>' +
+            '</button>' +
+            '<button class="prop-no" data-fora="' + esc(g.clau) + '" ' +
+              'aria-label="No proposis més ' + esc(g.descripcio) + '">' + ic('tancar') + '</button>' +
+          '</div>';
+        }).join('') + '</div>' +
+        '<p class="menut" style="margin-top:var(--e2)">Toca\'n un per confirmar-lo. La creu vol ' +
+          'dir que no, i llavors no te\'l torno a proposar.</p>' +
+      '</section>';
+    }
+
+    /* TRIAR-LO D'UNA LLISTA EN COMPTES D'ESCRIURE'L.
+       És el que va demanar: «que els pugués seleccionar de la llista inicial
+       on em surten tots actualitzats». Aquí hi són tots els comerços dels sis
+       últims mesos, amb el que se sap de cadascun; els que no compleixen els
+       filtres també hi són, perquè hi ha rebuts que només ell sap que ho són. */
+    function obreTriador(tots) {
+      var cos = App.modal('D\'on ve el rebut?',
+        '<div class="form-ajustos">' +
+          (tots.length
+            ? '<p class="menut">Dels teus moviments dels últims mesos. Toca el que sigui un ' +
+                'rebut fix i t\'ompliré el formulari.</p>' +
+              '<div class="cats tria-mov">' + tots.map(function (g) {
+                return '<button class="rec-fila" data-tria="' + esc(g.clau) + '">' +
+                  '<span class="rec-cos">' +
+                    '<b>' + esc(g.descripcio) + '</b>' +
+                    '<span class="menut">' + esc(g.mesos + ' de ' + g.mesosMirats + ' mesos · ' +
+                      (g.minim === g.maxim ? 'sempre ' + eurNum(g.import)
+                                           : 'de ' + eurNum(g.minim) + ' a ' + eurNum(g.maxim)) + ' €') +
+                    '</span>' +
+                  '</span>' +
+                  '<span class="rec-import num" data-costat="' +
+                    (g.tipus === 'i' ? 'deficit' : '') + '">' +
+                    (g.tipus === 'i' ? '+' : '−') + eur(g.import) + '</span>' +
+                '</button>';
+              }).join('') + '</div>'
+            : '<p class="menut">Encara no hi ha prou moviments per triar-ne cap.</p>') +
+          '<button class="btn btn-secundari" data-a-ma style="width:100%;margin-top:var(--e3)">' +
+            'Escriu-lo a mà</button>' +
+        '</div>');
+
+      cos.querySelector('[data-a-ma]').addEventListener('click', function () {
+        App.tancaModal();
+        setTimeout(function () { obreRecurrent(null); }, 120);
+      });
+      cos.querySelectorAll('[data-tria]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var g = tots.filter(function (x) { return x.clau === b.dataset.tria; })[0];
+          if (!g) return;
+          App.tancaModal();
+          setTimeout(function () { obreRecurrent(deGrup(g)); }, 120);
+        });
+      });
+    }
+
+    /* S'OBRE BUIT, PLE O A MITGES.
+       Buit quan l'escrius tu. Ple quan edites un que ja existeix. I a mitges
+       —amb tot omplert però sense identificador— quan ve d'una proposta o
+       d'un moviment que has triat de la llista: llavors no és editar-ne cap,
+       és crear-ne un que ja ve escrit. Distingir-ho per `r.id` i no per si
+       hi ha `r` és el que ho fa possible. */
+    function obreRecurrent(r) {
+      var editant = !!(r && r.id);
+      var tipus = r ? r.tipus : 'd';
+
+      var cos = App.modal(editant ? 'Edita el recurrent'
+                        : r ? 'Confirma el rebut fix' : 'Nou recurrent',
         '<div class="form-ajustos form-apunt">' +
           '<div class="tipus-tria" role="group">' +
             '<button data-tipus="d"' + (tipus === 'd' ? ' aria-pressed="true"' : '') + '>Surt</button>' +
@@ -7647,20 +7794,20 @@ App.registraVista('finances', {
           '</div>' +
           '<label><span class="marge">Import</span>' +
             '<input data-c="import" inputmode="decimal" class="num camp-import" placeholder="0,00" value="' +
-              (editant ? String(r.import).replace('.', ',') : '') + '" autocomplete="off"></label>' +
+              (r ? String(r.import).replace('.', ',') : '') + '" autocomplete="off"></label>' +
           '<label><span class="marge">Què és</span>' +
             '<input data-c="descripcio" autocomplete="off" placeholder="p. ex. Lloguer" value="' +
-              (editant ? esc(r.descripcio) : '') + '"></label>' +
+              (r ? esc(r.descripcio) : '') + '"></label>' +
           '<label><span class="marge">Categoria</span><select data-c="categoria"></select></label>' +
           '<label><span class="marge">Com es paga</span>' +
             '<select data-c="metode">' +
               ['domic', 'targeta', 'transf', 'efectiu', 'online'].map(function (x) {
                 return '<option value="' + x + '"' +
-                       (editant && r.metode === x ? ' selected' : '') + '>' + x + '</option>';
+                       (r && r.metode === x ? ' selected' : '') + '>' + x + '</option>';
               }).join('') + '</select></label>' +
           '<label><span class="marge">Quin dia del mes</span>' +
             '<input data-c="dia" inputmode="numeric" class="num" value="' +
-              (editant ? r.dia : 1) + '" autocomplete="off"></label>' +
+              (r ? r.dia : 1) + '" autocomplete="off"></label>' +
           /* Fins al 28 i no fins al 31: així cau tots els mesos, també el
              febrer. Un rebut del dia 31 no existiria mig any. */
           '<p class="menut">Del 1 al 28. Més enllà no existeix tots els mesos.</p>' +
@@ -7678,7 +7825,7 @@ App.registraVista('finances', {
         camps.categoria.innerHTML = cats.filter(function (c) { return c.mena === tipus; })
           .map(function (c) {
             return '<option value="' + esc(c.id) + '"' +
-                   (editant && r.categoria === c.id ? ' selected' : '') + '>' +
+                   (r && r.categoria === c.id ? ' selected' : '') + '>' +
                    esc((c.emoji ? c.emoji + ' ' : '') + c.nom) + '</option>';
           }).join('');
       }
@@ -7704,6 +7851,10 @@ App.registraVista('finances', {
         b.disabled = true;
         escriu('finances', 'desaRecurrent', {
           id: editant ? r.id : null,
+          /* Si ve d'un moviment de debò, es passa qui el cobra. És el que
+             després evita que el rebut es compti dues vegades: una perquè
+             l'has apuntat i una altra perquè el banc l'ha portat. */
+          clau: r && r.clau ? r.clau : null,
           tipus: tipus, 'import': imp,
           descripcio: camps.descripcio.value.trim(),
           categoria: camps.categoria.value,

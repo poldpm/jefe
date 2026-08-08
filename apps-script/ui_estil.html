@@ -1186,6 +1186,34 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .rec-cos b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rec-import { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* Triant-lo dels moviments no hi ha dia: encara no és un rebut, és un comerç
+   que has vist unes quantes vegades. La columna del dia sobra i la fila torna
+   a ser de dues. */
+.tria-mov .rec-fila { grid-template-columns: minmax(0, 1fr) auto; }
+.tria-mov { max-height: 46vh; overflow-y: auto; }
+
+/* LES PROPOSTES. Dues accions a la mateixa fila i no una: dir que sí obre el
+   formulari per confirmar-lo, i dir que no és un toc a la creu i no s'ha de
+   tornar a preguntar mai més. Amb un sol botó, el «no» no existiria i la
+   llista es quedaria plena de coses que ja has decidit. */
+.prop-fila { display: grid; grid-template-columns: minmax(0, 1fr) 44px;
+             align-items: center; border-bottom: 1px solid var(--utm-suau); }
+.prop-fila:last-child { border-bottom: 0; }
+.prop-cos { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center; gap: var(--e3); min-height: 56px;
+            background: none; border: 0; padding: var(--e2) 0;
+            text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.prop-nom { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.prop-nom b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prop-no { display: flex; align-items: center; justify-content: center;
+           width: 44px; height: 44px; padding: 0; border: 0; background: none;
+           color: var(--ink-suau); cursor: pointer; }
+.prop-no .ic { width: 16px; height: 16px; }
+.prop-no:active { color: var(--gr); }
+@media (hover: hover) and (pointer: fine) {
+  .prop-no:hover { color: var(--gr); }
+}
+
 /* Captura ràpida. El camp és el primer que hi ha i està sempre obert: si has
    de prémer un botó per obrir-lo, ja has perdut la meitat del que volies
    apuntar. */

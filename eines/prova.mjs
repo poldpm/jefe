@@ -2323,6 +2323,194 @@ console.log('\nSeguiment: les fotos es comparen, no s\'ensenyen');
       /No parlis de sortides quan tinguis la càrrega/.test(String(ditAmbCarrega.sistema)));
 }
 
+// ------------------------------- els rebuts fixos: Bonpreu fora, assegurança dins
+/* EL CRITERI EL VA DIR ELL, I ÉS EL QUE ES PROVA AQUÍ:
+   «a Bonpreu hi compro cada mes, però no la mateixa quantitat ni gasto, i no
+   m'interessa marcar-lo com a cada mes... però del segur del cotxe cada mes
+   igual i empresa la mateixa, aquest sí que m'interessa».
+
+   O sigui que sortir cada mes NO és el criteri. Si algú relaxa els filtres,
+   això peta abans que la pantalla se li ompli de supermercats. */
+console.log('\nRebuts fixos: sortir cada mes no és ser un rebut');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Finances.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Finances = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+
+  const mesos = ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'];
+  const movs = [];
+  let n = 0;
+  const posa = (mes, dia, desc, imp, tipus) => {
+    movs.push({ id: 'm' + (++n), data: mes + '-' + String(dia).padStart(2, '0'),
+                tipus: tipus || 'd', import: imp, categoria: 'c_casa',
+                descripcio: desc, metode: 'domic', origen: 'banc', revisat: 'SI' });
+  };
+
+  mesos.forEach((m, i) => {
+    // L'ASSEGURANÇA: cada mes, mateixa empresa, mateix import.
+    posa(m, 5, 'SEGUROS CATALANA OCC', 42.9);
+    // EL SÚPER: cada mes, però tres cops i imports que no s'assemblen.
+    posa(m, 3, 'BONPREU ESCLAT 4412', 18.4 + i * 3);
+    posa(m, 12, 'BONPREU ESCLAT 4419', 62.15 - i * 2);
+    posa(m, 24, 'BONPREU ESCLAT 4412', 91.3 + i);
+    // LA NÒMINA: ingrés fix.
+    posa(m, 28, 'NOMINA ESCOLA VEDRUNA', 1840, 'i');
+    // EL GIMNÀS: fix però només tres mesos dels sis.
+    if (i >= 3) posa(m, 8, 'GIMNAS VIC SL', 31);
+  });
+  // UN CÀRREC SOLT: una vegada i prou.
+  posa('2026-05', 14, 'IKEA BADALONA', 249.9);
+  // I una quota que puja un cèntim: segueix sent la mateixa quota.
+  mesos.forEach((m, i) => posa(m, 18, 'SPOTIFY AB', 10.99 + i * 0.002));
+
+  const ctx = {
+    Utils: { avui: () => '2026-08-08', ara: () => '2026-08-08T10:00:00+02:00',
+             talla: (s, x) => String(s).slice(0, x), esDataValida: () => true,
+             nouId: (p) => p + (++n) },
+    Dades: {
+      llegeix: (full, filtre) => {
+        const l = full === 'Moviments' ? movs : [];
+        return l.filter((f) => !filtre || filtre(f));
+      },
+      un: () => null, perId: () => null,
+      insereix: (full, fila, p) => Object.assign({ id: p + (++n) }, fila),
+      actualitza: () => ({}), desa: (f, fila, c, p) => ({ id: p + (++n) })
+    },
+    Config: { get: () => '', getNum: (k, d) => d, esSi: () => false },
+    Log: { info() {}, avis() {}, error() {} },
+    Memoria: { recorda: (a, b, fer) => fer(), oblida() {} },
+    Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp
+  };
+  vm.createContext(ctx);
+  vm.runInContext(srvFont, ctx);
+
+  const c = ctx.Finances.candidatsRecurrents('2026-08-08');
+  const noms = c.propostes.map((p) => p.descripcio);
+
+  cal('l\'assegurança del cotxe es proposa',
+      noms.some((x) => /CATALANA/.test(x)), noms.join(' | '));
+  cal('i la nòmina també, que és un ingrés fix',
+      noms.some((x) => /NOMINA/.test(x)), noms.join(' | '));
+  cal('i una quota que puja dos cèntims segueix sent la mateixa quota',
+      noms.some((x) => /SPOTIFY/.test(x)), noms.join(' | '));
+
+  cal('BONPREU NO es proposa, encara que hi compri cada mes',
+      !noms.some((x) => /BONPREU/.test(x)), noms.join(' | '));
+  cal('ni el gimnàs, que només surt a tres dels sis mesos',
+      !noms.some((x) => /GIMNAS/.test(x)), noms.join(' | '));
+  cal('ni un càrrec que ha passat una vegada',
+      !noms.some((x) => /IKEA/.test(x)), noms.join(' | '));
+
+  /* I els dos filtres han de fer fora Bonpreu CADASCUN PEL SEU COMPTE: si un
+     dia es relaxa l'altre, ha de seguir quedant fora. */
+  const bonpreu = c.tots.filter((g) => /BONPREU/.test(g.descripcio))[0];
+  cal('Bonpreu queda fora per import que balla', bonpreu && bonpreu.variacio > 0.12,
+      bonpreu && String(bonpreu.variacio));
+  cal('i també per nombre de càrrecs al mes', bonpreu && bonpreu.perMes > 1.5,
+      bonpreu && String(bonpreu.perMes));
+
+  /* L'import proposat és la mediana, no la mitjana: un mes rar no ha de moure
+     una quota que no s'ha mogut mai. */
+  const asseg = c.propostes.filter((p) => /CATALANA/.test(p.descripcio))[0];
+  cal('la proposta porta l\'import de debò i el dia del mes',
+      asseg.import === 42.9 && asseg.dia === 5, JSON.stringify(asseg));
+  cal('i diu de quants mesos surt, que és el que et fa dir que sí',
+      asseg.mesos === 6 && asseg.mesosMirats === 6, JSON.stringify(asseg));
+
+  /* El mes en curs NO entra: està a mitges i un rebut que encara no ha
+     arribat comptaria com un mes fallat. */
+  posa('2026-08', 5, 'SEGUROS CATALANA OCC', 42.9);
+  const c2 = ctx.Finances.candidatsRecurrents('2026-08-08');
+  const a2 = c2.propostes.filter((p) => /CATALANA/.test(p.descripcio))[0];
+  cal('el mes en curs no compta: la finestra són els sis mesos tancats',
+      a2.mesos === 6, String(a2.mesos));
+
+  /* NO ES PROPOSA EL QUE JA S'HA CONTESTAT. Tornar a preguntar el que ja has
+     dit que no és la manera més segura que deixis de mirar-t'ho. */
+  const jaVistos = [{ id: 'r1', clau: 'd|SEGUROS CATALANA OCC', descripcio: 'Cotxe' },
+                    { id: 'r2', clau: 'i|NOMINA ESCOLA VEDRUNA', descartat_el: '2026-07-01T10:00:00' }];
+  ctx.Dades.llegeix = (full, filtre) => {
+    const l = full === 'Moviments' ? movs : full === 'Recurrents' ? jaVistos : [];
+    return l.filter((f) => !filtre || filtre(f));
+  };
+  const c3 = ctx.Finances.candidatsRecurrents('2026-08-08');
+  const n3 = c3.propostes.map((p) => p.descripcio);
+  cal('el que ja és recurrent no es torna a proposar',
+      !n3.some((x) => /CATALANA/.test(x)), n3.join(' | '));
+  cal('i el que vas dir que no, tampoc',
+      !n3.some((x) => /NOMINA/.test(x)), n3.join(' | '));
+  cal('ni surten a la llista de triar, que ja estan decidits',
+      !c3.tots.some((g) => /CATALANA|NOMINA/.test(g.descripcio)),
+      c3.tots.map((g) => g.descripcio).join(' | '));
+
+  /* ══════════════════════════════════════════════════════════════════════
+     I EL QUE ARRIBA DEL BANC NO S'APUNTA DUES VEGADES
+
+     El recurrent es va inventar quan no hi havia banc: escriure'l era l'única
+     manera que el rebut existís. Amb el banc connectat, el càrrec arriba sol,
+     i generar-ne un de sintètic vol dir pagar el segur del cotxe dos cops al
+     full. El comentari del trigger ja deia que el veuries «com un possible
+     duplicat»; ara senzillament no hi és.
+     ══════════════════════════════════════════════════════════════════════ */
+  {
+    const delMes = [{ id: 'x1', data: '2026-08-05', tipus: 'd', import: 42.9,
+                      categoria: 'c_cotx', descripcio: 'SEGUROS CATALANA OCC',
+                      metode: 'domic', origen: 'banc', revisat: 'SI' }];
+    const recs = [{ id: 'r1', tipus: 'd', import: 42.9, categoria: 'c_cotx',
+                    descripcio: 'Assegurança', metode: 'domic', dia: 5, actiu: 'SI',
+                    clau: 'd|SEGUROS CATALANA OCC', ultim_mes: '' },
+                  { id: 'r2', tipus: 'd', import: 620, categoria: 'c_casa',
+                    descripcio: 'Lloguer', metode: 'transf', dia: 1, actiu: 'SI',
+                    clau: 'd|IMMOBILIARIA VIC', ultim_mes: '' }];
+    let escrits = [], marcats = [];
+    ctx.Dades.llegeix = (full, filtre) => {
+      const l = full === 'Moviments' ? delMes : full === 'Recurrents' ? recs : [];
+      return l.filter((f) => !filtre || filtre(f));
+    };
+    ctx.Dades.insereix = (full, fila, p) => {
+      if (full === 'Moviments') escrits.push(fila.descripcio);
+      return Object.assign({ id: p + (++n) }, fila);
+    };
+    ctx.Dades.actualitza = (full, id, canvis) => {
+      if (full === 'Recurrents' && canvis.ultim_mes) marcats.push(id);
+      return {};
+    };
+    ctx.Finances.generaRecurrents('2026-08-08');
+
+    cal('el rebut que el banc ja ha portat NO es torna a apuntar',
+        !escrits.some((x) => /Assegurança/.test(x)), escrits.join(' | '));
+    cal('però es dona per fet, per no tornar-hi cada nit',
+        marcats.indexOf('r1') !== -1, marcats.join(' | '));
+    cal('i el que NO ha arribat sí que s\'apunta: aquesta és la seva feina',
+        escrits.some((x) => /Lloguer/.test(x)), escrits.join(' | '));
+  }
+}
+
+// -------------------------------- la pantalla de rebuts fixos: proposar i triar
+console.log('\nRebuts fixos: la pantalla proposa, tria i sap dir que no');
+{
+  const v = fs.readFileSync('apps-script/vista_finances.html', 'utf8');
+
+  cal('les propostes es pinten amb el perquè, no només amb el nom',
+      /mesos seguits · sempre/.test(v) && /function propostes\(d\)/.test(v));
+  cal('cada proposta té les dues sortides: confirmar-la i dir-hi que no',
+      /data-prop=/.test(v) && /data-fora=/.test(v));
+  cal('i dir que no passa pel servidor, que és qui se\'n recorda',
+      /escriu\('finances', 'descarta'/.test(v));
+
+  cal('«Afegeix-ne un» obre la llista dels teus moviments',
+      /data-tria-rec/.test(v) && /function obreTriador\(tots\)/.test(v));
+  cal('i encara es pot escriure a mà', /data-a-ma/.test(v));
+
+  /* El formulari s'ha d'obrir a mitges: tot omplert però creant, no editant.
+     Si es mirés «hi ha objecte?» en comptes de «té identificador?», una
+     proposta acceptada intentaria actualitzar un recurrent que no existeix. */
+  cal('una proposta obre el formulari com a NOU, no com a edició',
+      /var editant = !!\(r && r\.id\);/.test(v));
+  cal('i el que crea porta qui el cobra, per no duplicar-lo després',
+      /clau: r && r\.clau \? r\.clau : null/.test(v));
+}
+
 // ------------------------------------------------- els entrenaments: la càrrega
 /* LA QUEIXA, LITERAL: «canvia molt un entreno de 2 km amb 0 de desnivell a un de
    6 km amb 1000 de desnivell». Comptant sortides els dos són «1». Això prova que

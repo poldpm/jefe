@@ -550,6 +550,31 @@ const MOCK = `
       if (accio === 'patrimoni') return copia(FIN.patrimoni.dades);
       if (accio === 'perRevisar') return copia(FIN.revisar.dades);
       if (accio === 'estatBanc') return { connectat: false, motiu: 'mirall' };
+      /* Dir que no a una proposta la treu de la llista. Al mirall es treu de
+         debo de les dades, que es l unica manera de veure que la pantalla
+         queda com ha de quedar despres de dir que no. */
+      if (accio === 'descarta') {
+        window.__ultimDescartat = p.clau;
+        var rec = FIN.recurrents.dades;
+        rec.propostes = (rec.propostes || []).filter(function (x) { return x.clau !== p.clau; });
+        rec.triables = (rec.triables || []).filter(function (x) { return x.clau !== p.clau; });
+        return { ok: true };
+      }
+      if (accio === 'desaRecurrent') {
+        window.__ultimRecurrent = p;
+        var r2 = FIN.recurrents.dades;
+        if (!p.id) {
+          r2.llista = r2.llista.concat([{ id: 'r_nou', descripcio: p.descripcio,
+            import: p['import'], tipus: p.tipus, categoria: p.categoria,
+            categoriaNom: p.categoria, metode: p.metode, dia: p.dia, actiu: true,
+            clau: p.clau || '', ultim_mes: '' }]);
+          if (p.clau) {
+            r2.propostes = (r2.propostes || []).filter(function (x) { return x.clau !== p.clau; });
+            r2.triables = (r2.triables || []).filter(function (x) { return x.clau !== p.clau; });
+          }
+        }
+        return { ok: true };
+      }
       return { ok: true, tocats: 1 };
     }
 
