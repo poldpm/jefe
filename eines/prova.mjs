@@ -2790,6 +2790,23 @@ console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
   const cn = munta(nomines, [], '2026-08-08').candidatsRecurrents('2026-08-08');
   cal('una nòmina que balla es proposa igualment: el banc diu qui la paga',
       cn.propostes.length === 1, JSON.stringify(cn.tots.map((g) => [g.variacio, g.fiable])));
+  cal('i queda marcada com a variable, que és el que canvia què se\'n vigila',
+      cn.propostes[0].variable === true, JSON.stringify(cn.propostes[0].variacio));
+
+  /* I d'un que balla per definició no s'avisa que ha canviat de preu: seria
+     avisar-lo cada mes de la cosa que ja sap. Que no ha arribat, sí. */
+  const recVar = [{ id: 'r1', tipus: 'i', import: 1840, categoria: 'i_nomi',
+                    descripcio: 'Nòmina', metode: 'transf', dia: 28, actiu: 'SI',
+                    clau: 'ib|ES76', contrapart: 'ib|ES76', variable: 'SI', ultim_mes: '' }];
+  const arribada = [{ id: 'm1', data: '2026-08-28', tipus: 'i', import: 2400,
+                      categoria: 'i_nomi', descripcio: 'NOMINA', metode: 'transf',
+                      origen: 'banc', contrapart: 'ib|ES76', revisat: 'SI' }];
+  const vv = munta(arribada, recVar, '2026-08-31').vigilancia();
+  cal('d\'un import variable no s\'avisa que ha canviat de preu',
+      vv.canviats.length === 0, JSON.stringify(vv.canviats));
+  const vf = munta([], recVar, '2026-08-31').vigilancia();
+  cal('però si no arriba, sí que es diu', vf.falten.length === 1,
+      JSON.stringify(vf.falten));
 
   /* Però una benzinera amb el mateix ball NO, perquè va pel text. És el mateix
      número i decideix diferent segons qui hi hagi a l'altra banda. */
@@ -2927,7 +2944,10 @@ console.log('\nRebuts fixos: la pantalla proposa, tria i sap dir que no');
   const v = fs.readFileSync('apps-script/vista_finances.html', 'utf8');
 
   cal('les propostes es pinten amb el perquè, no només amb el nom',
-      /mesos seguits · sempre/.test(v) && /function propostes\(d\)/.test(v));
+      /' de ' \+ g\.mesosMirats \+ ' mesos · '/.test(v) && /function propostes\(d\)/.test(v));
+  /* I si l'import va variant, es diu ABANS d'acceptar-lo: acceptar «sempre
+     1840 €» una nòmina que no és mai dos mesos igual seria mentir-li. */
+  cal('i si l\'import va variant, la proposta ho diu', /va variant/.test(v));
   cal('cada proposta té les dues sortides: confirmar-la i dir-hi que no',
       /data-prop=/.test(v) && /data-fora=/.test(v));
   cal('i dir que no passa pel servidor, que és qui se\'n recorda',

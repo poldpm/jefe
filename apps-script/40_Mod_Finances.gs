@@ -97,6 +97,9 @@ function MODUL_FINANCES() {
              —i així no comptar-lo dues vegades— i recordar que d'aquest ja
              se n'ha proposat un i el vas dir que no. */
           { nom: 'clau',            tipus: 'text' },
+          /* Un que no és mai dos mesos igual —una nòmina—: segueix sent un
+             recurrent i se'n vigila que arribi, però no que canviï de preu. */
+          { nom: 'variable',        tipus: 'text', valors: ['SI', 'NO'] },
           /* La identitat forta, quan el moviment del qual ve en tenia. La
              `clau` de dalt es queda perquè els recurrents que ja existien
              segueixin lligant pel text; la comparació prova les dues. */
@@ -1158,6 +1161,7 @@ var Finances = (function () {
         actiu: String(x.actiu).toUpperCase() !== 'NO',
         clau: x.clau || '',
         contrapart: x.contrapart || '',
+        variable: String(x.variable).toUpperCase() === 'SI',
         ultimMes: x.ultim_mes
       };
     });
@@ -1408,6 +1412,10 @@ var Finances = (function () {
            que li canviïn el concepte. Que ho digui la proposta serveix per
            saber de quins ens podem refiar. */
         fiable: esForta_(g.clau),
+        /* Un que no és mai dos mesos igual. No l'exclou —una nòmina n'és un—,
+           però sí que canvia què se'n vigila: de què serveix avisar que ha
+           canviat de preu una cosa que canvia cada mes per definició. */
+        variable: variacio > RECURRENT.variacio,
         tipus: g.tipus,
         descripcio: comEnDiem_(g.noms),
         import: mediana_(g.imports),
@@ -1432,10 +1440,24 @@ var Finances = (function () {
     if (g.mesos < RECURRENT.mesosMinims) return false;
     if (g.mesos < Math.ceil(g.mesosMirats * RECURRENT.presencia)) return false;
     if (g.perMes > RECURRENT.perMes) return false;
-    /* Un rebut que el banc identifica pot ballar molt més que una compra: una
-       nòmina no és mai dos mesos igual i segueix sent una nòmina. Vegeu
-       `RECURRENT.variacioFiable`. */
-    if (g.variacio > (g.fiable ? RECURRENT.variacioFiable : RECURRENT.variacio)) return false;
+    /* ══════════════════════════════════════════════════════════════════════
+       L'IMPORT NOMÉS DECIDEIX QUAN NO SE SAP QUI COBRA
+
+       La nòmina d'en Pol balla més del quaranta per cent: és mestre, i entre
+       les pagues extres i les substitucions no hi ha dos mesos iguals. I una
+       nòmina és exactament la cosa que més vols saber si un mes no arriba.
+
+       El filtre de l'import mai no va ser per trobar imports iguals: era per
+       no proposar el súper. I el súper no cal treure'l per l'import, perquè ja
+       queda fora per la freqüència i perquè el banc no diu qui cobra. Quan el
+       banc SÍ que ho diu —un rebut domiciliat, una transferència— l'import no
+       hi pinta res: el que importa és que arribi cada mes.
+
+       El que sí que canvia és què se'n vigila després: d'un que balla no té
+       cap sentit avisar que ha canviat de preu. Per això el grup s'endú
+       `variable` i el recurrent se'n recorda.
+       ══════════════════════════════════════════════════════════════════════ */
+    if (!g.fiable && g.variacio > RECURRENT.variacio) return false;
     return true;
   }
 
@@ -1444,9 +1466,7 @@ var Finances = (function () {
     if (g.mesos < RECURRENT.mesosMinims) return 'amb ' + g.mesos + ' mesos encara no se sap';
     if (g.mesos < Math.ceil(g.mesosMirats * RECURRENT.presencia)) return 'li falten mesos';
     if (g.perMes > RECURRENT.perMes) return 'hi compres més d\'un cop al mes';
-    if (g.variacio > (g.fiable ? RECURRENT.variacioFiable : RECURRENT.variacio)) {
-      return 'l\'import balla' + (g.fiable ? ' massa' : ' i és una compra');
-    }
+    if (!g.fiable && g.variacio > RECURRENT.variacio) return 'l\'import balla i és una compra';
     return '';
   }
 
@@ -1560,7 +1580,9 @@ var Finances = (function () {
         var dif = Math.round((vist.import - r.import) * 100) / 100;
         /* Un cèntim amunt no és un canvi de preu. Es demana que sigui gros en
            relatiu I en absolut: un 5 % de tres euros tampoc no ho és. */
-        if (Math.abs(dif) >= VIGILA.minim &&
+        /* D'un que balla per definició no s'avisa que ha canviat: seria
+           avisar-lo cada mes de la cosa que ja sap. Que ha arribat, sí. */
+        if (!r.variable && Math.abs(dif) >= VIGILA.minim &&
             r.import && Math.abs(dif) / r.import >= VIGILA.canvi) {
           e.estat = 'canviat';
           e.diferencia = dif;
@@ -1670,7 +1692,8 @@ var Finances = (function () {
          després permet no comptar-lo dues vegades quan arribi del banc. */
       clau: String(p.clau || '').trim() || clauMemoria_(desc, tipus),
       contrapart: String(p.contrapart || '').trim() ||
-                  (esForta_(p.clau) ? String(p.clau) : '')
+                  (esForta_(p.clau) ? String(p.clau) : ''),
+      variable: p.variable ? 'SI' : 'NO'
     };
 
     if (p.id) {

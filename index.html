@@ -3020,7 +3020,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 20:12 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 20:19 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3407,7 +3407,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 20:12 · en curs";
+window.MARCA_JEFE = "2026-08-08 20:19 · en curs";
 </script>
 
 <script>
@@ -7715,7 +7715,7 @@ App.registraVista('finances', {
           if (!r) return;
           b.disabled = true; b.textContent = 'Desant…';
           escriu('finances', 'desaRecurrent', {
-            id: r.id, clau: r.clau, contrapart: r.contrapart,
+            id: r.id, clau: r.clau, contrapart: r.contrapart, variable: r.variable,
             tipus: r.tipus, 'import': Number(b.dataset.nou),
             descripcio: r.descripcio, categoria: r.categoria, metode: r.metode,
             dia: r.dia, actiu: true
@@ -7794,7 +7794,8 @@ App.registraVista('finances', {
     function deGrup(g) {
       return { tipus: g.tipus, import: g.import, descripcio: g.descripcio,
                categoria: g.categoria, metode: g.metode, dia: g.dia,
-               actiu: true, clau: g.clau, contrapart: g.contrapart || '' };
+               actiu: true, clau: g.clau, contrapart: g.contrapart || '',
+               variable: !!g.variable };
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -7816,9 +7817,11 @@ App.registraVista('finances', {
             '<button class="prop-cos" data-prop="' + esc(g.clau) + '">' +
               '<span class="prop-nom">' +
                 '<b>' + esc(g.descripcio) + '</b>' +
-                '<span class="menut">' + esc(g.mesos + ' mesos seguits · sempre ' +
-                  (g.minim === g.maxim ? eurNum(g.import) : eurNum(g.minim) + '–' + eurNum(g.maxim)) +
-                  ' € · dia ' + g.dia) + '</span>' +
+                '<span class="menut">' + esc(g.mesos + ' de ' + g.mesosMirats + ' mesos · ' +
+                  (g.variable ? 'de ' + eurNum(g.minim) + ' a ' + eurNum(g.maxim) + ' €, va variant'
+                   : g.minim === g.maxim ? 'sempre ' + eurNum(g.import) + ' €'
+                   : eurNum(g.minim) + '–' + eurNum(g.maxim) + ' €') +
+                  ' · dia ' + g.dia) + '</span>' +
               '</span>' +
               '<span class="rec-import num" data-costat="' +
                 (g.tipus === 'i' ? 'deficit' : '') + '">' +
@@ -7958,6 +7961,7 @@ App.registraVista('finances', {
              l'has apuntat i una altra perquè el banc l'ha portat. */
           clau: r && r.clau ? r.clau : null,
           contrapart: r && r.contrapart ? r.contrapart : null,
+          variable: r ? !!r.variable : false,
           tipus: tipus, 'import': imp,
           descripcio: camps.descripcio.value.trim(),
           categoria: camps.categoria.value,
