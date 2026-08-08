@@ -745,7 +745,17 @@ var Seguiment = (function () {
      El veredicte i els avisos surten de les regles i són instantanis. Això és
      un extra: una lectura més fina, que costa una petició i uns segons. Si el
      límit del proveïdor està cremat, la pantalla segueix sencera i només falta
-     aquest paràgraf. */
+     aquest paràgraf.
+
+     PER QUÈ ABANS CONTESTAVA PITJOR QUE UN XAT QUALSEVOL, que és el que en Pol
+     va dir i tenia raó. No era el model: era el que li arribava. Li donàvem
+     dos controls —aquest i l'anterior—, cap objectiu de la fase i un sostre de
+     noranta paraules. Amb dos punts no hi ha tendència, i sense els objectius
+     no pot dir si tres sortides són moltes o poques. Contestava el que es pot
+     contestar amb això: una frase educada sobre la setmana.
+     Ara li arriba el tram sencer —fins a vuit controls, que són dos mesos—,
+     els objectius de la fase i el resum del pla, i té espai per lligar-ho. La
+     mateixa petició, el mateix preu, i la diferència és tota d'aquí. */
   function comenta(data) {
     var h = controls();
     var i = -1;
@@ -758,25 +768,48 @@ var Seguiment = (function () {
 
     if (!IA.disponible()) throw new Error(IA.motiu() || 'La capa d\'IA no està disponible.');
 
+    /* El tram que porta fins aquí. Vuit setmanes són el que fa que es pugui
+       dir «fa un mes que», que és exactament el que un sol control no permet. */
+    var desde = Math.max(0, i - 7);
+    var tram = [];
+    for (var t = desde; t <= i; t++) {
+      tram.push('- ' + h[t].data + ': ' + linia_(h[t]) +
+                (t === i ? '   ← aquest' : ''));
+    }
+
+    var objectius = [];
+    if (f && f.kcal) objectius.push(f.kcal + ' kcal');
+    if (f && f.proteina) objectius.push(f.proteina + ' g de proteïna');
+    if (f && f.forca) objectius.push(f.forca + ' sessions de força');
+    if (f && f.trail) objectius.push(f.trail + ' sortides de trail');
+
     var dades =
       (f ? 'Fase: ' + f.nom + (f.objectiu ? ' — ' + f.objectiu : '') + '\n' : '') +
-      'Control del ' + h[i].data + ':\n' + linia_(h[i]) + '\n' +
-      (i > 0 ? 'Anterior (' + h[i - 1].data + '): ' + linia_(h[i - 1]) + '\n' : '') +
-      '\nEl que han detectat les regles:\n' +
+      (objectius.length ? 'El que demana la fase cada setmana: ' + objectius.join(', ') + '\n' : '') +
+      (plaM['pla.resum'] ? 'Pla: ' + plaM['pla.resum'] + '\n' : '') +
+      '\nEls últims ' + tram.length + ' controls, del més antic al més recent:\n' +
+      tram.join('\n') + '\n' +
+      '\nEl que han detectat les regles en aquest:\n' +
       (avisos.length ? avisos.map(function (a) { return '- ' + a.text; }).join('\n')
-                     : '- res destacable') +
-      '\n\nNo repeteixis aquests avisos tal qual: lliga\'ls i digues què vol dir de conjunt.';
+                     : '- res destacable');
 
     var r = IA.genera({
       sistema: 'Ets el preparador d\'en Pol i li parles directe, sense floritures i sense ' +
-               'sermons. Reconeix clarament el que ha fet bé. Quan una dada no quadra, ' +
-               'digues-ho sense embuts però explica el perquè fisiològic. No repeteixis ' +
-               'coses que ja se sap. Ell prioritza el trail conscientment: respecta-ho, ' +
-               'digues el preu una vegada i segueix. Màxim 90 paraules, en català, sense ' +
-               'llistes ni titolets.',
+               'sermons.\n' +
+               'Mira el tram sencer abans de parlar, no només l\'última fila: el que val és ' +
+               'la tendència i si aquesta setmana la trenca o la segueix. Digues on és ' +
+               'respecte del que demana la fase.\n' +
+               'Els avisos de les regles ja els té escrits a la pantalla, o sigui que no els ' +
+               'repeteixis tal qual: lliga\'ls i digues què volen dir de conjunt.\n' +
+               'Reconeix clarament el que ha fet bé. Quan una dada no quadra, digues-ho sense ' +
+               'embuts però explica el perquè fisiològic. No li expliquis coses que ja se sap.\n' +
+               'Ell prioritza el trail conscientment: respecta-ho, digues el preu una vegada ' +
+               'i segueix.\n' +
+               'Català, entre 100 i 160 paraules, un o dos paràgrafs, sense llistes ni ' +
+               'titolets. Acaba amb una sola cosa concreta per a la setmana que ve.',
       missatges: [{ role: 'user', parts: [{ text: dades }] }],
-      model: 'barat',
-      maxTokens: 300,
+      model: 'bo',
+      maxTokens: 600,
       temperatura: 0.4
     });
     return { comentari: String(r && r.text || '').trim(), data: data };

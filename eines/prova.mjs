@@ -2134,6 +2134,42 @@ console.log('\nSeguiment: les fotos es comparen, no s\'ensenyen');
   try { munta(false).S.analitzaFotos('2026-06-19'); } catch (e) { quePassa = e.message; }
   cal('sense capa d\'IA ho diu en comptes de fer veure que ha mirat',
       /no hi ha clau/.test(quePassa), quePassa);
+
+  /* EL COMENTARI DEL CONTROL: EL QUE LI ARRIBA, NO EL MODEL.
+     Amb dos controls i cap objectiu no es pot dir res que un xat qualsevol no
+     digui millor, i això és exactament el que en Pol va notar. El que es prova
+     aquí és que hi vagi el tram sencer i el que demana la fase. */
+  const ambPla = {
+    'pla.resum': 'Dèficit moderat, proteïna alta, trail com a prioritat.',
+    'fase.1.desde': '2026-06-01', 'fase.1.nom': 'Base', 'fase.1.objectiu': 'més magre',
+    'fase.1.forca': '3', 'fase.1.trail': '4', 'fase.1.kcal': '2000'
+  };
+  let ditAlCoach = null;
+  const ctxC = {
+    Utils: { avui: () => '2026-06-19', talla: (s, n) => String(s).slice(0, n) },
+    Dades: { llegeix: (full) => (full === 'Seguiment' ? files
+      : Object.keys(ambPla).map((k) => ({ clau: k, valor: ambPla[k] }))) },
+    Log: { info() {}, avis() {}, error() {} },
+    IA: { disponible: () => true, motiu: () => null,
+          genera: (p) => { ditAlCoach = p; return { text: 'el comentari' }; } },
+    DriveApp: {}, Utilities: {}, Memoria: {},
+    Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+  };
+  vm.createContext(ctxC);
+  vm.runInContext(srvFont, ctxC);
+  ctxC.Seguiment.comenta('2026-06-19');
+  const quediu = String(ditAlCoach.missatges[0].parts[0].text);
+
+  cal('al comentari hi va el tram sencer, no dos controls',
+      /2026-06-05/.test(quediu) && /2026-06-12/.test(quediu) && /2026-06-19/.test(quediu),
+      quediu.slice(0, 120));
+  cal('i el que demana la fase, que és el que fa que un número vulgui dir alguna cosa',
+      /3 sessions de força/.test(quediu) && /4 sortides de trail/.test(quediu), quediu);
+  cal('i el resum del pla', /Dèficit moderat/.test(quediu));
+  cal('i se li diu quin és l\'últim de la llista',
+      /2026-06-19.*← aquest/.test(quediu), quediu);
+  cal('i té espai per lligar-ho', ditAlCoach.maxTokens >= 500,
+      String(ditAlCoach.maxTokens));
 }
 
 // ------------------------------------------- la pantalla del seguiment, per parts
