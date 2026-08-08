@@ -1932,8 +1932,15 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-veredicte[data-mena="avis"] { border-color: var(--avis); }
 .seg-veredicte h2 { font-size: 1.25rem; }
 
-.seg-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
+/* QUATRE XIFRES, I AL MÒBIL DUES FILES DE DUES.
+   Quatre columnes en una pantalla de 360 px deixen 80 px per xifra, i «82,5 cm»
+   en mono de 22 px no hi cap: o es parteix o s'encongeix, i encongir-lo el
+   trauria de la jerarquia que aquesta targeta té. Dues i dues hi caben senceres
+   i les quatre segueixen pesant igual, que és el que importa. */
+.seg-xifres { display: grid; grid-template-columns: repeat(2, 1fr);
+              gap: var(--e3) var(--e2);
               border-top: 1px solid var(--neatline); padding-top: var(--e3); }
+@media (min-width: 420px) { .seg-xifres { grid-template-columns: repeat(4, 1fr); } }
 .seg-xifres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .seg-xifres b { font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
                 line-height: 1; font-variant-numeric: tabular-nums; }
@@ -1973,7 +1980,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
            text-transform: uppercase; letter-spacing: .06em; }
 
 /* LES FOTOS, PER ANGLE. Una foto sola no diu res; la de fa un mes al costat,
-   sí. Per això la tira és horitzontal i el que s'alinea és el mateix angle. */
+   sí. Per això la tira és horitzontal i el que s'alinea és el mateix angle.
+
+   I comencen amagades. El títol i el botó d'obrir-les van a la mateixa fila
+   perquè el que hi ha aquí sota és una decisió, no una secció més: o les vols
+   veure o no. */
+.seg-fotos { margin-top: var(--e4); }
+.seg-fotos-cap { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--e2); margin-bottom: var(--e2); }
+.seg-fotos-cap .marge { margin: 0; }
+.seg-fotos #seg-ullada:not(:empty) { margin-bottom: var(--e2); }
+.seg-fotos [data-mira] { margin-bottom: var(--e3); }
+#seg-tires:not([hidden]) { margin-bottom: var(--e2); }
 .seg-angle { margin-bottom: var(--e3); }
 .seg-tira { display: flex; gap: var(--e2); overflow-x: auto; padding-bottom: var(--e1);
             scroll-snap-type: x mandatory; }
@@ -2854,7 +2872,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 09:03 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 09:36 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3231,7 +3249,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 09:03 · en curs";
+window.MARCA_JEFE = "2026-08-08 09:36 · en curs";
 </script>
 
 <script>
@@ -8380,6 +8398,17 @@ App.registraVista('seguiment', {
     var d = null;                 // la resposta del servidor
     var triat = null;             // quin control s'està mirant (data)
 
+    /* LES FOTOS COMENCEN AMAGADES, SEMPRE.
+       És roba interior i mig cos, i entrar al seguiment per mirar el pes no
+       ha de voler dir ensenyar-ho —ni a ell, que ja se les sap, ni a qui
+       passi pel costat mentre mira el telèfon. S'obren quan les demana i es
+       tornen a tancar sortint de la pantalla: això no es recorda a posta.
+       I mentre estan amagades no es demanen a Google: la miniatura porta
+       l'adreça a `data-src` i no li passa a `src` fins que les obre. Deixar-ho
+       en mans de `loading="lazy"` hauria estat confiar que el navegador no
+       carrega el que no es veu, i això depèn del navegador; això no. */
+    var fotosObertes = false;
+
     // ------------------------------------------------------------ utilitats
     function coma(n, dec) {
       if (n === null || n === undefined || n === '') return '—';
@@ -8414,7 +8443,7 @@ App.registraVista('seguiment', {
         }
         if (cur.trailGros > 0) {
           a.push({ id: 'trail_gros', nivell: 'info',
-            text: cur.trailGros + (cur.trailGros === 1 ? ' sortida grossa' : ' sortides grosses') +
+            text: cur.trailGros + (cur.trailGros === 1 ? ' sortida llarga' : ' sortides llargues') +
                   ' aquesta setmana. Aquests dies toca menjar més: sense l\'extra, el dèficit ' +
                   'se\'t dispara i el següent pesatge et sortirà massa avall.' });
         }
@@ -8472,7 +8501,7 @@ App.registraVista('seguiment', {
           a.push({ id: 'massa_rapid', nivell: 'avis',
             text: '−' + coma(perSetmana, 2) + ' kg per setmana: massa. La franja bona és ' +
                   '0,4-0,7. A aquest ritme part del que se\'n va és múscul. Menja més els ' +
-                  'dies de trail gros.' });
+                  'dies de sortida llarga.' });
         } else if (perSetmana !== null &&
                    perSetmana >= L.perdSana[0] && perSetmana <= L.perdSana[1]) {
           a.push({ id: 'ritme_bo', nivell: 'be',
@@ -8564,14 +8593,26 @@ App.registraVista('seguiment', {
             '<p class="marge">' + esc(curta(cur.data)) +
               (i === h.length - 1 ? ' · últim control' : '') + '</p>' +
             '<h2 style="margin:var(--e1) 0 var(--e3)">' + esc(ver) + '</h2>' +
+            /* QUATRE XIFRES, TOTES DEL MATEIX PES.
+               El trail hi era com a lletra petita a sota de la força, i no és
+               una nota al peu: és la meitat del que fa aquesta setmana i el
+               que decideix què ha de menjar. Ara té la seva columna, com el
+               pes i la cintura.
+               A sota de cadascuna hi va el que la fa llegible: el canvi
+               respecte de l'últim control on n'hi ha, i l'objectiu de la fase
+               on el canvi no vol dir res —tres sortides no són «+1», són tres
+               de les que tocaven. */
             '<div class="seg-xifres">' +
-              '<div><span class="marge">Pes</span><b>' + coma(cur.pes, 1) + '<i>kg</i></b>' +
-                '<span class="seg-delta">' + (deltaPes === null ? '' : ambSigne(deltaPes, 1)) + '</span></div>' +
-              '<div><span class="marge">Cintura</span><b>' +
-                (cur.cintura === null ? '—' : coma(cur.cintura, 1)) + '<i>cm</i></b>' +
-                '<span class="seg-delta">' + (deltaCintura === null ? '' : ambSigne(deltaCintura, 1)) + '</span></div>' +
-              '<div><span class="marge">Força</span><b>' + (cur.forca === null ? '—' : cur.forca) + '</b>' +
-                '<span class="seg-delta">' + (cur.trail === null ? '' : cur.trail + ' trail') + '</span></div>' +
+              xifra('Pes', coma(cur.pes, 1), 'kg',
+                    deltaPes === null ? '' : ambSigne(deltaPes, 1)) +
+              xifra('Cintura', cur.cintura === null ? '—' : coma(cur.cintura, 1), 'cm',
+                    deltaCintura === null ? '' : ambSigne(deltaCintura, 1)) +
+              xifra('Força', cur.forca === null ? '—' : cur.forca, '',
+                    objectiu('forca')) +
+              xifra('Trail', cur.trail === null ? '—' : cur.trail, '',
+                    cur.trailGros
+                      ? cur.trailGros + (cur.trailGros === 1 ? ' llarga' : ' llargues')
+                      : objectiu('trail')) +
             '</div>' +
           '</section>' +
 
@@ -8615,6 +8656,19 @@ App.registraVista('seguiment', {
       lliga();
     }
 
+    function xifra(nom, valor, unitat, sota) {
+      return '<div><span class="marge">' + esc(nom) + '</span>' +
+        '<b>' + esc(String(valor)) + (unitat ? '<i>' + esc(unitat) + '</i>' : '') + '</b>' +
+        '<span class="seg-delta">' + esc(sota || '') + '</span></div>';
+    }
+
+    /* El que demana la fase, quan n'hi ha. Ve del full del pla: aquí no hi ha
+       cap xifra seva escrita. */
+    function objectiu(quin) {
+      var f = d && d.fase;
+      return f && f[quin] ? 'de ' + f[quin] : '';
+    }
+
     function mena(avisos) {
       if (avisos.some(function (a) { return a.nivell === 'avis'; })) return 'avis';
       if (avisos.some(function (a) { return a.id === 'senyal_bo' || a.id === 'ritme_bo'; })) return 'be';
@@ -8622,41 +8676,75 @@ App.registraVista('seguiment', {
     }
 
     // ------------------------------------------------------------------ fotos
-    /* EL MATEIX ANGLE, UN AL COSTAT DE L'ALTRE.
-       Una foto sola no diu res; dues del mateix angle separades per un mes, sí.
-       Per això la comparació és per angle i no per setmana. */
+    /* PER QUÈ ES FAN LES FOTOS, QUE NO ÉS PER MIRAR-SE-LES.
+       Durant un any això va ser una galeria, i una galeria no serveix de res:
+       les fotos ja les té al telèfon i ell ja es veu cada dia al mirall. Dues
+       imatges separades per un mes se li assemblen —a tothom se li assemblen—
+       i el canvi que hi ha només el veu qui les pot posar l'una sobre l'altra.
+       Per això aquí el que mana ara és la lectura, i les imatges són el
+       material amb què es fa. La lectura va a dalt i les fotos van amagades:
+       exactament l'ordre invers del que hi havia. */
     function fotos(cur) {
       var h = d.historic;
-      var ambFoto = h.filter(function (c) {
-        return c.fotos.frontal || c.fotos.perfil || c.fotos.esquena;
-      });
       var ANGLES = [['frontal', 'Frontal'], ['perfil', 'Perfil'], ['esquena', 'Esquena']];
 
+      var quantes = 0;
+      h.forEach(function (c) {
+        ANGLES.forEach(function (a) { if (c.fotos[a[0]]) quantes++; });
+      });
+      var lectura = Cau.get('seg.ullada.' + cur.data, '');
+
       return '<section class="seg-fotos">' +
-        '<p class="marge" style="margin:var(--e4) 0 var(--e2)">Fotos</p>' +
-        (ambFoto.length
-          ? ANGLES.map(function (a) {
-              var amb = h.filter(function (c) { return c.fotos[a[0]]; });
-              if (!amb.length) return '';
-              return '<div class="seg-angle"><p class="menut">' + a[1] + '</p>' +
-                '<div class="seg-tira">' + amb.map(function (c) {
-                  return '<figure>' +
-                    '<img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) +
-                      '" src="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
-                    /* El boto de treure-la. Petit i a la cantonada, pero de 32
-                       pixels: prou per encertar-lo i prou per no encertar-lo
-                       sense voler mentre passes la tira amb el dit. I no fa
-                       res sense preguntar-ho: una foto del cos d un dia
-                       concret no es pot tornar a fer. */
-                    '<button class="seg-treu" data-treu="' + esc(a[0]) +
-                      '" data-dia="' + esc(c.data) + '" data-nom="' + esc(a[1]) +
-                      '" aria-label="Treu la foto ' + esc(a[1].toLowerCase() + ' del ' + curta(c.data)) +
-                      '">' + ic('tancar') + '</button>' +
-                    '<figcaption>' + esc(curta(c.data)) + '</figcaption></figure>';
-                }).join('') + '</div></div>';
-            }).join('')
+        '<div class="seg-fotos-cap">' +
+          '<p class="marge">Fotos</p>' +
+          (quantes
+            ? '<button class="btn btn-fantasma btn-menut" data-ulls="1" ' +
+                'aria-controls="seg-tires" aria-expanded="' + (fotosObertes ? 'true' : 'false') + '">' +
+                (fotosObertes ? 'Amaga-les' : 'Ensenya-les') + '</button>'
+            : '') +
+        '</div>' +
+
+        (quantes
+          ? '<p class="menut">' + quantes + (quantes === 1 ? ' foto guardada' : ' fotos guardades') +
+              ' a una carpeta privada del teu Drive. No es mostren fins que ho demanes.</p>'
           : '<p class="menut">Encara no n\'hi ha cap. Van a una carpeta privada del teu Drive; ' +
-            'aquí només se\'n guarda la referència.</p>') +
+            'aquí només se\'n guarda la referència. Amb dues del mateix angle separades per ' +
+            'unes setmanes ja es pot llegir el canvi.</p>') +
+
+        /* LA LECTURA. És el que ha de sortir de fer-se les fotos, i per això
+           va abans que les imatges i no darrere. */
+        '<div id="seg-ullada">' +
+          (lectura ? '<blockquote class="seg-diu">' + esc(lectura) + '</blockquote>' : '') +
+        '</div>' +
+        (quantes
+          ? '<button class="btn btn-secundari" data-mira="' + esc(cur.data) + '" style="width:100%">' +
+              ic('seguiment') + (lectura ? 'Torna-les a mirar' : 'Què hi veus?') + '</button>'
+          : '') +
+
+        '<div id="seg-tires"' + (fotosObertes ? '' : ' hidden') + '>' +
+          ANGLES.map(function (a) {
+            var amb = h.filter(function (c) { return c.fotos[a[0]]; });
+            if (!amb.length) return '';
+            return '<div class="seg-angle"><p class="menut">' + a[1] + '</p>' +
+              '<div class="seg-tira">' + amb.map(function (c) {
+                return '<figure>' +
+                  '<img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) + '" ' +
+                    (fotosObertes ? 'src' : 'data-src') +
+                    '="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
+                  /* El boto de treure-la. Petit i a la cantonada, pero de 32
+                     pixels: prou per encertar-lo i prou per no encertar-lo
+                     sense voler mentre passes la tira amb el dit. I no fa
+                     res sense preguntar-ho: una foto del cos d un dia
+                     concret no es pot tornar a fer. */
+                  '<button class="seg-treu" data-treu="' + esc(a[0]) +
+                    '" data-dia="' + esc(c.data) + '" data-nom="' + esc(a[1]) +
+                    '" aria-label="Treu la foto ' + esc(a[1].toLowerCase() + ' del ' + curta(c.data)) +
+                    '">' + ic('tancar') + '</button>' +
+                  '<figcaption>' + esc(curta(c.data)) + '</figcaption></figure>';
+              }).join('') + '</div></div>';
+          }).join('') +
+        '</div>' +
+
         '<div class="seg-puja">' + ANGLES.map(function (a) {
           return '<label class="btn btn-secundari">' + ic('mes') + esc(a[1]) +
             '<input type="file" accept="image/*" hidden data-foto="' + a[0] +
@@ -8705,6 +8793,13 @@ App.registraVista('seguiment', {
               (v.cinturaValida === false ? ' checked' : '') + '> ' +
               'Aquesta mesura no és de fiar (no la comptis)</label></div>' +
 
+          /* «DE GROSSES» NO VOLIA DIR RES.
+             Era l'etiqueta del tercer camp i ningú no sabia grosses de què:
+             ni ell, que és qui l'omplia cada divendres. Són les sortides de
+             trail que et deixen buit, i compten a part perquè aquells dies has
+             de menjar més —és l'única raó per la qual el camp existeix. Ara ho
+             diu l'etiqueta i ho acaba de dir la línia de sota, al costat del
+             camp i no en cap pantalla d'ajuda. */
           '<div class="camp-fila">' +
             '<div class="camp"><label for="s-forca">Força</label>' +
               '<input class="entrada" id="s-forca" type="number" min="0" max="14" inputmode="numeric" ' +
@@ -8712,10 +8807,14 @@ App.registraVista('seguiment', {
             '<div class="camp"><label for="s-trail">Trail</label>' +
               '<input class="entrada" id="s-trail" type="number" min="0" max="14" inputmode="numeric" ' +
                 'value="' + (v.trail === null ? 0 : v.trail) + '"></div>' +
-            '<div class="camp"><label for="s-gros">De grosses</label>' +
+            '<div class="camp"><label for="s-gros">Llargues</label>' +
               '<input class="entrada" id="s-gros" type="number" min="0" max="7" inputmode="numeric" ' +
                 'value="' + (v.trailGros === null ? 0 : v.trailGros) + '"></div>' +
           '</div>' +
+          '<p class="menut" style="margin:calc(-1 * var(--e2)) 0 0">' +
+            'Sessions de força i sortides de trail de la setmana. De les sortides, quantes ' +
+            'eren llargues o dures —les que et deixen buit—: aquells dies has de menjar més.' +
+          '</p>' +
 
           tria('energia', 'Energia', ['baixa', 'normal', 'alta'], v.energia) +
           tria('son', 'Son', ['malament', 'normal', 'bé'], v.son) +
@@ -8805,6 +8904,48 @@ App.registraVista('seguiment', {
         });
       });
 
+      /* ENSENYAR-LES I TORNAR-LES A AMAGAR, sense repintar la pàgina: repintar
+         et tornaria a dalt de tot cada vegada, i el que vols mirar és la tira.
+         L'atribut `hidden` és el que fa que les miniatures no es demanin a
+         Google mentre estiguin tancades. */
+      var ulls = arrel.querySelector('[data-ulls]');
+      var tires = arrel.querySelector('#seg-tires');
+      if (ulls && tires) ulls.addEventListener('click', function () {
+        fotosObertes = !fotosObertes;
+        if (fotosObertes) {
+          tires.querySelectorAll('img[data-src]').forEach(function (im) {
+            im.src = im.dataset.src;
+            im.removeAttribute('data-src');
+          });
+        }
+        tires.hidden = !fotosObertes;
+        ulls.textContent = fotosObertes ? 'Amaga-les' : 'Ensenya-les';
+        ulls.setAttribute('aria-expanded', fotosObertes ? 'true' : 'false');
+      });
+
+      /* LA LECTURA DE LES FOTOS. Costa una petició i uns quants segons —hi van
+         imatges—, o sigui que un cop feta es desa al telèfon: tornar a obrir
+         la pantalla no n'ha de gastar una altra. Es llença quan les fotos
+         canvien, que és l'únic moment en què deixa de ser certa. */
+      var mira = arrel.querySelector('[data-mira]');
+      if (mira) mira.addEventListener('click', function () {
+        var caixa = arrel.querySelector('#seg-ullada');
+        var dia = mira.dataset.mira;
+        mira.disabled = true; mira.textContent = 'Mirant-les…';
+        caixa.innerHTML = '<div class="esquelet" style="height:96px"></div>';
+        crida('seguiment', 'analitzaFotos', { data: dia }).then(function (r) {
+          Cau.set('seg.ullada.' + dia, r.comentari);
+          caixa.innerHTML = '<blockquote class="seg-diu">' + esc(r.comentari) + '</blockquote>';
+          mira.disabled = false;
+          mira.innerHTML = ic('seguiment') + 'Torna-les a mirar';
+        }).catch(function (err) {
+          caixa.innerHTML = '';
+          mira.disabled = false;
+          mira.innerHTML = ic('seguiment') + 'Què hi veus?';
+          App.brindis(err.message, 'error');
+        });
+      });
+
       /* TREURE UNA FOTO: SEMPRE PREGUNTANT.
          És l'única cosa d'aquesta pantalla que no es pot desfer tocant un altre
          botó, i una foto del cos d'un dia concret no es pot tornar a fer. Per
@@ -8829,6 +8970,11 @@ App.registraVista('seguiment', {
               .then(function (r) {
                 App.tancaModal();
                 App.brindis(r.paperera ? 'Foto treta i llençada a la paperera' : 'Foto treta');
+                /* La lectura desada parlava d'un joc de fotos que ja no és
+                   aquest. Cauen totes: la comparació sempre agafa la més vella
+                   de l'angle, o sigui que treure'n una en pot canviar més
+                   d'una de les lectures. */
+                Cau.oblida('seg.ullada.');
                 carrega(true);
               })
               .catch(function (err) {
@@ -8852,6 +8998,7 @@ App.registraVista('seguiment', {
               { data: inp.dataset.data, angle: inp.dataset.foto, contingut: dataUrl });
           }).then(function () {
             App.brindis('Foto desada');
+            Cau.oblida('seg.ullada.');
             /* En puges tres seguides: si cada una et torna a dalt, has de baixar
                tres vegades fins a la tira de fotos. */
             App.mantenintLaVista(function () { carrega(true); });

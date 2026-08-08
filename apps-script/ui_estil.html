@@ -1904,8 +1904,15 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-veredicte[data-mena="avis"] { border-color: var(--avis); }
 .seg-veredicte h2 { font-size: 1.25rem; }
 
-.seg-xifres { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--e2);
+/* QUATRE XIFRES, I AL MÒBIL DUES FILES DE DUES.
+   Quatre columnes en una pantalla de 360 px deixen 80 px per xifra, i «82,5 cm»
+   en mono de 22 px no hi cap: o es parteix o s'encongeix, i encongir-lo el
+   trauria de la jerarquia que aquesta targeta té. Dues i dues hi caben senceres
+   i les quatre segueixen pesant igual, que és el que importa. */
+.seg-xifres { display: grid; grid-template-columns: repeat(2, 1fr);
+              gap: var(--e3) var(--e2);
               border-top: 1px solid var(--neatline); padding-top: var(--e3); }
+@media (min-width: 420px) { .seg-xifres { grid-template-columns: repeat(4, 1fr); } }
 .seg-xifres > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .seg-xifres b { font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
                 line-height: 1; font-variant-numeric: tabular-nums; }
@@ -1945,7 +1952,18 @@ input[type="checkbox"] { accent-color: var(--utm); }
            text-transform: uppercase; letter-spacing: .06em; }
 
 /* LES FOTOS, PER ANGLE. Una foto sola no diu res; la de fa un mes al costat,
-   sí. Per això la tira és horitzontal i el que s'alinea és el mateix angle. */
+   sí. Per això la tira és horitzontal i el que s'alinea és el mateix angle.
+
+   I comencen amagades. El títol i el botó d'obrir-les van a la mateixa fila
+   perquè el que hi ha aquí sota és una decisió, no una secció més: o les vols
+   veure o no. */
+.seg-fotos { margin-top: var(--e4); }
+.seg-fotos-cap { display: flex; align-items: center; justify-content: space-between;
+                 gap: var(--e2); margin-bottom: var(--e2); }
+.seg-fotos-cap .marge { margin: 0; }
+.seg-fotos #seg-ullada:not(:empty) { margin-bottom: var(--e2); }
+.seg-fotos [data-mira] { margin-bottom: var(--e3); }
+#seg-tires:not([hidden]) { margin-bottom: var(--e2); }
 .seg-angle { margin-bottom: var(--e3); }
 .seg-tira { display: flex; gap: var(--e2); overflow-x: auto; padding-bottom: var(--e1);
             scroll-snap-type: x mandatory; }

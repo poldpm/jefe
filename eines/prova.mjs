@@ -2044,6 +2044,142 @@ console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mat
       regles(gros, 1).indexOf('trail_gros') !== -1, JSON.stringify(regles(gros, 1)));
 }
 
+// ------------------------------------------------- les fotos serveixen per a algú
+/* DURANT UN ANY LES FOTOS VAN SER UNA GALERIA, i una galeria no serveix de res:
+   les té al telèfon i es veu cada dia al mirall. El que no pot fer sol és posar
+   la primera i l'última del mateix angle una sobre l'altra. Això prova que la
+   comparació es munti així —la més vella contra la d'ara, per angle, amb les
+   xifres del dia al costat— i que hi vagin imatges de debò i no una descripció
+   que el model s'hauria de creure. */
+console.log('\nSeguiment: les fotos es comparen, no s\'ensenyen');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Seguiment.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Seguiment = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+
+  /* Tres controls: el primer amb frontal i perfil, el segon sense cap, el
+     tercer amb frontal i esquena. Cada angle cau en un cas diferent. */
+  const files = [
+    { id: 's1', data: '2026-06-05', pes: 71.4, cintura: 88, cintura_valida: 'SI',
+      forca: 2, trail: 3, trail_gros: 0,
+      foto_frontal: 'F1', foto_perfil: 'P1', foto_esquena: '' },
+    { id: 's2', data: '2026-06-12', pes: 70.8, cintura: 86, cintura_valida: 'SI',
+      forca: 2, trail: 3, trail_gros: 1,
+      foto_frontal: '', foto_perfil: '', foto_esquena: '' },
+    { id: 's3', data: '2026-06-19', pes: 69.9, cintura: 84, cintura_valida: 'SI',
+      forca: 2, trail: 3, trail_gros: 0,
+      foto_frontal: 'F3', foto_perfil: '', foto_esquena: 'E3' }
+  ];
+
+  const munta = (hiHaIA) => {
+    let enviat = null, obertes = [];
+    const ctx = {
+      Utils: { avui: () => '2026-06-19', talla: (s, n) => String(s).slice(0, n) },
+      Dades: { llegeix: (full) => (full === 'Seguiment' ? files : []) },
+      Log: { info() {}, avis() {}, error() {} },
+      IA: { disponible: () => hiHaIA, motiu: () => 'no hi ha clau',
+            genera: (p) => { enviat = p; return { text: 'la lectura' }; } },
+      DriveApp: { getFileById: (id) => { obertes.push(id); return {
+        getBlob: () => ({ getContentType: () => 'image/jpeg', getBytes: () => [1, 2, 3] }) }; } },
+      Utilities: { base64Encode: () => 'AQID' },
+      Memoria: {}, Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+    };
+    vm.createContext(ctx);
+    vm.runInContext(srvFont, ctx);
+    return { S: ctx.Seguiment, dit: () => enviat, obertes };
+  };
+
+  const m = munta(true);
+  const r = m.S.analitzaFotos('2026-06-19');
+  const parts = m.dit().missatges[0].parts;
+  const imatges = parts.filter((p) => p.inlineData);
+  const textos = parts.filter((p) => p.text).map((p) => p.text);
+
+  cal('hi van imatges de debò i no una descripció',
+      imatges.length === 4 && imatges.every((p) => p.inlineData.mimeType === 'image/jpeg'),
+      imatges.length + ' imatges');
+  cal('i el compte que torna és el que ha enviat', r.fotos === 4, String(r.fotos));
+
+  cal('del frontal compara la més vella amb la d\'ara',
+      textos.some((t) => /de front — ABANS, 2026-06-05/.test(t)) &&
+      textos.some((t) => /de front — ARA, 2026-06-19/.test(t)),
+      textos.join(' | '));
+
+  /* El control d'ara no té perfil. Comparar-lo amb res seria perdre l'angle;
+     s'agafa l'última que en tingui, encara que sigui la mateixa. */
+  cal('un angle sense foto en aquest control agafa l\'última que en tingui',
+      textos.some((t) => /de perfil — ARA, 2026-06-05/.test(t)) &&
+      !textos.some((t) => /de perfil — ABANS/.test(t)),
+      textos.join(' | '));
+
+  /* Un angle estrenat avui no té amb què comparar-se, i no s'inventa cap parella. */
+  cal('un angle amb una sola foto va sol i sense parella',
+      textos.filter((t) => /d'esquena/.test(t)).length === 1, textos.join(' | '));
+
+  cal('cada foto porta les xifres del seu dia',
+      /71,4 kg/.test(textos.join(' ')) && /69,9 kg/.test(textos.join(' ')),
+      textos.join(' | '));
+
+  /* La instrucció és la meitat de la feina: sense demanar-li ON mira, contesta
+     el que contesten tots. I sense permís per dir «no es veu res», se n'inventa. */
+  const sis = String(m.dit().sistema || '');
+  cal('se li demana on mira, i que pugui dir que no veu cap canvi',
+      /QUÈ HI VEUS I ON/.test(sis) && /Si no es veu cap canvi/.test(sis), sis.slice(0, 80));
+
+  /* Un control d'un dia que no existeix no ha de petar: es mira l'últim. */
+  cal('una data desconeguda cau a l\'últim control',
+      munta(true).S.analitzaFotos('2020-01-01').data === '2026-06-19');
+
+  let quePassa = '';
+  try { munta(false).S.analitzaFotos('2026-06-19'); } catch (e) { quePassa = e.message; }
+  cal('sense capa d\'IA ho diu en comptes de fer veure que ha mirat',
+      /no hi ha clau/.test(quePassa), quePassa);
+}
+
+// ------------------------------------------- la pantalla del seguiment, per parts
+/* Les quatre coses que en Pol va dir que no li feien el pes, cadascuna amb la
+   seva prova. Són de forma i no de càlcul, però són exactament el que va fallar:
+   una etiqueta que no volia dir res, unes fotos sempre a la vista, una lectura
+   que no existia i el trail com a lletra petita. */
+console.log('\nSeguiment: la pantalla diu el que ha de dir');
+{
+  const v = fs.readFileSync('apps-script/vista_seguiment.html', 'utf8');
+  const e = fs.readFileSync('apps-script/ui_estil.html', 'utf8');
+
+  cal('«De grosses» ja no és l\'etiqueta de res', !/De grosses/.test(v));
+  cal('i el camp diu què és una sortida llarga al costat del camp',
+      /Llargues<\/label>/.test(v) && /que et deixen buit/.test(v));
+
+  cal('les fotos comencen amagades', /var fotosObertes = false;/.test(v) &&
+      /id="seg-tires"' \+ \(fotosObertes \? '' : ' hidden'\)/.test(v));
+  cal('i hi ha un botó que les ensenya i les torna a amagar',
+      /data-ulls/.test(v) && /aria-expanded/.test(v) && /Amaga-les/.test(v));
+  /* Amagades vol dir amagades de debò: sense `src` no hi ha cap petició a
+     Google, i no depèn de si el navegador carrega el que no es veu. */
+  cal('i amagades no es demanen a Google fins que s\'obren',
+      /\(fotosObertes \? 'src' : 'data-src'\)/.test(v) &&
+      /img\[data-src\]/.test(v) && /im\.src = im\.dataset\.src/.test(v));
+
+  /* La lectura ha d'anar ABANS de les imatges: és el que ha de sortir de
+     fer-se les fotos. Si va darrere, per llegir-la has de passar per elles. */
+  cal('la lectura va abans de les imatges, no darrere',
+      v.indexOf('data-mira="') < v.indexOf("id=\"seg-tires\"") &&
+      v.indexOf('data-mira="') > 0);
+  cal('i la demana al servidor i la desa al telèfon',
+      /crida\('seguiment', 'analitzaFotos'/.test(v) && /Cau\.set\('seg\.ullada\.'/.test(v));
+  cal('canviar una foto llença les lectures desades',
+      (v.match(/Cau\.oblida\('seg\.ullada\.'\)/g) || []).length === 2);
+
+  cal('el trail té columna pròpia al resum de la setmana',
+      /xifra\('Trail'/.test(v) && /xifra\('Pes'/.test(v) &&
+      /xifra\('Cintura'/.test(v) && /xifra\('Força'/.test(v));
+  cal('i ja no penja com a lletra petita de la força',
+      !/cur\.trail \+ ' trail'/.test(v));
+  cal('i quatre columnes no s\'escanyen al mòbil',
+      /\.seg-xifres \{ display: grid; grid-template-columns: repeat\(2, 1fr\)/.test(e) &&
+      /min-width: 420px\) \{ \.seg-xifres \{ grid-template-columns: repeat\(4, 1fr\)/.test(e));
+}
+
 
 // ------------------------------------------ on va cada notificació en tocar-la
 /* Quatre de les nou notificacions obrien una pàgina 404, i cap prova ho veia:

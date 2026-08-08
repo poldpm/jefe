@@ -264,6 +264,14 @@ const MOCK = `
       if (accio === 'pujaFoto') return { id: 'mirall', angle: p.angle, data: p.data };
       if (accio === 'esborraFoto') { window.__ultimEsborrat = p; return { tret: true, paperera: true }; }
       if (accio === 'comenta') return { comentari: 'Comentari inventat del mirall: aqui no hi ha cap IA.', data: p.data };
+      /* La lectura de les fotos. Aqui no s obre cap imatge ni es crida ningu:
+         el que es prova es que el boto la demani, que la resposta es pinti i
+         que quedi desada al telefon per no tornar-la a demanar. */
+      if (accio === 'analitzaFotos') {
+        window.__ultimaUllada = p;
+        return { comentari: 'Lectura inventada del mirall: aqui no hi ha cap IA ni cap foto.',
+                 data: p.data, fotos: 3, desde: '2026-06-12' };
+      }
     }
 
     if (modul === 'conversa') {

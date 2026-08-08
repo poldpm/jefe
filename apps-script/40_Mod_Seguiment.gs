@@ -93,6 +93,13 @@ function MODUL_SEGUIMENT() {
       desa:        function (p) { return Seguiment.desaControl(p); },
       esborraFoto: function (p) { return Seguiment.esborraFoto(p.data, p.angle); },
 
+      /* MIRAR-SE LES FOTOS DE DEBÒ.
+         Les fotos no són una galeria: la galeria ja la té al telèfon. Són la
+         part del seguiment que la bàscula no diu, i qui les ha de llegir és
+         qui pot posar la primera i l'última una sobre l'altra. Costa una
+         petició i uns segons, i per això no passa mai sola. */
+      analitzaFotos: function (p) { return Seguiment.analitzaFotos(p && p.data); },
+
       /* La foto puja en una crida a part i sola: és l'única cosa d'aquest
          mòdul que pesa, i barrejar-la amb el control faria lenta una cosa que
          no ho ha de ser. */
@@ -209,7 +216,8 @@ function MODUL_SEGUIMENT() {
       descripcio: 'Apunta el control setmanal de seguiment físic: pes, cintura, sessions ' +
                   'de força, sortides de trail i com es troba. Fes-la servir quan et digui ' +
                   'qualsevol d\'aquestes coses: «peso 78 i mig», «cintura 86», «aquesta ' +
-                  'setmana he fet tres de força i dues sortides», «vaig baix d\'energia».\n' +
+                  'setmana he fet tres de força i dues sortides», «una era llarga», ' +
+                  '«vaig baix d\'energia».\n' +
                   'NO CAL QUE HO DIGUI TOT DE COP: el que no diu, no es toca. Si el ' +
                   'control d\'aquell dia ja existeix, s\'hi afegeix el que digui ara i la ' +
                   'resta es queda com estava.\n' +
@@ -224,7 +232,8 @@ function MODUL_SEGUIMENT() {
           cintura:  { type: 'number', description: 'Centímetres' },
           forca:    { type: 'integer', description: 'Sessions de força de la setmana' },
           trail:    { type: 'integer', description: 'Sortides de trail de la setmana' },
-          trailGros: { type: 'integer', description: 'Quantes d\'aquelles sortides eren grosses' },
+          trailGros: { type: 'integer', description: 'De les sortides de trail, quantes eren ' +
+                                                     'llargues o dures (les que deixen buit)' },
           energia:  { type: 'string', description: 'baixa, normal o alta' },
           son:      { type: 'string', description: 'malament, normal o bé' },
           gana:     { type: 'string', description: 'poca, normal o molta' },
@@ -426,7 +435,7 @@ var Seguiment = (function () {
 
     if (cur.trailGros > 0) {
       avisos.push({ id: 'trail_gros', nivell: 'info',
-        text: cur.trailGros + (cur.trailGros === 1 ? ' sortida grossa' : ' sortides grosses') +
+        text: cur.trailGros + (cur.trailGros === 1 ? ' sortida llarga' : ' sortides llargues') +
               ' aquesta setmana. Aquests dies toca menjar més: sense l\'extra, el dèficit ' +
               'se\'t dispara i el següent pesatge et sortirà massa avall.' });
     }
@@ -489,7 +498,7 @@ var Seguiment = (function () {
     if (perSetmana !== null && perSetmana > LLINDAR.perdRapida) {
       avisos.push({ id: 'massa_rapid', nivell: 'avis',
         text: '−' + coma(perSetmana) + ' kg per setmana: massa. La franja bona és 0,4-0,7. ' +
-              'A aquest ritme part del que se\'n va és múscul. Menja més els dies de trail gros.' });
+              'A aquest ritme part del que se\'n va és múscul. Menja més els dies de sortida llarga.' });
     } else if (perSetmana !== null &&
                perSetmana >= LLINDAR.perdSana[0] && perSetmana <= LLINDAR.perdSana[1]) {
       avisos.push({ id: 'ritme_bo', nivell: 'be',
@@ -613,7 +622,7 @@ var Seguiment = (function () {
 
     var posats = [];
     [['pes', 'pes'], ['cintura', 'cintura'], ['forca', 'força'],
-     ['trail', 'trail'], ['trailGros', 'sortides grosses']].forEach(function (par) {
+     ['trail', 'trail'], ['trailGros', 'sortides llargues']].forEach(function (par) {
       var v = num_(a[par[0]]);
       if (v === null) return;
       fila[par[0]] = v;
@@ -778,12 +787,139 @@ var Seguiment = (function () {
     if (c.pes !== null) t.push(coma(c.pes) + ' kg');
     if (c.cintura !== null) t.push('cintura ' + coma(c.cintura) + ' cm' + (c.cinturaValida ? '' : ' (invàlida)'));
     if (c.forca !== null) t.push(c.forca + ' força');
-    if (c.trail !== null) t.push(c.trail + ' trail' + (c.trailGros ? ' (' + c.trailGros + ' grossa)' : ''));
+    if (c.trail !== null) t.push(c.trail + ' trail' +
+      (c.trailGros ? ' (' + c.trailGros + (c.trailGros === 1 ? ' llarga' : ' llargues') + ')' : ''));
     if (c.energia) t.push('energia ' + c.energia);
     if (c.son) t.push('son ' + c.son);
     if (c.gana) t.push('gana ' + c.gana);
     if (c.dieta) t.push('dieta ' + c.dieta);
     return t.join(' · ');
+  }
+
+  /**
+   * ══════════════════════════════════════════════════════════════════════
+   * QUÈ ES VEU A LES FOTOS
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * PER QUÈ EXISTEIX AIXÒ. Les fotos portaven un any servint per mirar-se-les,
+   * i mirar-se-les no serveix de res: ell ja es veu cada dia al mirall, i dues
+   * fotos separades per un mes se li assemblen. Fer-les tenia sentit perquè
+   * algú les comparés de debò; qui les pot comparar és qui pot posar la
+   * primera i l'última una al costat de l'altra i dir on ha canviat el
+   * contorn. Fins ara aquí només hi havia una galeria, o sigui que la feina
+   * de fer-les no la cobrava ningú.
+   *
+   * COM ES TRIEN. Per angle, la MÉS VELLA i la del control que estàs mirant.
+   * La comparació que val és la del mateix angle separada pel màxim de temps
+   * possible: dues de seguides no diuen res perquè encara no hi ha res per
+   * veure-hi. Si un angle no té foto en aquest control, s'agafa l'última que
+   * en tingui —val més comparar amb la de fa quinze dies que no comparar.
+   *
+   * HI VAN LES XIFRES AL COSTAT. Sense elles la lectura és una impressió; amb
+   * elles pot dir la cosa que de debò val: que el pes hagi baixat i el contorn
+   * no, o al revés.
+   *
+   * NO ES DESA ENLLOC. És una lectura, no una dada: el que compta i es guarda
+   * són els números. El navegador se'n recorda perquè tornar a obrir la
+   * pantalla no et costi una altra petició.
+   */
+  var ANGLES = [['frontal', 'de front'], ['perfil', 'de perfil'], ['esquena', 'd\'esquena']];
+
+  function fotoPart_(id) {
+    var blob = DriveApp.getFileById(id).getBlob();
+    var mena = String(blob.getContentType() || '');
+    if (mena.indexOf('image/') !== 0) mena = 'image/jpeg';
+    return { inlineData: { mimeType: mena, data: Utilities.base64Encode(blob.getBytes()) } };
+  }
+
+  function analitzaFotos(data) {
+    var h = controls();
+    if (!h.length) throw new Error('Encara no hi ha cap control.');
+
+    var i = h.length - 1;
+    for (var k = 0; k < h.length; k++) if (h[k].data === data) i = k;
+    var cur = h[i];
+
+    if (!IA.disponible()) throw new Error(IA.motiu() || 'La capa d\'IA no està disponible.');
+
+    var jocs = [];
+    ANGLES.forEach(function (a) {
+      var ara = null;
+      for (var k2 = i; k2 >= 0; k2--) if (h[k2].fotos[a[0]]) { ara = h[k2]; break; }
+      if (!ara) return;
+      var abans = null;
+      for (var j = 0; j < h.length; j++) if (h[j].fotos[a[0]]) { abans = h[j]; break; }
+      if (abans && abans.data === ara.data) abans = null;
+      jocs.push({ angle: a, ara: ara, abans: abans });
+    });
+
+    if (!jocs.length) throw new Error('Encara no hi ha cap foto per mirar.');
+
+    var f = faseDe(pla(), cur.data);
+    var parts = [{ text:
+      'Fotos de seguiment físic, sempre la mateixa persona i sempre el mateix protocol ' +
+      '(mateix lloc, mateixa llum, càmera a l\'alçada del melic).' +
+      (f ? ' Fase actual: ' + f.nom + (f.objectiu ? ' — ' + f.objectiu : '') + '.' : '') +
+      ' Van per angle. Quan d\'un angle n\'hi ha dues, la primera és la més antiga i la ' +
+      'segona la d\'ara; al costat de cadascuna hi ha les xifres d\'aquell dia.' }];
+
+    var quantes = 0, desde = null;
+    jocs.forEach(function (jc) {
+      if (jc.abans) {
+        try {
+          var p1 = fotoPart_(jc.abans.fotos[jc.angle[0]]);
+          parts.push({ text: 'Vista ' + jc.angle[1] + ' — ABANS, ' + jc.abans.data +
+                             ' (' + linia_(jc.abans) + '):' });
+          parts.push(p1);
+          quantes++;
+          if (!desde || jc.abans.data < desde) desde = jc.abans.data;
+        } catch (err) {
+          Log.avis('seguiment.fotos', 'No he pogut llegir una foto: ' + err.message);
+        }
+      }
+      try {
+        var p2 = fotoPart_(jc.ara.fotos[jc.angle[0]]);
+        parts.push({ text: 'Vista ' + jc.angle[1] + ' — ARA, ' + jc.ara.data +
+                           ' (' + linia_(jc.ara) + '):' });
+        parts.push(p2);
+        quantes++;
+      } catch (err2) {
+        Log.avis('seguiment.fotos', 'No he pogut llegir una foto: ' + err2.message);
+      }
+    });
+
+    if (!quantes) throw new Error('Les fotos són al full però no s\'han pogut llegir del Drive.');
+
+    var r = IA.genera({
+      /* LA INSTRUCCIÓ ÉS LA MEITAT DE LA FEINA. Sense demanar-li ON mira,
+         contesta el que contesten tots: que es veu progrés i que segueixi
+         així. El que ell no es pot dir sol és on s'acumula, què s'ha mogut i
+         què no, i si la postura o la llum li estan enganyant la comparació. */
+      sistema: 'Ets el preparador d\'en Pol i li llegeixes les fotos de seguiment: ' +
+               'la lectura que ell no es pot fer sol, perquè es veu cada dia al mirall i ' +
+               'no sap comparar-se amb si mateix.\n' +
+               'Mira les imatges abans de dir res i digues QUÈ HI VEUS I ON: on s\'acumula ' +
+               'el greix, com estan el contorn de la cintura i el maluc, quina massa es veu a ' +
+               'espatlles, esquena, braços i cames, i si la postura, la llum o l\'enquadrament ' +
+               'poden estar enganyant la comparació.\n' +
+               'Quan d\'un angle hi hagi dues fotos, digues què ha canviat i on, amb concreció. ' +
+               'Si no es veu cap canvi, digues-ho clar: inventar-ne un és el pitjor que pots fer ' +
+               'aquí, perquè llavors les fotos deixen de servir.\n' +
+               'Lliga-ho amb les xifres: si el pes ha baixat i el contorn no s\'ha mogut, o al ' +
+               'revés, això és el que li interessa saber.\n' +
+               'Ni afalagar ni sermonejar. Català, entre 120 i 200 paraules, dos o tres ' +
+               'paràgrafs curts, sense llistes ni titolets. Acaba amb una sola cosa concreta a fer.',
+      missatges: [{ role: 'user', parts: parts }],
+      model: 'bo',
+      maxTokens: 900,
+      temperatura: 0.3
+    });
+
+    Log.info('seguiment.fotos', 'Fotos llegides', { data: cur.data, fotos: quantes });
+    return {
+      comentari: String(r && r.text || '').trim(),
+      data: cur.data, fotos: quantes, desde: desde
+    };
   }
 
   // ------------------------------------------------------ CONTEXT I RESUMS
@@ -968,6 +1104,7 @@ var Seguiment = (function () {
     pujaFoto: pujaFoto,
     esborraFoto: esborraFoto,
     comenta: comenta,
+    analitzaFotos: analitzaFotos,
     contextIA: contextIA,
     resumPeriode: resumPeriode,
     seriesDiaries: seriesDiaries,
