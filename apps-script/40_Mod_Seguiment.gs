@@ -111,13 +111,27 @@ function MODUL_SEGUIMENT() {
       comenta:     function (p) { return Seguiment.comenta(p.data); }
     },
 
+    /**
+     * LA TARGETA DE L'INICI DEIA «PENDENT» AMB EL CONTROL JA FET.
+     *
+     * La condició era `!toca && !pendent`, i `toca` vol dir «ja ha arribat el
+     * dia», no «queda per fer». O sigui que el mateix dia del control, un cop
+     * fet, la targeta seguia dient «pendent» en vermell. Amb el control el
+     * divendres això durava tres dies cada setmana —divendres, dissabte i
+     * diumenge— i era mentida els tres.
+     *
+     * `pendent` ja porta les dues coses dins (`toca && !fetAquestaSetmana`).
+     * Preguntar per `toca` a part era preguntar dues vegades i equivocar-se.
+     */
     resumInici: function () {
       var e = Seguiment.estat();
-      if (!e.toca && !e.pendent) {
-        return { etiqueta: 'Control setmanal', valor: e.fa === null ? '—' : 'fa ' + e.fa + ' d',
-                 urgent: false, accio: 'seguiment' };
+      if (e.pendent) {
+        return { etiqueta: 'Control setmanal', valor: 'pendent', urgent: true, accio: 'seguiment' };
       }
-      return { etiqueta: 'Control setmanal', valor: 'pendent', urgent: true, accio: 'seguiment' };
+      /* «Fa 0 dies» no ho diu ningú. */
+      return { etiqueta: 'Control setmanal',
+               valor: e.fa === null ? '—' : e.fa === 0 ? 'avui' : 'fa ' + e.fa + ' d',
+               urgent: false, accio: 'seguiment' };
     },
 
     /* AL DIA HI SURT NOMÉS QUAN TOCA.

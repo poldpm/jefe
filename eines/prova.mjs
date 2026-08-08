@@ -2039,6 +2039,74 @@ console.log('\nSeguiment: la còpia del navegador i la del servidor diuen el mat
       diferents.length === 0, '\n      ' + diferents.join('\n      '));
   cal('i s\'han comparat prou casos', iguals >= 20, iguals + ' comparacions');
 
+  /* ══════════════════════════════════════════════════════════════════════
+     UN CONTROL FET UN DIA ABANS NO POT DEIXAR L'AVÍS ENCÈS TOTA LA SETMANA
+
+     En Pol va fer el control dissabte i el dia del control passava a diumenge.
+     La pregunta era la bona: «si no el responc, tindré tota la setmana l'avís
+     de que no he fet el seguiment?». La resposta havia de ser que no —dissabte
+     i diumenge són la mateixa setmana ISO— i ho era per a la notificació, per
+     al dia i per als senyals. Però NO per a la targeta de l'inici: preguntava
+     per `toca`, que vol dir «ja ha arribat el dia», i deia «pendent» en vermell
+     amb el control ja fet.
+     ══════════════════════════════════════════════════════════════════════ */
+  {
+    const controls = [{ id: 's1', data: '2026-08-08', pes: 69.5, cintura: 82.5,
+                        cintura_valida: 'SI', forca: 2, trail: 3, trail_gros: 1 }];
+    const plaFiles = [{ clau: 'control.dia', valor: '7' }];
+    const mira = (avui) => {
+      const c = {
+        Utils: { avui: () => avui, talla: (s, n) => String(s).slice(0, n), esDataValida: () => true },
+        Dades: { llegeix: (f) => (f === 'Seguiment' ? controls
+                                : f === 'SeguimentPla' ? plaFiles : []) },
+        Log: { info() {}, avis() {}, error() {} },
+        IA: { disponible: () => false, motiu: () => 'x' },
+        Memoria: { recorda: (a, b, fer) => fer() },
+        Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array
+      };
+      vm.createContext(c);
+      vm.runInContext(fs.readFileSync('apps-script/40_Mod_Seguiment.gs', 'utf8'), c);
+      const mod = c.MODUL_SEGUIMENT();
+      /* EL MATEIX FILTRE QUE FA `triggerAvisos`: `mira()` només es crida el
+         dia que l'avís demana. Sense el filtre, dimecres «picaria» —perquè la
+         setmana nova encara no té control— i la prova diria una cosa que no
+         passa mai. */
+      const a = mod.avisos[0];
+      const demana = typeof a.dia === 'function' ? a.dia() : a.dia;
+      const avuiDia = (new Date(avui + 'T12:00:00').getDay() + 6) % 7 + 1;
+      return { targeta: mod.resumInici(),
+               avis: demana === avuiDia && !!a.mira(),
+               dia: mod.elDia(avui), senyals: c.Seguiment.senyals().length };
+    };
+
+    const dissabte = mira('2026-08-08');
+    cal('el mateix dia que el fas, la targeta no crida i diu «avui»',
+        dissabte.targeta.urgent === false && dissabte.targeta.valor === 'avui',
+        JSON.stringify(dissabte.targeta));
+
+    /* L'endemà ÉS el dia del control, però el de la setmana ja està fet. */
+    const diumenge = mira('2026-08-09');
+    cal('l\'endemà, que és el dia del control, la targeta segueix sense cridar',
+        diumenge.targeta.urgent === false && diumenge.targeta.valor === 'fa 1 d',
+        JSON.stringify(diumenge.targeta));
+    cal('i l\'avís de les sis calla, perquè la setmana ja té control',
+        diumenge.avis === false);
+    cal('i no surt ni al dia ni als senyals',
+        diumenge.dia === null && diumenge.senyals === 0);
+
+    /* Ni la resta de la setmana. */
+    const dimecres = mira('2026-08-12');
+    cal('ni a mitja setmana', dimecres.targeta.urgent === false &&
+        dimecres.avis === false && dimecres.senyals === 0);
+
+    /* I el diumenge SEGÜENT sí: aquell ja és d'una altra setmana. */
+    const seguent = mira('2026-08-16');
+    cal('i el diumenge següent torna a reclamar, que és el que ha de fer',
+        seguent.targeta.urgent === true && seguent.avis === true &&
+        seguent.senyals === 1 && seguent.dia !== null,
+        JSON.stringify(seguent.targeta));
+  }
+
   /* EL DIA DEL CONTROL, EN UN SOL LLOC.
      N'hi havia dos que havien de dir el mateix: el `dia: 5` del descriptor de
      l'avís i el `control.dia` del full del pla. Mentre coincidien no es notava;
