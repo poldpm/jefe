@@ -4428,6 +4428,81 @@ console.log('\nLa quota és per model: si el bo diu prou, la pregunta passa al p
   const font = fs.readFileSync('apps-script/55_Assistent.gs', 'utf8');
   cal('la primera volta demana el model petit',
       /model:\s*volta === 0 \? 'barat' : 'bo'/.test(font));
+
+  /* ══════════════════════════════════════════════════════════════════════
+     UNA RESPOSTA A MITGES NO ES POT ENSENYAR COM SI FOS SENCERA
+
+     El proveïdor diu per què ha parat i aquí no ho mirava ningú. Va sortir a
+     la llum amb la lectura de les fotos: «...i a la part baixa de l'abdomen.
+     La caiguda» i s'acabava allà, presentada com la resposta. El sostre de
+     tokens el comparteixen el que escriu i el que rumia, i un model que
+     rumia vuit-cents deixa trenta paraules.
+     ══════════════════════════════════════════════════════════════════════ */
+  tocats['flash-gros'] = false; tocats['flash-petit'] = false;
+
+  let sostres = [];
+  const respostaTallada = (text, pensats) => ({
+    getResponseCode: () => 200,
+    getContentText: () => JSON.stringify({
+      candidates: [{ content: { parts: [{ text }], role: 'model' }, finishReason: 'MAX_TOKENS' }],
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 30, thoughtsTokenCount: pensats }
+    })
+  });
+
+  /* Primer cas: es talla, i amb més sostre acaba la frase. */
+  ctx.UrlFetchApp.fetch = function (url, opcions) {
+    sostres.push(JSON.parse(opcions.payload).generationConfig.maxOutputTokens);
+    return sostres.length === 1
+      ? respostaTallada('La caiguda', 820)
+      : respostaBona('La caiguda de l\'abdomen és clara. I ja està.');
+  };
+  let r2 = ctx.IA.genera({ sistema: 's', missatges: [], model: 'bo', maxTokens: 900 });
+  cal('si es talla, es torna a demanar amb més sostre', sostres.length === 2,
+      sostres.join(' → '));
+  cal('i el sostre nou és molt més gran, no un pèl més',
+      sostres[1] >= sostres[0] * 3, sostres.join(' → '));
+  cal('i el que arriba és la frase sencera', /I ja està/.test(r2.text), r2.text);
+  cal('i no queda marcada com a tallada', !r2.tallat);
+
+  /* Segon cas: es torna a tallar. Llavors NO s'amaga: va marcada. */
+  sostres = [];
+  ctx.UrlFetchApp.fetch = function (url, opcions) {
+    sostres.push(JSON.parse(opcions.payload).generationConfig.maxOutputTokens);
+    return respostaTallada('La caiguda', 2400);
+  };
+  let r3 = ctx.IA.genera({ sistema: 's', missatges: [], model: 'bo', maxTokens: 900 });
+  cal('si torna a tallar-se, es diu que està tallada', r3.tallat === true);
+  cal('però no s\'insisteix més enllà del segon intent', sostres.length === 2,
+      sostres.join(' → '));
+
+  /* I una resposta normal no ha de portar cap marca ni cap petició de més. */
+  sostres = [];
+  ctx.UrlFetchApp.fetch = function (url, opcions) {
+    sostres.push(JSON.parse(opcions.payload).generationConfig.maxOutputTokens);
+    return respostaBona('sencera');
+  };
+  let r4 = ctx.IA.genera({ sistema: 's', missatges: [], model: 'bo', maxTokens: 900 });
+  cal('una resposta que acaba bé es demana un sol cop i no porta marca',
+      sostres.length === 1 && !r4.tallat, sostres.join(' → '));
+
+  /* I qui la reculli ho ha de fer arribar a la pantalla: una lectura del cos
+     a mitges no és mitja lectura, és una que diu una cosa diferent. */
+  const seg = fs.readFileSync('apps-script/40_Mod_Seguiment.gs', 'utf8');
+  const cos = (desde, fins) => {
+    const i0 = seg.indexOf(desde), i1 = seg.indexOf(fins, i0);
+    return i0 >= 0 && i1 > i0 ? seg.slice(i0, i1) : '';
+  };
+  const fotos = cos('function analitzaFotos(data) {', '// ------------------------------------------------------ CONTEXT I RESUMS');
+  const coment = cos('function comenta(data) {', 'function linia_(');
+  cal('la lectura de les fotos torna la marca', /tallat: !!r\.tallat/.test(fotos),
+      fotos.slice(-200));
+  cal('i el comentari del control també', /tallat: !!r\.tallat/.test(coment),
+      coment.slice(-200));
+  const vs = fs.readFileSync('apps-script/vista_seguiment.html', 'utf8');
+  cal('i la pantalla ho diu en comptes de fer veure que està acabat',
+      /S\\'ha quedat a mitges/.test(vs));
+  cal('i una lectura tallada no es desa al telèfon',
+      /if \(!r\.tallat\) Cau\.set\('seg\.ullada\.'/.test(vs));
 }
 
 // ------------------------------------------------------------------- diari

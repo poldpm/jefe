@@ -871,10 +871,11 @@ var Seguiment = (function () {
                'titolets. Acaba amb una sola cosa concreta per a la setmana que ve.',
       missatges: [{ role: 'user', parts: [{ text: dades }] }],
       model: 'bo',
-      maxTokens: 600,
+      maxTokens: 1600,          // el que rumia també hi compta: vegeu 50_IA.gs
       temperatura: 0.4
     });
-    return { comentari: String(r && r.text || '').trim(), data: data };
+    return { comentari: String(r && r.text || '').trim(), data: data,
+             tallat: !!r.tallat };
   }
 
   function linia_(c) {
@@ -1006,14 +1007,22 @@ var Seguiment = (function () {
                'paràgrafs curts, sense llistes ni titolets. Acaba amb una sola cosa concreta a fer.',
       missatges: [{ role: 'user', parts: parts }],
       model: 'bo',
-      maxTokens: 900,
+      /* AMPLE, I NO PER ESCRIURE MÉS. Els models que rumien compten el que
+         rumien dins d'aquest sostre, i mirar sis fotos i comparar-les és
+         justament la feina on més s'hi entretenen. Amb nou-cents, el que va
+         arribar van ser trenta paraules i una frase a mitges. */
+      maxTokens: 2400,
       temperatura: 0.3
     });
 
-    Log.info('seguiment.fotos', 'Fotos llegides', { data: cur.data, fotos: quantes });
+    Log.info('seguiment.fotos', 'Fotos llegides',
+             { data: cur.data, fotos: quantes, tallat: !!r.tallat });
     return {
       comentari: String(r && r.text || '').trim(),
-      data: cur.data, fotos: quantes, desde: desde
+      data: cur.data, fotos: quantes, desde: desde,
+      /* Si tot i així s'ha quedat a mitges, es diu. Mitja lectura del cos no
+         és mitja lectura: és una que diu una cosa diferent. */
+      tallat: !!r.tallat
     };
   }
 

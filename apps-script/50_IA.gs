@@ -393,13 +393,56 @@ var IA = (function () {
     var altre = (p.model === 'bo') ? Config.get('model_barat') : null;
     var canviat = false;
 
+    /* ══════════════════════════════════════════════════════════════════════
+       QUE NO ES QUEDI A MITJA FRASE SENSE DIR-HO
+       ══════════════════════════════════════════════════════════════════════
+
+       El proveïdor ja diu per què ha parat —`finishReason`— i durant mesos
+       aquí no ho mirava ningú. La conseqüència no era un error: era pitjor.
+       En Pol va demanar la lectura de les fotos i li va sortir «De front i de
+       perfil es nota clarament la reducció al voltant del melic i a la part
+       baixa de l'abdomen. La caiguda», i s'acabava allà, presentada com si
+       fos la resposta sencera. Una lectura del cos tallada a mitges no és
+       mitja lectura: és una que diu una cosa diferent de la que deia.
+
+       PER QUÈ PASSA. El sostre de `maxOutputTokens` no és només per a la
+       resposta: els models que rumien hi compten també el que rumien. Li
+       demanem que no rumiï, però no tots en fan cas, i quan un se'n va
+       vuit-cents tokens pensant, del sostre en queden trenta paraules.
+
+       QUÈ ES FA. Es torna a demanar UN cop amb el triple de sostre. No és
+       reintentar a cegues: sabem exactament què ha fallat i sabem que amb més
+       marge no torna a passar. I si tot i així es torna a tallar, la resposta
+       se'n va amb `tallat` posat perquè qui la reculli ho pugui dir en comptes
+       de fer veure que està acabada.
+
+       El que hi rumia queda al registre a posta: és l'única manera de saber si
+       un model concret ignora que li demanem que no rumiï. */
     var intents = 0;
     var espera = 1000;
+    var sostre = p.maxTokens || 1024;
+    var ampliat = false;
+
     while (true) {
       try {
+        p.maxTokens = sostre;
         var r = prov.crida(p, model);
         r.model = model;
         if (canviat) r.rebaixat = true;      // que la pantalla ho pugui dir
+
+        if (r.motiuFi === 'MAX_TOKENS' && !ampliat) {
+          ampliat = true;
+          Log.avis('ia.tallat', 'La resposta s\'ha quedat a mitges: la torno a demanar amb més sostre',
+                   { model: model, sostre: sostre, pensats: r.tokensPensats || 0,
+                     sortida: r.tokensSortida || 0 });
+          sostre = Math.min(sostre * 3, 8192);
+          continue;
+        }
+        if (r.motiuFi === 'MAX_TOKENS') {
+          r.tallat = true;
+          Log.avis('ia.tallat', 'S\'ha tornat a tallar fins i tot amb ' + sostre + ' de sostre',
+                   { model: model, pensats: r.tokensPensats || 0 });
+        }
         return r;
       } catch (err) {
         intents++;

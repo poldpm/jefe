@@ -707,8 +707,13 @@ App.registraVista('seguiment', {
         c.disabled = true; c.textContent = 'Pensant…';
         caixa.innerHTML = '<div class="esquelet" style="height:64px"></div>';
         crida('seguiment', 'comenta', { data: c.dataset.comenta }).then(function (r) {
-          caixa.innerHTML = '<blockquote class="seg-diu">' + esc(r.comentari) + '</blockquote>';
-          c.remove();
+          caixa.innerHTML = '<blockquote class="seg-diu">' + esc(r.comentari) + '</blockquote>' +
+            (r.tallat ? '<p class="seg-avis" data-n="avis">' + ic('avis') +
+              '<span>S\'ha quedat a mitges. Torna-ho a demanar.</span></p>' : '');
+          /* El botó només se'n va si la resposta és sencera: si s'ha tallat,
+             el que li fa falta és justament tornar-hi. */
+          if (!r.tallat) c.remove();
+          else { c.disabled = false; c.innerHTML = ic('mapa') + 'Torna-hi'; }
         }).catch(function (err) {
           caixa.innerHTML = '';
           c.disabled = false; c.innerHTML = ic('mapa') + 'Què en penses?';
@@ -746,8 +751,13 @@ App.registraVista('seguiment', {
         mira.disabled = true; mira.textContent = 'Mirant-les…';
         caixa.innerHTML = '<div class="esquelet" style="height:96px"></div>';
         crida('seguiment', 'analitzaFotos', { data: dia }).then(function (r) {
-          Cau.set('seg.ullada.' + dia, r.comentari);
-          caixa.innerHTML = '<blockquote class="seg-diu">' + esc(r.comentari) + '</blockquote>';
+          /* UNA LECTURA A MITGES NO ES DESA i es diu que ho és. Guardar-la
+             voldria dir ensenyar-li una frase tallada cada cop que obrís la
+             pantalla, i sense saber-ho ell se la creuria sencera. */
+          if (!r.tallat) Cau.set('seg.ullada.' + dia, r.comentari);
+          caixa.innerHTML = '<blockquote class="seg-diu">' + esc(r.comentari) + '</blockquote>' +
+            (r.tallat ? '<p class="seg-avis" data-n="avis">' + ic('avis') +
+              '<span>S\'ha quedat a mitges. Torna-ho a demanar.</span></p>' : '');
           mira.disabled = false;
           mira.innerHTML = ic('seguiment') + 'Torna-les a mirar';
         }).catch(function (err) {
