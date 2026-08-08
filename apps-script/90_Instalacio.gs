@@ -1853,7 +1853,11 @@ function provaEntrenaments() {
     a('Lectura de captures ... funciona (i encara diu que hi ha vist ' +
       r.sessions.length + ' sessions en un quadre de 16 píxels)');
   } catch (err) {
-    if (/no he sabut veure cap entrenament/i.test(err.message)) {
+    /* La marca la posa el mòdul, i no és el text del missatge a posta: la
+       primera versió d'això comparava cadenes, buscava «no he sabut veure» i
+       el missatge diu «no HI he sabut veure». Donava per fallat justament el
+       cas bo, amb un consell equivocat a sota. */
+    if (err.buida) {
       a('Lectura de captures ... FUNCIONA');
       a('   Ha mirat la imatge i ha dit que no hi veu cap entrenament, que és');
       a('   exactament el que havia de dir: és un quadre de setze píxels.');

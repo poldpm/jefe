@@ -2364,6 +2364,35 @@ console.log('\nEntrenaments: dues sortides no són dues sortides');
   cal('sense capa d\'IA no es fa veure que ha llegit res', /no hi ha clau/.test(quePassa),
       quePassa);
 
+  /* «HE MIRAT LA IMATGE I NO HI HA RES» NO ÉS UNA AVARIA: és l'únic final que
+     vol dir que tot el camí ha anat bé. Va marcat a l'error i no al text del
+     missatge, perquè la comprovació d'instal·lació comparava cadenes —buscava
+     «no he sabut veure» i el missatge diu «no HI he sabut veure»— i donava per
+     fallat el cas bo amb un consell equivocat a sota. */
+  const buides = [
+    ['cap entrenament', 'trail', JSON.stringify({ sessions: [], avis: '' })],
+    ['cap xifra de passos', 'passos', JSON.stringify({ passos: {}, avis: '' })]
+  ];
+  buides.forEach(([nom, mena, resposta]) => {
+    let err = null;
+    try {
+      munta([], { resposta }).E.llegeixCaptura({ contingut: 'data:image/png;base64,AQID', mena });
+    } catch (e) { err = e; }
+    cal('una captura sense ' + nom + ' es distingeix d\'una avaria',
+        err && err.buida === true, err ? err.message : 'no ha petat');
+  });
+
+  let real = null;
+  try { munta([], { resposta: 'no és json' }).E.llegeixCaptura({ contingut: 'x', mena: 'trail' }); }
+  catch (e) { real = e; }
+  cal('i una avaria de debò NO porta la marca', real && !real.buida,
+      real ? real.message : 'no ha petat');
+
+  /* I la comprovació d'instal·lació ha de mirar la marca, no el text. */
+  const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  cal('la comprovació d\'instal·lació mira la marca i no el missatge',
+      /if \(err\.buida\)/.test(inst) && !/no he sabut veure cap entrenament/.test(inst));
+
   /* TREURE-NE UNA LA DEIXA SENSE DIA, i una fila sense dia no és de cap
      setmana. Si passa el filtre, `dillunsDe('')` no és cap dilluns i les
      sèries peten senceres: una setmana amb una sessió esborrada s'enduria la

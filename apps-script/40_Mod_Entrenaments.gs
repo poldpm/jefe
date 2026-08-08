@@ -421,6 +421,23 @@ var Entrenaments = (function () {
    * li demana explícitament que deixi la data en blanc si no la sap en comptes
    * d'endevinar-la —una sessió al dia que no toca embruta dues setmanes.
    */
+  /**
+   * «HE MIRAT LA IMATGE I NO HI HA RES» NO ÉS UNA AVARIA.
+   *
+   * És l'únic final d'aquesta funció que vol dir que tot el camí ha anat bé
+   * —la clau, el model, la imatge, el JSON— i que senzillament la captura no
+   * portava el que buscàvem. Qui ho reculli ho ha de poder distingir d'un
+   * error de debò, i distingir-ho pel TEXT del missatge no serveix: la
+   * comprovació d'instal·lació buscava «no he sabut veure» i el missatge diu
+   * «no HI he sabut veure», o sigui que donava per fallat el cas bo. Amb una
+   * marca a l'error, canviar la redacció no trenca res.
+   */
+  function buida_(text) {
+    var e = new Error(text);
+    e.buida = true;
+    return e;
+  }
+
   function llegeixCaptura(p) {
     if (!p || !p.contingut) throw new Error('No hi ha cap imatge.');
     if (!IA.disponible()) throw new Error(IA.motiu() || 'La capa d\'IA no està disponible.');
@@ -483,8 +500,8 @@ var Entrenaments = (function () {
     if (mena === 'passos') {
       var pas = llegit.passos || {};
       if (num_(pas.total) === null && num_(pas.mitjana) === null) {
-        throw new Error('No hi he sabut veure cap xifra de passos. Prova amb una captura on ' +
-                        'surti el total de la setmana o la mitjana diària.');
+        throw buida_('No hi he sabut veure cap xifra de passos. Prova amb una captura on ' +
+                     'surti el total de la setmana o la mitjana diària.');
       }
       return { mena: 'passos', dilluns: dl,
                passos: { total: num_(pas.total), mitjana: num_(pas.mitjana) },
@@ -492,7 +509,7 @@ var Entrenaments = (function () {
     }
 
     var brutes = llegit.sessions || [];
-    if (!brutes.length) throw new Error('No hi he sabut veure cap entrenament.');
+    if (!brutes.length) throw buida_('No hi he sabut veure cap entrenament.');
 
     /* Es netegen aquí i no al navegador: si un dia hi ha una altra pantalla que
        importi captures, la neteja ha de ser la mateixa. */
