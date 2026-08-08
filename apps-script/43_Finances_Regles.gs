@@ -41,6 +41,74 @@ var FinancesRegles = (function () {
   }
 
   /**
+   * ══════════════════════════════════════════════════════════════════════
+   * QUI HI HA A L'ALTRE COSTAT, DE MANERA FIABLE
+   * ══════════════════════════════════════════════════════════════════════
+   *
+   * En Pol ho va veure abans que jo: «en depèn del nom? no es podria mirar
+   * d'alguna manera més fiable com el compte bancari procedent? moltes vegades
+   * el concepte varia... número de mes o alguna cosa així».
+   *
+   * Tenia raó i el forat era real. El que es feia servir per saber si dos
+   * moviments són el mateix rebut era el text que es MOSTRA, i aquell text
+   * canvia: «RECIBO SEGUROS 08 2026» i «RECIBO SEGUROS 09 2026» són el mateix
+   * rebut i eren dos comerços diferents. La normalització treia els números
+   * llargs —l'any— però no els curts, i el mes es quedava dins de la clau.
+   *
+   * El banc ja enviava la resposta i no la guardàvem: `creditor_account`, el
+   * compte de qui cobra. L'IBAN d'una asseguradora no canvia mai, ni quan
+   * canvia el concepte, ni quan canvia l'import, ni quan el banc li retalla el
+   * nom d'una altra manera.
+   *
+   * ES BAIXA PER ESGLAONS perquè no tots els bancs ho envien tot, i el que un
+   * banc marca com a opcional un altre no l'envia mai:
+   *
+   *   1. el compte de l'altre costat (IBAN)  → el bo
+   *   2. el nom de qui cobra o qui paga      → estable, però el retallen
+   *   3. el text que es mostra               → l'últim recurs, el d'abans
+   *
+   * Torna també DE QUIN esglaó ve, i això no és decoració: sense saber-ho no
+   * es pot dir si aquest banc dona l'IBAN o no, i quedaria com una millora
+   * teòrica que potser no s'aplica mai.
+   */
+  function contrapart(b, esIngres) {
+    /* Qui cobra si és una despesa; qui paga si és un ingrés. Al revés
+       agafaries el teu propi compte, que és el mateix per a tot. */
+    var compte = esIngres ? b.debtor_account : b.creditor_account;
+    var part   = esIngres ? b.debtor : b.creditor;
+
+    var id = compte && (compte.identification || compte.iban);
+    if (id) {
+      var net = String(id).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (net.length >= 8) return { valor: 'ib|' + net, font: 'compte' };
+    }
+
+    var n = part && part.name;
+    if (n) {
+      var nn = clauNom_(String(n));
+      if (nn.length >= 3) return { valor: 'nm|' + nn, font: 'nom' };
+    }
+
+    return { valor: '', font: 'cap' };
+  }
+
+  /* Igual que la del comerç, però treu TAMBÉ els números curts i els mesos.
+     Aquí sí que es pot: aquesta clau no és la que fa servir la memòria de
+     comerços per recordar categories, o sigui que endurir-la no obliga a
+     reaprendre res del que ja sap. */
+  function clauNom_(t) {
+    return String(t || '')
+      .toUpperCase()
+      .replace(/[ÀÁÂÄ]/g, 'A').replace(/[ÈÉÊË]/g, 'E').replace(/[ÌÍÎÏ]/g, 'I')
+      .replace(/[ÒÓÔÖ]/g, 'O').replace(/[ÙÚÛÜ]/g, 'U').replace(/Ç/g, 'C')
+      .replace(/\b(GENER|FEBRER|MARC|ABRIL|MAIG|JUNY|JULIOL|AGOST|SETEMBRE|OCTUBRE|NOVEMBRE|DESEMBRE|ENERO|FEBRERO|MARZO|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b/g, ' ')
+      .replace(/\d+/g, ' ')                 // tots els números, no només els llargs
+      .replace(/[^A-Z ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
    * El que es MOSTRA. El nom del comerç mana, perquè «MERCADONA» s'entén i
    * «COMPRA TARJ 5432 000123» no.
    */
@@ -192,5 +260,6 @@ var FinancesRegles = (function () {
     return esIngres ? 'transf' : 'targeta';
   }
 
-  return { descripcio: descripcio, categoria: categoria, metode: metode };
+  return { descripcio: descripcio, categoria: categoria, metode: metode,
+           contrapart: contrapart, clauNom: clauNom_ };
 })();

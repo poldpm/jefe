@@ -641,7 +641,8 @@ App.registraVista('finances', {
           if (!r) return;
           b.disabled = true; b.textContent = 'Desant…';
           escriu('finances', 'desaRecurrent', {
-            id: r.id, clau: r.clau, tipus: r.tipus, 'import': Number(b.dataset.nou),
+            id: r.id, clau: r.clau, contrapart: r.contrapart,
+            tipus: r.tipus, 'import': Number(b.dataset.nou),
             descripcio: r.descripcio, categoria: r.categoria, metode: r.metode,
             dia: r.dia, actiu: true
           }, quePinto()).then(function (p) {
@@ -719,7 +720,7 @@ App.registraVista('finances', {
     function deGrup(g) {
       return { tipus: g.tipus, import: g.import, descripcio: g.descripcio,
                categoria: g.categoria, metode: g.metode, dia: g.dia,
-               actiu: true, clau: g.clau };
+               actiu: true, clau: g.clau, contrapart: g.contrapart || '' };
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -882,6 +883,7 @@ App.registraVista('finances', {
              després evita que el rebut es compti dues vegades: una perquè
              l'has apuntat i una altra perquè el banc l'ha portat. */
           clau: r && r.clau ? r.clau : null,
+          contrapart: r && r.contrapart ? r.contrapart : null,
           tipus: tipus, 'import': imp,
           descripcio: camps.descripcio.value.trim(),
           categoria: camps.categoria.value,

@@ -1793,6 +1793,73 @@ function provaAvisCremades() {
 
 
 /**
+ * EL TEU BANC, DIU QUI COBRA?
+ *
+ * La identitat d'un rebut es busca per esglaons: el compte de qui cobra, el
+ * seu nom, i com a últim recurs el text que es mostra. Quin esglaó fa servir el
+ * teu banc no ho diu la documentació —tot és opcional i cada banc envia el que
+ * vol—: només es pot saber mirant el que ha entrat de debò.
+ *
+ * Els moviments d'abans d'aquest canvi no en porten cap: no es desava. Si surt
+ * que no en té cap, sincronitza el banc i torna-hi.
+ */
+function provaQuiCobra() {
+  var l = ['=== D\'ON SURT LA IDENTITAT DELS TEUS REBUTS ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  var files;
+  try {
+    files = Dades.llegeix('Moviments', function (f) { return !f.esborrat_el; });
+  } catch (err) {
+    a('No he pogut llegir els moviments: ' + err.message);
+    return l.join('\n');
+  }
+
+  files.sort(function (x, y) { return String(x.data) < String(y.data) ? 1 : -1; });
+  var mira = files.slice(0, 200);
+  if (!mira.length) { a('Encara no hi ha cap moviment.'); return l.join('\n'); }
+
+  var compte = 0, nom = 0, cap = 0, delBanc = 0;
+  mira.forEach(function (m) {
+    if (String(m.origen) !== 'banc') return;
+    delBanc++;
+    var c = String(m.contrapart || '');
+    if (c.indexOf('ib|') === 0) compte++;
+    else if (c.indexOf('nm|') === 0) nom++;
+    else cap++;
+  });
+
+  a('Mirats ................. ' + delBanc + ' moviments del banc (dels ' + mira.length + ' últims)');
+  a('Amb el compte de qui cobra  ' + compte);
+  a('Només amb el nom ........... ' + nom);
+  a('Sense res .................. ' + cap);
+  a('');
+
+  if (!delBanc) {
+    a('Cap moviment ve del banc: la identitat sortirà sempre del text.');
+  } else if (compte >= delBanc * 0.5) {
+    a('BÉ: el teu banc envia el compte de qui cobra a la majoria.');
+    a('   És la identitat més fiable que hi ha: no canvia encara que el');
+    a('   concepte porti el mes a dins o l\'import pugi.');
+  } else if (compte + nom >= delBanc * 0.5) {
+    a('MIG: el teu banc no sempre envia el compte, però sí el nom.');
+    a('   També serveix, i és molt més estable que el concepte.');
+  } else if (cap === delBanc) {
+    a('ENCARA NO SE SAP: cap moviment porta la contrapart desada.');
+    a('   Si són d\'abans d\'avui és normal —no es desava—. Sincronitza el');
+    a('   banc (sincronitzaBancAra) i torna a executar això.');
+  } else {
+    a('FLUIX: el teu banc envia poca cosa. Els rebuts es lligaran pel text,');
+    a('   que és el que es feia fins ara.');
+  }
+
+  a('');
+  a('=== FI ===');
+  return l.join('\n');
+}
+
+
+/**
  * EL CONTROL SETMANAL PASSA A DIUMENGE.
  *
  * El va posar divendres per por dels caps de setmana: un àpat lliure, un

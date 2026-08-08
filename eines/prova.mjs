@@ -2486,6 +2486,164 @@ console.log('\nRebuts fixos: sortir cada mes no és ser un rebut');
   }
 }
 
+// ------------------------- qui cobra, i no com se'n diu aquest mes
+/* «En depèn del nom? No es podria mirar d'alguna manera més fiable com el
+   compte bancari procedent? Moltes vegades el concepte varia... número de mes o
+   alguna cosa així.»
+
+   Tenia raó i el forat era real: la clau sortia del text que es MOSTRA, i la
+   normalització treia els números llargs —l'any— però no els curts, o sigui que
+   el mes es quedava dins. «RECIBO SEGUROS 08 2026» i «RECIBO SEGUROS 09 2026»
+   eren dos comerços diferents. El banc ja enviava el compte de qui cobra i no
+   el guardàvem. */
+console.log('\nQui cobra: el compte del banc mana sobre el text');
+{
+  const regles = fs.readFileSync('apps-script/43_Finances_Regles.gs', 'utf8');
+  const ctx = { Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp };
+  vm.createContext(ctx);
+  vm.runInContext(regles, ctx);
+  const R = ctx.FinancesRegles;
+
+  /* L'esglaó bo: el compte de qui cobra. El concepte canvia cada mes i la
+     identitat no es mou. */
+  const ago = { creditor: { name: 'SEGUROS CATALANA OCC' },
+                creditor_account: { identification: 'ES91 2100 0418 4502 0005 1332',
+                                    scheme_name: 'IBAN' },
+                remittance_information: ['RECIBO SEGUROS 08 2026'] };
+  const set = { creditor: { name: 'SEGUROS CATALANA' },
+                creditor_account: { identification: 'ES9121000418450200051332' },
+                remittance_information: ['RECIBO SEGUROS 09 2026'] };
+  cal('el mateix rebut de dos mesos dona la mateixa identitat',
+      R.contrapart(ago, false).valor === R.contrapart(set, false).valor,
+      R.contrapart(ago, false).valor + ' vs ' + R.contrapart(set, false).valor);
+  cal('i els espais de l\'IBAN no en fan dos de diferents',
+      R.contrapart(ago, false).valor === 'ib|ES9121000418450200051332',
+      R.contrapart(ago, false).valor);
+  cal('i es diu d\'on surt, per saber si aquest banc el dona',
+      R.contrapart(ago, false).font === 'compte');
+
+  /* Un ingrés mira qui PAGA. Al revés agafaria el teu propi compte, que és el
+     mateix per a tot i ho ajuntaria tot en un sol grup. */
+  const nomina = { debtor: { name: 'ESCOLA VEDRUNA' },
+                   debtor_account: { identification: 'ES7620770024003102575766' },
+                   creditor_account: { identification: 'ES0000000000000000000000' } };
+  cal('d\'un ingrés s\'agafa qui paga, no el teu compte',
+      R.contrapart(nomina, true).valor === 'ib|ES7620770024003102575766',
+      R.contrapart(nomina, true).valor);
+
+  /* Segon esglaó: sense compte, el nom. I el nom es neteja de números i mesos,
+     que és justament el que embrutava la clau de text. */
+  const senseCompte = { creditor: { name: 'RECIBO SEGUROS 08 2026' } };
+  const senseCompte2 = { creditor: { name: 'RECIBO SEGUROS 09/2026' } };
+  cal('sense compte s\'agafa el nom, i el mes no hi entra',
+      R.contrapart(senseCompte, false).valor === R.contrapart(senseCompte2, false).valor &&
+      R.contrapart(senseCompte, false).font === 'nom',
+      R.contrapart(senseCompte, false).valor + ' vs ' + R.contrapart(senseCompte2, false).valor);
+  cal('i els noms de mes escrits també cauen',
+      R.clauNom('QUOTA AGOST') === R.clauNom('QUOTA SETEMBRE'),
+      R.clauNom('QUOTA AGOST') + ' vs ' + R.clauNom('QUOTA SETEMBRE'));
+
+  /* Tercer esglaó: si el banc no envia res, es diu, i qui ho faci servir ja
+     sap que ha de tirar del text de sempre. */
+  cal('si el banc no envia ni compte ni nom, es diu',
+      R.contrapart({}, false).valor === '' && R.contrapart({}, false).font === 'cap');
+
+  /* I el banc ha de DESAR-HO en importar: si no es desa aquí, no torna mai. */
+  const banc = fs.readFileSync('apps-script/42_Finances_Banc.gs', 'utf8');
+  cal('el que entra del banc es queda amb qui hi ha a l\'altre costat',
+      /contrapart: qui\.valor/.test(banc) &&
+      /FinancesRegles\.contrapart\(b, esIngres\)/.test(banc));
+}
+
+// --------------------- i que els vells i els nous segueixin sent el mateix rebut
+/* El canvi no pot trencar el que ja hi ha. Un recurrent creat abans només té
+   clau de text; un moviment que arribi demà en tindrà dues. S'han de trobar. */
+console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
+{
+  const font = fs.readFileSync('apps-script/40_Mod_Finances.gs', 'utf8');
+  const srvFont = font.slice(font.indexOf('var Finances = (function ()'),
+                             font.lastIndexOf('})();') + 5);
+  let n = 0;
+  const munta = (movs, recs, avui) => {
+    const ctx = {
+      Utils: { avui: () => avui, ara: () => avui + 'T10:00:00',
+               talla: (s, x) => String(s).slice(0, x), esDataValida: () => true,
+               nouId: (p) => p + (++n) },
+      Dades: { llegeix: (full, filtre) => (full === 'Moviments' ? movs
+                        : full === 'Recurrents' ? recs : []).filter((f) => !filtre || filtre(f)),
+               un: () => null, perId: () => null,
+               insereix: (f, fila, p) => Object.assign({ id: p + (++n) }, fila),
+               actualitza: () => ({}), desa: (f, fila, c, p) => ({ id: p + (++n) }) },
+      Config: { get: () => '', getNum: (k, d) => d, esSi: () => false },
+      Log: { info() {}, avis() {}, error() {} },
+      Memoria: { recorda: (a, b, fer) => fer(), oblida() {} },
+      Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp
+    };
+    vm.createContext(ctx);
+    vm.runInContext(srvFont, ctx);
+    return ctx.Finances;
+  };
+
+  const IBAN = 'ib|ES9121000418450200051332';
+
+  /* Un recurrent creat ABANS del canvi: només clau de text. El moviment que
+     arriba ara porta contrapart i un concepte amb el mes nou. */
+  const vell = [{ id: 'r1', tipus: 'd', import: 42.9, categoria: 'c_cotx',
+                  descripcio: 'Assegurança', metode: 'domic', dia: 5, actiu: 'SI',
+                  clau: 'd|RECIBO SEGUROS', contrapart: '', ultim_mes: '' }];
+  const nou = [{ id: 'm1', data: '2026-08-05', tipus: 'd', import: 42.9,
+                 categoria: 'c_cotx', descripcio: 'RECIBO SEGUROS',
+                 metode: 'domic', origen: 'banc', contrapart: IBAN, revisat: 'SI' }];
+  const v = munta(nou, vell, '2026-08-22').vigilancia();
+  cal('un recurrent vell troba el moviment nou pel text de sempre',
+      v.falten.length === 0 && v.canviats.length === 0, JSON.stringify(v.falten));
+
+  /* I al revés: un recurrent creat des d'una proposta forta troba el moviment
+     encara que el concepte hagi canviat de mes. */
+  const modern = [{ id: 'r1', tipus: 'd', import: 42.9, categoria: 'c_cotx',
+                    descripcio: 'Assegurança', metode: 'domic', dia: 5, actiu: 'SI',
+                    clau: IBAN, contrapart: IBAN, ultim_mes: '' }];
+  const altreText = [{ id: 'm1', data: '2026-08-05', tipus: 'd', import: 42.9,
+                       categoria: 'c_cotx', descripcio: 'CARREC SEGUROS 08 2026',
+                       metode: 'domic', origen: 'banc', contrapart: IBAN, revisat: 'SI' }];
+  const v2 = munta(altreText, modern, '2026-08-22').vigilancia();
+  cal('i un de creat pel compte el troba encara que el concepte hagi canviat',
+      v2.falten.length === 0, JSON.stringify(v2.falten));
+
+  /* Sense la contrapart, aquest segon cas fallaria: és la prova que el compte
+     és el que ho està aguantant i no una casualitat del text. */
+  const senseContrapart = [{ id: 'm1', data: '2026-08-05', tipus: 'd', import: 42.9,
+                             categoria: 'c_cotx', descripcio: 'CARREC SEGUROS 08 2026',
+                             metode: 'domic', origen: 'banc', contrapart: '', revisat: 'SI' }];
+  const v3 = munta(senseContrapart, modern, '2026-08-22').vigilancia();
+  cal('i sense el compte, aquell mateix cas es perdria: per això es desa',
+      v3.falten.length === 1, JSON.stringify(v3.falten));
+
+  /* L'agrupació ha de LLIGAR els mesos vells (només text) amb els nous (amb
+     compte). Si no, el mateix segur surt dues vegades i no arriba als tres
+     mesos seguits per cap dels dos camins. */
+  const barreja = [];
+  ['2026-02', '2026-03', '2026-04'].forEach((m, i) => {
+    barreja.push({ id: 'a' + i, data: m + '-05', tipus: 'd', import: 42.9,
+                   categoria: 'c_cotx', descripcio: 'RECIBO SEGUROS',
+                   metode: 'domic', origen: 'banc', contrapart: '', revisat: 'SI' });
+  });
+  ['2026-05', '2026-06', '2026-07'].forEach((m, i) => {
+    barreja.push({ id: 'b' + i, data: m + '-05', tipus: 'd', import: 42.9,
+                   categoria: 'c_cotx', descripcio: 'RECIBO SEGUROS',
+                   metode: 'domic', origen: 'banc', contrapart: IBAN, revisat: 'SI' });
+  });
+  const c = munta(barreja, [], '2026-08-08').candidatsRecurrents('2026-08-08');
+  cal('els mesos d\'abans i els d\'ara fan UN sol grup, no dos',
+      c.tots.length === 1 && c.tots[0].mesos === 6,
+      JSON.stringify(c.tots.map((g) => [g.descripcio, g.mesos])));
+  cal('i el grup es queda amb la identitat forta',
+      c.tots[0].clau === IBAN && c.tots[0].font === 'compte',
+      c.tots[0].clau + ' · ' + c.tots[0].font);
+  cal('i per tant es proposa, que abans no hauria arribat als sis mesos',
+      c.propostes.length === 1, String(c.propostes.length));
+}
+
 // ------------------- el vigilant: el que NO ha passat i el que ha passat diferent
 /* «Si el banc ja el porta, de què serveix aquest apartat?» La pregunta era bona
    i la resposta honesta era: de res. Els moviments són el que ha passat; una

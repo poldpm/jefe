@@ -48,6 +48,11 @@ function MODUL_FINANCES() {
           { nom: 'metode',          tipus: 'text', valors: ['targeta', 'efectiu', 'online', 'transf', 'domic'] },
           { nom: 'origen',          tipus: 'text', valors: ['manual', 'banc', 'conversa', 'recurrent'] },
           { nom: 'id_banc',         tipus: 'text' },
+          /* Qui hi ha a l'altre costat, tal com el banc l'identifica: el seu
+             IBAN si l'envia, i si no el seu nom. És el que fa que dos rebuts
+             del mateix segur siguin el mateix encara que el concepte porti el
+             mes a dins. Vegeu `FinancesRegles.contrapart`. */
+          { nom: 'contrapart',      tipus: 'text' },
           { nom: 'pendent',         tipus: 'text', valors: ['SI', 'NO'] },
           { nom: 'nota',            tipus: 'text' },
           { nom: 'revisat',         tipus: 'text', valors: ['SI', 'NO'] },
@@ -92,6 +97,10 @@ function MODUL_FINANCES() {
              —i així no comptar-lo dues vegades— i recordar que d'aquest ja
              se n'ha proposat un i el vas dir que no. */
           { nom: 'clau',            tipus: 'text' },
+          /* La identitat forta, quan el moviment del qual ve en tenia. La
+             `clau` de dalt es queda perquè els recurrents que ja existien
+             segueixin lligant pel text; la comparació prova les dues. */
+          { nom: 'contrapart',      tipus: 'text' },
           { nom: 'descartat_el',    tipus: 'iso'  },
           { nom: 'esborrat_el',     tipus: 'iso'  },
           { nom: 'creat_el',        tipus: 'iso'  },
@@ -1140,10 +1149,31 @@ var Finances = (function () {
         descripcio: x.descripcio, metode: x.metode, dia: Number(x.dia) || 1,
         actiu: String(x.actiu).toUpperCase() !== 'NO',
         clau: x.clau || '',
+        contrapart: x.contrapart || '',
         ultimMes: x.ultim_mes
       };
     });
   }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     SABER SI DOS MOVIMENTS SÓN EL MATEIX REBUT
+
+     De la més fiable a l'última. La primera només hi és des que es desa qui
+     cobra —o sigui, per als moviments que entrin d'ara endavant—; la segona
+     és la de sempre i és la que fa que els que ja tens segueixin lligant.
+     Per això es comparen TOTES i no només la millor: un recurrent creat fa
+     dos dies té clau de text i el moviment que arriba demà en tindrà dues,
+     i han de trobar-se igualment.
+     ══════════════════════════════════════════════════════════════════════ */
+  function identitats_(m) {
+    var l = [];
+    if (m.contrapart) l.push(String(m.contrapart));
+    var t = clauMemoria_(m.descripcio, m.tipus);
+    if (t && !esGenerica_(t)) l.push(t);
+    return l;
+  }
+
+  function esForta_(k) { return /^(ib|nm)\|/.test(String(k || '')); }
 
   /* ══════════════════════════════════════════════════════════════════════
      QUÈ ÉS UN REBUT FIX I QUÈ NO HO ÉS
@@ -1211,18 +1241,36 @@ var Finances = (function () {
     var fins = mesEnrere_(mesAra, 1);
 
     var cats = indexCategories_();
-    var grups = {};
-    moviments_(function (f) {
+    var dins = moviments_(function (f) {
       var mes = String(f.data).slice(0, 7);
       return mes >= desde && mes <= fins;
-    }).forEach(function (m) {
-      var clau = clauMemoria_(m.descripcio, m.tipus);
-      if (!clau || esGenerica_(clau)) return;      // «COMPRA AMB TARGETA» no és ningú
+    });
+
+    /* PRIMER ES DECIDEIX QUI ÉS QUI, I DESPRÉS S'AGRUPA.
+       Els moviments d'abans d'aquest canvi només tenen clau de text i els nous
+       en tenen dues. Si s'agrupés directament per la millor, el mateix segur
+       sortiria dues vegades —els mesos vells per un cantó i els nous per un
+       altre— i no arribaria als tres mesos seguits per cap dels dos. Aquesta
+       primera volta els lliga: si un text ha aparegut mai amb contrapart, tot
+       el que porti aquell text passa a ser d'aquella contrapart. */
+    var forta = {};
+    dins.forEach(function (m) {
+      if (!m.contrapart) return;
+      var t = clauMemoria_(m.descripcio, m.tipus);
+      if (t && !esGenerica_(t)) forta[t] = String(m.contrapart);
+    });
+
+    var grups = {};
+    dins.forEach(function (m) {
+      var text = clauMemoria_(m.descripcio, m.tipus);
+      if (!text || esGenerica_(text)) return;      // «COMPRA AMB TARGETA» no és ningú
+      var clau = String(m.contrapart || '') || forta[text] || text;
       var imp = num_(m['import']);
       if (!imp) return;
       if (!grups[clau]) {
         grups[clau] = { clau: clau, tipus: m.tipus, imports: [], mesos: {}, dies: [],
-                        categories: [], metodes: [], noms: [], moviments: 0 };
+                        categories: [], metodes: [], noms: [], moviments: 0,
+                        contrapart: esForta_(clau) ? clau : '' };
       }
       var g = grups[clau];
       g.imports.push(imp);
@@ -1249,6 +1297,11 @@ var Finances = (function () {
       var cat = mesRepetit_(g.categories);
       return {
         clau: g.clau,
+        contrapart: g.contrapart,
+        /* D'on surt la identitat. No és decoració: sense això no es podria
+           saber si el banc d'en Pol dona el compte de qui cobra o si sempre
+           anem a raure al text, i la millora quedaria en teòrica. */
+        font: /^ib\|/.test(g.clau) ? 'compte' : /^nm\|/.test(g.clau) ? 'nom' : 'text',
         tipus: g.tipus,
         descripcio: mesRepetit_(g.noms) || g.noms[0],
         import: mediana_(g.imports),
@@ -1351,14 +1404,20 @@ var Finances = (function () {
        que ja ha passat. */
     var diaAvui = (mesAra === avui.slice(0, 7)) ? Number(avui.slice(8, 10)) : 31;
 
+    /* Cada moviment s'indexa per TOTES les seves identitats: la del compte de
+       qui cobra si el banc l'ha enviat, i la del text sempre. Així un
+       recurrent creat abans d'aquest canvi —que només té clau de text— troba
+       igualment el moviment nou, i un de creat des d'una proposta forta el
+       troba pel compte encara que el concepte hagi canviat de mes. */
     var perClau = {};
     moviments_(function (f) { return String(f.data).slice(0, 7) === mesAra; })
       .forEach(function (m) {
-        var k = clauMemoria_(m.descripcio, m.tipus);
-        if (!k) return;
-        if (!perClau[k]) perClau[k] = [];
-        perClau[k].push({ data: String(m.data), import: num_(m['import']),
-                          descripcio: m.descripcio });
+        var dades = { data: String(m.data), import: num_(m['import']),
+                      descripcio: m.descripcio };
+        identitats_(m).forEach(function (k) {
+          if (!perClau[k]) perClau[k] = [];
+          perClau[k].push(dades);
+        });
       });
 
     var compromes = 0, esperat = 0, arribat = 0;
@@ -1367,7 +1426,8 @@ var Finances = (function () {
     var llista = recurrents().filter(function (r) { return r.actiu; }).map(function (r) {
       if (r.tipus === 'i') esperat += r.import; else compromes += r.import;
 
-      var vist = r.clau ? (perClau[r.clau] || [])[0] : null;
+      var vist = (r.contrapart ? (perClau[r.contrapart] || [])[0] : null) ||
+                 (r.clau ? (perClau[r.clau] || [])[0] : null);
       var e = { id: r.id, estat: 'esperant' };
 
       if (vist) {
@@ -1458,7 +1518,9 @@ var Finances = (function () {
     if (!clau) throw new Error('Falta saber de quin es tracta.');
     Dades.insereix('Recurrents', {
       tipus: 'd', 'import': 0, categoria: '', descripcio: '(descartat) ' + clau,
-      metode: 'domic', dia: 1, actiu: 'NO', clau: clau, descartat_el: Utils.ara()
+      metode: 'domic', dia: 1, actiu: 'NO', clau: clau,
+      contrapart: esForta_(clau) ? clau : '',
+      descartat_el: Utils.ara()
     }, 'rec');
     return { descartat: true, clau: clau };
   }
@@ -1484,7 +1546,9 @@ var Finances = (function () {
       actiu: p.actiu === false ? 'NO' : 'SI',
       /* Si ve d'un moviment de debò, es queda amb qui el cobra. És el que
          després permet no comptar-lo dues vegades quan arribi del banc. */
-      clau: String(p.clau || '').trim() || clauMemoria_(desc, tipus)
+      clau: String(p.clau || '').trim() || clauMemoria_(desc, tipus),
+      contrapart: String(p.contrapart || '').trim() ||
+                  (esForta_(p.clau) ? String(p.clau) : '')
     };
 
     if (p.id) {
@@ -1530,8 +1594,7 @@ var Finances = (function () {
     var jaHiEs = {};
     moviments_(function (f) { return String(f.data).slice(0, 7) === mesAra; })
       .forEach(function (m) {
-        var k = clauMemoria_(m.descripcio, m.tipus);
-        if (k) jaHiEs[k] = true;
+        identitats_(m).forEach(function (k) { jaHiEs[k] = true; });
       });
 
     recurrents().forEach(function (r) {
@@ -1539,7 +1602,7 @@ var Finances = (function () {
       if (String(r.ultimMes) === mesAra) return;      // ja creat aquest mes
       if (r.dia > diaAvui) return;                    // encara no toca
 
-      if (r.clau && jaHiEs[r.clau]) {
+      if ((r.contrapart && jaHiEs[r.contrapart]) || (r.clau && jaHiEs[r.clau])) {
         /* Ja ha arribat de debò. Es marca el mes perquè no s'hi torni cada
            nit, i no s'escriu res. */
         Dades.actualitza('Recurrents', r.id, { ultim_mes: mesAra });

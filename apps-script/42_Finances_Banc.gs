@@ -300,6 +300,13 @@ var FinancesBanc = (function () {
           if (vistos[idBanc]) return;
           vistos[idBanc] = true;
 
+          /* QUI HI HA A L'ALTRE COSTAT, guardat en entrar i no deduït després.
+             El compte de qui cobra ve dins de la transacció i no torna mai
+             més: si no es desa aquí, l'única manera de saber si dos rebuts són
+             el mateix és comparar el text que es mostra, i aquell text porta
+             el mes a dins. Vegeu `FinancesRegles.contrapart`. */
+          var qui = FinancesRegles.contrapart(b, esIngres);
+
           perDesar.push({
             data: quan,
             tipus: esIngres ? 'i' : 'd',
@@ -309,6 +316,7 @@ var FinancesBanc = (function () {
             metode: FinancesRegles.metode(b, esIngres),
             origen: 'banc',
             id_banc: idBanc,
+            contrapart: qui.valor,
             pendent: b.status !== 'BOOK'
           });
           nous++;

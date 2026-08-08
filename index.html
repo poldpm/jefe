@@ -3020,7 +3020,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 17:52 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-08-08 18:09 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3407,7 +3407,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 17:52 · en curs";
+window.MARCA_JEFE = "2026-08-08 18:09 · en curs";
 </script>
 
 <script>
@@ -7715,7 +7715,8 @@ App.registraVista('finances', {
           if (!r) return;
           b.disabled = true; b.textContent = 'Desant…';
           escriu('finances', 'desaRecurrent', {
-            id: r.id, clau: r.clau, tipus: r.tipus, 'import': Number(b.dataset.nou),
+            id: r.id, clau: r.clau, contrapart: r.contrapart,
+            tipus: r.tipus, 'import': Number(b.dataset.nou),
             descripcio: r.descripcio, categoria: r.categoria, metode: r.metode,
             dia: r.dia, actiu: true
           }, quePinto()).then(function (p) {
@@ -7793,7 +7794,7 @@ App.registraVista('finances', {
     function deGrup(g) {
       return { tipus: g.tipus, import: g.import, descripcio: g.descripcio,
                categoria: g.categoria, metode: g.metode, dia: g.dia,
-               actiu: true, clau: g.clau };
+               actiu: true, clau: g.clau, contrapart: g.contrapart || '' };
     }
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -7956,6 +7957,7 @@ App.registraVista('finances', {
              després evita que el rebut es compti dues vegades: una perquè
              l'has apuntat i una altra perquè el banc l'ha portat. */
           clau: r && r.clau ? r.clau : null,
+          contrapart: r && r.contrapart ? r.contrapart : null,
           tipus: tipus, 'import': imp,
           descripcio: camps.descripcio.value.trim(),
           categoria: camps.categoria.value,
