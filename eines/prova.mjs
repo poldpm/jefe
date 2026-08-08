@@ -4058,16 +4058,22 @@ console.log('\nEl full índex: cap apartat es pot quedar sense porta');
   cal('hi ha mòduls amb pantalla', ambVista.length >= 8, String(ambVista.length));
 
   const inici = fs.readFileSync('apps-script/vista_inici.html', 'utf8');
-  cal('l\'índex pinta els mòduls que reporten xifra',
-      /ordenades\.map\(parcela\)/.test(inici));
-  cal('i els que no, a la tira dels altres fulls',
-      /function altres\(moduls, targetes\)/.test(inici) && /m\.teVista && !ambCota\[m\.id\]/.test(inici));
+  cal('l\'índex llista TOTS els mòduls que tenen pantalla',
+      /m\.teVista && m\.id !== 'conversa'/.test(inici));
 
   /* Les pantalles que no són de cap mòdul s'han d'afegir a mà, i per tant són
-     les que es poden oblidar. Aquestes dues han de tenir porta sempre: el dia
-     per la data, la setmana per la tira. */
-  cal('el dia s\'obre des de la data', /data-ves="dia"/.test(inici));
-  cal('i la setmana és a la tira', /id: 'setmana'/.test(inici));
+     les que es poden oblidar. Aquestes dues han de tenir porta sempre. */
+  cal('el dia hi és, i per partida doble: la data i el botó',
+      (inici.match(/data-ves="dia"/g) || []).length >= 2, inici.match(/data-ves="dia"/g) + '');
+  cal('i la setmana també', /data-ves="setmana"/.test(inici));
+
+  /* I EL FONS DE CORBES. És l'única cosa del disseny que en Pol ha demanat
+     expressament que no es perdi, i viu en una línia que és fàcil que caigui
+     en una neteja: sense ella la pàgina segueix funcionant i es veu plana. */
+  cal('el fons de corbes de nivell hi és', /Relleu\.fons\(/.test(inici));
+  const estil = fs.readFileSync('apps-script/ui_estil.html', 'utf8');
+  cal('i té on posar-se, darrere de tot i sense agafar cap toc',
+      /\.reticula \{[^}]*position: fixed[^}]*pointer-events: none/.test(estil));
 
   /* I LA LLISTA DEL MIRALL NO POT ANAR PER LLIURE. S'ha desincronitzat dues
      vegades —primer hi faltava l'escola, després la memòria—, i des del

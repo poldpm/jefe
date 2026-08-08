@@ -2241,155 +2241,53 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 
 /* ==========================================================================
-   EL FULL ÍNDEX
+   LA PÀGINA PRINCIPAL
 
-   La pantalla d'arrencada. Abans hi havia una esfera animada i una caixa per
-   parlar-hi; es va treure perquè per fer una cosa és més ràpid fer-la que
-   demanar-la.
+   El tauler d'apartats i prou. Vivia dins d'un calaix de la conversa; treta
+   la conversa, és el que s'obre.
 
-   LES PARCEL·LES COMPARTEIXEN LES VORES, I ÉS TOTA LA IDEA.
-   El buit de la graella és d'un píxel i el fons que hi ha a sota és el color
-   de les línies de marc: el que separa dues parcel·les no és aire, és una
-   línia dibuixada, com els quadrants d'un full topogràfic. Sis targetes
-   flotants amb ombra i cantonada rodona serien sis coses independents; això
-   és una cosa partida en sis, que és el que aquesta app és.
+   VA HAVER-HI UNA VERSIÓ AMB TERRENY a cada apartat —corbes que pujaven si
+   estaves al dia— i va durar una captura de pantalla: en Pol no volia
+   entendre unes ones dins d'una targeta, i una metàfora que s'ha d'explicar
+   és una metàfora que no funciona.
 
-   I EL PENDENT ÉS EL TERRENY. Cada parcel·la porta les seves corbes de
-   nivell: alt i tancat quan estàs al dia, baix i obert quan et reclama. La
-   cota —el triangle i la xifra, com un punt geodèsic— s'omple quan allò
-   espera. No hi ha cap punt vermell enlloc a posta: un mapa no crida.
+   EL QUE ES QUEDA SÓN LES CORBES DEL FONS. No demanen res, no s'han de
+   llegir i no volen dir res que no puguis veure en un altre lloc: hi són
+   perquè fan que això sembli aquesta app i no una altra.
    ========================================================================== */
 
-.full-marge {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: var(--e4); flex-wrap: wrap;
+/* El terreny del fons. Fix i darrere de tot, sense interceptar mai cap dit. */
+.reticula { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+body[data-vista="inici"] .capcalera,
+body[data-vista="inici"] .pagina { position: relative; z-index: 1; }
+
+/* Dues columnes al mòbil, tres i quatre a mesura que hi cap. Cada apartat és
+   un panell amb les seves claus de cantonada, com a la resta de l'app. */
+.reixa-apartats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--e2); }
+@media (min-width: 560px) { .reixa-apartats { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .reixa-apartats { grid-template-columns: repeat(4, 1fr); } }
+
+.apartat {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--e2);
+  min-height: 88px; padding: var(--e3);
+  color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
-.full-estat {
-  margin: 0; font-family: var(--mono); font-size: .6875rem;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-suau);
-  white-space: nowrap;
-}
-.full-estat[data-cap="1"] { color: var(--avis); }
-
-.full-pagina { padding-top: var(--e3); }
-
-/* LA LÍNIA LA DIBUIXA CADA PARCEL·LA, NO EL FONS DE LA GRAELLA.
-   La primera versió pintava el fons del contenidor del color de les línies i
-   deixava un buit d'1px perquè es veiessin. Funciona fins que l'última fila
-   no s'omple: llavors el tros sense parcel·les es queda com un rectangle
-   massís del color de la línia, i a l'escriptori —quatre columnes i sis
-   apartats— hi havia mig full pintat de blau. Amb una ombra d'1px a cada
-   parcel·la, les vores es toquen i comparteixen línia igual, i on no hi ha
-   parcel·la no hi ha res. */
-.full {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  padding: 1px;
-}
-@media (min-width: 600px) { .full { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 920px) { .full { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-
-.parcela {
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: space-between;
-  gap: var(--e4);
-  min-height: 116px;
-  padding: var(--e3);
-  background: var(--paper2);
-  border: 0; margin: 0;
-  box-shadow: 0 0 0 1px var(--neatline);
-  color: inherit; font: inherit; text-align: left;
-  cursor: pointer;
-  transition: background-color .18s var(--entra);
-}
-/* EL TERRENY VA A BAIX, I LA SEVA ALÇADA ÉS LA DADA.
-   Ocupant la parcel·la sencera, les corbes passaven per darrere del nom i
-   competien amb el text. A baix fan de terra sota la cota, que és on van a un
-   mapa: la xifra descansa sobre el relleu i el nom queda net.
-
-   I QUANT PUGEN ÉS EL QUE HAS DE VEURE. Confinades sempre a la mateixa
-   alçada, un apartat al dia i un que et reclama es distingien només per
-   comptar corbes, que no ho fa ningú. Ara el terreny puja de debò quan estàs
-   al dia i es queda arran de terra quan alguna cosa espera: ho veus abans de
-   llegir cap paraula, que és per a l'únic que serveix. */
-.parcela .corbes {
-  position: absolute; inset: auto 0 0 0; height: var(--terra, 60%);
-  width: 100%; pointer-events: none;
-  transition: height .3s var(--sortida);
-}
-@media (prefers-reduced-motion: reduce) { .parcela .corbes { transition: none; } }
-.parcela > * { position: relative; }
-
-.parcela-cap { display: flex; align-items: center; gap: var(--e2); min-width: 0; }
-.parcela-cap .ic-simbol { width: 18px; height: 18px; flex: none; color: var(--ink-suau); }
-.parcela-nom {
-  font-size: .8125rem; font-weight: 600; line-height: 1.2;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-/* LA COTA. Un punt geodèsic d'un mapa: el triangle i, al costat, l'alçada.
-   Xifres monoespaiades perquè dues parcel·les seguides quedin alineades. */
-.parcela-cota { display: flex; align-items: center; gap: var(--e2); line-height: 1; }
-.parcela-cota .fita { width: 10px; height: 9px; flex: none; }
-.parcela-cota .fita path { fill: none; stroke: var(--corba-mestra); stroke-width: 1.2; }
-.parcela-cota .n {
-  font-family: var(--mono); font-size: 1.375rem; font-weight: 600;
-  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.parcela-nota {
-  font-size: .6875rem; color: var(--gr);
-  position: absolute; left: var(--e3); right: var(--e3); bottom: var(--e3);
-}
-
-.parcela[data-estat="be"]      { --terra: 66%; }
-.parcela[data-estat="pendent"] { --terra: 26%; }
-.parcela[data-estat="error"]   { --terra: 16%; }
-
-.parcela[data-estat="pendent"] { background: color-mix(in srgb, var(--avis-fons) 55%, var(--paper2)); }
-.parcela[data-estat="pendent"] .fita path { fill: var(--avis); stroke: var(--avis); }
-.parcela[data-estat="pendent"] .parcela-nom { color: var(--ink); }
-.parcela[data-estat="error"] .fita path { fill: var(--gr); stroke: var(--gr); }
-.parcela[data-estat="error"] .parcela-cota .n { color: var(--ink-suau); }
-
-.parcela:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
-.parcela:active { background: var(--utm-suau); }
+.apartat .ic { width: 22px; height: 22px; color: var(--utm); }
+.apartat span { font-size: .875rem; font-weight: 600; line-height: 1.2; }
+.apartat:focus-visible { outline: 2px solid var(--utm); outline-offset: 2px; }
+.apartat:active { background: var(--utm-suau); transform: scale(.98); }
 @media (hover: hover) and (pointer: fine) {
-  .parcela:hover { background: var(--utm-suau); }
-  .parcela:hover .parcela-cap .ic-simbol { color: var(--utm); }
+  .apartat:hover { background: var(--utm-suau); }
 }
+@media (prefers-reduced-motion: reduce) { .apartat { transition: none; } .apartat:active { transform: none; } }
 
-.esquelet.parcela-fantasma { min-height: 116px; border-bottom: 0; }
-.full-cau { margin-top: var(--e4); }
-
-/* ELS ALTRES FULLS. Els apartats que no reporten cap xifra. Mateixa família
-   —línia de marc, sense cantonades rodones— i mitja alçada: són portes, no
-   parcel·les. Al marge d'un mapa és on van els fulls veïns. */
-.full-altres-cap { margin: var(--e5) 0 var(--e2); }
-.full-altres {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px; padding: 1px;
-}
-@media (min-width: 600px) { .full-altres { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 920px) { .full-altres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-
-.fulla {
-  display: flex; align-items: center; gap: var(--e2);
-  min-height: var(--toc); padding: var(--e2) var(--e3);
-  background: var(--paper2); border: 0; margin: 0;
-  box-shadow: 0 0 0 1px var(--neatline);
-  color: var(--ink-suau); font: inherit; font-size: .8125rem; text-align: left;
-  cursor: pointer;
-  transition: color .16s var(--entra), background-color .16s var(--entra);
-}
-.fulla .ic-simbol { width: 16px; height: 16px; flex: none; }
-.fulla span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fulla:focus-visible { outline: 2px solid var(--utm); outline-offset: -3px; }
-.fulla:active { color: var(--ink); background: var(--utm-suau); }
-@media (hover: hover) and (pointer: fine) {
-  .fulla:hover { color: var(--ink); background: var(--utm-suau); }
-}
+/* EL DIA I LA SETMANA, DE COSTAT I A DALT DE TOT. Ocupen l'amplada sencera i
+   la parteixen en dos: així es veuen l'un al costat de l'altre tant si a sota
+   hi ha dues columnes com quatre, i el dia no s'encongeix a mesura que la
+   pantalla creix. */
+.apartats-quan { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); }
+.apartat-ample { flex-direction: row; align-items: center; min-height: 60px; }
 
 
 /* ==========================================================================
