@@ -2616,6 +2616,9 @@ console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
       Date, Math, Number, String, JSON, parseFloat, isFinite, Object, Array, RegExp
     };
     vm.createContext(ctx);
+    /* Les regles de debò: la clau dura surt d'aquí, i sense elles la prova
+       comprovaria un camí que a l'app no s'executa mai. */
+    vm.runInContext(fs.readFileSync('apps-script/43_Finances_Regles.gs', 'utf8'), ctx);
     vm.runInContext(srvFont, ctx);
     return ctx.Finances;
   };
@@ -2678,6 +2681,24 @@ console.log('\nEls rebuts d\'abans i els d\'ara segueixen sent els mateixos');
       c.tots[0].clau + ' · ' + c.tots[0].font);
   cal('i per tant es proposa, que abans no hauria arribat als sis mesos',
       c.propostes.length === 1, String(c.propostes.length));
+
+  /* I EL CAS DELS 234: el banc no diu ni compte ni nom —són compres amb
+     targeta— i el concepte porta el mes a dins. Amb la clau de sempre feien
+     un grup per mes i no arribaven mai a proposta. */
+  const nomesText = [];
+  ['02', '03', '04', '05', '06', '07'].forEach((m, i) => {
+    nomesText.push({ id: 't' + i, data: '2026-' + m + '-18', tipus: 'd', import: 10.99,
+                     categoria: 'c_oci', descripcio: 'RECIBO SPOTIFY ' + m + '/2026',
+                     metode: 'targeta', origen: 'banc', contrapart: '', revisat: 'SI' });
+  });
+  const ct = munta(nomesText, [], '2026-08-08').candidatsRecurrents('2026-08-08');
+  cal('sense res del banc, el mes dins del concepte ja no parteix el grup',
+      ct.tots.length === 1 && ct.tots[0].mesos === 6,
+      JSON.stringify(ct.tots.map((g) => [g.descripcio, g.mesos])));
+  cal('i es proposa igualment, encara que vagi pel text',
+      ct.propostes.length === 1 && ct.propostes[0].font === 'text' &&
+      ct.propostes[0].fiable === false,
+      JSON.stringify(ct.propostes.map((g) => [g.font, g.fiable])));
 }
 
 // ------------------- el vigilant: el que NO ha passat i el que ha passat diferent

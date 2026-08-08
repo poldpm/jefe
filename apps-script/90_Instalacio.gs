@@ -1891,6 +1891,45 @@ function provaQuiCobra() {
   a('Sense res .................. ' + cap);
   a('');
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     I ARA EL NÚMERO QUE DE DEBÒ IMPORTA.
+
+     «55 de 289» sembla dolent i no ho és: els 234 que el banc no identifica
+     són compres amb targeta —el súper, la benzinera— i aquelles no seran mai
+     un rebut fix. El que cal saber no és quants moviments porten identitat,
+     sinó quants dels que SEMBLEN un rebut fix en porten. Comptar el total
+     era comptar el que és fàcil en comptes del que decideix.
+     ═══════════════════════════════════════════════════════════════════════ */
+  try {
+    var c = Finances.candidatsRecurrents();
+    var tots = c.propostes.concat(
+      c.tots.filter(function (g) {
+        return c.propostes.indexOf(g) === -1 && g.mesos >= 3;
+      }));
+    var ambIdentitat = tots.filter(function (g) { return g.fiable; });
+
+    a('DELS QUE SEMBLEN UN REBUT FIX:');
+    a('   candidats trobats .......... ' + tots.length);
+    a('   identificats pel banc ...... ' + ambIdentitat.length);
+    if (tots.length) {
+      a('');
+      tots.slice(0, 12).forEach(function (g) {
+        a('   ' + (g.fiable ? '✓' : '·') + ' ' + Utils.talla(g.descripcio, 34) +
+          '  (' + g.font + ', ' + g.mesos + ' mesos)');
+      });
+      if (tots.length > 12) a('   … i ' + (tots.length - 12) + ' més');
+    }
+    a('');
+    a('   ✓ = el banc diu qui cobra: aquest no es perdrà encara que li');
+    a('       canviïn el concepte cada mes.');
+    a('   · = va pel text. Ara el text ja no porta ni números ni noms de');
+    a('       mes, o sigui que «RECIBO 08» i «RECIBO 09» ja són el mateix.');
+    a('');
+  } catch (err) {
+    a('No he pogut mirar els candidats: ' + err.message);
+    a('');
+  }
+
   if (cap === delBanc && delBanc) {
     a('CAP EN TÉ. Si són d\'abans d\'avui és normal: no es desava.');
     a('   Executa omplequiCobra() i es demanaran de nou al banc per omplir-los.');

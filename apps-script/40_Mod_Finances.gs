@@ -1169,8 +1169,33 @@ var Finances = (function () {
     var l = [];
     if (m.contrapart) l.push(String(m.contrapart));
     var t = clauMemoria_(m.descripcio, m.tipus);
-    if (t && !esGenerica_(t)) l.push(t);
+    if (t && !esGenerica_(t)) {
+      l.push(t);
+      var dur = clauDura_(m.descripcio, m.tipus);
+      if (dur && dur !== t) l.push(dur);
+    }
     return l;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     EL TEXT, PERÒ SENSE EL MES A DINS
+
+     Dels 289 moviments d'en Pol, el banc només identifica qui hi ha a l'altre
+     costat en 55: els rebuts domiciliats. Els altres 234 són compres amb
+     targeta, i d'aquelles el banc no envia ni compte ni nom. Per sort són
+     justament les que no seran mai un rebut fix —el súper, la benzinera—,
+     però igualment han de poder-se agrupar bé.
+
+     La clau de sempre treu els números de tres xifres o més: l'any se'n va i
+     el mes es queda. Aquesta els treu tots, i també els noms de mes escrits.
+     No substitueix l'altra, s'hi suma: la de sempre és la que fa servir la
+     memòria de comerços per recordar categories, i endurir-la l'obligaria a
+     reaprendre els cent trenta-tres comerços que ja sap.
+     ══════════════════════════════════════════════════════════════════════ */
+  function clauDura_(descripcio, tipus) {
+    if (typeof FinancesRegles === 'undefined' || !FinancesRegles.clauNom) return '';
+    var n = FinancesRegles.clauNom(descripcio);
+    return n.length >= 3 ? 'tx|' + (tipus === 'i' ? 'i' : 'd') + '|' + n : '';
   }
 
   function esForta_(k) { return /^(ib|nm)\|/.test(String(k || '')); }
@@ -1253,18 +1278,26 @@ var Finances = (function () {
        altre— i no arribaria als tres mesos seguits per cap dels dos. Aquesta
        primera volta els lliga: si un text ha aparegut mai amb contrapart, tot
        el que porti aquell text passa a ser d'aquella contrapart. */
+    /* Per les DUES claus de text, no només per la dura: si un moviment no en
+       té —perquè la descripció és massa curta per netejar-la— el pont entre
+       els mesos vells i els nous s'hauria de fer igualment. */
     var forta = {};
     dins.forEach(function (m) {
       if (!m.contrapart) return;
-      var t = clauMemoria_(m.descripcio, m.tipus);
-      if (t && !esGenerica_(t)) forta[t] = String(m.contrapart);
+      [clauDura_(m.descripcio, m.tipus), clauMemoria_(m.descripcio, m.tipus)]
+        .forEach(function (t) { if (t) forta[t] = String(m.contrapart); });
     });
 
     var grups = {};
     dins.forEach(function (m) {
       var text = clauMemoria_(m.descripcio, m.tipus);
       if (!text || esGenerica_(text)) return;      // «COMPRA AMB TARGETA» no és ningú
-      var clau = String(m.contrapart || '') || forta[text] || text;
+      /* S'AGRUPA PER LA CLAU DURA I NO PER LA DE SEMPRE. Aquí és on es notava
+         el que va veure en Pol: amb la de sempre, «RECIBO SEGUROS 08 2026» i
+         «... 09 2026» feien dos grups d'un mes cadascun i no arribaven mai als
+         tres mesos seguits que demana una proposta. */
+      var dur = clauDura_(m.descripcio, m.tipus) || text;
+      var clau = String(m.contrapart || '') || forta[dur] || forta[text] || dur;
       var imp = num_(m['import']);
       if (!imp) return;
       if (!grups[clau]) {
@@ -1302,6 +1335,10 @@ var Finances = (function () {
            saber si el banc d'en Pol dona el compte de qui cobra o si sempre
            anem a raure al text, i la millora quedaria en teòrica. */
         font: /^ib\|/.test(g.clau) ? 'compte' : /^nm\|/.test(g.clau) ? 'nom' : 'text',
+        /* Un rebut que el banc identifica és un rebut que no es perdrà encara
+           que li canviïn el concepte. Que ho digui la proposta serveix per
+           saber de quins ens podem refiar. */
+        fiable: esForta_(g.clau),
         tipus: g.tipus,
         descripcio: mesRepetit_(g.noms) || g.noms[0],
         import: mediana_(g.imports),
