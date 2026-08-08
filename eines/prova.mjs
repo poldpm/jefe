@@ -11,6 +11,7 @@
  */
 import fs from 'fs';
 import vm from 'vm';
+import zlib from 'zlib';
 
 let falles = 0;
 function cal(nom, cond, extra) {
@@ -2402,6 +2403,38 @@ console.log('\nEntrenaments: dues sortides no són dues sortides');
   cal('i dins d\'aquella setmana, un dia sense sortida sí que és un zero',
       carrega && carrega.dies['2026-07-29'] === 0 && carrega.dies['2026-07-28'] === 13,
       carrega ? JSON.stringify(carrega.dies) : '');
+}
+
+// -------------------------- la imatge de prova de provaEntrenaments() és una imatge
+/* La comprovació d'entrenaments envia una imatge de debò al model per veure si
+   la clau i el model accepten imatges. Va escrita al codi en base64 i partida en
+   tres línies perquè hi càpiga, i partir-la és exactament com es trenca: una
+   línia reflowada i el que arriba és una cadena que no és cap PNG. Llavors la
+   comprovació falla i sembla que falli el model.
+   Això la torna a muntar i la desxifra: capçalera, mida i el bloc de píxels. */
+console.log('\nLa imatge de prova dels entrenaments encara és un PNG');
+{
+  const s = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
+  const i = s.indexOf("var PROVA = 'data:image/png;base64,'");
+  cal('es troba la imatge de prova dins de la comprovació', i > 0);
+
+  const tros = s.slice(i, s.indexOf("';\n", i + 40) + 2);
+  const parts = [...tros.matchAll(/'([^']*)'/g)].map((x) => x[1]);
+  const buf = Buffer.from(parts.slice(1).join(''), 'base64');
+
+  cal('i porta la signatura d\'un PNG', buf.slice(1, 4).toString() === 'PNG',
+      buf.slice(0, 8).toString('hex'));
+  const ample = buf.readUInt32BE(16), alt = buf.readUInt32BE(20);
+  /* Un píxel el rebutgen: ha de ser prou gran per ser una imatge de debò. */
+  cal('i és prou grossa perquè el model l\'accepti', ample >= 8 && alt >= 8,
+      ample + 'x' + alt);
+
+  const idat = buf.indexOf(Buffer.from('IDAT')) + 4;
+  let pixels = 0;
+  try { pixels = zlib.inflateSync(buf.slice(idat, idat + buf.readUInt32BE(idat - 8))).length; }
+  catch (e) { pixels = -1; }
+  cal('i els píxels es descomprimeixen: no s\'ha partit malament',
+      pixels === alt * (1 + ample * 3), String(pixels));
 }
 
 // ------------------------------------------- la pantalla del seguiment, per parts

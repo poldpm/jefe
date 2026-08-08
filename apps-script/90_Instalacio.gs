@@ -1792,6 +1792,90 @@ function provaAvisCremades() {
 }
 
 
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ * ESTÀ LLEST EL MÒDUL D'ENTRENAMENTS?
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Cinc coses han de ser certes perquè passar una captura funcioni, i quatre
+ * no es poden comprovar des de fora del teu compte: si els fulls existeixen,
+ * si el nucli ha vist el mòdul, si hi ha clau d'IA i —la que de debò importa—
+ * si el model que tens configurat accepta que li enviïs una imatge.
+ *
+ * L'ÚLTIMA ES PROVA DE DEBÒ, amb una imatge minúscula generada aquí mateix.
+ * Que digui «no hi he vist cap entrenament» és el resultat BO: vol dir que la
+ * imatge ha arribat, l'ha mirada i ha contestat. El que buscàvem no era que hi
+ * veiés res —és un quadre de setze píxels—, era que el camí sencer funcionés
+ * abans que et passi amb una captura de veritat a mitja tarda de divendres.
+ */
+function provaEntrenaments() {
+  var l = ['=== ENTRENAMENTS · ESTÀ LLEST? ==='];
+  function a(t) { l.push(t); Logger.log(t); }
+
+  // 1. Els fulls
+  ['Entrenaments', 'EntrenamentsPassos'].forEach(function (nom) {
+    try {
+      var cap = Dades.capcalera(nom);
+      a('Full ' + nom + ' ..... hi és, amb ' + cap.length + ' columnes');
+    } catch (err) {
+      a('Full ' + nom + ' ..... NO HI ÉS. Executa configuraJefe().');
+    }
+  });
+
+  // 2. El nucli l'ha vist
+  var seu = Moduls.actius().filter(function (m) { return m.id === 'entrenaments'; })[0];
+  a('El nucli el veu ....... ' + (seu ? 'sí, com a «' + seu.nom + '»' : 'NO. Revisa el full _Moduls.'));
+
+  // 3. Què hi ha apuntat
+  try {
+    var n = Entrenaments.sessions().length;
+    a('Sessions apuntades .... ' + n);
+  } catch (err) {
+    a('Sessions apuntades .... no s\'han pogut llegir: ' + err.message);
+  }
+
+  // 4. La capa d'IA
+  if (!IA.disponible()) {
+    a('Lectura de captures ... NO ES POT PROVAR: ' + IA.motiu());
+    a('');
+    a('=== FI · els fulls poden estar bé, però sense IA no es llegeix cap captura ===');
+    return l.join('\n');
+  }
+  a('Capa d\'IA ............. disponible (' + Config.get('model_bo') + ')');
+
+  // 5. El camí sencer, amb una imatge de debò
+  var PROVA = 'data:image/png;base64,' +
+    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATElEQVR4nGNgYGD4TzRggKgmUg9U' +
+    'MTKHoGqEBvx6kKUYcEngEkRXgS6NYQQ+I7FbiMvRuLxEDQ2kOYk0T5MWrKRFHGlJg7TER2ryBgA6' +
+    'H51/5Ll+SgAAAABJRU5ErkJggg==';
+  try {
+    var r = Entrenaments.llegeixCaptura({ contingut: PROVA, mena: 'trail' });
+    a('Lectura de captures ... funciona (i encara diu que hi ha vist ' +
+      r.sessions.length + ' sessions en un quadre de 16 píxels)');
+  } catch (err) {
+    if (/no he sabut veure cap entrenament/i.test(err.message)) {
+      a('Lectura de captures ... FUNCIONA');
+      a('   Ha mirat la imatge i ha dit que no hi veu cap entrenament, que és');
+      a('   exactament el que havia de dir: és un quadre de setze píxels.');
+      a('   Ja pots passar-hi una captura de Strava de debò.');
+    } else {
+      a('Lectura de captures ... FALLA: ' + err.message);
+      a('');
+      if (/limit|quota/i.test(err.message)) {
+        a('   Això és el límit gratuït de Gemini, no el mòdul. Espera una estona.');
+      } else {
+        a('   Si parla del model o d\'imatges, el model configurat a `model_bo`');
+        a('   no accepta imatges: executa triaModels() i tria\'n un que en accepti.');
+      }
+    }
+  }
+
+  a('');
+  a('=== FI ===');
+  return l.join('\n');
+}
+
+
 function diagnosticVelocitat() {
   var l = ['=== ON SE\'N VA EL TEMPS ==='];
   function a(t) { l.push(t); Logger.log(t); }
