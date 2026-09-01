@@ -214,3 +214,156 @@ permís és gastar peticions per acabar igual.
 - [ ] Un reintent després d'un tall de connexió no crea duplicats
 - [ ] Un `404` en editar es tracta com «esborrat des de Google», no com una avaria
 - [ ] La interfície diu què ha quedat pendent d'enviar
+
+Amb Apps Script, tres més (vegeu l'apèndix):
+
+- [ ] S'escriu amb els serveis avançats `Calendar` i `Tasks`, no amb `CalendarApp`
+- [ ] Els identificadors de `CalendarApp` es normalitzen abans de desar-los
+- [ ] L'escriptura que pot disparar un trigger va amb `LockService`
+
+---
+
+# Apèndix: fet amb Apps Script
+
+Tot el de dalt segueix valent —el contracte és el mateix—, però a Apps Script
+els noms canvien i hi ha una decisió que s'ha de prendre bé des del principi.
+
+## Fes servir els serveis avançats, no `CalendarApp`
+
+Apps Script té dues maneres de tocar el Calendar:
+
+| | `CalendarApp` | Servei avançat `Calendar` |
+|---|---|---|
+| Què és | Servei integrat, més curt d'escriure | L'API v3 de debò |
+| Pots posar tu l'`id` en crear? | **No** | **Sí** |
+| L'id que et torna | `abc123@google.com` | `abc123` (el de l'API) |
+| Camps disponibles | Els habituals | Tots |
+
+**Per escriure, fes servir el servei avançat.** El motiu és la regla 2: sense
+poder enviar tu l'`id`, no hi ha manera de fer que crear sigui repetible, i un
+tall de connexió a mig camí et deixa un esdeveniment duplicat que no sabràs
+que hi és.
+
+Per a Tasks no hi ha alternativa: **només existeix el servei avançat**. No hi
+ha cap `TasksApp`.
+
+### Com s'activen
+
+A l'editor: **Serveis** (el `+` de la barra esquerra) → afegeix-hi
+**Google Calendar API** (identificador `Calendar`) i **Tasks API**
+(identificador `Tasks`). Si el projecte està lligat a un projecte de Google
+Cloud propi, cal activar-hi també les dues APIs.
+
+## Les crides
+
+```javascript
+// CREAR un esdeveniment amb hora, amb id propi per poder reintentar
+const id = idPerAGoogle_();            // a–v i 0–9, mínim 5 caràcters
+const recurs = {
+  id: id,
+  summary: 'Reunió de cicle',
+  description: 'Generat des de l\'app',
+  start: { dateTime: '2026-09-02T09:00:00', timeZone: 'Europe/Madrid' },
+  end:   { dateTime: '2026-09-02T11:00:00', timeZone: 'Europe/Madrid' }
+};
+const creat = Calendar.Events.insert(recurs, 'primary');
+// creat.id  → desa'l a la teva base de dades ARA
+
+// MODIFICAR (patch: només el que envies)
+Calendar.Events.patch({ summary: 'Reunió de cicle (canvi de sala)' },
+                      'primary', eventId);
+
+// ESBORRAR
+Calendar.Events.remove('primary', eventId);
+
+// TASQUES
+const tasca = Tasks.Tasks.insert(
+  { title: 'Corregir els controls', notes: '2n B', due: '2026-09-04T00:00:00.000Z' },
+  '@default');
+// tasca.id → desa'l. I recorda: de `due` només se'n guarda el dia.
+
+Tasks.Tasks.patch({ status: 'completed' }, '@default', taskId);
+Tasks.Tasks.remove('@default', taskId);
+```
+
+Un esdeveniment de tot el dia va igual que a l'API: `start.date` i `end.date`,
+amb `end` al dia **següent**.
+
+## El parany de barrejar els dos serveis
+
+Si en algun lloc encara fas servir `CalendarApp`, l'`id` que et torna
+`event.getId()` **no** és el de l'API: és `abc123@google.com`. Passar-lo tal
+qual a `Calendar.Events.patch` dona un `404` que sembla que l'esdeveniment no
+existeixi quan sí que hi és.
+
+Si has de conviure amb tots dos, normalitza sempre en desar:
+
+```javascript
+function idNet_(id) { return String(id).split('@')[0]; }
+```
+
+## `appsscript.json`
+
+```json
+{
+  "timeZone": "Europe/Madrid",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      { "userSymbol": "Calendar", "serviceId": "calendar", "version": "v3" },
+      { "userSymbol": "Tasks", "serviceId": "tasks", "version": "v1" }
+    ]
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/tasks"
+  ]
+}
+```
+
+El `timeZone` d'aquí és el que fa servir Apps Script per interpretar els
+objectes `Date`. Tenir-lo bé no t'estalvia posar `timeZone` al recurs: posa'l
+igualment, perquè el que val és el que envies.
+
+En afegir scopes d'escriptura, la propera execució **tornarà a demanar
+autorització**. Si l'app corre per triggers i no la mires, quedarà aturada fins
+que hi entris i acceptis.
+
+## Errors a Apps Script
+
+Els serveis avançats **llancen una excepció**, no tornen un codi. El missatge
+sol dir què ha passat en text:
+
+```
+API call to calendar.events.insert failed with error: The requested identifier already exists
+```
+
+No et refiïs d'un camp numèric amb el codi HTTP: **registra el missatge sencer
+un cop i mira quina forma té** abans d'escriure-hi condicions a sobre. I un
+cas has de distingir-lo sí o sí:
+
+```javascript
+try {
+  creat = Calendar.Events.insert(recurs, 'primary');
+} catch (err) {
+  if (/already exists/i.test(err.message)) {
+    // No és cap avaria: la creació d'abans va funcionar.
+    creat = Calendar.Events.get('primary', recurs.id);
+  } else {
+    throw err;
+  }
+}
+```
+
+Per als errors passatgers (Google carregat), espera i torna-hi:
+`Utilities.sleep(1000)`, després 4000, després 16000, i un límit d'intents.
+No reintentis mai un error d'autorització: gastaràs execucions per acabar igual.
+
+## Dues coses més que només passen a Apps Script
+
+- **Dos triggers alhora escriuen dues vegades.** Si l'escriptura la pot
+  disparar un trigger i també l'usuari, embolcalla-la amb `LockService`
+  (`LockService.getScriptLock()`), com faries amb qualsevol full compartit.
+- **Hi ha quota diària.** Les crides a serveis avançats i el temps d'execució
+  estan limitats per dia. Escriure d'un en un dins d'un bucle llarg te la menja;
+  agrupa el que puguis i no facis una crida per element si en pots fer una per
+  lot.
