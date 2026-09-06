@@ -797,6 +797,27 @@ h2 { font-size: 1.0625rem; }
                font-size: .8125rem; font-weight: 600; }
 .sense-xarxa .ic { color: var(--avis); }
 
+/* ------------------------------------------------------- crida dels avisos */
+/* AIXÒ HAURIA D'HAVER-HI ESTAT DES DEL PRIMER DIA.
+   El mòdul de notificacions era complet i correcte —demanava permís,
+   registrava la fitxa, la refrescava a cada obertura— i no el cridava ningú:
+   no hi havia cap botó enlloc. El resultat és que l'únic aparell registrat
+   era el navegador de l'ordinador, on el permís s'havia donat pel seu compte,
+   i el mòbil no va rebre mai res.
+
+   Per això la crida NO va amagada a cap menú: va a la primera pantalla, i
+   només hi és mentre AQUEST aparell no en rebi. El dia que en rep, marxa. */
+.crida-avisos { display: flex; align-items: flex-start; gap: var(--e3);
+                margin: 0 0 var(--e4); padding: var(--e3);
+                background: var(--avis-fons);
+                border: 1px solid var(--avis); border-left-width: 3px; }
+.crida-avisos .ic { flex: none; color: var(--avis); margin-top: 1px; }
+.crida-avisos > div { flex: 1; min-width: 0; }
+.crida-avisos b { display: block; font-size: .6875rem; letter-spacing: .08em;
+                  text-transform: uppercase; color: var(--avis); }
+.crida-avisos p { margin: 2px 0 var(--e3); font-size: .875rem; line-height: 1.45; }
+.crida-avisos .btn { min-height: var(--toc); }
+
 /* ---------------------------------------------------------------- nutrició */
 /* El balanç es llegeix com un perfil: el dèficit puja a la dreta i el
    superàvit baixa a l'esquerra. La fita de l'objectiu és una marca al terreny,
@@ -3020,7 +3041,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-08-08 20:29 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-09-06 17:38 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3407,7 +3428,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-08-08 20:29 · en curs";
+window.MARCA_JEFE = "2026-09-06 17:38 · en curs";
 </script>
 
 <script>
@@ -5063,6 +5084,64 @@ App.registraVista('inici', {
       '</div>';
     }
 
+    /**
+     * «NO REBO ELS AVISOS QUE HAURIA DE REBRE.»
+     *
+     * I era veritat. El mòdul `Notificacions` sabia fer-ho tot i no el
+     * cridava ningú: no hi havia cap botó a cap pantalla. L'ordinador
+     * constava registrat perquè allà el permís s'havia donat pel seu compte,
+     * i llavors `Notificacions.actualitza()` l'apunta sol a cada obertura.
+     * Al mòbil, sense permís, aquella funció surt per la porta del darrere a
+     * la primera línia i no hi torna. Cap error, cap senyal: silenci.
+     *
+     * La condició és el PERMÍS i no la fitxa, a posta. Un cop donat el
+     * permís, la fitxa se la mira `actualitza()` cada cop que obres l'app i
+     * es cura sola quan Firebase la renova. El permís, en canvi, només el
+     * pots donar tu i només des d'un toc.
+     */
+    function cridaAvisos() {
+      if (!window.Notificacions || !Notificacions.potSerHi()) return '';
+      var p = Notificacions.permis();
+      if (p === 'granted') return '';
+
+      var negat = p === 'denied';
+      return '<div class="crida-avisos">' +
+        '<svg class="ic" aria-hidden="true"><use href="#ic-campana"/></svg>' +
+        '<div>' +
+          '<b>Aquest aparell no rep avisos</b>' +
+          '<p>' + (negat
+            ? 'Has denegat les notificacions en aquest aparell. Per tornar-hi: ' +
+              'si tens JEFE instal·lat, mantén premuda la icona → Informació de ' +
+              'l\'app → Notificacions. Al navegador, el cadenat de la barra ' +
+              'd\'adreces → Notificacions → Permet.'
+            : 'Els recordatoris, l\'agenda del dia i els avisos de l\'escola ' +
+              'no et poden arribar aquí fins que ho activis.') + '</p>' +
+          (negat ? '' : '<button class="btn btn-primari" data-avisos>Activa els avisos</button>') +
+        '</div>' +
+      '</div>';
+    }
+
+    /* El permís s'ha de demanar SEMPRE des d'un toc: si no, Chrome el denega
+       ell sol i et quedes sense poder-ho tornar a intentar. Per això va lligat
+       a un botó i no a l'arrencada. */
+    function lligaAvisos() {
+      var b = arrel.querySelector('[data-avisos]');
+      if (!b) return;
+      b.addEventListener('click', function () {
+        b.dataset.carregant = '1';
+        Notificacions.activa()
+          .then(function () {
+            App.brindis('Avisos activats en aquest aparell');
+            pinta(apartats());          // la crida ja no hi ha de ser
+          })
+          .catch(function (err) {
+            b.dataset.carregant = '0';
+            App.brindis(err.message, 'error');
+            pinta(apartats());          // si l'ha denegat, ara toca l'explicació
+          });
+      });
+    }
+
     function pinta(l) {
       var avui = fmt.avui();
       var t = eines();
@@ -5083,7 +5162,7 @@ App.registraVista('inici', {
               }).join('') + '</div>'
             : '') +
         '</header>' +
-        '<div class="pagina">' + reixa(l) + '</div>';
+        '<div class="pagina">' + cridaAvisos() + reixa(l) + '</div>';
 
       /* Les corbes del fons es generen un sol cop i la llavor és fixa: el SVG
          escala sol amb el contenidor i així no balla a cada repintada. */
@@ -5094,6 +5173,8 @@ App.registraVista('inici', {
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
       });
+
+      lligaAvisos();
     }
 
     /* Els apartats surten del registre de mòduls, que ja hi és desat: la

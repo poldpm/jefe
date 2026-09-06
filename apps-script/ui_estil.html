@@ -769,6 +769,27 @@ h2 { font-size: 1.0625rem; }
                font-size: .8125rem; font-weight: 600; }
 .sense-xarxa .ic { color: var(--avis); }
 
+/* ------------------------------------------------------- crida dels avisos */
+/* AIXÒ HAURIA D'HAVER-HI ESTAT DES DEL PRIMER DIA.
+   El mòdul de notificacions era complet i correcte —demanava permís,
+   registrava la fitxa, la refrescava a cada obertura— i no el cridava ningú:
+   no hi havia cap botó enlloc. El resultat és que l'únic aparell registrat
+   era el navegador de l'ordinador, on el permís s'havia donat pel seu compte,
+   i el mòbil no va rebre mai res.
+
+   Per això la crida NO va amagada a cap menú: va a la primera pantalla, i
+   només hi és mentre AQUEST aparell no en rebi. El dia que en rep, marxa. */
+.crida-avisos { display: flex; align-items: flex-start; gap: var(--e3);
+                margin: 0 0 var(--e4); padding: var(--e3);
+                background: var(--avis-fons);
+                border: 1px solid var(--avis); border-left-width: 3px; }
+.crida-avisos .ic { flex: none; color: var(--avis); margin-top: 1px; }
+.crida-avisos > div { flex: 1; min-width: 0; }
+.crida-avisos b { display: block; font-size: .6875rem; letter-spacing: .08em;
+                  text-transform: uppercase; color: var(--avis); }
+.crida-avisos p { margin: 2px 0 var(--e3); font-size: .875rem; line-height: 1.45; }
+.crida-avisos .btn { min-height: var(--toc); }
+
 /* ---------------------------------------------------------------- nutrició */
 /* El balanç es llegeix com un perfil: el dèficit puja a la dreta i el
    superàvit baixa a l'esquerra. La fita de l'objectiu és una marca al terreny,

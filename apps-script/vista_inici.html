@@ -62,6 +62,64 @@ App.registraVista('inici', {
       '</div>';
     }
 
+    /**
+     * «NO REBO ELS AVISOS QUE HAURIA DE REBRE.»
+     *
+     * I era veritat. El mòdul `Notificacions` sabia fer-ho tot i no el
+     * cridava ningú: no hi havia cap botó a cap pantalla. L'ordinador
+     * constava registrat perquè allà el permís s'havia donat pel seu compte,
+     * i llavors `Notificacions.actualitza()` l'apunta sol a cada obertura.
+     * Al mòbil, sense permís, aquella funció surt per la porta del darrere a
+     * la primera línia i no hi torna. Cap error, cap senyal: silenci.
+     *
+     * La condició és el PERMÍS i no la fitxa, a posta. Un cop donat el
+     * permís, la fitxa se la mira `actualitza()` cada cop que obres l'app i
+     * es cura sola quan Firebase la renova. El permís, en canvi, només el
+     * pots donar tu i només des d'un toc.
+     */
+    function cridaAvisos() {
+      if (!window.Notificacions || !Notificacions.potSerHi()) return '';
+      var p = Notificacions.permis();
+      if (p === 'granted') return '';
+
+      var negat = p === 'denied';
+      return '<div class="crida-avisos">' +
+        '<svg class="ic" aria-hidden="true"><use href="#ic-campana"/></svg>' +
+        '<div>' +
+          '<b>Aquest aparell no rep avisos</b>' +
+          '<p>' + (negat
+            ? 'Has denegat les notificacions en aquest aparell. Per tornar-hi: ' +
+              'si tens JEFE instal·lat, mantén premuda la icona → Informació de ' +
+              'l\'app → Notificacions. Al navegador, el cadenat de la barra ' +
+              'd\'adreces → Notificacions → Permet.'
+            : 'Els recordatoris, l\'agenda del dia i els avisos de l\'escola ' +
+              'no et poden arribar aquí fins que ho activis.') + '</p>' +
+          (negat ? '' : '<button class="btn btn-primari" data-avisos>Activa els avisos</button>') +
+        '</div>' +
+      '</div>';
+    }
+
+    /* El permís s'ha de demanar SEMPRE des d'un toc: si no, Chrome el denega
+       ell sol i et quedes sense poder-ho tornar a intentar. Per això va lligat
+       a un botó i no a l'arrencada. */
+    function lligaAvisos() {
+      var b = arrel.querySelector('[data-avisos]');
+      if (!b) return;
+      b.addEventListener('click', function () {
+        b.dataset.carregant = '1';
+        Notificacions.activa()
+          .then(function () {
+            App.brindis('Avisos activats en aquest aparell');
+            pinta(apartats());          // la crida ja no hi ha de ser
+          })
+          .catch(function (err) {
+            b.dataset.carregant = '0';
+            App.brindis(err.message, 'error');
+            pinta(apartats());          // si l'ha denegat, ara toca l'explicació
+          });
+      });
+    }
+
     function pinta(l) {
       var avui = fmt.avui();
       var t = eines();
@@ -82,7 +140,7 @@ App.registraVista('inici', {
               }).join('') + '</div>'
             : '') +
         '</header>' +
-        '<div class="pagina">' + reixa(l) + '</div>';
+        '<div class="pagina">' + cridaAvisos() + reixa(l) + '</div>';
 
       /* Les corbes del fons es generen un sol cop i la llavor és fixa: el SVG
          escala sol amb el contenidor i així no balla a cada repintada. */
@@ -93,6 +151,8 @@ App.registraVista('inici', {
       arrel.querySelectorAll('[data-ves]').forEach(function (b) {
         b.addEventListener('click', function () { App.ves(b.dataset.ves); });
       });
+
+      lligaAvisos();
     }
 
     /* Els apartats surten del registre de mòduls, que ja hi és desat: la
