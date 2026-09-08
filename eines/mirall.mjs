@@ -80,8 +80,6 @@ const MOCK = `
   var ENTRENA     = ${j(Object.fromEntries(
     ['2026-07-06', '2026-07-13', '2026-07-20', '2026-07-27', '2026-08-03']
       .map((dl) => [dl, D.entPantalla(dl)])))};
-  var ESCOLA      = ${j(D.escPantalla())};
-  var ESC_VIU     = ${j(D.escPantalla().dia.pendents.filter((x) => x.llista))};
   var DIA_BASE    = ${j(D.elDia({}))};
   var DIA_PAGINA  = function (p) {
     var d = copia(DIA_BASE);
@@ -179,54 +177,12 @@ const MOCK = `
           habits: dins('habits', 'pantalla'),
           calendari: dins('calendari', 'pantalla'),
           tasques: dins('tasques', 'pantalla'),
-          escola: dins('escola', 'pantalla'),
           seguiment: dins('seguiment', 'pantalla'),
           nutricio: dins('nutricio', 'pantalla'),
           finances: dins('finances', 'pantalla'),
           diari: dins('diari', 'pantalla'),
           _dia: copia(DIA_PAGINA({}))
         } };
-      }
-    }
-
-    if (modul === 'escola') {
-      if (accio === 'pantalla') return copia(ESCOLA);
-      if (accio === 'marcaLlegit') return { fet: true };
-      if (accio === 'llegeixTot') return { fets: 3 };
-      if (accio === 'comanda') {
-        /* La de pendents va amb el format de debò —«• [llista] títol»— perquè
-           el full de la resposta la capsa igual que la pantalla, i si aqui
-           poso un text qualsevol no es prova el que s hi ha fet. */
-        if (p.quina === 'pendents') return { text:
-          'Tasques pendents (8):\\n' +
-          '• [Tutoria] Corregir els controls de llengua\\n' +
-          '• [Tutoria] Trucar a una familia\\n' +
-          '• [Tutoria] Preparar la reunio de pares\\n' +
-          '• [Programacio] Preparar les fitxes de mates\\n' +
-          '• [Programacio] Revisar la unitat 3 de medi\\n' +
-          '• [Coordinacio] Enviar les actes del cicle\\n' +
-          '• [Meves tasques] Comprar cartolines\\n' +
-          '• [Meves tasques] Demanar hora al metge\\n' +
-          '• [Automatitzacio] Firmar les autoritzacions de la sortida' };
-        return { text: 'Resposta inventada del mirall a /' + p.quina +
-          '.\\n\\nAqui no hi ha cap escola al darrere.' };
-      }
-      if (accio === 'digues') return { text: 'Fet (mirall).' };
-
-      /* Els pendents d'ara mateix i apuntar-ne un de nou. Al mirall no hi ha
-         cap escola al darrere, o sigui que la llista viva es guarda aqui i
-         creix quan hi apuntes: si no, no es pot provar que la caixa es refaci.
-         Es triga a posta mig segon: al mòbil, això és un viatge a un altre
-         compte de Google i s'ha de veure què passa mentrestant. */
-      if (accio === 'pendentsViu') return { pendents: copia(ESC_VIU) };
-
-      if (accio === 'creaTasca') {
-        var quina = String(p.llista || '');
-        if (!ESC_VIU.some(function (x) { return x.llista === quina; })) {
-          throw new Error('No tens cap llista que es digui «' + quina + '».');
-        }
-        ESC_VIU.push({ llista: quina, que: String(p.titol || '') });
-        return { tasca: { titol: p.titol, llista: quina }, pendents: copia(ESC_VIU) };
       }
     }
 
@@ -827,7 +783,7 @@ fs.writeFileSync(path.join(CARPETA, 'index.html'),
 /* Les dues amplades alhora. Els desbordaments no es veuen mai a la finestra
    tal com la tens: es veuen quan poses la pantalla a 375 de debò. */
 const VISTES = ['inici', 'habits', 'tasques', 'nutricio', 'finances',
-                'seguiment', 'entrenaments', 'escola', 'diari', 'focus', 'dia', 'setmana',
+                'seguiment', 'entrenaments', 'diari', 'focus', 'dia', 'setmana',
                 'relacions', 'memoria'];
 fs.writeFileSync(path.join(CARPETA, 'amplades.html'), `<!doctype html>
 <meta charset="utf-8"><title>JEFE · amplades</title>

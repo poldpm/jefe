@@ -3302,7 +3302,7 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
   const capOn = ctx.__c;
 
   cal('un nom de pantalla a seques es converteix en hash',
-      capOn('escola') === './#escola', capOn('escola'));
+      capOn('seguiment') === './#seguiment', capOn('seguiment'));
   cal('el que ja estava bé no es toca',
       capOn('./#finances') === './#finances', capOn('./#finances'));
   cal('l\'arrel es queda com l\'arrel',
@@ -3414,7 +3414,7 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
      notificació, i el que es va escapar era just al revés: «Resum del dia»,
      «Revisió setmanal», «Banc», «Demà». Es comprova que cadascun comenci per
      un apartat de debò —el nom d'un mòdul o d'una pantalla de l'app. */
-  const APARTATS = ['Calendari', 'Diari', 'Escola', 'Finances', 'Hàbits', 'Nutrició',
+  const APARTATS = ['Calendari', 'Diari', 'Finances', 'Hàbits', 'Nutrició',
                     'Tasques', 'Focus', 'Relacions', 'Memòria', 'Seguiment', 'El dia',
                     'La setmana', 'Prova'];
   const forasters = titols.filter((t) =>
@@ -3451,15 +3451,15 @@ console.log('\nNotificacions: totes han de portar a una pantalla que existeixi')
     return { obertes, navegat, missatges };
   };
 
-  const tancada = await obre('escola', false);
+  const tancada = await obre('seguiment', false);
   cal('el treballador obre l\'adreça sencera, no la relativa',
-      tancada.obertes[0] === arrel + '#escola', tancada.obertes[0]);
+      tancada.obertes[0] === arrel + '#seguiment', tancada.obertes[0]);
 
-  const oberta = await obre('escola', true);
+  const oberta = await obre('seguiment', true);
   cal('i amb l\'app ja oberta hi navega en comptes de deixar-te on eres',
-      oberta.navegat === arrel + '#escola', oberta.navegat);
+      oberta.navegat === arrel + '#seguiment', oberta.navegat);
   cal('i a més li ho diu per missatge, que és instantani',
-      (oberta.missatges[0] || {}).vista === 'escola', JSON.stringify(oberta.missatges));
+      (oberta.missatges[0] || {}).vista === 'seguiment', JSON.stringify(oberta.missatges));
 }
 
 
@@ -3566,101 +3566,6 @@ console.log('\nEl repàs de demà: què tens i què no cal dir-te');
   cal('i el que no és una data s\'ignora en comptes de petar',
       c2.App.deLAdreca('#dia:dema').params.data === undefined &&
       c2.App.deLAdreca('#dia:2026-8-7').params.data === undefined);
-}
-
-// --------------------------- els pendents de l'escola, per llista i sense claudàtors
-/* El resum del matí porta les tasques com «• [Tutoria] Corregir els controls»:
-   el claudàtor és el separador d'un missatge de text, i el que hi ha a dins és
-   la llista del Google Tasks. Aquí es comprova que la llista arribi separada
-   —que és el que permet fer una caixa per llista— i, sobretot, que el claudàtor
-   no es coli mai al text que es llegeix, ni a la pantalla ni a la pàgina del dia. */
-console.log('\nEls pendents de l\'escola: la llista al seu lloc i el claudàtor enlloc');
-{
-  const ctx = carregaTotElServidor();
-  const A = '2026-08-04';
-  const COS = [
-    '*Avui:*',
-    '• 09:00 — Claustre de mestres',
-    '',
-    '*Tasques pendents (5):*',
-    '• [Tutoria] Corregir els controls',
-    '• [Tutoria] Trucar a una família',
-    '• [Programació] Revisar la unitat 3',
-    '• [Meves tasques] Comprar cartolines',
-    '• Una tasca sense llista',
-    '',
-    '*Correus:*',
-    '• 3 sense llegir'
-  ].join('\n');
-  const FILES = [
-    { id: 'r', rebut_el: A + 'T07:02:00', mena: 'resum', llegit_el: A + 'T07:10:00',
-      titol: 'Bon dia', cos: COS },
-    { id: 't1', rebut_el: A + 'T09:15:00', mena: 'tasca', llegit_el: '',
-      titol: 'Firmar les autoritzacions', cos: '' }
-  ];
-
-  ctx.Dades = { llegeix: () => JSON.parse(JSON.stringify(FILES)) };
-  ctx.Log = { info() {}, avis() {}, error() {} };
-  ctx.Utils.avui = () => A;
-  ctx.Utils.faQuant = () => 'fa una estona';
-  ctx.EscolaPont = { hiEs: () => true };
-
-  const mod = ctx.MODUL_ESCOLA();
-  const p = mod.accions.pantalla({});
-  const per = {};
-  p.dia.pendents.forEach((x) => { (per[x.llista || ''] = per[x.llista || ''] || []).push(x.que); });
-
-  cal('cada tasca porta la seva llista a part', (per['Tutoria'] || []).length === 2 &&
-      (per['Programació'] || []).length === 1 && (per['Meves tasques'] || []).length === 1,
-      JSON.stringify(p.dia.pendents));
-  cal('la que no en duia es queda sense llista, no se n\'hi inventa cap',
-      (per[''] || []).length === 1, JSON.stringify(per['']));
-  /* Quan l'automatització troba una feina en un correu, la desa al Google
-     Tasks i l'avís només diu que ho ha fet: la tasca ja torna pel resum del
-     matí amb la seva llista. Si a més la pengéssim de l'avís sortiria dues
-     vegades, i tocar «Vist» la faria fora d'una llista que no mana. */
-  cal('un avís de tasca NO afegeix cap pendent: el pendent ja ve del resum',
-      p.dia.pendents.every((x) => x.que !== 'Firmar les autoritzacions'),
-      JSON.stringify(p.dia.pendents));
-  cal('i no s\'inventa cap llista que el Google Tasks no tingui',
-      !per['D\'un correu'], JSON.stringify(Object.keys(per)));
-  cal('i el claudàtor no arriba mai al text que es llegeix',
-      p.dia.pendents.every((x) => x.que.indexOf('[') === -1),
-      JSON.stringify(p.dia.pendents.map((x) => x.que)));
-  cal('les hores i la resta segueixen al seu lloc',
-      p.dia.hores.length === 1 && p.dia.altres.some((x) => /sense llegir/.test(x.que)),
-      JSON.stringify(p.dia));
-
-  const dia = mod.elDia(A);
-  cal('a la pàgina del dia tampoc hi surt cap claudàtor',
-      dia.coses.every((c) => c.text.indexOf('[') === -1),
-      JSON.stringify(dia.coses.map((c) => c.text)));
-  const corregir = dia.coses.filter((c) => /Corregir/.test(c.text))[0];
-  cal('allà la llista passa al text petit del costat',
-      corregir && corregir.menut === 'Tutoria', JSON.stringify(corregir));
-  const correus = dia.coses.filter((c) => /sense llegir/.test(c.text))[0];
-  cal('i el que no és un pendent conserva la seva secció',
-      correus && correus.menut === 'correus', JSON.stringify(correus));
-
-  /* La vista ha de fer servir les caixes: si algú torna a pintar la llista
-     plana, la llista separada del servidor no serveix de res. */
-  const vista = fs.readFileSync('apps-script/vista_escola.html', 'utf8');
-  cal('la pantalla pinta caixes per llista, no una tirallonga',
-      vista.indexOf('caixesPendents(llista, true)') !== -1);
-  cal('i el «+» d\'apuntar només surt si hi ha pont amb l\'escola',
-      /potAfegir = ambAfegir && d && d\.pont/.test(vista));
-  cal('i la resposta de la comanda «Pendents» es capsa igual',
-      vista.indexOf('trossos.push(caixesPendents(cua))') !== -1);
-
-  /* La capçalera deia «3 sense llegir» i la secció «Notificacions · 2» a la
-     mateixa pantalla, perquè comptaven conjunts diferents —i `despatxa` encara
-     els separava més—. Ara els tres surten de `nous()`; si algú torna a comptar
-     pel seu compte, això ho ha de dir. */
-  cal('els tres comptadors de sense llegir surten del mateix lloc',
-      /function nous\(\)/.test(vista) &&
-      vista.indexOf('var n = d ? nous().length : 0;') !== -1 &&
-      vista.indexOf('var quantsNous = nous().length;') !== -1 &&
-      vista.indexOf('(elsNous.length ? \' · \' + elsNous.length : \'\')') !== -1);
 }
 
 // ------------------------------------- les tasques, ara que manen les de Google
@@ -3876,7 +3781,6 @@ console.log('\nObrir l\'app: les targetes no poden anar a buscar res a Google');
     insereix: (f, x) => x, actualitza: () => null
   };
   ctx.CalendariPont = { hiEs: () => false };
-  ctx.EscolaPont = { hiEs: () => false };
   ctx.Utilities.formatDate = (d) => d.getFullYear() + '-' +
     ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
 
@@ -3909,9 +3813,9 @@ console.log('\nObrir l\'app: les targetes no poden anar a buscar res a Google');
   cal('i s\'instal·la sol amb els altres',
       /newTrigger\('triggerEscalfaFora'\)/.test(inst));
 
-  const capEscalfa = ['40_Mod_Calendari.gs', '40_Mod_Tasques.gs', '40_Mod_Escola.gs']
+  const capEscalfa = ['40_Mod_Calendari.gs', '40_Mod_Tasques.gs']
     .filter((f) => !/escalfa: function/.test(fs.readFileSync('apps-script/' + f, 'utf8')));
-  cal('i els tres mòduls que llegeixen de fora saben escalfar-se',
+  cal('i els dos mòduls que llegeixen de fora saben escalfar-se',
       capEscalfa.length === 0, capEscalfa.join(', '));
 }
 
@@ -3945,7 +3849,6 @@ console.log('\nLa precàrrega desa on cada pantalla mirarà');
   const esperat = {
     habits: 'habits.' + AVUI,
     tasques: 'tasques.llista',
-    escola: 'escola',
     seguiment: 'seguiment',
     diari: 'diari.' + AVUI,
     nutricio: 'nutricio.dia.' + AVUI,
@@ -4513,9 +4416,9 @@ console.log('\nEls senyals: dos al dia, i el que es calla també s\'apunta');
 
   /* I els mòduls de debò han de saber-ne declarar. */
   const declaren = ['40_Mod_Tasques.gs', '40_Mod_Habits.gs', '40_Mod_Nutricio.gs',
-                    '40_Mod_Escola.gs', '40_Mod_Seguiment.gs', '40_Mod_Finances.gs']
+                    '40_Mod_Seguiment.gs', '40_Mod_Finances.gs']
     .filter((f) => /senyals:\s*function/.test(fs.readFileSync('apps-script/' + f, 'utf8')));
-  cal('sis mòduls saben dir què els passa', declaren.length === 6, declaren.join(', '));
+  cal('cinc mòduls saben dir què els passa', declaren.length === 5, declaren.join(', '));
 
   const inst = fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8');
   cal('i hi ha un trigger que ho mira, i surt a la llista de neteja',
