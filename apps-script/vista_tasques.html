@@ -39,7 +39,8 @@ App.registraVista('tasques', {
 
     function capcalera() {
       var n = dades ? dades.tasques.length : 0;
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Tasques</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
@@ -73,7 +74,8 @@ App.registraVista('tasques', {
         '<button class="tasca-marca" data-fet="' + esc(t.id) + '"' +
           ' data-llista="' + esc(t.llista) + '"' +
           ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
-        '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
+        '<button class="tasca-cos" data-obre="' + esc(t.id) + '"' +
+          ' aria-label="' + esc('Obre: ' + t.text) + '">' +
           '<span class="tasca-text">' + esc(t.text) + '</span>' +
           /* EL PRIMER PAS VA A LA FILA, i va per sobre de la resta del text
              petit. El títol d'una tasca encallada és justament el que fa que
@@ -169,7 +171,7 @@ App.registraVista('tasques', {
                 (quina ? ' · va a ' + esc(quina) : '') + '</span>' +
               '<div class="captura-fila">' +
                 '<input id="t-captura" placeholder="Què t\'acaba de passar pel cap?" autocomplete="off">' +
-                '<button class="btn btn-primari" data-captura>' + ic('mes') + '</button>' +
+                '<button class="btn btn-primari" data-captura aria-label="Apunta-ho">' + ic('mes') + '</button>' +
               '</div>' +
             '</label>' +
           '</section>' +
@@ -220,7 +222,23 @@ App.registraVista('tasques', {
         esperant++;
 
         escriu('tasques', 'captura', { text: t })
-          .then(function (r) { esperant--; aplica(r); })
+          .then(function (r) {
+            esperant--;
+            /* EL CAMP NO PERD MAI EL FOCUS DESPRÉS D UN ENTER, i per això el
+               repintat s ajornava per sempre: la línia provisional es quedava
+               mig apagada i sense botons, i el comptador de pendents no es
+               movia, fins que tocaves qualsevol altra cosa. Es força el
+               repintat i es torna a deixar el camp com estava, amb el que
+               haguessis començat a escriure de la següent. */
+            var quedava = camp ? camp.value : '';
+            var teniaFocus = !!(camp && document.activeElement === camp);
+            aplica(r, false, true);
+            var altre = arrel.querySelector('#t-captura');
+            if (altre) {
+              if (quedava) altre.value = quedava;
+              if (teniaFocus) { try { altre.focus({ preventScroll: true }); } catch (e) { altre.focus(); } }
+            }
+          })
           .catch(function (err) {
             esperant--;
             if (provisional && provisional.parentNode) provisional.parentNode.removeChild(provisional);
@@ -479,12 +497,12 @@ App.registraVista('tasques', {
      * desplegable o li esborraria el que estava escrivint. S'espera i es pinta
      * quan pari.
      */
-    function aplica(r, dEnCau) {
+    function aplica(r, dEnCau, forca) {
       Cau.set('tasques.llista', r);
       var nou = JSON.stringify(r);
       if (nou === previPintat && !esperant) return;
 
-      if (previPintat !== null && App.interactuant()) {
+      if (!forca && previPintat !== null && App.interactuant()) {
         var primer = !ajornat;
         ajornat = r;
         if (primer) setTimeout(quanPari, 400);

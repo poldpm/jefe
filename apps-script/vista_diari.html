@@ -31,7 +31,8 @@ App.registraVista('diari', {
 
     function capcalera() {
       var r = dades ? dades.ratxa : 0;
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Diari</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
@@ -66,7 +67,7 @@ App.registraVista('diari', {
                 '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Dia següent"' +
                   (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
               '</div>' +
-              '<textarea id="d-text" rows="5" autocomplete="off" ' +
+              '<textarea id="d-text" rows="5" autocomplete="off" aria-label="Com ha anat el dia" ' +
                 'placeholder="' + esc(esAvui ? 'Com ha anat el dia?' : 'Què va passar aquell dia?') + '">' +
                 esc(e ? e.text : '') + '</textarea>' +
               blocAnim(e) +
@@ -220,15 +221,36 @@ App.registraVista('diari', {
       if (!camp) { if (alAcabar) alAcabar(); return; }
       desant = true;
 
+      /* UNA CASELLA DE GOOGLE SHEETS TÉ 50.000 CARÀCTERS I NI UN MÉS.
+         El camp no en tenia cap límit, o sigui que una entrada més llarga
+         hauria arribat al servidor per fallar-hi, i el text ja no seria
+         enlloc. Es talla aquí, es diu, i el que es desa és el que hi cap. */
       var text = camp.value;
+      if (text.length > 50000) {
+        text = text.slice(0, 50000);
+        camp.value = text;
+        App.brindis('El diari d\'un dia arriba fins a 50.000 caràcters. He desat fins aquí.', 'error');
+      }
       var anim = animTriat();
       var estat = arrel.querySelector('#d-estat');
       if (estat) estat.textContent = 'Desant…';
       brut = false;
 
+      /* LA XARXA DE SEGURETAT QUE TENEN ELS HÀBITS I AQUÍ NO HI ERA.
+         Escrivies, sorties del camp perquè comencés a desar, i si recarregaves
+         abans que el servidor contestés el text se n anava sense deixar rastre.
+         Ara entra a la cua abans de sortir del telèfon: si la pàgina es tanca
+         a mitges, la propera obertura l envia sola. Reescriure el diari del
+         mateix dia és substituir-lo, no acumular-hi res, o sigui que tornar-hi
+         a passar no pot duplicar res. */
+      var clauCua = 'diari:' + data;
+      Cua.afegeix('diari', 'escriu', { data: data, text: text, anim: anim }, clauCua);
+
       escriu('diari', 'escriu', { data: data, text: text, anim: anim },
              { data: data, quants: 30 })
         .then(function (r) {
+          Cau.set('cua', Cua.tot().filter(function (i) { return i.clau !== clauCua; }));
+          App.pintaPendents();
           var e2 = arrel.querySelector('#d-estat');
           if (e2) e2.textContent = 'Desat';
           aplica(r);
@@ -252,6 +274,14 @@ App.registraVista('diari', {
       if (!pendent) return;
       var seguent = pendent;
       pendent = null;
+      /* SI RES NO HA CANVIAT, NO HI TORNIS.
+         Clicar «Desa» treu el focus del camp, i això ja dispara una desada;
+         el clic en demanava una altra, i com que la primera encara volava
+         s apuntava per fer-la després. Resultat: dos viatges de dos segons
+         cada un per una sola desada, i el segon enviava exactament el mateix
+         text que el primer. Ara el segon només es fa si de debò has tocat res
+         mentre l altre anava. */
+      if (!brut) { if (typeof seguent === 'function') seguent(); return; }
       desa(seguent === true ? undefined : seguent);
     }
 

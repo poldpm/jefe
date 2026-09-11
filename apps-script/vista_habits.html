@@ -187,6 +187,7 @@ App.registraVista('habits', {
       var esAvui = d.data === fmt.avui();
 
       arrel.innerHTML =
+        '<h1 class="nomes-lectors">Hàbits</h1>' +
         '<header class="capcalera"><div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa') + '</button>' +
@@ -394,9 +395,15 @@ App.registraVista('habits', {
       if (!mes) { col.innerHTML = '<div class="esquelet" style="height:260px"></div>'; return; }
       if (!mes.habits.length) { col.innerHTML = ''; return; }
 
+      /* CADA COLUMNA HA DE DIR DE QUIN DIA ÉS.
+         Només s hi escriu el número cada cinc dies, que és el que fa la
+         graella llegible amb els ulls; llegida en veu alta, però, vint-i-cinc
+         capçaleres buides seguides no diuen res. El dia sencer hi va sempre,
+         amagat per a qui mira i disponible per a qui escolta. */
       var caps = mes.calendari.map(function (d) {
         var n = fmt.diaNumero(d);
-        return '<th scope="col">' + (n % 5 === 0 || n === 1 ? n : '') + '</th>';
+        return '<th scope="col"><span class="nomes-lectors">' + esc(fmt.llarga(d)) + '</span>' +
+               '<span aria-hidden="true">' + (n % 5 === 0 || n === 1 ? n : '') + '</span></th>';
       }).join('');
 
       /* Amb el dit, una casella de 30 dies fa 13px d'ample: impossible de tocar
@@ -595,7 +602,14 @@ App.registraVista('habits', {
       if (delta < 0) return Math.max(0, v - 1);
       if (h.esComptador) return v + 1;
       var nou = v + 1;
-      return nou > h.objectiu ? 0 : nou;
+      /* DONAR LA VOLTA A ZERO NOMÉS VAL PER A UN HÀBIT DE SÍ O NO.
+         Amb objectiu 1, el toc ha de ser bidireccional: el tornes a tocar i
+         el desmarques. Amb objectiu 8, la mateixa regla volia dir que el
+         novè got de l aigua et deixava el dia a zero: vuit tocs a terra,
+         sense preguntar i sense poder desfer-ho. Passat l objectiu, s hi
+         queda; per baixar-ne hi ha el botó de menys i el valor exacte. */
+      if (h.objectiu <= 1) return nou > h.objectiu ? 0 : nou;
+      return Math.min(nou, Number(h.objectiu) || nou);
     }
 
     function toca(id, delta) {
@@ -623,7 +637,25 @@ App.registraVista('habits', {
         pintaMes();
       }
 
-      Cau.set('habits.' + data, dades);
+      /* DESAR NOMÉS EL QUE ACABES DE TOCAR, NO TOT EL DIA.
+         Amb dues pestanyes obertes, desar l\'objecte sencer que té aquesta a
+         la memòria volia dir escriure per sobre del que hagués marcat l\'altra:
+         marcaves un hàbit aquí, un altre allà, i el primer tornava enrere a la
+         còpia del telèfon. Al servidor hi arribaven tots dos —cada marca hi va
+         sola—, o sigui que el que quedava malament era el que veies. Ara es
+         llegeix el que hi ha desat i només s\'hi canvia aquest hàbit. */
+      var desat = Cau.get('habits.' + data, null);
+      if (desat && desat.habits) {
+        var hiEs = false;
+        desat.habits.forEach(function (x) {
+          if (x.id !== h.id) return;
+          hiEs = true;
+          x.valor = h.valor; x.registrat = h.registrat; x.complert = h.complert;
+        });
+        Cau.set('habits.' + data, hiEs ? desat : dades);
+      } else {
+        Cau.set('habits.' + data, dades);
+      }
       repintaFranja(h);
       if (navigator.vibrate) {
         try { navigator.vibrate(h.complert ? 14 : 6); } catch (e) {}
@@ -820,10 +852,18 @@ App.registraVista('habits', {
             });
           });
           cos.querySelector('[data-desa-valor]').addEventListener('click', function (ev) {
-            ev.currentTarget.dataset.carregant = '1';
+            /* El botó s'agafa ara: quan torni la resposta, `currentTarget` ja
+               és null i el `.catch` no podria apagar la rodeta. Si falla i no
+               s'apaga, el diàleg es queda carregant per sempre i sembla que
+               encara ho estigui provant. */
+            var boto = ev.currentTarget;
+            boto.dataset.carregant = '1';
             crida('habits', 'marca', { id: id, data: data, valor: Number(camp.value) || 0 })
               .then(function (dd) { App.tancaModal(); posaAlDia(dd); App.brindis('Desat'); })
-              .catch(function (err) { App.brindis(err.message, 'error'); });
+              .catch(function (err) {
+                boto.dataset.carregant = '0';
+                App.brindis(err.message, 'error');
+              });
           });
         }
 
@@ -945,10 +985,14 @@ App.registraVista('habits', {
           '<button class="btn btn-fantasma btn-ple" data-no="1" style="margin-top:var(--e2)">Cancel·la</button>');
         cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
         cos.querySelector('[data-si]').addEventListener('click', function (ev) {
-          ev.currentTarget.dataset.carregant = '1';
+          var boto = ev.currentTarget;          // després de l'esdeveniment ja no hi és
+          boto.dataset.carregant = '1';
           crida('habits', 'arxiva', { id: h.id })
             .then(function () { App.tancaModal(); App.brindis('Arxivat'); carrega(); })
-            .catch(function (err) { App.brindis(err.message, 'error'); });
+            .catch(function (err) {
+              boto.dataset.carregant = '0';     // si no, la rodeta no s'atura mai
+              App.brindis(err.message, 'error');
+            });
         });
       }, 220);
     }

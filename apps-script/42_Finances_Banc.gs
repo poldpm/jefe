@@ -201,12 +201,23 @@ var FinancesBanc = (function () {
     }
 
     var fins = new Date(Date.now() + DIES_ACCES * 864e5).toISOString().replace(/\.\d+Z$/, 'Z');
+
+    /* EL `state` ES GUARDA, QUE PER AIXÒ EXISTEIX.
+       Se'n generava un de nou a cada connexió i no es desava enlloc, o sigui
+       que quan el banc tornava amb el codi ningú comprovava que aquell
+       viatge fos el que havíem començat nosaltres. L'adreça de tornada és
+       oberta —ha de ser-ho, hi arriba el banc—, i sense aquesta comprovació
+       un codi de l'autorització d'algú altre entrava igual i es desava com
+       si fos el compte d'en Pol. Ara el que torna ha de dur el mateix bitllet
+       que vam donar a l'anada. */
+    var bitllet = Utilities.getUuid();
+
     var r = eb_('/auth', {
       method: 'post',
       payload: JSON.stringify({
         access: { valid_until: fins },
         aspsp: { name: nom, country: 'ES' },
-        state: Utilities.getUuid(),
+        state: bitllet,
         redirect_url: prop_('EB_REDIRECT'),
         psu_type: 'personal'
       })
@@ -217,10 +228,24 @@ var FinancesBanc = (function () {
     e.institution = nom;
     e.connected = false;
     e.authId = r.authorization_id;
+    e.state = bitllet;
     e.since = Utils.ara();
     desaEstat(e);
 
     return r.url;
+  }
+
+  /**
+   * QUI TORNA ÉS QUI VA MARXAR?
+   * Es compara amb el bitllet desat a l'anada. Si no n'hi ha cap de desat
+   * —una connexió començada abans que existís això— es deixa passar: val més
+   * això que deixar en Pol sense poder reconnectar el banc amb una connexió
+   * a mig fer. En canvi, si n'hi ha un i no coincideix, no es passa.
+   */
+  function bitlletValid(state) {
+    var desat = estat().state;
+    if (!desat) return true;
+    return String(state || '') === String(desat);
   }
 
   /** La crida el nucli quan el banc torna amb ?code=… No s'executa a mà. */
@@ -649,6 +674,7 @@ var FinancesBanc = (function () {
     bancs: bancs,
     connecta: connecta,
     creaSessio: creaSessio,
+    bitlletValid: bitlletValid,
     clauPem: clauPem_,        // per a provaClauBanc()
     sincronitza: sincronitza,
     omplequiCobra: omplequiCobra,

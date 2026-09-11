@@ -38,6 +38,26 @@ App.registraVista('nutricio', {
       return isFinite(n) ? n : 0;
     };
 
+    /* «ABC» NO ÉS ZERO.
+       `num()` torna 0 per a qualsevol cosa que no sigui un número, i això vol
+       dir que escriure malament les calories les apuntava a zero sense dir-ho:
+       l\'aliment entrava amb un valor que tu no havies triat i el dia quedava
+       fals. Aquesta distingeix el buit —que sí que val zero— del que no és cap
+       número, que ha de parar l\'alta i explicar-ho. */
+    var numExacte = function (v) {
+      var t = String(v === undefined || v === null ? '' : v).trim().replace(',', '.');
+      if (!t) return 0;
+      return /^-?\d*\.?\d+$/.test(t) ? parseFloat(t) : null;
+    };
+
+    /* I UN ALIMENT NO PESA MIL TONES.
+       Sense sostre, un dit de més al teclat numèric feia que l\'àpat digués un
+       milió de quilocalories i el balanç del dia deixava de voler dir res.
+       Els límits són generosos a posta: 5 kg d\'un cop, 1.000 kcal per 100 g
+       —l\'oli en té 884— i 100 g de proteïna per 100 g, que és el màxim que hi
+       cap per definició. */
+    var SOSTRE = { grams: 5000, kcal100: 1000, prot100: 100 };
+
     // ------------------------------------------------------------- capçalera
 
     var PERIODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
@@ -48,13 +68,15 @@ App.registraVista('nutricio', {
        fletxes es queden perquè el dia sí que el canvies constantment. */
     function capcalera(esAvui) {
       var sota = (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Dia'])[1];
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Nutrició</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="titol-periode" data-obre-periode="1">' +
+          '<button class="titol-periode" data-obre-periode="1" aria-label="' +
+            esc(titolPeriode() + '. Tria què vols veure') + '">' +
             '<b>' + esc(titolPeriode()) + '</b>' +
             '<span>' + esc(sota) +
               (periode === 'dia' && esAvui ? ' · avui' : '') + ' ▾</span>' +
@@ -265,10 +287,14 @@ App.registraVista('nutricio', {
              grosses, trobar un aliment costa llegir-ho tot. */
           '<button class="btn btn-secundari tria-aliment" data-guardats>' +
             ic('mes', 'ic-p') + 'Tria un aliment guardat</button>' +
-          '<input data-nom placeholder="Aliment" autocomplete="off">' +
-          '<input data-grams inputmode="decimal" placeholder="grams" class="num" autocomplete="off">' +
-          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num" autocomplete="off">' +
-          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num" autocomplete="off">' +
+          '<input data-nom placeholder="Aliment" autocomplete="off"' +
+            ' aria-label="Aliment · ' + esc(m.nom) + '">' +
+          '<input data-grams inputmode="decimal" placeholder="grams" class="num" autocomplete="off"' +
+            ' aria-label="Grams · ' + esc(m.nom) + '">' +
+          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num" autocomplete="off"' +
+            ' aria-label="Quilocalories per 100 g · ' + esc(m.nom) + '">' +
+          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num" autocomplete="off"' +
+            ' aria-label="Proteïna per 100 g · ' + esc(m.nom) + '">' +
           '<button class="btn btn-primari" data-afegeix>Afegeix</button>' +
           '<button class="btn btn-secundari" data-desa-aliment>Desa l\'aliment</button>' +
         '</div>' +
@@ -639,19 +665,69 @@ App.registraVista('nutricio', {
           }
         }
 
+        /* EL QUE ESTAVES ESCRIVINT NO POT DEPENDRE DE NO TOCAR RES.
+           Si recarregaves —o el mòbil et tancava la pestanya— entre prémer
+           «Afegeix» i la resposta del servidor, l\'aliment se n\'anava sense
+           deixar rastre. Aquí no es pot fer com als hàbits i deixar-ho a la
+           cua: reenviar-ho a cegues afegiria el mateix plat dues vegades.
+           El que sí que es pot desar sense risc és el formulari a mig omplir,
+           i tornar-te\'l a deixar tal com estava perquè només l\'hagis de
+           confirmar. */
+        var clauEsborrany = 'nutricio.esborrany';
+
+        function desaEsborrany() {
+          var buit = !nom.value.trim() && !gr.value.trim() && !kc.value.trim() && !pr.value.trim();
+          if (buit) { Cau.treu(clauEsborrany); return; }
+          Cau.set(clauEsborrany, { data: data, apat: apat, nom: nom.value,
+                                   gr: gr.value, kc: kc.value, pr: pr.value });
+        }
+
+        (function recuperaEsborrany() {
+          var e = Cau.get(clauEsborrany, null);
+          if (!e || e.data !== data || e.apat !== apat) return;
+          if (nom.value.trim() || gr.value.trim()) return;   // no trepitgis res escrit ara
+          nom.value = e.nom || ''; gr.value = e.gr || '';
+          kc.value = e.kc || ''; pr.value = e.pr || '';
+          refresca();
+        })();
+
         [nom, gr, kc, pr].forEach(function (i) {
-          i.addEventListener('input', refresca);
+          i.addEventListener('input', function () { refresca(); desaEsborrany(); });
           i.addEventListener('keydown', function (e) { if (e.key === 'Enter') afegeix(); });
         });
 
+        /* QUÈ HI HA MALAMENT, DIT AMB PARAULES.
+           Abans, prémer «Afegeix» amb el formulari a mitges no feia res de res
+           —ni un camp marcat ni un missatge— i, pitjor, els valors impossibles
+           passaven: calories negatives, proteïna amb lletres convertida en
+           zero, i grams sense sostre. */
+        function problema() {
+          if (!nom.value.trim()) return 'Posa-hi el nom de l\'aliment.';
+          var g = numExacte(gr.value);
+          if (g === null) return 'Els grams han de ser un número.';
+          if (g <= 0) return 'Posa-hi quants grams n\'has menjat.';
+          if (g > SOSTRE.grams) return 'Cinc quilos d\'un cop? Mira els grams.';
+          var k = numExacte(kc.value);
+          if (k === null) return 'Les calories han de ser un número.';
+          if (k < 0) return 'Les calories no poden ser negatives.';
+          if (k > SOSTRE.kcal100) return 'Cap aliment passa de 1.000 kcal per 100 g.';
+          var pt = numExacte(pr.value);
+          if (pt === null) return 'La proteïna ha de ser un número.';
+          if (pt < 0) return 'La proteïna no pot ser negativa.';
+          if (pt > SOSTRE.prot100) return 'No hi caben més de 100 g de proteïna en 100 g.';
+          return '';
+        }
+
         function afegeix() {
-          if (!llest()) return;
+          var mal = problema();
+          if (mal) { App.brindis(mal, 'error'); return; }
           bt.disabled = true;
           escriu('nutricio', 'afegeix', {
             data: data, apat: apat, nom: nom.value.trim(),
             grams: num(gr.value), kcal100: num(kc.value), prot100: num(pr.value)
           }, quePinto()).then(function (r) {
             nom.value = gr.value = kc.value = pr.value = '';
+            Cau.treu(clauEsborrany);
             bt.disabled = false;
             /* El botó torna a dir «Afegeix». Si no, es queda amb la previsió
                del que acabes d'apuntar i sembla que encara ho hagis de prémer. */
@@ -694,12 +770,22 @@ App.registraVista('nutricio', {
 
         sec.querySelectorAll('[data-treu]').forEach(function (b) {
           b.addEventListener('click', function () {
-            b.disabled = true;
-            escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
-              // Treure'n un és una cosa que vols veure feta: es pinta encara
-              // que tinguis el formulari de l'àpat obert.
-              .then(function (r) { Cau.oblida('nutricio.'); aplica(r, false, true); })
-              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+            /* La creueta és petita i va al costat del plat: preguntar-ho val
+               un toc i estalvia haver de tornar a escriure els quatre camps. */
+            var quin = b.getAttribute('aria-label') || 'aquest aliment';
+            App.confirma('Treure-ho de l\'àpat?',
+              '<p>' + esc(quin.replace(/^Treu\s+/i, '')) + '</p>',
+              'Sí, treu-ho',
+              function (bo) {
+                escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
+                  // Treure'n un és una cosa que vols veure feta: es pinta encara
+                  // que tinguis el formulari de l'àpat obert.
+                  .then(function (r) {
+                    App.tancaModal();
+                    Cau.oblida('nutricio.'); aplica(r, false, true);
+                  })
+                  .catch(function (err) { bo.disabled = false; App.brindis(err.message, 'error'); });
+              });
           });
         });
       });
@@ -774,8 +860,10 @@ App.registraVista('nutricio', {
         sortida.innerHTML =
           '<div class="fitxa" style="margin-top:var(--e3)">' +
             '<p class="marge">Què hi he trobat</p>' +
-            '<p>' + r.ingestes + ' ingestes · ' + r.activitats + ' dies amb activitat · ' +
-              r.aliments + ' aliments' +
+            /* Amb un fitxer que no és una còpia de FitFat, els comptadors no
+               hi són i sortia «undefined dies amb activitat». */
+            '<p>' + (r.ingestes || 0) + ' ingestes · ' + (r.activitats || 0) + ' dies amb activitat · ' +
+              (r.aliments || 0) + ' aliments' +
               (r.jaHiEren ? ' · ' + r.jaHiEren + ' que ja hi eren i no tornaré a posar' : '') + '</p>' +
             (r.ajustos ? '<p class="menut">També hi ha objectius i dades del cos.</p>' : '') +
             (r.avisos && r.avisos.length

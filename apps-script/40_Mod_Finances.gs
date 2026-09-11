@@ -239,6 +239,18 @@ function MODUL_FINANCES() {
                        's\'ha exhaurit el temps. Torna a executar <code>connectaBanc()</code>.</p>' : '')
         ));
       }
+      /* AQUESTA ADREÇA ÉS OBERTA i el codi arriba per la URL: qualsevol pot
+         trucar-hi amb un codi seu. Sense comprovar el bitllet, aquell codi
+         es canviava per una sessió i el compte d'un altre quedava desat com
+         si fos el d'en Pol. */
+      if (!FinancesBanc.bitlletValid(p.state)) {
+        Log.avis('banc.tornada', 'Tornada del banc amb un bitllet que no és el nostre');
+        return HtmlService.createHtmlOutput(pagina_(
+          'Aquesta tornada no és la teva',
+          '<p>El banc ha tornat amb una identificació que no correspon a la connexió ' +
+          'que vas començar. No s\'ha desat res. Torna a executar <code>connectaBanc()</code>.</p>'));
+      }
+
       var r = FinancesBanc.creaSessio(p.code);
       return HtmlService.createHtmlOutput(pagina_(
         'Banc connectat',

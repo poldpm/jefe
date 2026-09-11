@@ -182,7 +182,11 @@ var Xat = (function () {
 
     cos = App.modal('Pregunta a JEFE',
       '<div class="xat">' +
-        '<div class="xat-fil" id="xat-fil"></div>' +
+        /* `role="log"` amb `aria-live`: la resposta arriba sola, i qui no
+           mira la pantalla també se n'ha d'assabentar. Educat i no
+           «assertive»: no ha d'interrompre el que estiguis escoltant. */
+        '<div class="xat-fil" id="xat-fil" role="log" aria-live="polite" ' +
+          'aria-label="Conversa amb JEFE"></div>' +
         '<form class="xat-peu" id="xat-peu">' +
           '<input class="entrada" id="xat-camp" autocomplete="off" ' +
             'placeholder="Què vols saber?" aria-label="La teva pregunta">' +

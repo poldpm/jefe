@@ -408,13 +408,19 @@ App.registraVista('entrenaments', {
 
       var fora = cos.querySelector('[data-fora]');
       if (fora) fora.addEventListener('click', function () {
-        fora.disabled = true; fora.textContent = 'Traient-lo…';
-        crida('entrenaments', 'esborra', { id: s.id }).then(function () {
-          App.tancaModal(); App.brindis('Entrenament tret'); carrega(true);
-        }).catch(function (err) {
-          fora.disabled = false; fora.textContent = 'Treu-lo';
-          App.brindis(err.message, 'error');
-        });
+        /* El calendari i les fotos ho pregunten; això també ha de fer-ho. */
+        App.confirma('Treure aquest entrenament?',
+          '<p>' + esc(s.titol || 'Sense títol') + '</p>' +
+          '<p class="menut">Se n va del full i deixa de comptar a la càrrega de la setmana.</p>',
+          'Sí, treu-lo',
+          function (b) {
+            crida('entrenaments', 'esborra', { id: s.id }).then(function () {
+              App.tancaModal(); App.brindis('Entrenament tret'); carrega(true);
+            }).catch(function (err) {
+              b.disabled = false;
+              App.brindis(err.message, 'error');
+            });
+          });
       });
 
       cos.querySelector('#f-ent').addEventListener('submit', function (ev) {

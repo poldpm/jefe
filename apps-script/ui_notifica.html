@@ -13,6 +13,9 @@
 var Notificacions = (function () {
 
   var SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  var NO_CONFIG = 'Els avisos només funcionen des de la pàgina publicada, ' +
+                  'no des de la finestra d\'Apps Script. Obre JEFE des de ' +
+                  'la seva adreça de sempre i torna-ho a provar.';
   var config = null, missatgeria = null, carregant = null;
 
   function potSerHi() {
@@ -27,8 +30,18 @@ var Notificacions = (function () {
   function prepara() {
     if (carregant) return carregant;
 
+    /* SI EL FITXER NO HI ÉS, DIGUES-HO EN CRISTIÀ.
+       Aquesta pàgina se serveix des de dos llocs i només un té el fitxer al
+       costat: des d'Apps Script, `firebase.config.json` no existeix i la
+       resposta és la pàgina d'error del servidor. `r.json()` peta amb
+       «Unexpected non-whitespace character after JSON at position 4», i això
+       era el que sortia a la pantalla en tocar «Activa els avisos»: un
+       missatge de l'intèrpret de JavaScript, no una explicació. */
     carregant = fetch('firebase.config.json', { cache: 'no-cache' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r.ok) throw new Error(NO_CONFIG);
+        return r.json().catch(function () { throw new Error(NO_CONFIG); });
+      })
       .then(function (cfg) {
         if (!cfg.apiKey || cfg.apiKey.indexOf('POSA-HI') === 0) {
           throw new Error('Firebase encara no està configurat. Vegeu docs/03-notificacions.md');

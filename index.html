@@ -58,8 +58,11 @@
   --corba:      #bcced4;   /* estructura secundària */
   --corba-mestra:#8faab3;
   /* De dia va mes fondo del que sembla: a 11 px sobre el fons de la sala,
-     el to de nit donava 4,14 i les etiquetes petites no es llegien. */
-  --utm:        #0a707e;   /* la llum del sistema */
+     el to de nit donava 4,14 i les etiquetes petites no es llegien.
+     I una mica mes fondo encara: sobre paper blanc en sobrava, pero el dia
+     d'avui de la setmana porta el fons tenyit —`--utm-suau`— i alla el
+     numero del dia es quedava a 4,39. El text petit no te marge. */
+  --utm:        #086674;   /* la llum del sistema */
   --utm-suau:   #cfe4e9;
   --gr:         #c8332b;   /* el que va malament */
   --accio:      #0a707e;
@@ -84,7 +87,12 @@
   --h6: #054a57;   /* al màxim */
   --roca: #ffffff;
 
-  --fet:        var(--h4);
+  /* UN GRAO MES FOSC QUE LA RAMPA. El fons de «fet» duia el mateix to que la
+     casella encesa del full de mes (--h4), pero alla no hi va text a sobre i
+     aqui si: el blanc del boto triat de l'anim del diari es quedava a 4,38.
+     La rampa no es toca —es una escala i ha de seguir sent-ho—; el que puja
+     un grao es nomes el fons que ha de sostenir lletra. */
+  --fet:        var(--h5);
   --fet-vora:   var(--h6);
   --sobre-fet:  #ffffff;
   --sobre-fet2: #d5edf1;
@@ -551,7 +559,7 @@ h2 { font-size: 1.0625rem; }
 .compt-tria button {
   /* 44 px com la resta: el dit no es fa més petit perquè el botó sigui
      secundari. El que s'encongeix és la lletra, no l'àrea. */
-  min-height: 44px; padding: 0 var(--e2);
+  min-height: 44px; min-width: 44px; padding: 0 var(--e2);
   border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
   font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
   text-transform: uppercase;
@@ -702,6 +710,18 @@ h2 { font-size: 1.0625rem; }
 
 .camp { display: block; margin-bottom: var(--e4); }
 .camp > span { display: block; margin-bottom: var(--e2); }
+
+/* L'ERROR D'UN CAMP VA AL COSTAT DEL CAMP.
+   Sortia de brindis a baix de tot de la pantalla: a fora del diàleg que
+   l'havia provocat, i al mòbil sovint ni es veia. Aquí va enganxat al camp,
+   amb `role="alert"` perquè qui no la mira també se n'assabenti. El color no
+   ho diu sol: hi ha el símbol al davant. */
+.camp-mal {
+  margin: calc(var(--e3) * -1) 0 var(--e4);
+  display: flex; gap: var(--e2); align-items: flex-start;
+  font-size: .8125rem; line-height: 1.45; color: var(--gr);
+}
+.camp-mal::before { content: '!'; flex: none; font-weight: 700; }
 .entrada, select.entrada, textarea.entrada {
   width: 100%; min-height: var(--toc); padding: var(--e3);
   border: 1.5px solid var(--neatline); border-radius: var(--r);
@@ -1019,7 +1039,14 @@ h2 { font-size: 1.0625rem; }
 .bal-xifra { font-size: .875rem; font-weight: 700; text-align: right;
              font-variant-numeric: tabular-nums; color: var(--ink-suau); }
 
-[data-costat="deficit"] { color: var(--h1); }
+/* LA XIFRA HA DE SER LLEGIBLE.
+   La rampa d energia (--h1..--h6) es per a les superficies del relleu, no
+   per a text: --h1 es el grao mes apagat i sobre el fons de nit dona 1,75:1.
+   O sigui que l ingres —la xifra que mes vols veure— era la menys visible de
+   tota la pantalla, i a fora amb sol no es veia gens. Les barres es queden amb
+   la rampa, que alli si que hi pertany; el text agafa el grao de l altre
+   extrem, que es llegeix i segueix sent la mateixa familia de tinta. */
+[data-costat="deficit"] { color: var(--h6); }
 .bal-via i[data-costat="deficit"], .bal-mes-caixa i[data-costat="deficit"] { background: var(--h1); }
 [data-costat="superavit"] { color: var(--h5); }
 .bal-via i[data-costat="superavit"], .bal-mes-caixa i[data-costat="superavit"] { background: var(--h5); }
@@ -1054,8 +1081,13 @@ h2 { font-size: 1.0625rem; }
   box-shadow: 0 1px 0 var(--vora-viva);
   padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
 }
+/* QUE PUGUI PLEGAR-SE. A mida normal la fila hi cap sempre i això no canvia
+   res; amb el zoom del navegador al 200 % —que és com llegeix qui no hi veu
+   bé— els botons de la capçalera sortien fora de la pantalla sense cap
+   manera d arribar-hi, i la pàgina sencera demanava desplaçament horitzontal.
+   Plegant, baixen a la línia de sota i s hi arriba. */
 .capcalera-fila { display: flex; align-items: center; gap: var(--e3);
-                  max-width: 1280px; margin: 0 auto; }
+                  flex-wrap: wrap; max-width: 1280px; margin: 0 auto; }
 
 /* L'ESCALA. Era l'escala gràfica d'un mapa —barres alternades— i ara és el
    que sembla: un indicador de senyal. Els mateixos quatre traços, però
@@ -1344,7 +1376,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
 /* Els dies de l'altre mes hi són perquè la setmana no quedi coixa, no perquè
    els miris: es queden apagats i no criden. */
 .mes-dia[data-fora="1"] { background: var(--paper2); }
-.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: .55; }
+/* Els dies de fora del mes anaven a 2,25:1: es veien com una taca, no com un
+   número. Segueixen sent clarament secundaris —el fons ja els separa— però
+   ara es poden llegir. */
+.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: 1; }
 .mes-dia[data-avui="1"] { outline: 1px solid var(--utm); outline-offset: -1px; }
 
 /* El dia que MIRES es marca amb el blau de la quadrícula, no amb l'ocre.
@@ -1998,7 +2033,11 @@ input[type="checkbox"] { accent-color: var(--utm); }
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .seg-reclama b { font-size: .9375rem; }
-.seg-reclama span { font-size: .8125rem; color: var(--ink-suau); }
+/* La tinta apagada dona 3,69:1 sobre aquest fons ambre, per sota del mínim i
+   en una app que es fa servir a fora amb sol. Sobre aquesta superfície va amb
+   la tinta normal una mica retirada, que passa de 4,5 sense cridar. */
+.seg-reclama span { font-size: .8125rem;
+                    color: color-mix(in srgb, var(--ink) 78%, transparent); }
 .seg-reclama:active { transform: scale(.99); }
 
 /* EL VEREDICTE. El fil s'encén segons com ha anat, però el color no hi va mai
@@ -2106,6 +2145,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .seg-treu .ic { width: 15px; height: 15px; }
+/* Els 44 del dit, guanyats per fora, com a `.mem-fora`. El botó ha de seguir
+   sent una creueta petita damunt de la foto, i el dit no ho sap. */
+.seg-treu::after { content: ''; position: absolute; top: 50%; left: 50%;
+                   width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .seg-treu:active { background: var(--gr); transform: scale(.92); }
 @media (hover: hover) and (pointer: fine) {
   .seg-treu:hover { background: var(--gr); }
@@ -2121,6 +2164,11 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-fila { min-height: 0; flex-direction: row; align-items: center;
             justify-content: space-between; gap: var(--e3); }
 .seg-fila[aria-current="true"] { background: var(--utm-suau); }
+/* La fila d avui puja de fons, i el text de sota es quedava a 3,95:1 amb 12 px:
+   just per sota del minim, i aquesta app es fa servir a fora amb sol. Sobre
+   aquest fons la tinta apagada ja no serveix; aquesta i prou. */
+.seg-fila[aria-current="true"] .franja-sota,
+.seg-fila[aria-current="true"] .franja-cota .u { color: color-mix(in srgb, var(--ink) 78%, transparent); }
 .seg-check { display: flex; align-items: center; gap: var(--e2); margin-top: var(--e2);
              font-size: .8125rem; color: var(--ink-suau); }
 .seg-check input { width: 18px; height: 18px; flex: none; accent-color: var(--utm); }
@@ -2177,7 +2225,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
               height: 88px; margin-top: var(--e2); }
 .ent-barra { flex: 1; min-width: 0; height: 100%; padding: 0;
              display: flex; align-items: flex-end;
-             border: 0; background: transparent; }
+             border: 0; background: transparent; position: relative; }
+/* EL DIT NO CAU ENTRE DUES SETMANES. Dotze barres repartides en 375 px en
+   deixen 23 de dibuix, i entremig hi havia 3 px que no eren de ningú. L àrea
+   de toc s eixampla fins a menjar-se el forat: la barra es veu igual de fina
+   —que és el que la fa llegible— i qualsevol punt de la seva columna toca la
+   seva setmana. Mateix truc que la creueta d oblidar de la memòria. */
+.ent-barra::after { content: ''; position: absolute; top: 0; bottom: 0;
+                    left: -1.5px; right: -1.5px; }
 .ent-barra > span { display: block; width: 100%; background: var(--corba);
                     transition: background-color .16s var(--entra); }
 .ent-barra[aria-current="true"] > span { background: var(--utm); }
@@ -2303,6 +2358,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
    t'obliga a baixar per veure què tens. */
 @media (min-width: 560px) {
   .caixes { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+
+  /* UNA CAIXA SOLA NO HA DE SEMBLAR UNA COLUMNA ORFE.
+     Amb `auto-fill`, la graella reserva les quatre columnes encara que només
+     hi hagi una caixa: a Relacions quedaven tres seccions de 300 píxels amb
+     900 de buit al costat, i la pàgina semblava a mig fer. Quan n'hi ha una
+     de sola s'estira, però només fins on una línia encara es llegeix bé: de
+     banda a banda d'un escriptori no es llegiria millor, només seria ampla. */
+  .caixes:has(> .caixa:only-child) { grid-template-columns: minmax(240px, 62ch); }
 }
 
 /* El camp d'apuntar no creix fins als mil pixels: és una ratlla de text, i una
@@ -2419,13 +2482,29 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 /* --------------------------------------------------------------- la pila */
 
+/* EL TÍTOL I EL SEU PEU NO PODEN COMPARTIR RATLLA.
+   Era una filera: títol, peu i botó de costat. El títol s'encongia i el peu
+   no, i dins d'una columna de la graella de caixes —240 o 300 píxels a
+   tauleta i a escriptori— el títol es quedava a poc més de cent píxels: queia
+   una paraula per línia i el peu gris li passava pel mig, a mitja alçada.
+   Es llegia com una pàgina trencada, i és la llista del que et queda per fer.
+
+   Ara és una graella de dues columnes: a l'esquerra el títol i, a sota seu, el
+   peu; a la dreta el botó, que ocupa les dues files. No depèn de l'amplada,
+   o sigui que no hi ha cap mida on torni a passar. */
 .pila-fila { padding: var(--e2) var(--e3); }
-.pila-cap { display: flex; align-items: center; gap: var(--e2); }
-.pila-text { flex: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
-.pila-fila .menut { flex: none; }
+.pila-cap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--e2); row-gap: 2px;
+}
+.pila-text { grid-column: 1; grid-row: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
+.pila-fila .menut { grid-column: 1; grid-row: 2; min-width: 0; }
 .pila-fila[data-urgent="1"] .menut { color: var(--gr); }
 
 .pila-quan {
+  grid-column: 2; grid-row: 1 / span 2;
   flex: none; width: 44px; height: 44px; margin: -10px -10px -10px 0; padding: 0;
   display: flex; align-items: center; justify-content: center;
   border: 0; background: transparent; color: var(--ink-suau);
@@ -2714,9 +2793,14 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 .foc-tasca[data-urgent="1"] > span:first-child { color: var(--avis); }
 .foc-tasca .foc-pas { display: block; margin-top: 2px; font-size: .8125rem; color: var(--utm); }
 @media (hover: hover) and (pointer: fine) { .foc-tasca:hover { background: var(--utm-suau); } }
-.foc-cap-x { flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
+.foc-cap-x { position: relative;
+             flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
              display: flex; align-items: center; justify-content: center;
              border: 0; background: transparent; color: var(--ink-suau); }
+/* Els 44 del dit, guanyats per fora. Treure la tasca del focus és un gest
+   petit i ha de seguir semblant-ho; el que no pot ser és que falli el toc. */
+.foc-cap-x::after { content: ''; position: absolute; top: 50%; left: 50%;
+                    width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
 .foc-fila { display: flex; gap: var(--e2); align-items: baseline;
             padding: var(--e1) var(--e3); }
@@ -2770,6 +2854,12 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
   transition: color .16s var(--entra);
 }
 .mem-fora .ic { width: 12px; height: 12px; }
+/* L'AREA DE TOC NO ES LA DEL DIBUIX. La creueta ha de seguir sent petita
+   —oblidar una cosa que sap de tu no ha de cridar— pero el dit en vol 44,
+   i n'hi havia 32. Es guanyen per fora, sense moure res de lloc. */
+.mem-fora { position: relative; }
+.mem-fora::after { content: ''; position: absolute; top: 50%; left: 50%;
+                   width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .mem-fora:active { color: var(--gr); }
 @media (hover: hover) and (pointer: fine) { .mem-fora:hover { color: var(--gr); } }
 
@@ -3041,7 +3131,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 <body>
 <!-- GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER.
      La font són els fitxers de apps-script/. Torna a executar npm run construeix. -->
-<script>window.MARCA_JEFE = "2026-09-08 22:40 · en curs";</script>
+<script>window.MARCA_JEFE = "2026-09-11 06:29 · en curs";</script>
 <!--
   THESIS: la teva vida registrada és terreny, i el compliment és altitud. Refusa
     la graella de targetes arrodonides amb cercle de progrés i flama de ratxa.
@@ -3385,11 +3475,15 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 </svg>
 
 
-<div id="sense-xarxa" class="sense-xarxa" hidden>
+<!-- QUE S ANUNCIÏN SOLS. Els dos avisos apareixen i desapareixen sense que
+     toquis res, igual que el «brindis», que sí que porta `role="status"`.
+     Sense això, qui fa servir un lector de pantalla no s assabenta que ha
+     perdut la connexió ni que té canvis sense desar fins que hi topa. -->
+<div id="sense-xarxa" class="sense-xarxa" role="status" aria-live="polite" hidden>
   <svg class="ic ic-p" aria-hidden="true"><use href="#ic-sense-xarxa"/></svg>
   <span>Sense connexió. El que toquis es desarà quan tornis a tenir cobertura.</span>
 </div>
-<div id="pendents" class="sense-xarxa" hidden></div>
+<div id="pendents" class="sense-xarxa" role="status" aria-live="polite" hidden></div>
 
 <main id="vista" role="main"></main>
 
@@ -3417,7 +3511,7 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 
 <script>
 /* GENERAT PER eines/construeix.mjs — NO EDITIS AQUEST FITXER. */
-window.MARCA_JEFE = "2026-09-08 22:40 · en curs";
+window.MARCA_JEFE = "2026-09-11 06:29 · en curs";
 </script>
 
 <script>
@@ -3514,9 +3608,14 @@ var Jefe = (function () {
   /* -------------------------------------------------------------------------
      DOS TRANSPORTS, LA MATEIXA CRIDA
 
-     Dins d'Apps Script s'usa google.script.run, que ja ve autenticat.
-     Servida des de fora (GitHub Pages), s'usa fetch contra el desplegament,
-     amb la clau d'accés. Els mòduls no saben ni els importa quin dels dos és.
+     Dins d'Apps Script s'usa google.script.run. Servida des de fora (GitHub
+     Pages), s'usa fetch contra el desplegament. Els mòduls no saben ni els
+     importa quin dels dos és.
+
+     TOTS DOS PORTEN LA CLAU. Aquí hi deia que google.script.run «ja ve
+     autenticat», i era mentida: el desplegament és anònim, i qualsevol que
+     obrís l'adreça rebia aquesta mateixa pàgina i podia cridar el servidor
+     des de la consola. Ara la clau va davant a les dues bandes.
 
      `text/plain` no és un error: amb JSON el navegador enviaria una petició
      de comprovació prèvia que Apps Script no sap respondre. El cos segueix
@@ -3529,25 +3628,43 @@ var Jefe = (function () {
 
   var Servidor = {
     config: function () { return Cau.get('servidor', null); },
+    clau: function () { var c = Cau.get('servidor', null); return (c && c.clau) || ''; },
     desa: function (url, clau) { Cau.set('servidor', { url: url, clau: clau }); },
-    esborra: function () { Cau.treu('servidor'); }
+    esborra: function () { Cau.treu('servidor'); },
+    /* QUÈ CAL PER PARLAR. Dins d'Apps Script, l'adreça és la de la pàgina i
+       no se n'ha de demanar cap; la clau sí, i abans no se'n demanava perquè
+       es donava per fet que ser-hi a dins ja era estar autenticat. No ho era:
+       el desplegament és anònim i qualsevol hi podia ser a dins. */
+    llest: function () {
+      var c = Cau.get('servidor', null);
+      if (!c || !c.clau) return false;
+      return dinsAppsScript() ? true : !!c.url;
+    }
   };
 
   function cridaLocal_(modul, accio, params) {
+    var clau = Servidor.clau();
+    if (!clau) {
+      var sense = new Error('Encara no has connectat JEFE amb el teu servidor.');
+      sense.senseServidor = true;
+      return Promise.reject(sense);
+    }
     return new Promise(function (resolta, falla) {
       google.script.run
         .withSuccessHandler(function (r) {
           App.enLinia(true);
           if (r && r.ok) return resolta(r.dades);
           var err = new Error((r && r.error) || 'El servidor ha respost sense dades.');
-          err.api = true; falla(err);
+          err.api = true;
+          if (/clau d'accés/i.test(err.message)) err.clauDolenta = true;
+          falla(err);
         })
         .withFailureHandler(function (err) {
           App.enLinia(false);
           var e = new Error(err && err.message ? err.message : 'No hi ha connexió amb el servidor.');
           e.xarxa = true; falla(e);
         })
-        .api(modul, accio, params || {});
+        .api(clau, modul, accio, params || {});
     });
   }
 
@@ -3564,7 +3681,14 @@ var Jefe = (function () {
       body: JSON.stringify({ clau: cfg.clau, modul: modul, accio: accio, params: params || {} })
     })
     .then(function (r) {
-      if (!r.ok) { var e = new Error('El servidor ha respost ' + r.status + '.'); e.xarxa = true; throw e; }
+      /* HA CONTESTAT: o sigui que xarxa n'hi ha. Es conserva `xarxa` perquè
+         un 500 val la pena reintentar-lo i la cua l'ha de guardar, però es
+         marca `servidor` perquè ningú digui que estàs sense cobertura. */
+      if (!r.ok) {
+        App.enLinia(true);
+        var e = new Error('El servidor ha respost ' + r.status + '.');
+        e.xarxa = true; e.servidor = true; throw e;
+      }
       return r.json();
     })
     .then(function (r) {
@@ -3576,7 +3700,15 @@ var Jefe = (function () {
       throw err;
     })
     .catch(function (err) {
-      if (!err.api && !err.senseServidor) { App.enLinia(false); err.xarxa = true; }
+      if (!err.api && !err.senseServidor) {
+        err.xarxa = true;
+        /* NOMÉS ÉS «SENSE CONNEXIÓ» SI DE DEBÒ NO N'HI HA. La bandera diu
+           «el que toquis es desarà quan tornis a tenir cobertura», i sortia
+           igualment quan el servidor contestava un error: mentida, i a més
+           no marxava mai fins que una crida tornava bé. Si hem rebut
+           resposta, hi ha xarxa; el que falla és l'altra banda. */
+        if (!err.servidor) App.enLinia(false);
+      }
       throw err;
     });
   }
@@ -3703,31 +3835,61 @@ var Jefe = (function () {
       App.pintaPendents();
     },
 
-    /** Envia la cua en sèrie. Si una falla per xarxa, s'atura i la conserva. */
+    /**
+     * Envia la cua en sèrie.
+     *
+     * UNA QUE FALLA NO SE N'HA D'EMPORTAR CAP ALTRA. Abans, quan el servidor
+     * en rebutjava una, s'esborrava la cua SENCERA: les que anaven darrere ni
+     * s'havien provat i desapareixien igual. I el missatge més probable és
+     * «El sistema està ocupat processant una altra operació. Torna-ho a
+     * provar» —un error que passa sol, perquè a Apps Script salta cada vegada
+     * que dues coses toquen el full alhora—, o sigui que et deia que ho
+     * tornessis a provar just després d'haver-t'ho llençat tot. Marcar cinc
+     * hàbits sense cobertura i perdre'ls tots en tornar-hi és exactament el
+     * contrari del que ha de fer una cua.
+     *
+     * Ara: la que el servidor rebutja se'n va sola i les altres segueixen. La
+     * que falla per xarxa atura la tanda i es conserva tot, que això sí que es
+     * reintenta a la propera obertura.
+     */
     envia: function () {
       var cua = Cua.tot();
       if (!cua.length) return Promise.resolve(0);
 
-      var enviades = 0;
+      function treu(item) {
+        Cau.set('cua', Cua.tot().filter(function (i) { return i.ts !== item.ts; }));
+        App.pintaPendents();
+      }
+
+      var enviades = 0, rebutjades = 0, primerError = null, atura = false;
+
       return cua.reduce(function (cadena, item) {
         return cadena.then(function () {
+          if (atura) return;
           return crida(item.modul, item.accio, item.params).then(function () {
             enviades++;
-            var resta = Cua.tot().filter(function (i) { return i.ts !== item.ts; });
-            Cau.set('cua', resta);
-            App.pintaPendents();
+            treu(item);
+          }, function (err) {
+            if (err.api) {
+              // El servidor l'ha rebutjada: reintentar-la eternament no la
+              // salvarà. Fora aquesta, i les altres encara tenen el seu torn.
+              rebutjades++;
+              if (!primerError) primerError = err.message;
+              treu(item);
+              return;
+            }
+            atura = true;   // sense xarxa: es conserva tot i ja tornarà
           });
         });
-      }, Promise.resolve()).then(function () { return enviades; })
-        .catch(function (err) {
-          if (err.api) {
-            // El servidor l'ha rebutjada: reintentar-la eternament no la salvarà.
-            Cau.set('cua', []);
-            App.pintaPendents();
-            App.brindis('No s\'ha pogut desar: ' + err.message, 'error');
-          }
-          return enviades;
-        });
+      }, Promise.resolve()).then(function () {
+        if (rebutjades) {
+          App.brindis(rebutjades === 1
+            ? 'No s\'ha pogut desar un canvi: ' + primerError
+            : 'No s\'han pogut desar ' + rebutjades + ' canvis. El primer: ' + primerError,
+            'error');
+        }
+        return enviades;
+      });
     }
   };
 
@@ -3746,12 +3908,36 @@ var Jefe = (function () {
              '<p>' + esc(text) + '</p>' + (botoHtml || '') + '</div>';
     },
 
+    /**
+     * UN ERROR HA DE TENIR SORTIDA.
+     *
+     * Sense servidor connectat, aquesta pantalla deia «Alguna cosa ha fallat ·
+     * Encara no has connectat JEFE» i oferia «Torna-ho a provar», que tornava
+     * a fallar perquè no hi havia res a reintentar: faltava la clau i no hi
+     * havia cap manera d'escriure-la si no recarregaves la pàgina a mà. Era
+     * un cul-de-sac. Ara el que et falta és el que et demana.
+     */
     error: function (err, reintenta) {
       var esXarxa = err && err.xarxa;
-      return '<div class="estat">' + ic(esXarxa ? 'sense-xarxa' : 'avis', 'ic-g') +
-             '<h2>' + (esXarxa ? 'Sense connexió' : 'Alguna cosa ha fallat') + '</h2>' +
-             '<p>' + esc(err && err.message ? err.message : String(err)) + '</p>' +
-             (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '') +
+      var sense = err && err.senseServidor;
+      var dolenta = err && err.clauDolenta;
+
+      var titol = sense ? 'Encara no has connectat JEFE'
+                : dolenta ? 'La clau no és correcta'
+                : esXarxa ? 'Sense connexió'
+                : 'Alguna cosa ha fallat';
+      var icona = sense || dolenta ? 'avis' : (esXarxa ? 'sense-xarxa' : 'avis');
+      var text = sense
+        ? 'Cal la clau que et va donar generaClauAcces() per poder llegir les teves dades.'
+        : (err && err.message ? err.message : String(err));
+
+      return '<div class="estat">' + ic(icona, 'ic-g') +
+             '<h2>' + esc(titol) + '</h2>' +
+             '<p>' + esc(text) + '</p>' +
+             (sense || dolenta
+               ? '<button class="btn btn-primari" data-connecta-ara="1">Connecta</button>'
+               : (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '')) +
+             (reintenta ? '<button class="btn btn-fantasma" data-va-inici="1">Ves al full índex</button>' : '') +
              '</div>';
     },
 
@@ -3817,8 +4003,8 @@ var Jefe = (function () {
       window.addEventListener('online', function () { App.enLinia(true); Cua.envia(); });
       window.addEventListener('offline', function () { App.enLinia(false); });
 
-      // Servida des de fora i encara sense servidor: primer connectar.
-      if (!dinsAppsScript() && !Servidor.config()) {
+      // Encara sense clau —o sense adreça, si se serveix de fora—: connectar.
+      if (!Servidor.llest()) {
         App.ves('inici');
         setTimeout(function () { App.connecta(); }, 300);
         return;
@@ -3873,8 +4059,11 @@ var Jefe = (function () {
 
       Cua.envia();
 
-      // Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
-      crida('nucli', 'inici', {}).then(function (d) {
+      /* Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
+         Demana `moduls` i no `inici`: d aquesta resposta només se n aprofita
+         la llista, i `inici` a sobre munta totes les targetes del full índex,
+         que és la part cara de la petició. */
+      crida('nucli', 'moduls', {}).then(function (d) {
         Cau.set('moduls', d.moduls);
         if (JSON.stringify(d.moduls) !== JSON.stringify(App.moduls)) {
           App.moduls = d.moduls; App.pintaNav();
@@ -3898,10 +4087,21 @@ var Jefe = (function () {
       if (i === -1) return { vista: t, params: {} };
       var vista = t.slice(0, i);
       var valor = t.slice(i + 1);
-      return {
-        vista: vista,
-        params: /^\d{4}-\d{2}-\d{2}$/.test(valor) ? { data: valor } : {}
-      };
+      /* LA FORMA NO FA UNA DATA.
+         Comprovava que fossin quatre xifres, un guionet i les altres, i prou:
+         «#dia:2026-13-45» passava el filtre, el constructor de dates el feia
+         rodar i t obria el 14 de febrer del 2027 com si res. Per aquí és per
+         on entren les notificacions, o sigui que una data malmesa t hauria
+         ensenyat l agenda d un altre dia sense dir-ho. Ara es construeix i es
+         comprova que en surti el mateix dia que hi havia escrit. */
+      var esData = false;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+        var d = new Date(valor + 'T00:00:00');
+        esData = !isNaN(d.getTime()) &&
+                 [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2),
+                  ('0' + d.getDate()).slice(-2)].join('-') === valor;
+      }
+      return { vista: vista, params: esData ? { data: valor } : {} };
     },
 
     /* Portar-se totes les pantalles d'una anada. Surt aquí perquè hi ha dos
@@ -3981,11 +4181,20 @@ var Jefe = (function () {
         App.moduls.filter(function (m) { return m.teVista; })
       );
       nav.innerHTML = items.map(function (m) {
-        return '<a href="#" data-vista="' + esc(m.id) + '">' +
+        /* L'ADREÇA ÉS LA DE DEBÒ I NO UN `#` buit. Amb el coixinet sol, obrir
+           un apartat en una pestanya nova —clic del mig, o clic amb Ctrl— et
+           duia a l'índex, perquè l'enllaç no deia enlloc. L'arrencada ja sap
+           llegir «#habits» de l'adreça, o sigui que aquesta és la que hi ha
+           d'anar. El clic normal el segueix aturant el guió de sempre. */
+        return '<a href="#' + esc(m.id) + '" data-vista="' + esc(m.id) + '">' +
                ic(m.icona || 'modul') + '<span>' + esc(m.nom) + '</span></a>';
       }).join('');
       nav.querySelectorAll('a').forEach(function (a) {
-        a.addEventListener('click', function (ev) { ev.preventDefault(); App.ves(a.dataset.vista); });
+        a.addEventListener('click', function (ev) {
+          /* Si demana pestanya nova, que se'n vagi pel seu compte. */
+          if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1) return;
+          ev.preventDefault(); App.ves(a.dataset.vista);
+        });
       });
     },
 
@@ -4081,6 +4290,38 @@ var Jefe = (function () {
        ------------------------------------------------------------------ */
     visors: {},
 
+    /**
+     * PREGUNTAR ABANS D'ESBORRAR.
+     *
+     * El calendari i les fotos de seguiment ja ho feien bé —fins i tot diuen
+     * que la foto es queda trenta dies a la paperera—, i la resta de pantalles
+     * no ho feien gens: treure un moviment del banc, arxivar una categoria,
+     * un actiu, un rebut fix o esborrar un entrenament passaven al primer toc,
+     * sense preguntar i sense poder desfer-ho.
+     *
+     * Va aquí i no a cada vista perquè el que faltava era el mateix a totes, i
+     * perquè el diàleg pot sortir des de dins d'un altre —editant un moviment,
+     * per exemple—: llavors primer es tanca el que hi ha i s'espera que
+     * l'animació acabi, que és el que ja feia el calendari a mà.
+     */
+    confirma: function (titol, explicacio, textSi, alSi) {
+      var obert = document.getElementById('fosc').dataset.obert === '1';
+      if (obert) App.tancaModal();
+      setTimeout(function () {
+        var cos = App.modal(titol,
+          '<div class="form-ajustos">' + explicacio +
+            '<button class="btn btn-primari" data-si>' + textSi + '</button>' +
+            '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">' +
+              'Deixa-ho estar</button>' +
+          '</div>');
+        cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+        cos.querySelector('[data-si]').addEventListener('click', function () {
+          this.disabled = true;
+          alSi(this);
+        });
+      }, obert ? 220 : 0);
+    },
+
     registraVisor: function (clau, def) { App.visors[clau] = def; },
 
     obreVisor: function (clau, params) {
@@ -4136,34 +4377,69 @@ var Jefe = (function () {
     // ----------------------------------------------------------------- tema
 
     /**
-     * Pantalla de connexió. Només surt quan la interfície se serveix des de
-     * fora d'Apps Script i encara no sap a quin servidor ha de parlar.
+     * Pantalla de connexió. Surt quan encara no hi ha clau, i també quan se
+     * serveix de fora i no se sap a quin servidor s'ha de parlar.
      * La clau es desa al navegador i no viatja enlloc més que al teu propi
      * desplegament.
+     *
+     * DINS D'APPS SCRIPT NO ES DEMANA L'ADREÇA: és la de la pàgina que estàs
+     * mirant. El que sí que es demana és la clau, perquè el desplegament és
+     * anònim i ser a dins de la pàgina no demostra que siguis tu.
+     *
+     * L'ERROR SURT AL COSTAT DEL CAMP, no de brindis. El brindis sortia a
+     * baix de tot, fora del diàleg, i a la pantalla petita ni es veia: deies
+     * «Connecta», no passava res i no sabies per què.
      */
     connecta: function (motiu) {
       var cfg = Servidor.config() || {};
+      var dins = dinsAppsScript();
       var cos = App.modal('Connecta JEFE',
         (motiu ? '<div class="avis" style="margin-bottom:var(--e4)">' + esc(motiu) + '</div>' : '') +
-        '<label class="camp"><span>URL del desplegament</span>' +
-          '<input class="entrada" id="c-url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" ' +
-          'value="' + esc(cfg.url || '') + '"></label>' +
+        (dins ? '' :
+          '<label class="camp"><span>URL del desplegament</span>' +
+            '<input class="entrada" id="c-url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" ' +
+            'value="' + esc(cfg.url || '') + '" aria-describedby="c-mal"></label>') +
         '<label class="camp"><span>Clau d\'accés</span>' +
           '<input class="entrada" id="c-clau" type="password" autocomplete="off" ' +
-          'placeholder="la que t\'ha donat generaClauAcces()" value="' + esc(cfg.clau || '') + '"></label>' +
+          'placeholder="la que t\'ha donat generaClauAcces()" value="' + esc(cfg.clau || '') + '" ' +
+          'aria-describedby="c-mal"></label>' +
+        '<p class="camp-mal" id="c-mal" role="alert" hidden></p>' +
         '<p class="menut" style="margin:0 0 var(--e4)">La clau es desa només en aquest ' +
           'navegador. No surt d\'aquí excepte cap al teu propi servidor.</p>' +
         '<button class="btn btn-primari btn-ple" data-connecta="1">Connecta</button>');
 
-      cos.querySelector('[data-connecta]').addEventListener('click', function (ev) {
-        var url = cos.querySelector('#c-url').value.trim();
-        var clau = cos.querySelector('#c-clau').value.trim();
-        if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
-          App.brindis('L\'URL ha d\'acabar en /exec', 'error'); return;
-        }
-        if (clau.length < 20) { App.brindis('La clau sembla massa curta', 'error'); return; }
+      var mal = cos.querySelector('#c-mal');
+      function diguesQue(text, quin) {
+        mal.textContent = text;
+        mal.hidden = false;
+        var camp = cos.querySelector(quin);
+        if (camp) { try { camp.focus(); } catch (e) {} }
+      }
 
-        ev.currentTarget.dataset.carregant = '1';
+      /* EL BOTÓ S'AGAFA ARA, NO QUAN TORNI LA RESPOSTA.
+         Això era `ev.currentTarget` a dins del `.then` i del `.catch`, i
+         `currentTarget` val null quan l'esdeveniment ja s'ha acabat de
+         repartir: la resposta arriba mig segon més tard i allà ja no hi ha
+         cap botó. La línia petava, el `.catch` moria per dins i el botó es
+         quedava girant per sempre sense dir res. Amb la clau bona no es veia
+         —el modal es tancava abans—, però amb la clau dolenta et deixava
+         mirant una rodeta eterna. */
+      var boto = cos.querySelector('[data-connecta]');
+
+      boto.addEventListener('click', function () {
+        var campUrl = cos.querySelector('#c-url');
+        var url = campUrl ? campUrl.value.trim() : (cfg.url || '');
+        var clau = cos.querySelector('#c-clau').value.trim();
+        mal.hidden = true;
+
+        if (!dins && !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
+          diguesQue('L\'URL ha d\'acabar en /exec', '#c-url'); return;
+        }
+        if (clau.length < 20) {
+          diguesQue('La clau sembla massa curta: la de generaClauAcces() en fa 48', '#c-clau'); return;
+        }
+
+        boto.dataset.carregant = '1';
         Servidor.desa(url, clau);
         crida('nucli', 'ping', {})
           .then(function () {
@@ -4172,9 +4448,11 @@ var Jefe = (function () {
             App.refresca();
           })
           .catch(function (err) {
-            ev.currentTarget.dataset.carregant = '0';
+            boto.dataset.carregant = '0';
             Servidor.esborra();
-            App.brindis(err.clauDolenta ? 'La clau no és correcta' : err.message, 'error');
+            diguesQue(err.clauDolenta ? 'La clau no és correcta'
+                    : err.xarxa ? 'No s\'ha pogut arribar al servidor. Mira l\'adreça i la connexió.'
+                    : err.message, '#c-clau');
           });
       });
     },
@@ -4197,8 +4475,45 @@ var Jefe = (function () {
     temaActual: function () { return 'fosc'; }
   };
 
+  /* LES DUES SORTIDES D'UNA PANTALLA D'ERROR, ESCOLTADES UN SOL COP.
+     Cada vista es cus el seu «Torna-ho a provar», que és seu i ha de ser-ho:
+     només ella sap què tornar a demanar. Aquestes dues no són de ningú en
+     particular —connectar i tornar a l'índex volen dir el mateix a tot
+     arreu—, i posar-les a cada vista seria copiar-les setze vegades. */
+  document.addEventListener('click', function (ev) {
+    var connecta = ev.target.closest && ev.target.closest('[data-connecta-ara]');
+    if (connecta) { App.connecta(); return; }
+    var inici = ev.target.closest && ev.target.closest('[data-va-inici]');
+    if (inici) App.ves('inici');
+  });
+
   document.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
+    var fosc = document.getElementById('fosc');
+    if (fosc.dataset.obert !== '1') return;
+
+    if (ev.key === 'Escape') { App.tancaModal(); return; }
+
+    /* EL FOCUS NO POT SORTIR DEL QUE HI HA OBERT.
+       Amb el calaix de preguntar obert, tres tabulacions ja et deixaven als
+       botons de la pantalla del darrere —tapada per la cortina i sense poder
+       tocar-la amb el dit—, i des d allà podies recórrer tota l app sense
+       veure on eres. Escape ja el tancava bé i el focus ja tornava al botó
+       que l havia obert; el que faltava era això. */
+    if (ev.key !== 'Tab') return;
+    var dins = fosc.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+      'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    var visibles = [];
+    for (var i = 0; i < dins.length; i++) {
+      var r = dins[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) visibles.push(dins[i]);
+    }
+    if (!visibles.length) return;
+    var primer = visibles[0], ultim = visibles[visibles.length - 1];
+    var on = document.activeElement;
+    if (!fosc.contains(on)) { ev.preventDefault(); (ev.shiftKey ? ultim : primer).focus(); return; }
+    if (ev.shiftKey && on === primer) { ev.preventDefault(); ultim.focus(); }
+    else if (!ev.shiftKey && on === ultim) { ev.preventDefault(); primer.focus(); }
   });
 
   return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, escriu: escriu,
@@ -4623,6 +4938,9 @@ var Relleu = (function () {
 var Notificacions = (function () {
 
   var SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  var NO_CONFIG = 'Els avisos només funcionen des de la pàgina publicada, ' +
+                  'no des de la finestra d\'Apps Script. Obre JEFE des de ' +
+                  'la seva adreça de sempre i torna-ho a provar.';
   var config = null, missatgeria = null, carregant = null;
 
   function potSerHi() {
@@ -4637,8 +4955,18 @@ var Notificacions = (function () {
   function prepara() {
     if (carregant) return carregant;
 
+    /* SI EL FITXER NO HI ÉS, DIGUES-HO EN CRISTIÀ.
+       Aquesta pàgina se serveix des de dos llocs i només un té el fitxer al
+       costat: des d'Apps Script, `firebase.config.json` no existeix i la
+       resposta és la pàgina d'error del servidor. `r.json()` peta amb
+       «Unexpected non-whitespace character after JSON at position 4», i això
+       era el que sortia a la pantalla en tocar «Activa els avisos»: un
+       missatge de l'intèrpret de JavaScript, no una explicació. */
     carregant = fetch('firebase.config.json', { cache: 'no-cache' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r.ok) throw new Error(NO_CONFIG);
+        return r.json().catch(function () { throw new Error(NO_CONFIG); });
+      })
       .then(function (cfg) {
         if (!cfg.apiKey || cfg.apiKey.indexOf('POSA-HI') === 0) {
           throw new Error('Firebase encara no està configurat. Vegeu docs/03-notificacions.md');
@@ -4973,7 +5301,11 @@ var Xat = (function () {
 
     cos = App.modal('Pregunta a JEFE',
       '<div class="xat">' +
-        '<div class="xat-fil" id="xat-fil"></div>' +
+        /* `role="log"` amb `aria-live`: la resposta arriba sola, i qui no
+           mira la pantalla també se n'ha d'assabentar. Educat i no
+           «assertive»: no ha d'interrompre el que estiguis escoltant. */
+        '<div class="xat-fil" id="xat-fil" role="log" aria-live="polite" ' +
+          'aria-label="Conversa amb JEFE"></div>' +
         '<form class="xat-peu" id="xat-peu">' +
           '<input class="entrada" id="xat-camp" autocomplete="off" ' +
             'placeholder="Què vols saber?" aria-label="La teva pregunta">' +
@@ -5373,6 +5705,7 @@ App.registraVista('habits', {
       var esAvui = d.data === fmt.avui();
 
       arrel.innerHTML =
+        '<h1 class="nomes-lectors">Hàbits</h1>' +
         '<header class="capcalera"><div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa') + '</button>' +
@@ -5580,9 +5913,15 @@ App.registraVista('habits', {
       if (!mes) { col.innerHTML = '<div class="esquelet" style="height:260px"></div>'; return; }
       if (!mes.habits.length) { col.innerHTML = ''; return; }
 
+      /* CADA COLUMNA HA DE DIR DE QUIN DIA ÉS.
+         Només s hi escriu el número cada cinc dies, que és el que fa la
+         graella llegible amb els ulls; llegida en veu alta, però, vint-i-cinc
+         capçaleres buides seguides no diuen res. El dia sencer hi va sempre,
+         amagat per a qui mira i disponible per a qui escolta. */
       var caps = mes.calendari.map(function (d) {
         var n = fmt.diaNumero(d);
-        return '<th scope="col">' + (n % 5 === 0 || n === 1 ? n : '') + '</th>';
+        return '<th scope="col"><span class="nomes-lectors">' + esc(fmt.llarga(d)) + '</span>' +
+               '<span aria-hidden="true">' + (n % 5 === 0 || n === 1 ? n : '') + '</span></th>';
       }).join('');
 
       /* Amb el dit, una casella de 30 dies fa 13px d'ample: impossible de tocar
@@ -5781,7 +6120,14 @@ App.registraVista('habits', {
       if (delta < 0) return Math.max(0, v - 1);
       if (h.esComptador) return v + 1;
       var nou = v + 1;
-      return nou > h.objectiu ? 0 : nou;
+      /* DONAR LA VOLTA A ZERO NOMÉS VAL PER A UN HÀBIT DE SÍ O NO.
+         Amb objectiu 1, el toc ha de ser bidireccional: el tornes a tocar i
+         el desmarques. Amb objectiu 8, la mateixa regla volia dir que el
+         novè got de l aigua et deixava el dia a zero: vuit tocs a terra,
+         sense preguntar i sense poder desfer-ho. Passat l objectiu, s hi
+         queda; per baixar-ne hi ha el botó de menys i el valor exacte. */
+      if (h.objectiu <= 1) return nou > h.objectiu ? 0 : nou;
+      return Math.min(nou, Number(h.objectiu) || nou);
     }
 
     function toca(id, delta) {
@@ -5809,7 +6155,25 @@ App.registraVista('habits', {
         pintaMes();
       }
 
-      Cau.set('habits.' + data, dades);
+      /* DESAR NOMÉS EL QUE ACABES DE TOCAR, NO TOT EL DIA.
+         Amb dues pestanyes obertes, desar l\'objecte sencer que té aquesta a
+         la memòria volia dir escriure per sobre del que hagués marcat l\'altra:
+         marcaves un hàbit aquí, un altre allà, i el primer tornava enrere a la
+         còpia del telèfon. Al servidor hi arribaven tots dos —cada marca hi va
+         sola—, o sigui que el que quedava malament era el que veies. Ara es
+         llegeix el que hi ha desat i només s\'hi canvia aquest hàbit. */
+      var desat = Cau.get('habits.' + data, null);
+      if (desat && desat.habits) {
+        var hiEs = false;
+        desat.habits.forEach(function (x) {
+          if (x.id !== h.id) return;
+          hiEs = true;
+          x.valor = h.valor; x.registrat = h.registrat; x.complert = h.complert;
+        });
+        Cau.set('habits.' + data, hiEs ? desat : dades);
+      } else {
+        Cau.set('habits.' + data, dades);
+      }
       repintaFranja(h);
       if (navigator.vibrate) {
         try { navigator.vibrate(h.complert ? 14 : 6); } catch (e) {}
@@ -6006,10 +6370,18 @@ App.registraVista('habits', {
             });
           });
           cos.querySelector('[data-desa-valor]').addEventListener('click', function (ev) {
-            ev.currentTarget.dataset.carregant = '1';
+            /* El botó s'agafa ara: quan torni la resposta, `currentTarget` ja
+               és null i el `.catch` no podria apagar la rodeta. Si falla i no
+               s'apaga, el diàleg es queda carregant per sempre i sembla que
+               encara ho estigui provant. */
+            var boto = ev.currentTarget;
+            boto.dataset.carregant = '1';
             crida('habits', 'marca', { id: id, data: data, valor: Number(camp.value) || 0 })
               .then(function (dd) { App.tancaModal(); posaAlDia(dd); App.brindis('Desat'); })
-              .catch(function (err) { App.brindis(err.message, 'error'); });
+              .catch(function (err) {
+                boto.dataset.carregant = '0';
+                App.brindis(err.message, 'error');
+              });
           });
         }
 
@@ -6131,10 +6503,14 @@ App.registraVista('habits', {
           '<button class="btn btn-fantasma btn-ple" data-no="1" style="margin-top:var(--e2)">Cancel·la</button>');
         cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
         cos.querySelector('[data-si]').addEventListener('click', function (ev) {
-          ev.currentTarget.dataset.carregant = '1';
+          var boto = ev.currentTarget;          // després de l'esdeveniment ja no hi és
+          boto.dataset.carregant = '1';
           crida('habits', 'arxiva', { id: h.id })
             .then(function () { App.tancaModal(); App.brindis('Arxivat'); carrega(); })
-            .catch(function (err) { App.brindis(err.message, 'error'); });
+            .catch(function (err) {
+              boto.dataset.carregant = '0';     // si no, la rodeta no s'atura mai
+              App.brindis(err.message, 'error');
+            });
         });
       }, 220);
     }
@@ -6266,6 +6642,26 @@ App.registraVista('nutricio', {
       return isFinite(n) ? n : 0;
     };
 
+    /* «ABC» NO ÉS ZERO.
+       `num()` torna 0 per a qualsevol cosa que no sigui un número, i això vol
+       dir que escriure malament les calories les apuntava a zero sense dir-ho:
+       l\'aliment entrava amb un valor que tu no havies triat i el dia quedava
+       fals. Aquesta distingeix el buit —que sí que val zero— del que no és cap
+       número, que ha de parar l\'alta i explicar-ho. */
+    var numExacte = function (v) {
+      var t = String(v === undefined || v === null ? '' : v).trim().replace(',', '.');
+      if (!t) return 0;
+      return /^-?\d*\.?\d+$/.test(t) ? parseFloat(t) : null;
+    };
+
+    /* I UN ALIMENT NO PESA MIL TONES.
+       Sense sostre, un dit de més al teclat numèric feia que l\'àpat digués un
+       milió de quilocalories i el balanç del dia deixava de voler dir res.
+       Els límits són generosos a posta: 5 kg d\'un cop, 1.000 kcal per 100 g
+       —l\'oli en té 884— i 100 g de proteïna per 100 g, que és el màxim que hi
+       cap per definició. */
+    var SOSTRE = { grams: 5000, kcal100: 1000, prot100: 100 };
+
     // ------------------------------------------------------------- capçalera
 
     var PERIODES = [['dia', 'Dia'], ['setmana', 'Setmana'], ['mes', 'Mes']];
@@ -6276,13 +6672,15 @@ App.registraVista('nutricio', {
        fletxes es queden perquè el dia sí que el canvies constantment. */
     function capcalera(esAvui) {
       var sota = (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Dia'])[1];
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Nutrició</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="titol-periode" data-obre-periode="1">' +
+          '<button class="titol-periode" data-obre-periode="1" aria-label="' +
+            esc(titolPeriode() + '. Tria què vols veure') + '">' +
             '<b>' + esc(titolPeriode()) + '</b>' +
             '<span>' + esc(sota) +
               (periode === 'dia' && esAvui ? ' · avui' : '') + ' ▾</span>' +
@@ -6493,10 +6891,14 @@ App.registraVista('nutricio', {
              grosses, trobar un aliment costa llegir-ho tot. */
           '<button class="btn btn-secundari tria-aliment" data-guardats>' +
             ic('mes', 'ic-p') + 'Tria un aliment guardat</button>' +
-          '<input data-nom placeholder="Aliment" autocomplete="off">' +
-          '<input data-grams inputmode="decimal" placeholder="grams" class="num" autocomplete="off">' +
-          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num" autocomplete="off">' +
-          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num" autocomplete="off">' +
+          '<input data-nom placeholder="Aliment" autocomplete="off"' +
+            ' aria-label="Aliment · ' + esc(m.nom) + '">' +
+          '<input data-grams inputmode="decimal" placeholder="grams" class="num" autocomplete="off"' +
+            ' aria-label="Grams · ' + esc(m.nom) + '">' +
+          '<input data-kcal inputmode="decimal" placeholder="kcal/100 g" class="num" autocomplete="off"' +
+            ' aria-label="Quilocalories per 100 g · ' + esc(m.nom) + '">' +
+          '<input data-prot inputmode="decimal" placeholder="prot/100 g" class="num" autocomplete="off"' +
+            ' aria-label="Proteïna per 100 g · ' + esc(m.nom) + '">' +
           '<button class="btn btn-primari" data-afegeix>Afegeix</button>' +
           '<button class="btn btn-secundari" data-desa-aliment>Desa l\'aliment</button>' +
         '</div>' +
@@ -6867,19 +7269,69 @@ App.registraVista('nutricio', {
           }
         }
 
+        /* EL QUE ESTAVES ESCRIVINT NO POT DEPENDRE DE NO TOCAR RES.
+           Si recarregaves —o el mòbil et tancava la pestanya— entre prémer
+           «Afegeix» i la resposta del servidor, l\'aliment se n\'anava sense
+           deixar rastre. Aquí no es pot fer com als hàbits i deixar-ho a la
+           cua: reenviar-ho a cegues afegiria el mateix plat dues vegades.
+           El que sí que es pot desar sense risc és el formulari a mig omplir,
+           i tornar-te\'l a deixar tal com estava perquè només l\'hagis de
+           confirmar. */
+        var clauEsborrany = 'nutricio.esborrany';
+
+        function desaEsborrany() {
+          var buit = !nom.value.trim() && !gr.value.trim() && !kc.value.trim() && !pr.value.trim();
+          if (buit) { Cau.treu(clauEsborrany); return; }
+          Cau.set(clauEsborrany, { data: data, apat: apat, nom: nom.value,
+                                   gr: gr.value, kc: kc.value, pr: pr.value });
+        }
+
+        (function recuperaEsborrany() {
+          var e = Cau.get(clauEsborrany, null);
+          if (!e || e.data !== data || e.apat !== apat) return;
+          if (nom.value.trim() || gr.value.trim()) return;   // no trepitgis res escrit ara
+          nom.value = e.nom || ''; gr.value = e.gr || '';
+          kc.value = e.kc || ''; pr.value = e.pr || '';
+          refresca();
+        })();
+
         [nom, gr, kc, pr].forEach(function (i) {
-          i.addEventListener('input', refresca);
+          i.addEventListener('input', function () { refresca(); desaEsborrany(); });
           i.addEventListener('keydown', function (e) { if (e.key === 'Enter') afegeix(); });
         });
 
+        /* QUÈ HI HA MALAMENT, DIT AMB PARAULES.
+           Abans, prémer «Afegeix» amb el formulari a mitges no feia res de res
+           —ni un camp marcat ni un missatge— i, pitjor, els valors impossibles
+           passaven: calories negatives, proteïna amb lletres convertida en
+           zero, i grams sense sostre. */
+        function problema() {
+          if (!nom.value.trim()) return 'Posa-hi el nom de l\'aliment.';
+          var g = numExacte(gr.value);
+          if (g === null) return 'Els grams han de ser un número.';
+          if (g <= 0) return 'Posa-hi quants grams n\'has menjat.';
+          if (g > SOSTRE.grams) return 'Cinc quilos d\'un cop? Mira els grams.';
+          var k = numExacte(kc.value);
+          if (k === null) return 'Les calories han de ser un número.';
+          if (k < 0) return 'Les calories no poden ser negatives.';
+          if (k > SOSTRE.kcal100) return 'Cap aliment passa de 1.000 kcal per 100 g.';
+          var pt = numExacte(pr.value);
+          if (pt === null) return 'La proteïna ha de ser un número.';
+          if (pt < 0) return 'La proteïna no pot ser negativa.';
+          if (pt > SOSTRE.prot100) return 'No hi caben més de 100 g de proteïna en 100 g.';
+          return '';
+        }
+
         function afegeix() {
-          if (!llest()) return;
+          var mal = problema();
+          if (mal) { App.brindis(mal, 'error'); return; }
           bt.disabled = true;
           escriu('nutricio', 'afegeix', {
             data: data, apat: apat, nom: nom.value.trim(),
             grams: num(gr.value), kcal100: num(kc.value), prot100: num(pr.value)
           }, quePinto()).then(function (r) {
             nom.value = gr.value = kc.value = pr.value = '';
+            Cau.treu(clauEsborrany);
             bt.disabled = false;
             /* El botó torna a dir «Afegeix». Si no, es queda amb la previsió
                del que acabes d'apuntar i sembla que encara ho hagis de prémer. */
@@ -6922,12 +7374,22 @@ App.registraVista('nutricio', {
 
         sec.querySelectorAll('[data-treu]').forEach(function (b) {
           b.addEventListener('click', function () {
-            b.disabled = true;
-            escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
-              // Treure'n un és una cosa que vols veure feta: es pinta encara
-              // que tinguis el formulari de l'àpat obert.
-              .then(function (r) { Cau.oblida('nutricio.'); aplica(r, false, true); })
-              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+            /* La creueta és petita i va al costat del plat: preguntar-ho val
+               un toc i estalvia haver de tornar a escriure els quatre camps. */
+            var quin = b.getAttribute('aria-label') || 'aquest aliment';
+            App.confirma('Treure-ho de l\'àpat?',
+              '<p>' + esc(quin.replace(/^Treu\s+/i, '')) + '</p>',
+              'Sí, treu-ho',
+              function (bo) {
+                escriu('nutricio', 'treu', { id: b.dataset.treu }, quePinto())
+                  // Treure'n un és una cosa que vols veure feta: es pinta encara
+                  // que tinguis el formulari de l'àpat obert.
+                  .then(function (r) {
+                    App.tancaModal();
+                    Cau.oblida('nutricio.'); aplica(r, false, true);
+                  })
+                  .catch(function (err) { bo.disabled = false; App.brindis(err.message, 'error'); });
+              });
           });
         });
       });
@@ -7002,8 +7464,10 @@ App.registraVista('nutricio', {
         sortida.innerHTML =
           '<div class="fitxa" style="margin-top:var(--e3)">' +
             '<p class="marge">Què hi he trobat</p>' +
-            '<p>' + r.ingestes + ' ingestes · ' + r.activitats + ' dies amb activitat · ' +
-              r.aliments + ' aliments' +
+            /* Amb un fitxer que no és una còpia de FitFat, els comptadors no
+               hi són i sortia «undefined dies amb activitat». */
+            '<p>' + (r.ingestes || 0) + ' ingestes · ' + (r.activitats || 0) + ' dies amb activitat · ' +
+              (r.aliments || 0) + ' aliments' +
               (r.jaHiEren ? ' · ' + r.jaHiEren + ' que ja hi eren i no tornaré a posar' : '') + '</p>' +
             (r.ajustos ? '<p class="menut">També hi ha objectius i dades del cos.</p>' : '') +
             (r.avisos && r.avisos.length
@@ -7215,14 +7679,16 @@ App.registraVista('finances', {
                : periode === 'patrimoni' ? 'que tens'
                : (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Mes'])[1];
 
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Finances</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           (mostraFletxes
             ? '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
               ic('esquerra', 'ic-p') + '</button>' : '') +
-          '<button class="titol-periode" data-obre-periode="1">' +
+          '<button class="titol-periode" data-obre-periode="1" aria-label="' +
+            esc(titol + '. Tria què vols veure') + '">' +
             '<b>' + esc(titol) + '</b>' +
             '<span>' + esc(sota) + (esActual && periode === 'mes' ? ' · en curs' : '') + ' ▾</span>' +
           '</button>' +
@@ -7588,7 +8054,11 @@ App.registraVista('finances', {
                       '<b>' + esc(a.nom) + '</b>' +
                       '<span class="menut"' + (vell ? ' data-vell="1"' : '') + '>' +
                         (a.automatic ? 'del banc · ' : '') +
-                        (a.data === null ? 'encara sense valor'
+                        /* `null` estava cobert i `undefined` no, i la
+                           diferència la veia l usuari: «fa undefined dies» a
+                           cada actiu quan la resposta no portava el camp. */
+                        (a.data === null || a.dies === null || a.dies === undefined
+                          ? 'encara sense valor'
                           : a.dies === 0 ? 'avui'
                           : 'fa ' + a.dies + (a.dies === 1 ? ' dia' : ' dies')) +
                       '</span>' +
@@ -7686,13 +8156,18 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu-actiu]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'arxivaActiu', { id: a.id }, quePinto())
-          .then(function (r) {
-            App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); aplica(r);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        App.confirma('Arxivar «' + esc(a.nom) + '»?',
+          '<p class="menut">Els valors que hi tens anotats es queden. Deixa de comptar ' +
+            'al total del patrimoni.</p>',
+          'Sí, arxiva-l\'ho',
+          function (b) {
+            escriu('finances', 'arxivaActiu', { id: a.id }, quePinto())
+              .then(function (r) {
+                App.tancaModal(); App.brindis('Tret');
+                Cau.oblida('finances.'); aplica(r);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 
@@ -8018,6 +8493,14 @@ App.registraVista('finances', {
       cos.querySelector('[data-desa-rec]').addEventListener('click', function () {
         var imp = num(camps['import'].value);
         if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        /* I UN SOSTRE, que no n hi havia cap: un dit de mes al teclat numeric
+           apuntava 999.999.999 EUR i les sumes del mes deixaven de voler dir res.
+           El limit es absurdament alt a posta —cap moviment teu s hi acostara—
+           i nomes serveix per aturar el que es clarament una relliscada. */
+        if (imp > 1000000) {
+          App.brindis('Aquest import és massa gran. Mira la xifra.', 'error');
+          camps['import'].focus(); return;
+        }
         if (!camps.descripcio.value.trim()) {
           App.brindis('Digues què és', 'error'); camps.descripcio.focus(); return;
         }
@@ -8045,13 +8528,18 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu-rec]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'arxivaRecurrent', { id: r.id }, quePinto())
-          .then(function (p) {
-            App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); aplica(p);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        App.confirma('Arxivar aquest rebut fix?',
+          '<p>' + esc(r.nom || r.descripcio || '') + '</p>' +
+          '<p class="menut">Deixa de vigilar-lo: ja no dirà res si un mes no arriba o si puja.</p>',
+          'Sí, arxiva-l\'ho',
+          function (b) {
+            escriu('finances', 'arxivaRecurrent', { id: r.id }, quePinto())
+              .then(function (p) {
+                App.tancaModal(); App.brindis('Tret');
+                Cau.oblida('finances.'); aplica(p);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 
@@ -8223,8 +8711,10 @@ App.registraVista('finances', {
               '<button data-nova-mena="i">Ingrés</button>' +
             '</div>' +
             '<div class="cat-nova-fila">' +
-              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji" autocomplete="off">' +
-              '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off">' +
+              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji" autocomplete="off" ' +
+                'aria-label="Emoji de la categoria">' +
+              '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off" ' +
+                'aria-label="Nom de la categoria">' +
             '</div>' +
             '<label class="cat-exclou">' +
               '<input type="checkbox" data-nova-exclou>' +
@@ -8263,10 +8753,15 @@ App.registraVista('finances', {
 
         llista.querySelectorAll('[data-treu-cat]').forEach(function (b) {
           b.addEventListener('click', function () {
-            b.disabled = true;
-            crida('finances', 'arxivaCategoria', { id: b.dataset.treuCat })
-              .then(refrescaCats)
-              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+            App.confirma('Arxivar aquesta categoria?',
+              '<p class="menut">Els moviments que ja hi són no es perden. Deixa de sortir ' +
+                'a la llista per triar-la de nou.</p>',
+              'Sí, arxiva-la',
+              function () {
+                crida('finances', 'arxivaCategoria', { id: b.dataset.treuCat })
+                  .then(function () { App.tancaModal(); refrescaCats(); })
+                  .catch(function (err) { App.tancaModal(); App.brindis(err.message, 'error'); });
+              });
           });
         });
       }
@@ -8338,7 +8833,10 @@ App.registraVista('finances', {
         sortida.innerHTML =
           '<div class="fitxa" style="margin-top:var(--e3)">' +
             '<p class="marge">Què hi he trobat</p>' +
-            '<p>' + r.moviments + ' moviments · ' + r.categories + ' categories' +
+            /* Si el fitxer no és el que esperàvem, els comptadors no hi són i
+               sortia «undefined moviments · undefined categories». Zero és una
+               resposta; «undefined» és una fuita. */
+            '<p>' + (r.moviments || 0) + ' moviments · ' + (r.categories || 0) + ' categories' +
               (r.actius ? ' · ' + r.actius + ' actius de patrimoni amb ' + r.valorsPatrimoni + ' valors' : '') +
               (r.recurrents ? ' · ' + r.recurrents + ' recurrents' : '') +
               (r.pressupostos ? ' · ' + r.pressupostos + ' pressupostos' : '') +
@@ -8506,6 +9004,14 @@ App.registraVista('finances', {
       cos.querySelector('[data-desa]').addEventListener('click', function () {
         var imp = num(camps['import'].value);
         if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        /* I UN SOSTRE, que no n hi havia cap: un dit de mes al teclat numeric
+           apuntava 999.999.999 EUR i les sumes del mes deixaven de voler dir res.
+           El limit es absurdament alt a posta —cap moviment teu s hi acostara—
+           i nomes serveix per aturar el que es clarament una relliscada. */
+        if (imp > 1000000) {
+          App.brindis('Aquest import és massa gran. Mira la xifra.', 'error');
+          camps['import'].focus(); return;
+        }
         if (!camps.descripcio.value.trim()) {
           App.brindis('Digues què era', 'error'); camps.descripcio.focus(); return;
         }
@@ -8534,13 +9040,20 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'treu', { id: m.id }, quePinto())
-          .then(function (r) {
-            App.tancaModal(); App.brindis('Moviment tret');
-            Cau.oblida('finances.'); aplica(r);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        /* Són diners i marxen del full. Ho pregunta com ho pregunta el
+           calendari abans de treure una cita. */
+        App.confirma('Treure aquest moviment?',
+          '<p>' + esc(m.descripcio || '') + ' · ' + esc(eur(m.import)) + '</p>' +
+          '<p class="menut">Surt del full i deixa de comptar a les sumes del mes.</p>',
+          'Sí, treu-lo',
+          function (b) {
+            escriu('finances', 'treu', { id: m.id }, quePinto())
+              .then(function (r) {
+                App.tancaModal(); App.brindis('Moviment tret');
+                Cau.oblida('finances.'); aplica(r);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 
@@ -9187,8 +9700,13 @@ App.registraVista('seguiment', {
             if (!amb.length) return '';
             return '<div class="seg-angle"><p class="menut">' + a[1] + '</p>' +
               '<div class="seg-tira">' + amb.map(function (c) {
+                /* LA MIDA VA ESCRITA A L'ETIQUETA i no només a l'estil: la
+                   imatge arriba tard i, sense mida, la fila creixia de cop
+                   quan entrava i et movia el que estaves mirant. Són les
+                   mateixes 118×158 que hi posa el full d'estil. */
                 return '<figure>' +
-                  '<img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) + '" ' +
+                  '<img loading="lazy" width="118" height="158" ' +
+                    'alt="' + esc(a[1] + ' del ' + curta(c.data)) + '" ' +
                     (fotosObertes ? 'src' : 'data-src') +
                     '="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
                   /* El boto de treure-la. Petit i a la cantonada, pero de 32
@@ -9307,6 +9825,24 @@ App.registraVista('seguiment', {
           var x = cos.querySelector(id).value.trim();
           return x === '' ? null : Number(x.replace(',', '.'));
         };
+
+        /* UN CONTROL BUIT NO ÉS UN CONTROL.
+           Amb tots els camps sense omplir, el formulari es desava igualment i
+           et deia «Control desat»: al full hi queia una fila amb el dia i res
+           més, i tu no sabies si havies desat alguna cosa o no. */
+        /* Les valoracions (energia, son, gana, dieta) arriben preomplertes amb
+           les de l últim control, o sigui que no serveixen per saber si has
+           posat res: el que compta és una mesura o una nota escrita ara. */
+        var teMesura = ['#s-pes', '#s-cintura', '#s-forca', '#s-trail', '#s-gros']
+          .some(function (id) { return cos.querySelector(id).value.trim() !== ''; }) ||
+          cos.querySelector('#s-notes').value.trim() !== '';
+        if (!teMesura) {
+          bt.disabled = false; bt.textContent = 'Desa el control';
+          App.brindis('Posa-hi almenys una mesura o una nota.', 'error');
+          try { cos.querySelector('#s-pes').focus(); } catch (e) {}
+          return;
+        }
+
         crida('seguiment', 'desa', {
           data: cos.querySelector('#s-data').value,
           pes: buit('#s-pes'),
@@ -9935,13 +10471,19 @@ App.registraVista('entrenaments', {
 
       var fora = cos.querySelector('[data-fora]');
       if (fora) fora.addEventListener('click', function () {
-        fora.disabled = true; fora.textContent = 'Traient-lo…';
-        crida('entrenaments', 'esborra', { id: s.id }).then(function () {
-          App.tancaModal(); App.brindis('Entrenament tret'); carrega(true);
-        }).catch(function (err) {
-          fora.disabled = false; fora.textContent = 'Treu-lo';
-          App.brindis(err.message, 'error');
-        });
+        /* El calendari i les fotos ho pregunten; això també ha de fer-ho. */
+        App.confirma('Treure aquest entrenament?',
+          '<p>' + esc(s.titol || 'Sense títol') + '</p>' +
+          '<p class="menut">Se n va del full i deixa de comptar a la càrrega de la setmana.</p>',
+          'Sí, treu-lo',
+          function (b) {
+            crida('entrenaments', 'esborra', { id: s.id }).then(function () {
+              App.tancaModal(); App.brindis('Entrenament tret'); carrega(true);
+            }).catch(function (err) {
+              b.disabled = false;
+              App.brindis(err.message, 'error');
+            });
+          });
       });
 
       cos.querySelector('#f-ent').addEventListener('submit', function (ev) {
@@ -10093,7 +10635,8 @@ App.registraVista('tasques', {
 
     function capcalera() {
       var n = dades ? dades.tasques.length : 0;
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Tasques</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
@@ -10127,7 +10670,8 @@ App.registraVista('tasques', {
         '<button class="tasca-marca" data-fet="' + esc(t.id) + '"' +
           ' data-llista="' + esc(t.llista) + '"' +
           ' aria-label="Fet: ' + esc(t.text) + '"></button>' +
-        '<button class="tasca-cos" data-obre="' + esc(t.id) + '">' +
+        '<button class="tasca-cos" data-obre="' + esc(t.id) + '"' +
+          ' aria-label="' + esc('Obre: ' + t.text) + '">' +
           '<span class="tasca-text">' + esc(t.text) + '</span>' +
           /* EL PRIMER PAS VA A LA FILA, i va per sobre de la resta del text
              petit. El títol d'una tasca encallada és justament el que fa que
@@ -10223,7 +10767,7 @@ App.registraVista('tasques', {
                 (quina ? ' · va a ' + esc(quina) : '') + '</span>' +
               '<div class="captura-fila">' +
                 '<input id="t-captura" placeholder="Què t\'acaba de passar pel cap?" autocomplete="off">' +
-                '<button class="btn btn-primari" data-captura>' + ic('mes') + '</button>' +
+                '<button class="btn btn-primari" data-captura aria-label="Apunta-ho">' + ic('mes') + '</button>' +
               '</div>' +
             '</label>' +
           '</section>' +
@@ -10274,7 +10818,23 @@ App.registraVista('tasques', {
         esperant++;
 
         escriu('tasques', 'captura', { text: t })
-          .then(function (r) { esperant--; aplica(r); })
+          .then(function (r) {
+            esperant--;
+            /* EL CAMP NO PERD MAI EL FOCUS DESPRÉS D UN ENTER, i per això el
+               repintat s ajornava per sempre: la línia provisional es quedava
+               mig apagada i sense botons, i el comptador de pendents no es
+               movia, fins que tocaves qualsevol altra cosa. Es força el
+               repintat i es torna a deixar el camp com estava, amb el que
+               haguessis començat a escriure de la següent. */
+            var quedava = camp ? camp.value : '';
+            var teniaFocus = !!(camp && document.activeElement === camp);
+            aplica(r, false, true);
+            var altre = arrel.querySelector('#t-captura');
+            if (altre) {
+              if (quedava) altre.value = quedava;
+              if (teniaFocus) { try { altre.focus({ preventScroll: true }); } catch (e) { altre.focus(); } }
+            }
+          })
           .catch(function (err) {
             esperant--;
             if (provisional && provisional.parentNode) provisional.parentNode.removeChild(provisional);
@@ -10533,12 +11093,12 @@ App.registraVista('tasques', {
      * desplegable o li esborraria el que estava escrivint. S'espera i es pinta
      * quan pari.
      */
-    function aplica(r, dEnCau) {
+    function aplica(r, dEnCau, forca) {
       Cau.set('tasques.llista', r);
       var nou = JSON.stringify(r);
       if (nou === previPintat && !esperant) return;
 
-      if (previPintat !== null && App.interactuant()) {
+      if (!forca && previPintat !== null && App.interactuant()) {
         var primer = !ajornat;
         ajornat = r;
         if (primer) setTimeout(quanPari, 400);
@@ -10616,7 +11176,8 @@ App.registraVista('diari', {
 
     function capcalera() {
       var r = dades ? dades.ratxa : 0;
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Diari</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
@@ -10651,7 +11212,7 @@ App.registraVista('diari', {
                 '<button class="btn btn-fantasma btn-icona" data-salt="1" aria-label="Dia següent"' +
                   (esAvui ? ' disabled' : '') + '>' + ic('dreta', 'ic-p') + '</button>' +
               '</div>' +
-              '<textarea id="d-text" rows="5" autocomplete="off" ' +
+              '<textarea id="d-text" rows="5" autocomplete="off" aria-label="Com ha anat el dia" ' +
                 'placeholder="' + esc(esAvui ? 'Com ha anat el dia?' : 'Què va passar aquell dia?') + '">' +
                 esc(e ? e.text : '') + '</textarea>' +
               blocAnim(e) +
@@ -10805,15 +11366,36 @@ App.registraVista('diari', {
       if (!camp) { if (alAcabar) alAcabar(); return; }
       desant = true;
 
+      /* UNA CASELLA DE GOOGLE SHEETS TÉ 50.000 CARÀCTERS I NI UN MÉS.
+         El camp no en tenia cap límit, o sigui que una entrada més llarga
+         hauria arribat al servidor per fallar-hi, i el text ja no seria
+         enlloc. Es talla aquí, es diu, i el que es desa és el que hi cap. */
       var text = camp.value;
+      if (text.length > 50000) {
+        text = text.slice(0, 50000);
+        camp.value = text;
+        App.brindis('El diari d\'un dia arriba fins a 50.000 caràcters. He desat fins aquí.', 'error');
+      }
       var anim = animTriat();
       var estat = arrel.querySelector('#d-estat');
       if (estat) estat.textContent = 'Desant…';
       brut = false;
 
+      /* LA XARXA DE SEGURETAT QUE TENEN ELS HÀBITS I AQUÍ NO HI ERA.
+         Escrivies, sorties del camp perquè comencés a desar, i si recarregaves
+         abans que el servidor contestés el text se n anava sense deixar rastre.
+         Ara entra a la cua abans de sortir del telèfon: si la pàgina es tanca
+         a mitges, la propera obertura l envia sola. Reescriure el diari del
+         mateix dia és substituir-lo, no acumular-hi res, o sigui que tornar-hi
+         a passar no pot duplicar res. */
+      var clauCua = 'diari:' + data;
+      Cua.afegeix('diari', 'escriu', { data: data, text: text, anim: anim }, clauCua);
+
       escriu('diari', 'escriu', { data: data, text: text, anim: anim },
              { data: data, quants: 30 })
         .then(function (r) {
+          Cau.set('cua', Cua.tot().filter(function (i) { return i.clau !== clauCua; }));
+          App.pintaPendents();
           var e2 = arrel.querySelector('#d-estat');
           if (e2) e2.textContent = 'Desat';
           aplica(r);
@@ -10837,6 +11419,14 @@ App.registraVista('diari', {
       if (!pendent) return;
       var seguent = pendent;
       pendent = null;
+      /* SI RES NO HA CANVIAT, NO HI TORNIS.
+         Clicar «Desa» treu el focus del camp, i això ja dispara una desada;
+         el clic en demanava una altra, i com que la primera encara volava
+         s apuntava per fer-la després. Resultat: dos viatges de dos segons
+         cada un per una sola desada, i el segon enviava exactament el mateix
+         text que el primer. Ara el segon només es fa si de debò has tocat res
+         mentre l altre anava. */
+      if (!brut) { if (typeof seguent === 'function') seguent(); return; }
       desa(seguent === true ? undefined : seguent);
     }
 
@@ -10976,13 +11566,17 @@ App.registraVista('calendari', {
 
     function capcalera(d) {
       var esActual = d.mes === d.avui.slice(0, 7);
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Calendari</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="titol-periode" data-avui="1">' +
+          /* Sense etiqueta, el nom accessible surt del text dels fills tot
+             enganxat: «Setembre del 202611 cites · en curs». */
+          '<button class="titol-periode" data-avui="1" aria-label="' +
+            esc(nomMes(d.mes) + '. Torna a avui') + '">' +
             '<b>' + esc(nomMes(d.mes)) + '</b>' +
             '<span>' + (d.provisional
               ? 'carregant…'
@@ -11020,7 +11614,12 @@ App.registraVista('calendari', {
        és el que s'obre a sota, i tocar-ne un no és mai una acció que canviï
        res, o sigui que no cal confirmar res ni patir per equivocar-se. */
     function blocMes(d) {
-      return '<div class="mes-graella" role="grid" aria-label="' + esc(nomMes(d.mes)) + '">' +
+      /* SENSE `role="grid"`. Ho declarava i no ho era: un grid ha de tenir
+         files i cel·les amb el seu rol, i aquí els fills directes són els
+         noms dels dies i els botons. Declarar un patró que no compleixes
+         deixa la graella il·legible per a un lector de pantalla; cada botó
+         ja porta el seu propi nom, que és el que de debò s ha de llegir. */
+      return '<div class="mes-graella" aria-label="' + esc(nomMes(d.mes)) + '">' +
         DIES.map(function (n) {
           return '<span class="mes-cap" aria-hidden="true">' + n + '</span>';
         }).join('') +
@@ -11305,7 +11904,10 @@ App.registraVista('calendari', {
           titol: camps.titol.value.trim(),
           data: camps.data.value,
           hora: camps.totdia.checked ? '' : camps.hora.value,
-          durada: Number(camps.durada.value) || 60,
+          /* `min="5"` a l\'HTML no serveix de res sense un formulari que el
+             validi: escrivint -30 a mà, la cita entrava amb durada negativa i
+             es desava així. Una cita no pot durar menys que res. */
+          durada: Math.max(5, Number(camps.durada.value) || 60),
           lloc: camps.lloc.value,
           nota: camps.nota.value
         };
@@ -11488,7 +12090,7 @@ App.registraVista('calendari', {
       if (mes && d.mes && d.mes !== mes) { pintaDelTram(mes); return; }
 
       var nou = JSON.stringify(d);
-      if (nou === previPintat) return;
+      if (nou === previPintat && !(dades && dades.provisional)) return;
 
       if (!forca && previPintat !== null && App.interactuant()) {
         var primer = !ajornat;
@@ -11570,6 +12172,13 @@ App.registraVista('calendari', {
         /* Sense res desat que valgui: la graella del mes, dibuixada aquí
            mateix. Els números dels dies i quin és avui no els ha de portar
            ningú de fora. Les cites hi cauen quan arriben. */
+        /* I EL QUE HI HAVIA PINTAT JA NO COMPTA.
+           Sense això, la resposta que arribava igual que l última pintada es
+           quedava fora per la comparació de més avall i el provisional no
+           marxava mai: canviaves quins calendaris mires, tancaves el diàleg,
+           i la capçalera es quedava a «carregant…» fins que recarregaves la
+           pàgina sencera. Ho fa igual `vesAlMes`, per la mateixa raó. */
+        previPintat = null;
         try { pinta(mesProvisional(mes || avuiAra.slice(0, 7)), false); } catch (e) {}
       }
 
@@ -11626,6 +12235,7 @@ App.registraVista('dia', {
       var pct = totes ? Math.round((fetes / totes) * 100) : 0;
 
       arrel.innerHTML =
+        '<h1 class="nomes-lectors">El dia</h1>' +
         '<header class="capcalera capcalera-nutri">' +
           '<div class="capcalera-fila">' +
             '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
@@ -12482,7 +13092,7 @@ App.registraVista('setmana', {
     }
 
     function pinta() {
-      arrel.innerHTML = capcalera() +
+      arrel.innerHTML = '<h1 class="nomes-lectors">La setmana</h1>' + capcalera() +
         '<div class="pagina">' +
           '<section><div class="set-dies">' +
             d.dies.map(dia).join('') +
@@ -12848,7 +13458,7 @@ App.registraVista('memoria', {
               '<span class="marge">Què vols que recordi</span>' +
               '<div class="captura-fila">' +
                 '<input id="m-nou" placeholder="La Marta és la tutora de 2nB" autocomplete="off">' +
-                '<button class="btn btn-primari" data-desa>' + ic('mes') + '</button>' +
+                '<button class="btn btn-primari" data-desa aria-label="Recorda-ho">' + ic('mes') + '</button>' +
               '</div>' +
             '</label>' +
             '<p class="menut" style="margin-top:var(--e2)">També pots dir-li-ho parlant: ' +
@@ -12859,8 +13469,12 @@ App.registraVista('memoria', {
             ? '<section class="secc">' +
                 '<label class="camp-captura">' +
                   '<div class="captura-fila">' +
-                    '<input id="m-cerca" placeholder="Buscar" autocomplete="off" value="' +
-                      esc(filtre) + '">' +
+                    /* L'etiqueta no és el text de dins: quan escrius, se'n va.
+                       Aquí el camp es veu prou —és una caixa de buscar dins
+                       d'una llista— i el que li faltava era un nom per a qui
+                       no la mira, no un títol a sobre. */
+                    '<input id="m-cerca" type="search" placeholder="Buscar" autocomplete="off" ' +
+                      'aria-label="Buscar entre el que sé de tu" value="' + esc(filtre) + '">' +
                   '</div>' +
                 '</label>' +
               '</section>'

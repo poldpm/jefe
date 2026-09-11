@@ -165,6 +165,77 @@ for (const f of fitxers.filter(x => /^40_Mod_.*\.gs$/.test(x))) {
   }
 }
 
+/* ---- 8b. `currentTarget` dins d'una resposta que arriba més tard ----------
+   Quan la promesa es resol, l'esdeveniment fa estona que s'ha acabat de
+   repartir i `ev.currentTarget` val null: la línia peta, el `.catch` es mor
+   per dins i el botó es queda carregant per sempre sense dir res. Va passar
+   al diàleg de connectar: amb la clau dolenta, rodeta eterna i cap missatge.
+   El botó s'ha d'agafar ABANS, en una variable. */
+{
+  for (const f of fitxers.filter((x) => x.endsWith('.html'))) {
+    const linies = fs.readFileSync(path.join(DIR, f), 'utf8').split('\n');
+    linies.forEach((linia, n) => {
+      if (!/\.(then|catch)\s*\(\s*function/.test(linia)) return;
+      const sagnat = linia.search(/\S/);
+      for (let i = n + 1; i < Math.min(n + 14, linies.length); i++) {
+        const seg = linies[i];
+        const tancament = seg.search(/\S/);
+        if (/^\s*\}\)/.test(seg) && tancament <= sagnat) break;
+        if (/currentTarget/.test(seg)) {
+          error(f, 'línia ' + (i + 1) + ': `currentTarget` dins d\'un `.then`/`.catch`. ' +
+                   'Quan arribi la resposta ja valdrà null: agafa l\'element abans, ' +
+                   'en una variable.');
+          break;
+        }
+      }
+    });
+  }
+}
+
+/* ---- 9. Res que sigui secret dins d'un fitxer que git segueix -------------
+   El repositori és PÚBLIC i la documentació ho promet: «ni la clau, ni l'URL
+   del desplegament». L'URL hi va anar igualment —la genera `npm run desplega`
+   dins d'un .gs, i els .gs es comenten tots—, i va estar publicada a GitHub
+   fins que una auditoria la va trobar. Això mira el que git seguirà de debò,
+   no el que hi ha al disc: un fitxer ignorat pot tenir el que vulgui. */
+{
+  const { execSync } = await import('child_process');
+  let seguits = [];
+  try {
+    seguits = execSync('git ls-files', { encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch (e) { /* fora d'un repositori no hi ha res a vigilar */ }
+
+  /* LA CONFIGURACIÓ WEB DE FIREBASE ÉS PÚBLICA A POSTA i no és cap secret:
+     va dins de la pàgina, el navegador de qualsevol la veu, i qui guarda de
+     debò és el compte de servei, que viu a Script Properties i no surt mai
+     d'allà. Vegeu `docs/03-notificacions.md`. */
+  const publicsAposta = ['firebase.config.json', 'firebase-messaging-sw.js', 'index.html'];
+
+  const secrets = [
+    { nom: 'l\'URL del desplegament', re: /script\.google\.com\/macros\/s\/[A-Za-z0-9_-]{20,}\/(exec|dev)/ },
+    { nom: 'un testimoni de bot de Telegram', re: /\b\d{8,10}:[A-Za-z0-9_-]{30,}\b/ },
+    { nom: 'una clau de Google API', re: /\bAIza[0-9A-Za-z_-]{30,}\b/, excepte: publicsAposta },
+    /* El text de la capçalera sol no és res: el codi que la munta i el que la
+       valida també la porten escrita. Una clau de debò porta el material a
+       sota, que és el que es busca. */
+    { nom: 'una clau privada', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\\n]*[A-Za-z0-9+/=]{100,}/ }
+  ];
+
+  for (const f of seguits) {
+    if (!/\.(gs|html|js|mjs|json|md|webmanifest)$/.test(f)) continue;
+    if (f === 'eines/comprova.mjs') continue;      // aquí hi són els patrons, no els secrets
+    let src = '';
+    try { src = fs.readFileSync(f, 'utf8'); } catch (e) { continue; }
+    for (const s of secrets) {
+      if (s.excepte && s.excepte.indexOf(f) !== -1) continue;
+      if (s.re.test(src)) {
+        error(f, 'hi ha ' + s.nom + ' i git segueix aquest fitxer. ' +
+                 'El repositori és públic: treu-ho i posa el fitxer al .gitignore.');
+      }
+    }
+  }
+}
+
 // ---- Informe ---------------------------------------------------------------
 if (avisos.length) {
   console.log('\nAvisos:');

@@ -534,8 +534,13 @@ App.registraVista('seguiment', {
             if (!amb.length) return '';
             return '<div class="seg-angle"><p class="menut">' + a[1] + '</p>' +
               '<div class="seg-tira">' + amb.map(function (c) {
+                /* LA MIDA VA ESCRITA A L'ETIQUETA i no només a l'estil: la
+                   imatge arriba tard i, sense mida, la fila creixia de cop
+                   quan entrava i et movia el que estaves mirant. Són les
+                   mateixes 118×158 que hi posa el full d'estil. */
                 return '<figure>' +
-                  '<img loading="lazy" alt="' + esc(a[1] + ' del ' + curta(c.data)) + '" ' +
+                  '<img loading="lazy" width="118" height="158" ' +
+                    'alt="' + esc(a[1] + ' del ' + curta(c.data)) + '" ' +
                     (fotosObertes ? 'src' : 'data-src') +
                     '="https://drive.google.com/thumbnail?sz=w320&id=' + esc(c.fotos[a[0]]) + '">' +
                   /* El boto de treure-la. Petit i a la cantonada, pero de 32
@@ -654,6 +659,24 @@ App.registraVista('seguiment', {
           var x = cos.querySelector(id).value.trim();
           return x === '' ? null : Number(x.replace(',', '.'));
         };
+
+        /* UN CONTROL BUIT NO ÉS UN CONTROL.
+           Amb tots els camps sense omplir, el formulari es desava igualment i
+           et deia «Control desat»: al full hi queia una fila amb el dia i res
+           més, i tu no sabies si havies desat alguna cosa o no. */
+        /* Les valoracions (energia, son, gana, dieta) arriben preomplertes amb
+           les de l últim control, o sigui que no serveixen per saber si has
+           posat res: el que compta és una mesura o una nota escrita ara. */
+        var teMesura = ['#s-pes', '#s-cintura', '#s-forca', '#s-trail', '#s-gros']
+          .some(function (id) { return cos.querySelector(id).value.trim() !== ''; }) ||
+          cos.querySelector('#s-notes').value.trim() !== '';
+        if (!teMesura) {
+          bt.disabled = false; bt.textContent = 'Desa el control';
+          App.brindis('Posa-hi almenys una mesura o una nota.', 'error');
+          try { cos.querySelector('#s-pes').focus(); } catch (e) {}
+          return;
+        }
+
         crida('seguiment', 'desa', {
           data: cos.querySelector('#s-data').value,
           pes: buit('#s-pes'),

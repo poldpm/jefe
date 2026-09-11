@@ -113,7 +113,18 @@ A l'editor d'Apps Script:
 > **«Només jo» és el que fa que ningú més hi pugui entrar.** Encara que algú
 > tingués l'URL, Google li demanaria iniciar sessió amb el teu compte.
 
-Obre l'URL: has de veure una pantalla fosca amb l'estat del sistema.
+Obre l'URL: has de veure una pantalla fosca que et demana la **clau d'accés**.
+
+> **Per què la demana si el desplegament és «Només jo»?** Perquè el dia que
+> el passis a «Qualsevol» —cal fer-ho per servir la interfície des de GitHub
+> Pages, vegeu `02-veu-i-github-pages.md`— aquesta pàgina la rebria qualsevol
+> que tingués l'adreça, i des d'ella es podia demanar qualsevol dada sense
+> ensenyar res. La clau es comprova a l'encaminador i no al transport, o
+> sigui que val igual per als dos camins. Prefereixo enganxar-la un cop que
+> haver de recordar quina configuració tenia el desplegament.
+>
+> La clau la dona `generaClauAcces()` a `90_Instalacio.gs`. Executa-la ara i
+> enganxa-la: es desa en aquest navegador i no torna a preguntar.
 
 ---
 

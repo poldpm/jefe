@@ -50,7 +50,7 @@ App.registraVista('memoria', {
               '<span class="marge">Què vols que recordi</span>' +
               '<div class="captura-fila">' +
                 '<input id="m-nou" placeholder="La Marta és la tutora de 2nB" autocomplete="off">' +
-                '<button class="btn btn-primari" data-desa>' + ic('mes') + '</button>' +
+                '<button class="btn btn-primari" data-desa aria-label="Recorda-ho">' + ic('mes') + '</button>' +
               '</div>' +
             '</label>' +
             '<p class="menut" style="margin-top:var(--e2)">També pots dir-li-ho parlant: ' +
@@ -61,8 +61,12 @@ App.registraVista('memoria', {
             ? '<section class="secc">' +
                 '<label class="camp-captura">' +
                   '<div class="captura-fila">' +
-                    '<input id="m-cerca" placeholder="Buscar" autocomplete="off" value="' +
-                      esc(filtre) + '">' +
+                    /* L'etiqueta no és el text de dins: quan escrius, se'n va.
+                       Aquí el camp es veu prou —és una caixa de buscar dins
+                       d'una llista— i el que li faltava era un nom per a qui
+                       no la mira, no un títol a sobre. */
+                    '<input id="m-cerca" type="search" placeholder="Buscar" autocomplete="off" ' +
+                      'aria-label="Buscar entre el que sé de tu" value="' + esc(filtre) + '">' +
                   '</div>' +
                 '</label>' +
               '</section>'

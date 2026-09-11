@@ -3,6 +3,13 @@
 # Credencials, claus i sessions
 .clasprc.json
 .clasp.json
+
+# L'ADREÇA DEL DESPLEGAMENT. La genera `npm run desplega` i no la llegeix
+# ningú: és una nota per a tu. Va aquí perquè el repositori és PÚBLIC i la
+# documentació promet que aquesta adreça no hi surt. Hi va sortir igualment,
+# comesa i publicada, i qualsevol que la trobés arribava a la porta.
+# La porta ara demana clau, però una adreça que no fa falta no s'ensenya.
+apps-script/03_Adreca.gs
 *.token
 *.key
 *.pem

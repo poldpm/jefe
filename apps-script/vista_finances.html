@@ -72,14 +72,16 @@ App.registraVista('finances', {
                : periode === 'patrimoni' ? 'que tens'
                : (PERIODES.filter(function (p) { return p[0] === periode; })[0] || ['', 'Mes'])[1];
 
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Finances</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           (mostraFletxes
             ? '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
               ic('esquerra', 'ic-p') + '</button>' : '') +
-          '<button class="titol-periode" data-obre-periode="1">' +
+          '<button class="titol-periode" data-obre-periode="1" aria-label="' +
+            esc(titol + '. Tria què vols veure') + '">' +
             '<b>' + esc(titol) + '</b>' +
             '<span>' + esc(sota) + (esActual && periode === 'mes' ? ' · en curs' : '') + ' ▾</span>' +
           '</button>' +
@@ -445,7 +447,11 @@ App.registraVista('finances', {
                       '<b>' + esc(a.nom) + '</b>' +
                       '<span class="menut"' + (vell ? ' data-vell="1"' : '') + '>' +
                         (a.automatic ? 'del banc · ' : '') +
-                        (a.data === null ? 'encara sense valor'
+                        /* `null` estava cobert i `undefined` no, i la
+                           diferència la veia l usuari: «fa undefined dies» a
+                           cada actiu quan la resposta no portava el camp. */
+                        (a.data === null || a.dies === null || a.dies === undefined
+                          ? 'encara sense valor'
                           : a.dies === 0 ? 'avui'
                           : 'fa ' + a.dies + (a.dies === 1 ? ' dia' : ' dies')) +
                       '</span>' +
@@ -543,13 +549,18 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu-actiu]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'arxivaActiu', { id: a.id }, quePinto())
-          .then(function (r) {
-            App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); aplica(r);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        App.confirma('Arxivar «' + esc(a.nom) + '»?',
+          '<p class="menut">Els valors que hi tens anotats es queden. Deixa de comptar ' +
+            'al total del patrimoni.</p>',
+          'Sí, arxiva-l\'ho',
+          function (b) {
+            escriu('finances', 'arxivaActiu', { id: a.id }, quePinto())
+              .then(function (r) {
+                App.tancaModal(); App.brindis('Tret');
+                Cau.oblida('finances.'); aplica(r);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 
@@ -875,6 +886,14 @@ App.registraVista('finances', {
       cos.querySelector('[data-desa-rec]').addEventListener('click', function () {
         var imp = num(camps['import'].value);
         if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        /* I UN SOSTRE, que no n hi havia cap: un dit de mes al teclat numeric
+           apuntava 999.999.999 EUR i les sumes del mes deixaven de voler dir res.
+           El limit es absurdament alt a posta —cap moviment teu s hi acostara—
+           i nomes serveix per aturar el que es clarament una relliscada. */
+        if (imp > 1000000) {
+          App.brindis('Aquest import és massa gran. Mira la xifra.', 'error');
+          camps['import'].focus(); return;
+        }
         if (!camps.descripcio.value.trim()) {
           App.brindis('Digues què és', 'error'); camps.descripcio.focus(); return;
         }
@@ -902,13 +921,18 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu-rec]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'arxivaRecurrent', { id: r.id }, quePinto())
-          .then(function (p) {
-            App.tancaModal(); App.brindis('Tret');
-            Cau.oblida('finances.'); aplica(p);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        App.confirma('Arxivar aquest rebut fix?',
+          '<p>' + esc(r.nom || r.descripcio || '') + '</p>' +
+          '<p class="menut">Deixa de vigilar-lo: ja no dirà res si un mes no arriba o si puja.</p>',
+          'Sí, arxiva-l\'ho',
+          function (b) {
+            escriu('finances', 'arxivaRecurrent', { id: r.id }, quePinto())
+              .then(function (p) {
+                App.tancaModal(); App.brindis('Tret');
+                Cau.oblida('finances.'); aplica(p);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 
@@ -1080,8 +1104,10 @@ App.registraVista('finances', {
               '<button data-nova-mena="i">Ingrés</button>' +
             '</div>' +
             '<div class="cat-nova-fila">' +
-              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji" autocomplete="off">' +
-              '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off">' +
+              '<input data-nova-emoji placeholder="🛒" maxlength="4" class="camp-emoji" autocomplete="off" ' +
+                'aria-label="Emoji de la categoria">' +
+              '<input data-nova-nom placeholder="Nom de la categoria" autocomplete="off" ' +
+                'aria-label="Nom de la categoria">' +
             '</div>' +
             '<label class="cat-exclou">' +
               '<input type="checkbox" data-nova-exclou>' +
@@ -1120,10 +1146,15 @@ App.registraVista('finances', {
 
         llista.querySelectorAll('[data-treu-cat]').forEach(function (b) {
           b.addEventListener('click', function () {
-            b.disabled = true;
-            crida('finances', 'arxivaCategoria', { id: b.dataset.treuCat })
-              .then(refrescaCats)
-              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+            App.confirma('Arxivar aquesta categoria?',
+              '<p class="menut">Els moviments que ja hi són no es perden. Deixa de sortir ' +
+                'a la llista per triar-la de nou.</p>',
+              'Sí, arxiva-la',
+              function () {
+                crida('finances', 'arxivaCategoria', { id: b.dataset.treuCat })
+                  .then(function () { App.tancaModal(); refrescaCats(); })
+                  .catch(function (err) { App.tancaModal(); App.brindis(err.message, 'error'); });
+              });
           });
         });
       }
@@ -1195,7 +1226,10 @@ App.registraVista('finances', {
         sortida.innerHTML =
           '<div class="fitxa" style="margin-top:var(--e3)">' +
             '<p class="marge">Què hi he trobat</p>' +
-            '<p>' + r.moviments + ' moviments · ' + r.categories + ' categories' +
+            /* Si el fitxer no és el que esperàvem, els comptadors no hi són i
+               sortia «undefined moviments · undefined categories». Zero és una
+               resposta; «undefined» és una fuita. */
+            '<p>' + (r.moviments || 0) + ' moviments · ' + (r.categories || 0) + ' categories' +
               (r.actius ? ' · ' + r.actius + ' actius de patrimoni amb ' + r.valorsPatrimoni + ' valors' : '') +
               (r.recurrents ? ' · ' + r.recurrents + ' recurrents' : '') +
               (r.pressupostos ? ' · ' + r.pressupostos + ' pressupostos' : '') +
@@ -1363,6 +1397,14 @@ App.registraVista('finances', {
       cos.querySelector('[data-desa]').addEventListener('click', function () {
         var imp = num(camps['import'].value);
         if (imp <= 0) { App.brindis('Posa-hi un import', 'error'); camps['import'].focus(); return; }
+        /* I UN SOSTRE, que no n hi havia cap: un dit de mes al teclat numeric
+           apuntava 999.999.999 EUR i les sumes del mes deixaven de voler dir res.
+           El limit es absurdament alt a posta —cap moviment teu s hi acostara—
+           i nomes serveix per aturar el que es clarament una relliscada. */
+        if (imp > 1000000) {
+          App.brindis('Aquest import és massa gran. Mira la xifra.', 'error');
+          camps['import'].focus(); return;
+        }
         if (!camps.descripcio.value.trim()) {
           App.brindis('Digues què era', 'error'); camps.descripcio.focus(); return;
         }
@@ -1391,13 +1433,20 @@ App.registraVista('finances', {
 
       var bt = cos.querySelector('[data-treu]');
       if (bt) bt.addEventListener('click', function () {
-        bt.disabled = true;
-        escriu('finances', 'treu', { id: m.id }, quePinto())
-          .then(function (r) {
-            App.tancaModal(); App.brindis('Moviment tret');
-            Cau.oblida('finances.'); aplica(r);
-          })
-          .catch(function (err) { bt.disabled = false; App.brindis(err.message, 'error'); });
+        /* Són diners i marxen del full. Ho pregunta com ho pregunta el
+           calendari abans de treure una cita. */
+        App.confirma('Treure aquest moviment?',
+          '<p>' + esc(m.descripcio || '') + ' · ' + esc(eur(m.import)) + '</p>' +
+          '<p class="menut">Surt del full i deixa de comptar a les sumes del mes.</p>',
+          'Sí, treu-lo',
+          function (b) {
+            escriu('finances', 'treu', { id: m.id }, quePinto())
+              .then(function (r) {
+                App.tancaModal(); App.brindis('Moviment tret');
+                Cau.oblida('finances.'); aplica(r);
+              })
+              .catch(function (err) { b.disabled = false; App.brindis(err.message, 'error'); });
+          });
       });
     }
 

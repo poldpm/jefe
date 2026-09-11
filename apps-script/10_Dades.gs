@@ -164,25 +164,32 @@ var Dades = (function () {
    * se'n genera un amb el prefix indicat.
    */
   function insereix(nom, obj, prefixId) {
-    var d = carrega_(nom);
-    var nou = {};
-    for (var k in obj) nou[k] = obj[k];
+    /* MIRAR ON ACABA EL FULL I ESCRIURE-HI NO SÓN EL MATEIX MOMENT.
+       Entremig hi caben una altra pestanya i un automatisme, i les dues
+       escriurien a la mateixa fila: la segona es menja la primera i ningú
+       se n'assabenta, perquè totes dues han dit que sí. El bloqueig només
+       ha d'abraçar això, que és on hi ha la cursa. */
+    return ambBloqueig_(function () {
+      var d = carrega_(nom);
+      var nou = {};
+      for (var k in obj) nou[k] = obj[k];
 
-    if (d.capcalera.indexOf('id') !== -1 && !nou.id) {
-      nou.id = Utils.nouId(prefixId || nom.toLowerCase().slice(0, 3));
-    }
-    if (d.capcalera.indexOf('creat_el') !== -1 && !nou.creat_el) {
-      nou.creat_el = Utils.ara();
-    }
+      if (d.capcalera.indexOf('id') !== -1 && !nou.id) {
+        nou.id = Utils.nouId(prefixId || nom.toLowerCase().slice(0, 3));
+      }
+      if (d.capcalera.indexOf('creat_el') !== -1 && !nou.creat_el) {
+        nou.creat_el = Utils.ara();
+      }
 
-    // NO fer servir appendRow. Escriu com si haguessis teclejat a la cel·la:
-    // es salta el format de text de la columna i converteix '2026-08-01' en
-    // un objecte Data amb zona horària. Llavors la fila es desa d'una manera
-    // i es busca d'una altra, i no es troba mai. setValues sí que respecta el
-    // format, que és el que fa insereixMoltes des del primer dia.
-    escriuFila_(d, d.fulla.getLastRow() + 1, aFila_(d.capcalera, nou));
-    invalida(nom);
-    return nou;
+      // NO fer servir appendRow. Escriu com si haguessis teclejat a la cel·la:
+      // es salta el format de text de la columna i converteix '2026-08-01' en
+      // un objecte Data amb zona horària. Llavors la fila es desa d'una manera
+      // i es busca d'una altra, i no es troba mai. setValues sí que respecta el
+      // format, que és el que fa insereixMoltes des del primer dia.
+      escriuFila_(d, d.fulla.getLastRow() + 1, aFila_(d.capcalera, nou));
+      invalida(nom);
+      return nou;
+    });
   }
 
   /** Escriu una fila respectant el format de les columnes, creixent si cal. */
@@ -195,19 +202,24 @@ var Dades = (function () {
 
   /** Actualitza per id. Retorna l'objecte resultant, o null si no existeix. */
   function actualitza(nom, id, canvis) {
-    var d = carrega_(nom);
-    var actual = perId(nom, id);
-    if (!actual) return null;
+    /* Llegir la fila, fusionar-hi els canvis i tornar-la a escriure tampoc
+       és un sol moment: qui escrigui entremig es perd, perquè aquí es desa
+       la fila SENCERA i la versió que teníem és la d'abans. */
+    return ambBloqueig_(function () {
+      var d = carrega_(nom);
+      var actual = perId(nom, id);
+      if (!actual) return null;
 
-    var fusionat = {};
-    for (var k in actual) if (k !== '_fila') fusionat[k] = actual[k];
-    for (var c in canvis) fusionat[c] = canvis[c];
-    if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
+      var fusionat = {};
+      for (var k in actual) if (k !== '_fila') fusionat[k] = actual[k];
+      for (var c in canvis) fusionat[c] = canvis[c];
+      if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
 
-    d.fulla.getRange(actual._fila, 1, 1, d.capcalera.length)
-           .setValues([aFila_(d.capcalera, fusionat)]);
-    invalida(nom);
-    return fusionat;
+      d.fulla.getRange(actual._fila, 1, 1, d.capcalera.length)
+             .setValues([aFila_(d.capcalera, fusionat)]);
+      invalida(nom);
+      return fusionat;
+    });
   }
 
   /**
@@ -216,51 +228,59 @@ var Dades = (function () {
    * Exemple: Dades.desa('HabitsRegistre', reg, ['id_habit', 'data'])
    */
   function desa(nom, obj, claus, prefixId) {
-    var d = carrega_(nom);
-    if (!claus || !claus.length) return insereix(nom, obj, prefixId);
+    /* «Si hi és l'actualitzo i si no l'insereixo» és la cursa de manual:
+       dues crides alhora poden trobar totes dues que no hi és i inserir-la
+       dues vegades. El bloqueig ha d'anar per fora de la pregunta, no per
+       dins de la resposta. */
+    return ambBloqueig_(function () {
+      var d = carrega_(nom);
+      if (!claus || !claus.length) return insereix(nom, obj, prefixId);
 
-    var filtre = {};
-    for (var i = 0; i < claus.length; i++) filtre[claus[i]] = obj[claus[i]];
-    var existent = un(nom, filtre);
+      var filtre = {};
+      for (var i = 0; i < claus.length; i++) filtre[claus[i]] = obj[claus[i]];
+      var existent = un(nom, filtre);
 
-    if (!existent) return insereix(nom, obj, prefixId);
+      if (!existent) return insereix(nom, obj, prefixId);
 
-    var fusionat = {};
-    for (var k in existent) if (k !== '_fila') fusionat[k] = existent[k];
-    for (var c in obj) fusionat[c] = obj[c];
-    if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
+      var fusionat = {};
+      for (var k in existent) if (k !== '_fila') fusionat[k] = existent[k];
+      for (var c in obj) fusionat[c] = obj[c];
+      if (d.capcalera.indexOf('actualitzat_el') !== -1) fusionat.actualitzat_el = Utils.ara();
 
-    d.fulla.getRange(existent._fila, 1, 1, d.capcalera.length)
-           .setValues([aFila_(d.capcalera, fusionat)]);
-    invalida(nom);
-    return fusionat;
+      d.fulla.getRange(existent._fila, 1, 1, d.capcalera.length)
+             .setValues([aFila_(d.capcalera, fusionat)]);
+      invalida(nom);
+      return fusionat;
+    });
   }
 
   /** Insereix moltes files de cop. Molt més ràpid que insereix() en bucle. */
   function insereixMoltes(nom, objectes, prefixId) {
     if (!objectes || !objectes.length) return [];
-    var d = carrega_(nom);
-    var files = [];
-    var creats = [];
+    return ambBloqueig_(function () {      // la mateixa cursa que `insereix`, per vint
+      var d = carrega_(nom);
+      var files = [];
+      var creats = [];
 
-    for (var i = 0; i < objectes.length; i++) {
-      var nou = {};
-      for (var k in objectes[i]) nou[k] = objectes[i][k];
-      if (d.capcalera.indexOf('id') !== -1 && !nou.id) {
-        nou.id = Utils.nouId(prefixId || nom.toLowerCase().slice(0, 3));
+      for (var i = 0; i < objectes.length; i++) {
+        var nou = {};
+        for (var k in objectes[i]) nou[k] = objectes[i][k];
+        if (d.capcalera.indexOf('id') !== -1 && !nou.id) {
+          nou.id = Utils.nouId(prefixId || nom.toLowerCase().slice(0, 3));
+        }
+        if (d.capcalera.indexOf('creat_el') !== -1 && !nou.creat_el) nou.creat_el = Utils.ara();
+        creats.push(nou);
+        files.push(aFila_(d.capcalera, nou));
       }
-      if (d.capcalera.indexOf('creat_el') !== -1 && !nou.creat_el) nou.creat_el = Utils.ara();
-      creats.push(nou);
-      files.push(aFila_(d.capcalera, nou));
-    }
 
-    var primera = d.fulla.getLastRow() + 1;
-    if (primera + files.length - 1 > d.fulla.getMaxRows()) {
-      d.fulla.insertRowsAfter(d.fulla.getMaxRows(), files.length + 100);
-    }
-    d.fulla.getRange(primera, 1, files.length, d.capcalera.length).setValues(files);
-    invalida(nom);
-    return creats;
+      var primera = d.fulla.getLastRow() + 1;
+      if (primera + files.length - 1 > d.fulla.getMaxRows()) {
+        d.fulla.insertRowsAfter(d.fulla.getMaxRows(), files.length + 100);
+      }
+      d.fulla.getRange(primera, 1, files.length, d.capcalera.length).setValues(files);
+      invalida(nom);
+      return creats;
+    });
   }
 
   /**
@@ -278,6 +298,12 @@ var Dades = (function () {
    */
   function actualitzaMoltes(nom, ids, canvis) {
     if (!ids || !ids.length) return 0;
+    return ambBloqueig_(function () {
+      return actualitzaMoltes_(nom, ids, canvis);
+    });
+  }
+
+  function actualitzaMoltes_(nom, ids, canvis) {
     var d = carrega_(nom);
     var perFila = (typeof canvis === 'function');
 
@@ -337,15 +363,28 @@ var Dades = (function () {
 /**
  * Executa una funció amb bloqueig exclusiu. Evita que dues pestanyes obertes
  * o un trigger i tu alhora escriviu la mateixa fila.
+ *
+ * NO ES DEMANA DOS COPS DINS DE LA MATEIXA EXECUCIÓ.
+ * Ara que cada escriptura de `Dades` el demana pel seu compte, un resum
+ * nocturn —que ja s'executa dins d'un bloqueig— faria vint escriptures i
+ * cadascuna en tornaria a demanar un. Que Apps Script ho permeti o no és una
+ * cosa que no vull haver de saber: si aquesta execució ja el té, s'entra i
+ * prou. El que no pot passar és que el fil s'esperi a si mateix.
  */
+var _teElBloqueig = false;
+
 function ambBloqueig_(fn, segons) {
+  if (_teElBloqueig) return fn();
+
   var lock = LockService.getScriptLock();
   if (!lock.tryLock((segons || 30) * 1000)) {
     throw new Error('El sistema està ocupat processant una altra operació. Torna-ho a provar.');
   }
+  _teElBloqueig = true;
   try {
     return fn();
   } finally {
+    _teElBloqueig = false;
     lock.releaseLock();
   }
 }

@@ -42,11 +42,15 @@
 
 <?!= include('ui_icones'); ?>
 
-<div id="sense-xarxa" class="sense-xarxa" hidden>
+<!-- QUE S ANUNCIÏN SOLS. Els dos avisos apareixen i desapareixen sense que
+     toquis res, igual que el «brindis», que sí que porta `role="status"`.
+     Sense això, qui fa servir un lector de pantalla no s assabenta que ha
+     perdut la connexió ni que té canvis sense desar fins que hi topa. -->
+<div id="sense-xarxa" class="sense-xarxa" role="status" aria-live="polite" hidden>
   <svg class="ic ic-p" aria-hidden="true"><use href="#ic-sense-xarxa"/></svg>
   <span>Sense connexió. El que toquis es desarà quan tornis a tenir cobertura.</span>
 </div>
-<div id="pendents" class="sense-xarxa" hidden></div>
+<div id="pendents" class="sense-xarxa" role="status" aria-live="polite" hidden></div>
 
 <main id="vista" role="main"></main>
 

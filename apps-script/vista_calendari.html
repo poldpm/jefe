@@ -44,13 +44,17 @@ App.registraVista('calendari', {
 
     function capcalera(d) {
       var esActual = d.mes === d.avui.slice(0, 7);
-      return '<header class="capcalera capcalera-nutri">' +
+      return '<h1 class="nomes-lectors">Calendari</h1>' +
+        '<header class="capcalera capcalera-nutri">' +
         '<div class="capcalera-fila">' +
           '<button class="btn btn-fantasma btn-icona" data-torna="1" aria-label="Torna al full índex">' +
             ic('mapa', 'ic-p') + '</button>' +
           '<button class="btn btn-fantasma btn-icona" data-salt="-1" aria-label="Mes anterior">' +
             ic('esquerra', 'ic-p') + '</button>' +
-          '<button class="titol-periode" data-avui="1">' +
+          /* Sense etiqueta, el nom accessible surt del text dels fills tot
+             enganxat: «Setembre del 202611 cites · en curs». */
+          '<button class="titol-periode" data-avui="1" aria-label="' +
+            esc(nomMes(d.mes) + '. Torna a avui') + '">' +
             '<b>' + esc(nomMes(d.mes)) + '</b>' +
             '<span>' + (d.provisional
               ? 'carregant…'
@@ -88,7 +92,12 @@ App.registraVista('calendari', {
        és el que s'obre a sota, i tocar-ne un no és mai una acció que canviï
        res, o sigui que no cal confirmar res ni patir per equivocar-se. */
     function blocMes(d) {
-      return '<div class="mes-graella" role="grid" aria-label="' + esc(nomMes(d.mes)) + '">' +
+      /* SENSE `role="grid"`. Ho declarava i no ho era: un grid ha de tenir
+         files i cel·les amb el seu rol, i aquí els fills directes són els
+         noms dels dies i els botons. Declarar un patró que no compleixes
+         deixa la graella il·legible per a un lector de pantalla; cada botó
+         ja porta el seu propi nom, que és el que de debò s ha de llegir. */
+      return '<div class="mes-graella" aria-label="' + esc(nomMes(d.mes)) + '">' +
         DIES.map(function (n) {
           return '<span class="mes-cap" aria-hidden="true">' + n + '</span>';
         }).join('') +
@@ -373,7 +382,10 @@ App.registraVista('calendari', {
           titol: camps.titol.value.trim(),
           data: camps.data.value,
           hora: camps.totdia.checked ? '' : camps.hora.value,
-          durada: Number(camps.durada.value) || 60,
+          /* `min="5"` a l\'HTML no serveix de res sense un formulari que el
+             validi: escrivint -30 a mà, la cita entrava amb durada negativa i
+             es desava així. Una cita no pot durar menys que res. */
+          durada: Math.max(5, Number(camps.durada.value) || 60),
           lloc: camps.lloc.value,
           nota: camps.nota.value
         };
@@ -556,7 +568,7 @@ App.registraVista('calendari', {
       if (mes && d.mes && d.mes !== mes) { pintaDelTram(mes); return; }
 
       var nou = JSON.stringify(d);
-      if (nou === previPintat) return;
+      if (nou === previPintat && !(dades && dades.provisional)) return;
 
       if (!forca && previPintat !== null && App.interactuant()) {
         var primer = !ajornat;
@@ -638,6 +650,13 @@ App.registraVista('calendari', {
         /* Sense res desat que valgui: la graella del mes, dibuixada aquí
            mateix. Els números dels dies i quin és avui no els ha de portar
            ningú de fora. Les cites hi cauen quan arriben. */
+        /* I EL QUE HI HAVIA PINTAT JA NO COMPTA.
+           Sense això, la resposta que arribava igual que l última pintada es
+           quedava fora per la comparació de més avall i el provisional no
+           marxava mai: canviaves quins calendaris mires, tancaves el diàleg,
+           i la capçalera es quedava a «carregant…» fins que recarregaves la
+           pàgina sencera. Ho fa igual `vesAlMes`, per la mateixa raó. */
+        previPintat = null;
         try { pinta(mesProvisional(mes || avuiAra.slice(0, 7)), false); } catch (e) {}
       }
 

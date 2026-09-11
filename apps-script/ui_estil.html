@@ -30,8 +30,11 @@
   --corba:      #bcced4;   /* estructura secundària */
   --corba-mestra:#8faab3;
   /* De dia va mes fondo del que sembla: a 11 px sobre el fons de la sala,
-     el to de nit donava 4,14 i les etiquetes petites no es llegien. */
-  --utm:        #0a707e;   /* la llum del sistema */
+     el to de nit donava 4,14 i les etiquetes petites no es llegien.
+     I una mica mes fondo encara: sobre paper blanc en sobrava, pero el dia
+     d'avui de la setmana porta el fons tenyit —`--utm-suau`— i alla el
+     numero del dia es quedava a 4,39. El text petit no te marge. */
+  --utm:        #086674;   /* la llum del sistema */
   --utm-suau:   #cfe4e9;
   --gr:         #c8332b;   /* el que va malament */
   --accio:      #0a707e;
@@ -56,7 +59,12 @@
   --h6: #054a57;   /* al màxim */
   --roca: #ffffff;
 
-  --fet:        var(--h4);
+  /* UN GRAO MES FOSC QUE LA RAMPA. El fons de «fet» duia el mateix to que la
+     casella encesa del full de mes (--h4), pero alla no hi va text a sobre i
+     aqui si: el blanc del boto triat de l'anim del diari es quedava a 4,38.
+     La rampa no es toca —es una escala i ha de seguir sent-ho—; el que puja
+     un grao es nomes el fons que ha de sostenir lletra. */
+  --fet:        var(--h5);
   --fet-vora:   var(--h6);
   --sobre-fet:  #ffffff;
   --sobre-fet2: #d5edf1;
@@ -523,7 +531,7 @@ h2 { font-size: 1.0625rem; }
 .compt-tria button {
   /* 44 px com la resta: el dit no es fa més petit perquè el botó sigui
      secundari. El que s'encongeix és la lletra, no l'àrea. */
-  min-height: 44px; padding: 0 var(--e2);
+  min-height: 44px; min-width: 44px; padding: 0 var(--e2);
   border: 1px solid var(--neatline); background: transparent; color: var(--ink-suau);
   font-family: var(--mono); font-size: .6875rem; letter-spacing: .06em;
   text-transform: uppercase;
@@ -674,6 +682,18 @@ h2 { font-size: 1.0625rem; }
 
 .camp { display: block; margin-bottom: var(--e4); }
 .camp > span { display: block; margin-bottom: var(--e2); }
+
+/* L'ERROR D'UN CAMP VA AL COSTAT DEL CAMP.
+   Sortia de brindis a baix de tot de la pantalla: a fora del diàleg que
+   l'havia provocat, i al mòbil sovint ni es veia. Aquí va enganxat al camp,
+   amb `role="alert"` perquè qui no la mira també se n'assabenti. El color no
+   ho diu sol: hi ha el símbol al davant. */
+.camp-mal {
+  margin: calc(var(--e3) * -1) 0 var(--e4);
+  display: flex; gap: var(--e2); align-items: flex-start;
+  font-size: .8125rem; line-height: 1.45; color: var(--gr);
+}
+.camp-mal::before { content: '!'; flex: none; font-weight: 700; }
 .entrada, select.entrada, textarea.entrada {
   width: 100%; min-height: var(--toc); padding: var(--e3);
   border: 1.5px solid var(--neatline); border-radius: var(--r);
@@ -991,7 +1011,14 @@ h2 { font-size: 1.0625rem; }
 .bal-xifra { font-size: .875rem; font-weight: 700; text-align: right;
              font-variant-numeric: tabular-nums; color: var(--ink-suau); }
 
-[data-costat="deficit"] { color: var(--h1); }
+/* LA XIFRA HA DE SER LLEGIBLE.
+   La rampa d energia (--h1..--h6) es per a les superficies del relleu, no
+   per a text: --h1 es el grao mes apagat i sobre el fons de nit dona 1,75:1.
+   O sigui que l ingres —la xifra que mes vols veure— era la menys visible de
+   tota la pantalla, i a fora amb sol no es veia gens. Les barres es queden amb
+   la rampa, que alli si que hi pertany; el text agafa el grao de l altre
+   extrem, que es llegeix i segueix sent la mateixa familia de tinta. */
+[data-costat="deficit"] { color: var(--h6); }
 .bal-via i[data-costat="deficit"], .bal-mes-caixa i[data-costat="deficit"] { background: var(--h1); }
 [data-costat="superavit"] { color: var(--h5); }
 .bal-via i[data-costat="superavit"], .bal-mes-caixa i[data-costat="superavit"] { background: var(--h5); }
@@ -1026,8 +1053,13 @@ h2 { font-size: 1.0625rem; }
   box-shadow: 0 1px 0 var(--vora-viva);
   padding: max(var(--e3), env(safe-area-inset-top, 0px)) var(--e4) var(--e3);
 }
+/* QUE PUGUI PLEGAR-SE. A mida normal la fila hi cap sempre i això no canvia
+   res; amb el zoom del navegador al 200 % —que és com llegeix qui no hi veu
+   bé— els botons de la capçalera sortien fora de la pantalla sense cap
+   manera d arribar-hi, i la pàgina sencera demanava desplaçament horitzontal.
+   Plegant, baixen a la línia de sota i s hi arriba. */
 .capcalera-fila { display: flex; align-items: center; gap: var(--e3);
-                  max-width: 1280px; margin: 0 auto; }
+                  flex-wrap: wrap; max-width: 1280px; margin: 0 auto; }
 
 /* L'ESCALA. Era l'escala gràfica d'un mapa —barres alternades— i ara és el
    que sembla: un indicador de senyal. Els mateixos quatre traços, però
@@ -1316,7 +1348,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
 /* Els dies de l'altre mes hi són perquè la setmana no quedi coixa, no perquè
    els miris: es queden apagats i no criden. */
 .mes-dia[data-fora="1"] { background: var(--paper2); }
-.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: .55; }
+/* Els dies de fora del mes anaven a 2,25:1: es veien com una taca, no com un
+   número. Segueixen sent clarament secundaris —el fons ja els separa— però
+   ara es poden llegir. */
+.mes-dia[data-fora="1"] .n { color: var(--ink-suau); opacity: 1; }
 .mes-dia[data-avui="1"] { outline: 1px solid var(--utm); outline-offset: -1px; }
 
 /* El dia que MIRES es marca amb el blau de la quadrícula, no amb l'ocre.
@@ -1970,7 +2005,11 @@ input[type="checkbox"] { accent-color: var(--utm); }
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .seg-reclama b { font-size: .9375rem; }
-.seg-reclama span { font-size: .8125rem; color: var(--ink-suau); }
+/* La tinta apagada dona 3,69:1 sobre aquest fons ambre, per sota del mínim i
+   en una app que es fa servir a fora amb sol. Sobre aquesta superfície va amb
+   la tinta normal una mica retirada, que passa de 4,5 sense cridar. */
+.seg-reclama span { font-size: .8125rem;
+                    color: color-mix(in srgb, var(--ink) 78%, transparent); }
 .seg-reclama:active { transform: scale(.99); }
 
 /* EL VEREDICTE. El fil s'encén segons com ha anat, però el color no hi va mai
@@ -2078,6 +2117,10 @@ input[type="checkbox"] { accent-color: var(--utm); }
   transition: background-color .16s var(--entra), transform .12s var(--entra);
 }
 .seg-treu .ic { width: 15px; height: 15px; }
+/* Els 44 del dit, guanyats per fora, com a `.mem-fora`. El botó ha de seguir
+   sent una creueta petita damunt de la foto, i el dit no ho sap. */
+.seg-treu::after { content: ''; position: absolute; top: 50%; left: 50%;
+                   width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .seg-treu:active { background: var(--gr); transform: scale(.92); }
 @media (hover: hover) and (pointer: fine) {
   .seg-treu:hover { background: var(--gr); }
@@ -2093,6 +2136,11 @@ input[type="checkbox"] { accent-color: var(--utm); }
 .seg-fila { min-height: 0; flex-direction: row; align-items: center;
             justify-content: space-between; gap: var(--e3); }
 .seg-fila[aria-current="true"] { background: var(--utm-suau); }
+/* La fila d avui puja de fons, i el text de sota es quedava a 3,95:1 amb 12 px:
+   just per sota del minim, i aquesta app es fa servir a fora amb sol. Sobre
+   aquest fons la tinta apagada ja no serveix; aquesta i prou. */
+.seg-fila[aria-current="true"] .franja-sota,
+.seg-fila[aria-current="true"] .franja-cota .u { color: color-mix(in srgb, var(--ink) 78%, transparent); }
 .seg-check { display: flex; align-items: center; gap: var(--e2); margin-top: var(--e2);
              font-size: .8125rem; color: var(--ink-suau); }
 .seg-check input { width: 18px; height: 18px; flex: none; accent-color: var(--utm); }
@@ -2149,7 +2197,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
               height: 88px; margin-top: var(--e2); }
 .ent-barra { flex: 1; min-width: 0; height: 100%; padding: 0;
              display: flex; align-items: flex-end;
-             border: 0; background: transparent; }
+             border: 0; background: transparent; position: relative; }
+/* EL DIT NO CAU ENTRE DUES SETMANES. Dotze barres repartides en 375 px en
+   deixen 23 de dibuix, i entremig hi havia 3 px que no eren de ningú. L àrea
+   de toc s eixampla fins a menjar-se el forat: la barra es veu igual de fina
+   —que és el que la fa llegible— i qualsevol punt de la seva columna toca la
+   seva setmana. Mateix truc que la creueta d oblidar de la memòria. */
+.ent-barra::after { content: ''; position: absolute; top: 0; bottom: 0;
+                    left: -1.5px; right: -1.5px; }
 .ent-barra > span { display: block; width: 100%; background: var(--corba);
                     transition: background-color .16s var(--entra); }
 .ent-barra[aria-current="true"] > span { background: var(--utm); }
@@ -2275,6 +2330,14 @@ input[type="checkbox"] { accent-color: var(--utm); }
    t'obliga a baixar per veure què tens. */
 @media (min-width: 560px) {
   .caixes { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+
+  /* UNA CAIXA SOLA NO HA DE SEMBLAR UNA COLUMNA ORFE.
+     Amb `auto-fill`, la graella reserva les quatre columnes encara que només
+     hi hagi una caixa: a Relacions quedaven tres seccions de 300 píxels amb
+     900 de buit al costat, i la pàgina semblava a mig fer. Quan n'hi ha una
+     de sola s'estira, però només fins on una línia encara es llegeix bé: de
+     banda a banda d'un escriptori no es llegiria millor, només seria ampla. */
+  .caixes:has(> .caixa:only-child) { grid-template-columns: minmax(240px, 62ch); }
 }
 
 /* El camp d'apuntar no creix fins als mil pixels: és una ratlla de text, i una
@@ -2391,13 +2454,29 @@ input[type="checkbox"] { accent-color: var(--utm); }
 
 /* --------------------------------------------------------------- la pila */
 
+/* EL TÍTOL I EL SEU PEU NO PODEN COMPARTIR RATLLA.
+   Era una filera: títol, peu i botó de costat. El títol s'encongia i el peu
+   no, i dins d'una columna de la graella de caixes —240 o 300 píxels a
+   tauleta i a escriptori— el títol es quedava a poc més de cent píxels: queia
+   una paraula per línia i el peu gris li passava pel mig, a mitja alçada.
+   Es llegia com una pàgina trencada, i és la llista del que et queda per fer.
+
+   Ara és una graella de dues columnes: a l'esquerra el títol i, a sota seu, el
+   peu; a la dreta el botó, que ocupa les dues files. No depèn de l'amplada,
+   o sigui que no hi ha cap mida on torni a passar. */
 .pila-fila { padding: var(--e2) var(--e3); }
-.pila-cap { display: flex; align-items: center; gap: var(--e2); }
-.pila-text { flex: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
-.pila-fila .menut { flex: none; }
+.pila-cap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--e2); row-gap: 2px;
+}
+.pila-text { grid-column: 1; grid-row: 1; min-width: 0; font-size: .875rem; line-height: 1.45; }
+.pila-fila .menut { grid-column: 1; grid-row: 2; min-width: 0; }
 .pila-fila[data-urgent="1"] .menut { color: var(--gr); }
 
 .pila-quan {
+  grid-column: 2; grid-row: 1 / span 2;
   flex: none; width: 44px; height: 44px; margin: -10px -10px -10px 0; padding: 0;
   display: flex; align-items: center; justify-content: center;
   border: 0; background: transparent; color: var(--ink-suau);
@@ -2686,9 +2765,14 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
 .foc-tasca[data-urgent="1"] > span:first-child { color: var(--avis); }
 .foc-tasca .foc-pas { display: block; margin-top: 2px; font-size: .8125rem; color: var(--utm); }
 @media (hover: hover) and (pointer: fine) { .foc-tasca:hover { background: var(--utm-suau); } }
-.foc-cap-x { flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
+.foc-cap-x { position: relative;
+             flex: none; width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
              display: flex; align-items: center; justify-content: center;
              border: 0; background: transparent; color: var(--ink-suau); }
+/* Els 44 del dit, guanyats per fora. Treure la tasca del focus és un gest
+   petit i ha de seguir semblant-ho; el que no pot ser és que falli el toc. */
+.foc-cap-x::after { content: ''; position: absolute; top: 50%; left: 50%;
+                    width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
 .foc-fila { display: flex; gap: var(--e2); align-items: baseline;
             padding: var(--e1) var(--e3); }
@@ -2742,6 +2826,12 @@ body:has(#fosc[data-obert="1"]) .flotant { opacity: 0; pointer-events: none; }
   transition: color .16s var(--entra);
 }
 .mem-fora .ic { width: 12px; height: 12px; }
+/* L'AREA DE TOC NO ES LA DEL DIBUIX. La creueta ha de seguir sent petita
+   —oblidar una cosa que sap de tu no ha de cridar— pero el dit en vol 44,
+   i n'hi havia 32. Es guanyen per fora, sense moure res de lloc. */
+.mem-fora { position: relative; }
+.mem-fora::after { content: ''; position: absolute; top: 50%; left: 50%;
+                   width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .mem-fora:active { color: var(--gr); }
 @media (hover: hover) and (pointer: fine) { .mem-fora:hover { color: var(--gr); } }
 

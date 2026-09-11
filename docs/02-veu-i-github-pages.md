@@ -49,6 +49,13 @@ Copia l'**URL del desplegament**. Acaba en `/exec`.
 > «Qualsevol» vol dir que qualsevol pot cridar l'adreça, no que pugui llegir
 > res: sense la clau correcta el servidor ni tan sols mira què li demanes.
 
+> **Això no sempre va ser veritat.** La clau només es comprovava a la porta de
+> fora —la que fa servir la pàgina de GitHub Pages—. Obrint l'adreça `/exec`
+> amb el navegador rebies la interfície sencera i, des d'aquella pàgina, podies
+> demanar-li dades al servidor sense ensenyar cap clau. Ara la comprovació és
+> a `api()`, que és qui encamina: no hi ha cap camí que no hi passi. Si obres
+> l'adreça `/exec` a mà, el primer que et demanarà és la clau.
+
 ## 3. Crea el repositori
 
 A [github.com/new](https://github.com/new): nom **`jefe`**, i aquí **sí que ha
@@ -57,6 +64,14 @@ de ser públic** — GitHub Pages no serveix repositoris privats al pla gratuït
 > Que el repositori sigui públic **no exposa cap dada teva**: només hi ha el
 > codi de la interfície. Ni la clau, ni l'URL del desplegament, ni res del
 > full de càlcul. El `.gitignore` ja ho bloqueja.
+
+> **L'URL sí que hi va anar.** `npm run desplega` l'escriu a
+> `apps-script/03_Adreca.gs`, i aquell fitxer es va quedar dins del
+> repositori. Ara està al `.gitignore` i `npm run comprova` no deixa pujar
+> cap fitxer seguit per git que porti una adreça `/exec`, un testimoni de bot
+> o una clau privada. El que ja s'ha publicat, però, no es despublica: queda
+> a l'historial de GitHub. Si vols que aquella adreça deixi de valer, fes un
+> desplegament nou (surt amb un identificador nou) i genera una clau nova.
 
 Després, des de `C:\Claude\Popu`:
 

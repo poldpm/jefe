@@ -19,6 +19,20 @@ function cal(nom, cond, extra) {
   if (!cond) falles++;
 }
 
+/* EL PANY. El de debò el posa Apps Script; aquí n'hi ha prou amb un que digui
+   que sí i porti el compte de quantes vegades l'han demanat, que és el que
+   les proves d'escriptura volen mirar: que cap escriptura no hi passi per
+   sobre. `panys.demanats` es posa a zero quan una prova vol comptar. */
+const panys = { demanats: 0, alliberats: 0 };
+function panyFals() {
+  return {
+    getScriptLock: () => ({
+      tryLock: () => { panys.demanats++; return true; },
+      releaseLock: () => { panys.alliberats++; }
+    })
+  };
+}
+
 
 /**
  * Carrega TOT el servidor en un sol espai global, com fa Apps Script.
@@ -32,7 +46,7 @@ function carregaTotElServidor() {
     console, Date, JSON, Math, RegExp, Number, String, Object, Array,
     isFinite, isNaN, parseFloat, parseInt, encodeURIComponent, decodeURIComponent,
     Utilities: {}, DriveApp: {}, SpreadsheetApp: {}, UrlFetchApp: {}, CacheService: {},
-    LockService: {}, Session: {}, HtmlService: {}, CalendarApp: {}, MailApp: {},
+    LockService: panyFals(), Session: {}, HtmlService: {}, CalendarApp: {}, MailApp: {},
     ContentService: {}, Logger: { log() {} }, ScriptApp: {},
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) }
   };
@@ -46,12 +60,29 @@ function carregaTotElServidor() {
 // ---------------------------------------------------------------- encaminador
 console.log('\nEncaminador: escriure i tornar la pantalla en una sola crida');
 {
+  const CLAU = 'la-clau-bona-de-quaranta-vuit-caracters-exactes';
   const ctx = {
     Date, Log: { error() {}, avis() {} },
     Utils: { avui: () => '2026-08-01', ara: () => 'ara' },
     Moduls: null, Config: null, IA: null, Esquema: null, ScriptApp: null,
-    PropertiesService: null, ContentService: null, HtmlService: null,
-    CacheService: null, VERSIO_JEFE: 'prova'
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => CLAU }) },
+    ContentService: null, HtmlService: null,
+    CacheService: { getScriptCache: () => ({ get: () => null, put() {} }) },
+    /* El resum de debò el fa Apps Script. Aquí n'hi ha prou amb un que
+       torni bytes diferents per a textos diferents i sempre la mateixa
+       llargada, que és el que la comparació dona per fet. */
+    Utilities: {
+      DigestAlgorithm: { SHA_256: 'SHA_256' },
+      Charset: { UTF_8: 'UTF_8' },
+      computeDigest: (_alg, text) => {
+        const b = new Array(32).fill(0);
+        for (let i = 0; i < String(text).length; i++) {
+          b[i % 32] = (b[i % 32] + String(text).charCodeAt(i) * (i + 7)) % 251;
+        }
+        return b;
+      }
+    },
+    VERSIO_JEFE: 'prova', PROP_CLAU_ACCES: 'CLAU_ACCES'
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/30_Encaminador.gs', 'utf8'), ctx);
@@ -66,7 +97,7 @@ console.log('\nEncaminador: escriure i tornar la pantalla en una sola crida');
     })
   };
 
-  const r = ctx.api('tasques', 'captura', { text: 'comprar pa', _pantalla: {} });
+  const r = ctx.api(CLAU, 'tasques', 'captura', { text: 'comprar pa', _pantalla: {} });
   cal('respon ok', r.ok === true, JSON.stringify(r));
   cal('torna el resultat de l\'escriptura', r.dades._resultat.id === 'tsk_1', JSON.stringify(r.dades));
   cal('torna la pantalla refeta', r.dades._pantalla.soc === 'la pantalla', JSON.stringify(r.dades));
@@ -74,17 +105,86 @@ console.log('\nEncaminador: escriure i tornar la pantalla en una sola crida');
   cal('l\'acció sí que veu els seus paràmetres', vistos.text === 'comprar pa', JSON.stringify(vistos));
 
   // Sense demanar-la, tot ha de quedar exactament com abans.
-  const r2 = ctx.api('tasques', 'captura', { text: 'x' });
+  const r2 = ctx.api(CLAU, 'tasques', 'captura', { text: 'x' });
   cal('sense `_pantalla`, resposta de tota la vida', r2.dades.id === 'tsk_1', JSON.stringify(r2.dades));
 
   // `pantalla` demanant-se a si mateixa no s'ha de duplicar.
-  const r3 = ctx.api('tasques', 'pantalla', { _pantalla: {} });
+  const r3 = ctx.api(CLAU, 'tasques', 'pantalla', { _pantalla: {} });
   cal('`pantalla` no es crida a si mateixa', r3.dades.soc === 'la pantalla', JSON.stringify(r3.dades));
 
   // Un mòdul sense `pantalla` no ha de petar.
   ctx.Moduls.perId = () => ({ accions: { fes: () => 'fet' } });
-  const r4 = ctx.api('qualsevol', 'fes', { _pantalla: {} });
+  const r4 = ctx.api(CLAU, 'qualsevol', 'fes', { _pantalla: {} });
   cal('mòdul sense pantalla: no peta', r4.ok === true && r4.dades === 'fet', JSON.stringify(r4));
+}
+
+/* ---------------------------------------------------------------- la porta
+   El desplegament és anònim: qualsevol que tingui l'adreça rep la pàgina i
+   pot cridar el servidor des de la consola. La clau era només a `doPost`,
+   o sigui que aquell camí entrava sense ensenyar-la. Això ho vigila. */
+console.log('\nLa porta: cap crida sense clau, vingui d\'on vingui');
+{
+  const CLAU = 'la-clau-bona-de-quaranta-vuit-caracters-exactes';
+  const apuntat = [];
+  const ctx = {
+    Date, Log: { error() {}, avis: (q, t, d) => apuntat.push(q) },
+    Utils: { avui: () => '2026-08-01', ara: () => 'ara' },
+    Moduls: { perId: () => ({ accions: { llegeix: () => 'les teves dades' } }) },
+    Config: { idFull: () => 'FULL-123' },
+    IA: null, Esquema: null, ScriptApp: null,
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => CLAU }) },
+    ContentService: null, HtmlService: null,
+    CacheService: { getScriptCache: () => ({ get: () => null, put() {} }) },
+    Utilities: {
+      DigestAlgorithm: { SHA_256: 'SHA_256' }, Charset: { UTF_8: 'UTF_8' },
+      computeDigest: (_alg, text) => {
+        const b = new Array(32).fill(0);
+        for (let i = 0; i < String(text).length; i++) {
+          b[i % 32] = (b[i % 32] + String(text).charCodeAt(i) * (i + 7)) % 251;
+        }
+        return b;
+      }
+    },
+    VERSIO_JEFE: 'prova', PROP_CLAU_ACCES: 'CLAU_ACCES'
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/30_Encaminador.gs', 'utf8'), ctx);
+
+  const bona = ctx.api(CLAU, 'finances', 'llegeix', {});
+  cal('amb la clau bona, entra', bona.ok === true && bona.dades === 'les teves dades', JSON.stringify(bona));
+
+  const dolenta = ctx.api('una-clau-inventada-qualsevol-de-48-caracters', 'finances', 'llegeix', {});
+  cal('amb una clau dolenta, no entra', dolenta.ok === false, JSON.stringify(dolenta));
+  cal('i no diu res del que hi havia a dins',
+      !/les teves dades/.test(JSON.stringify(dolenta)), JSON.stringify(dolenta));
+  cal('i ho deixa apuntat', apuntat.indexOf('api.rebutjat') !== -1, JSON.stringify(apuntat));
+
+  cal('sense clau, no entra', ctx.api(undefined, 'finances', 'llegeix', {}).ok === false);
+  cal('amb la clau buida, tampoc', ctx.api('', 'finances', 'llegeix', {}).ok === false);
+
+  /* LA CRIDA D'ABANS TENIA TRES ARGUMENTS i el primer era el mòdul. Si algun
+     client vell sobreviu en una pestanya oberta, ha de fallar i no colar-se
+     pel forat: cap nom de mòdul no és mai la clau. */
+  cal('una crida de les d\'abans no s\'hi cola',
+      ctx.api('finances', 'llegeix', {}).ok === false);
+
+  /* La llargada de la clau bona tampoc s'ha de poder endevinar provant. */
+  cal('una clau d\'una lletra es rebutja igual', ctx.api('x', 'finances', 'llegeix', {}).ok === false);
+
+  // El servidor sense clau posada ho ha de dir, no callar.
+  ctx.PropertiesService = { getScriptProperties: () => ({ getProperty: () => null }) };
+  const sense = ctx.api(CLAU, 'finances', 'llegeix', {});
+  cal('servidor sense clau configurada: ho diu', sense.ok === false && /generaClauAcces/.test(sense.error), JSON.stringify(sense));
+
+  /* EL QUE S'INJECTA A LA PÀGINA QUE SE SERVEIX SENSE CLAU.
+     Hi anava `estatSistema()` sencer, amb l'identificador i l'URL del full. */
+  ctx.Moduls.perAlClient = () => [{ id: 'finances', nom: 'Finances' }];
+  const pub = ctx.estatPublic_();
+  cal('la pàgina pública porta els mòduls', pub.moduls.length === 1, JSON.stringify(pub));
+  cal('i no porta l\'adreça del full', !/FULL-123/.test(JSON.stringify(pub)), JSON.stringify(pub));
+
+  cal('el text d\'un error s\'escapa', ctx.escapaHtml_('<script>x</script>').indexOf('<') === -1,
+      ctx.escapaHtml_('<script>x</script>'));
 }
 
 // ------------------------------------------------------------- actualitzaMoltes
@@ -106,7 +206,7 @@ console.log('\nDades.actualitzaMoltes: escriu per trams seguits');
   const ctx = {
     Utils: { nouId: () => 'x', ara: () => 'ARA' },
     Config: { full: () => ({ getSheetByName: () => fulla }) },
-    LockService: null, Moduls: undefined
+    LockService: panyFals(), Moduls: undefined
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), ctx);
@@ -147,6 +247,66 @@ console.log('\nDades.actualitzaMoltes: escriu per trams seguits');
                                         (h, i) => ({ ordre: i + 1 }));
   const escrits = escriptures.flatMap(e => e.v).map(f => f[0] + ':' + f[1]).sort().join(' ');
   cal('amb funció, cada fila rep el seu valor', n3 === 3 && escrits === 'a:2 b:3 c:1', escrits);
+}
+
+/* ------------------------------------------------------- cap escriptura sola
+   «Mirar on acaba el full» i «escriure-hi» eren dos moments i entremig hi
+   cabia una altra pestanya: totes dues escrivien a la mateixa fila i la
+   segona es menjava la primera. El pany hi era —`ambBloqueig_`— però només
+   el demanaven els automatismes de la nit, no el que toques tu. */
+console.log('\nEscriure al full: cap escriptura no va sola');
+{
+  const capcalera = ['id', 'text', 'creat_el'];
+  const files = [['t1', 'una', 'ARA']];
+  const fulla = {
+    getDataRange: () => ({ getValues: () => [capcalera].concat(files) }),
+    getRange: () => ({ setValues: () => {} }),
+    getLastRow: () => files.length + 1,
+    getMaxRows: () => 100,
+    insertRowsAfter: () => {}
+  };
+  const ctx = {
+    Utils: { nouId: () => 'nou', ara: () => 'ARA' },
+    Config: { full: () => ({ getSheetByName: () => fulla }) },
+    LockService: panyFals(), Moduls: undefined
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), ctx);
+
+  const prova = (nom, fn) => {
+    panys.demanats = 0; panys.alliberats = 0;
+    ctx.Dades.invalida();
+    fn();
+    cal(nom + ' demana el pany', panys.demanats === 1, String(panys.demanats));
+    cal(nom + ' el torna', panys.alliberats === 1, String(panys.alliberats));
+  };
+
+  prova('inserir', () => ctx.Dades.insereix('Tasques', { text: 'dues' }));
+  prova('actualitzar', () => ctx.Dades.actualitza('Tasques', 't1', { text: 'canviada' }));
+  prova('desar', () => ctx.Dades.desa('Tasques', { id: 't1', text: 'x' }, ['id']));
+  prova('inserir-ne moltes', () => ctx.Dades.insereixMoltes('Tasques', [{ text: 'a' }, { text: 'b' }]));
+  prova('actualitzar-ne moltes', () => ctx.Dades.actualitzaMoltes('Tasques', ['t1'], { text: 'y' }));
+
+  /* UN DINS DE L'ALTRE NO EN SÓN DOS. `desa` acaba cridant `insereix`, i els
+     resums de la nit ja s'executen dins d'un bloqueig: si cadascú en demanés
+     un de nou, el fil s'esperaria a si mateix. */
+  panys.demanats = 0; ctx.Dades.invalida();
+  ctx.Dades.desa('Tasques', { id: 'cap', text: 'nova' }, ['id']);
+  cal('un pany dins d\'un altre no en demana dos', panys.demanats === 1, String(panys.demanats));
+
+  panys.demanats = 0; ctx.Dades.invalida();
+  ctx.ambBloqueig_(function () {
+    ctx.Dades.insereix('Tasques', { text: 'dins' });
+    ctx.Dades.insereix('Tasques', { text: 'dins també' });
+  });
+  cal('i el de fora val per a tot el que hi passi', panys.demanats === 1, String(panys.demanats));
+
+  /* I quan el pany no es pot agafar, l'escriptura no es fa d'amagat. */
+  ctx.LockService = { getScriptLock: () => ({ tryLock: () => false, releaseLock() {} }) };
+  let peta = false;
+  try { ctx.Dades.insereix('Tasques', { text: 'sense pany' }); }
+  catch (e) { peta = /ocupat/.test(e.message); }
+  cal('si el pany no s\'agafa, no s\'escriu i es diu', peta === true);
 }
 
 // ------------------------------------------------------------------- comptadors
@@ -418,7 +578,7 @@ console.log("\nL'avís de les sis: només si hi ha alguna cosa");
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
     ScriptApp: { getProjectTriggers: () => [] },
     CalendarApp: {}, SpreadsheetApp: {}, CacheService: {}, Utilities: {},
-    Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(),
     Config: {}, Dades: {}, Esquema: {}, Moduls: {}, IA: {}
   };
   vm.createContext(ctx);
@@ -502,7 +662,7 @@ console.log("Calendari: cinc mesos pel preu d'un");
     Dades: { llegeix: () => calendaris.slice(), un: () => null, insereix: () => {}, actualitza: () => {} },
     CalendariPont: { hiEs: () => true, esdeveniments: () => { viatges++; return []; } },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
-    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(),
     Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
   };
   vm.createContext(ctx);
@@ -571,7 +731,7 @@ console.log("Calendari: una finestra desada serveix per a tot el que hi cap");
     Dades: { llegeix: () => calendaris.slice(), un: () => null, insereix: () => {}, actualitza: () => {} },
     CalendariPont: { hiEs: () => false, esdeveniments: () => [] },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
-    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {},
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(),
     Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
   };
   vm.createContext(ctx);
@@ -646,7 +806,7 @@ console.log("Patrimoni: ajuntar dos comptes no ha de perdre cap valor");
       setProperty: () => {}, deleteProperty: () => {} }) },
     ScriptApp: { getProjectTriggers: () => [] },
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
@@ -721,7 +881,7 @@ console.log("Finances: el dia son moviments, no mitjanes");
     },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty: () => {} }) },
     SpreadsheetApp: {}, CacheService: { getScriptCache: () => null }, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}, ScriptApp: {},
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}, ScriptApp: {},
     Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {},
     FinancesRegles: {}, FinancesImport: {}
   };
@@ -785,7 +945,7 @@ console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
     UrlFetchApp: { fetch: () => { peticions++; return respon(); } },
     SpreadsheetApp: {}, Session: {},
     CacheService: { getScriptCache: () => ({ get: () => null, put: () => {}, remove: () => {} }) },
-    HtmlService: {}, LockService: {}, CalendarApp: {}, ScriptApp: {},
+    HtmlService: {}, LockService: panyFals(), CalendarApp: {}, ScriptApp: {},
     Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
   };
   vm.createContext(ctx);
@@ -838,6 +998,22 @@ console.log("Banc: mirar-hi quan cal, i que una negativa no trenqui res");
   r = ctx.FinancesBanc.sincronitzaSiCal(0);
   cal('i si se li demana expressament, hi torna',
       r.mirat === true && peticions > abans, JSON.stringify(r.mirat) + ' · ' + peticions);
+
+  /* LA TORNADA DEL BANC. L'adreça on torna és oberta i el codi hi arriba per
+     la URL: qualsevol pot trucar-hi amb un codi seu. El bitllet és l'única
+     cosa que diu si aquell viatge el vam començar nosaltres. */
+  props['FINANCES_BANC'] = JSON.stringify({ authId: 'a1', state: 'el-bitllet-bo' });
+  cal('la tornada amb el bitllet bo es deixa passar',
+      ctx.FinancesBanc.bitlletValid('el-bitllet-bo') === true);
+  cal('la tornada amb un altre bitllet, no',
+      ctx.FinancesBanc.bitlletValid('el-bitllet-d-un-altre') === false);
+  cal('i sense bitllet, tampoc', ctx.FinancesBanc.bitlletValid('') === false);
+
+  /* Una connexió començada abans que existís el bitllet no ha de quedar
+     bloquejada per sempre: si no n'hi ha cap de desat, es deixa passar. */
+  props['FINANCES_BANC'] = JSON.stringify({ authId: 'a1' });
+  cal('una connexió d\'abans del bitllet no es queda encallada',
+      ctx.FinancesBanc.bitlletValid('qualsevol') === true);
 }
 
 // --------------------------- trobar el compte duplicat sol, sense escriure cap id
@@ -891,7 +1067,7 @@ console.log("Patrimoni: trobar el duplicat sense haver de dir-li quin es");
     ScriptApp: { getProjectTriggers: () => [] },
     Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
@@ -979,7 +1155,7 @@ console.log("Patrimoni: qui es el compte viu ho diu la connexio, no la data");
     ScriptApp: { getProjectTriggers: () => [] },
     Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
@@ -1050,7 +1226,7 @@ console.log("Patrimoni: quan no se sap quin es el bo, es pregunta");
     ScriptApp: { getProjectTriggers: () => [] },
     Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
@@ -1111,7 +1287,7 @@ console.log("Patrimoni: el compte bo arxivat per error es recupera sol");
     ScriptApp: { getProjectTriggers: () => [] },
     Config: {}, Esquema: {}, Moduls: {}, IA: {}, Notifica: {}, Calendari: {},
     SpreadsheetApp: {}, CacheService: {}, Utilities: {}, Session: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, CalendarApp: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), CalendarApp: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/90_Instalacio.gs', 'utf8'), ctx);
@@ -1165,7 +1341,7 @@ console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi s
     Config: { full: () => ({ getSheetByName: () => null }) },
     Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara', avui: () => '2026-08-02' },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}, Utilities: {}
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -1191,7 +1367,7 @@ console.log("La fitxa de la IA: nomes es llenca quan canvia alguna cosa que hi s
     Config: { full: () => ({ getSheetByName: () => ({
       getDataRange: () => ({ getValues: () => [['id']] }),
       getRange: () => ({ setValues: () => {} }), getMaxRows: () => 10 }) }) },
-    LockService: null, Moduls: ctx.Moduls
+    LockService: panyFals(), Moduls: ctx.Moduls
   };
   vm.createContext(dadesCtx);
   vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), dadesCtx);
@@ -1240,7 +1416,7 @@ console.log("La fitxa de la IA: per trossos, no d'una peca");
     Config: { full: () => ({ getSheetByName: () => null }) },
     Dades: null, Esquema: {}, IA: {}, Utils: { ara: () => 'ara', avui: () => '2026-08-02' },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}, Utilities: {}
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -1317,7 +1493,7 @@ console.log("Transport a Gemini: la forma de la peticio");
         usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 314 } }) };
     } },
     CacheService: { getScriptCache: () => null },
-    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {},
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: panyFals(),
     Utilities: {}, ScriptApp: {}, Dades: {}, Moduls: {}, Esquema: {}
   };
   vm.createContext(ctx);
@@ -1435,7 +1611,7 @@ console.log("Veu: les ordres es reconeixen despres de transcriure, sense pregunt
     Utilities: { formatDate: () => '2026-08-02' },
     Dades: { llegeix: () => [] }, Esquema: {}, IA: {},
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -1491,7 +1667,7 @@ console.log("Veu: el model de transcriure pot no existir, i no pot deixar-te tir
     },
     Habits: { definicions: () => [] },
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {}, CacheService: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}, Utilities: {}
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync('apps-script/40_Mod_Conversa.gs', 'utf8'), ctx);
@@ -1544,7 +1720,7 @@ console.log("Banc: si no es pot signar, que ho digui i no acusi el banc");
              actualitza: () => null, desa: () => null },
     Finances: { afegeix: (m) => m },
     FinancesRegles: { descripcio: () => 'x', categoria: () => '', metode: () => '' },
-    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {}, ScriptApp: {},
+    SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: panyFals(), ScriptApp: {},
     Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
   };
   vm.createContext(ctx);
@@ -1598,7 +1774,7 @@ console.log("Banc: una clau desada en una sola linia s'ha de tornar a plegar");
         getProperty: (k) => ({ EB_PRIVATE_KEY: valor, EB_APP_ID: 'app' })[k] || null,
         setProperty: () => {} }) },
       UrlFetchApp: {}, Dades: {}, Finances: {}, FinancesRegles: {},
-      SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: {}, ScriptApp: {},
+      SpreadsheetApp: {}, Session: {}, HtmlService: {}, LockService: panyFals(), ScriptApp: {},
       Moduls: { registra: () => {} }, Esquema: {}, IA: {}, Notifica: {}
     };
     vm.createContext(ctx);
@@ -1665,7 +1841,7 @@ console.log("Memoria de pantalles: desar sense mentir");
     Config: { full: () => ({ getSheetByName: () => null }) },
     Utils: { avui: () => '2026-08-02', ara: () => 'ara' },
     Dades: null, Esquema: {}, IA: {}, SpreadsheetApp: {}, PropertiesService: {},
-    ScriptApp: {}, HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+    ScriptApp: {}, HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}, Utilities: {}
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -1697,7 +1873,7 @@ console.log("Memoria de pantalles: desar sense mentir");
     Config: { full: () => ({ getSheetByName: () => ({
       getDataRange: () => ({ getValues: () => [['id']] }),
       getRange: () => ({ setValues: () => {} }), getMaxRows: () => 10 }) }) },
-    LockService: null, Moduls: ctx.Moduls, Memoria: ctx.Memoria
+    LockService: panyFals(), Moduls: ctx.Moduls, Memoria: ctx.Memoria
   };
   vm.createContext(dadesCtx);
   vm.runInContext(fs.readFileSync('apps-script/10_Dades.gs', 'utf8'), dadesCtx);
@@ -1781,7 +1957,7 @@ console.log("Inici: cada targeta desada a casa seva, i el calendari mai");
     Utils: { avui: () => '2026-08-02', ara: () => 'ara' },
     Dades: { llegeix: () => [] }, Esquema: {}, IA: {},
     SpreadsheetApp: {}, PropertiesService: {}, ScriptApp: {},
-    HtmlService: {}, UrlFetchApp: {}, LockService: {}, Session: {}, Utilities: {}
+    HtmlService: {}, UrlFetchApp: {}, LockService: panyFals(), Session: {}, Utilities: {}
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -3566,6 +3742,52 @@ console.log('\nEl repàs de demà: què tens i què no cal dir-te');
   cal('i el que no és una data s\'ignora en comptes de petar',
       c2.App.deLAdreca('#dia:dema').params.data === undefined &&
       c2.App.deLAdreca('#dia:2026-8-7').params.data === undefined);
+}
+
+/* -------------------------------------------------- el client també la porta
+   El servidor ja no deixa entrar sense clau. Si el client de dins d'Apps
+   Script no l'envia —o l'envia on no toca— l'app es queda muda contra el seu
+   propi servidor, i això no ho veuria cap prova del servidor. */
+console.log('\nEl client: la clau va davant a les dues bandes');
+{
+  const app = fs.readFileSync('apps-script/ui_app.html', 'utf8');
+
+  const local = app.slice(app.indexOf('function cridaLocal_'), app.indexOf('function cridaRemota_'));
+  cal('la crida de dins passa la clau com a primer argument',
+      /\.api\(clau,\s*modul,\s*accio/.test(local), local.slice(-200));
+  cal('i si no en té, ni ho intenta',
+      /senseServidor\s*=\s*true/.test(local) && local.indexOf('Servidor.clau()') !== -1);
+
+  const remota = app.slice(app.indexOf('function cridaRemota_'), app.indexOf('function crida('));
+  cal('la crida de fora també la porta', /clau:\s*cfg\.clau/.test(remota));
+
+  cal('i totes dues saben reconèixer que la clau no és bona',
+      (local.match(/clauDolenta/g) || []).length >= 1 &&
+      (remota.match(/clauDolenta/g) || []).length >= 1);
+
+  /* `llest()` és qui decideix si cal demanar-la: dins d'Apps Script no fa
+     falta adreça, però la clau sí. */
+  const servidor = app.slice(app.indexOf('var Servidor = {'), app.indexOf('function cridaLocal_'));
+  const c3 = { dinsAppsScript: () => true, Cau: { get: () => ({ clau: 'x' }) } };
+  vm.createContext(c3);
+  vm.runInContext(servidor + '\n;', c3);
+  cal('amb clau i sense adreça, dins d\'Apps Script ja està llest',
+      c3.Servidor.llest() === true);
+  c3.Cau.get = () => ({ url: 'https://x/exec' });
+  cal('amb adreça i sense clau, no', c3.Servidor.llest() === false);
+  c3.dinsAppsScript = () => false;
+  c3.Cau.get = () => ({ clau: 'x' });
+  cal('i servit de fora, amb clau però sense adreça, tampoc',
+      c3.Servidor.llest() === false);
+
+  /* I que la pantalla d'error tingui sortida: sense servidor ha d'oferir
+     connectar, no un «torna-ho a provar» que tornarà a fallar. */
+  const comp = app.slice(app.indexOf('    error: function (err, reintenta)'),
+                         app.indexOf('    avis: function (titol, text)'));
+  cal('sense servidor, l\'error ofereix connectar', /data-connecta-ara/.test(comp));
+  cal('i sempre hi ha una porta de sortida a l\'índex', /data-va-inici/.test(comp));
+  cal('i qui escolta aquests dos botons existeix',
+      /\[data-connecta-ara\]/.test(app) && /\[data-va-inici\]/.test(app));
 }
 
 // ------------------------------------- les tasques, ara que manen les de Google

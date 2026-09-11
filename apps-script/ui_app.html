@@ -92,9 +92,14 @@ var Jefe = (function () {
   /* -------------------------------------------------------------------------
      DOS TRANSPORTS, LA MATEIXA CRIDA
 
-     Dins d'Apps Script s'usa google.script.run, que ja ve autenticat.
-     Servida des de fora (GitHub Pages), s'usa fetch contra el desplegament,
-     amb la clau d'accés. Els mòduls no saben ni els importa quin dels dos és.
+     Dins d'Apps Script s'usa google.script.run. Servida des de fora (GitHub
+     Pages), s'usa fetch contra el desplegament. Els mòduls no saben ni els
+     importa quin dels dos és.
+
+     TOTS DOS PORTEN LA CLAU. Aquí hi deia que google.script.run «ja ve
+     autenticat», i era mentida: el desplegament és anònim, i qualsevol que
+     obrís l'adreça rebia aquesta mateixa pàgina i podia cridar el servidor
+     des de la consola. Ara la clau va davant a les dues bandes.
 
      `text/plain` no és un error: amb JSON el navegador enviaria una petició
      de comprovació prèvia que Apps Script no sap respondre. El cos segueix
@@ -107,25 +112,43 @@ var Jefe = (function () {
 
   var Servidor = {
     config: function () { return Cau.get('servidor', null); },
+    clau: function () { var c = Cau.get('servidor', null); return (c && c.clau) || ''; },
     desa: function (url, clau) { Cau.set('servidor', { url: url, clau: clau }); },
-    esborra: function () { Cau.treu('servidor'); }
+    esborra: function () { Cau.treu('servidor'); },
+    /* QUÈ CAL PER PARLAR. Dins d'Apps Script, l'adreça és la de la pàgina i
+       no se n'ha de demanar cap; la clau sí, i abans no se'n demanava perquè
+       es donava per fet que ser-hi a dins ja era estar autenticat. No ho era:
+       el desplegament és anònim i qualsevol hi podia ser a dins. */
+    llest: function () {
+      var c = Cau.get('servidor', null);
+      if (!c || !c.clau) return false;
+      return dinsAppsScript() ? true : !!c.url;
+    }
   };
 
   function cridaLocal_(modul, accio, params) {
+    var clau = Servidor.clau();
+    if (!clau) {
+      var sense = new Error('Encara no has connectat JEFE amb el teu servidor.');
+      sense.senseServidor = true;
+      return Promise.reject(sense);
+    }
     return new Promise(function (resolta, falla) {
       google.script.run
         .withSuccessHandler(function (r) {
           App.enLinia(true);
           if (r && r.ok) return resolta(r.dades);
           var err = new Error((r && r.error) || 'El servidor ha respost sense dades.');
-          err.api = true; falla(err);
+          err.api = true;
+          if (/clau d'accés/i.test(err.message)) err.clauDolenta = true;
+          falla(err);
         })
         .withFailureHandler(function (err) {
           App.enLinia(false);
           var e = new Error(err && err.message ? err.message : 'No hi ha connexió amb el servidor.');
           e.xarxa = true; falla(e);
         })
-        .api(modul, accio, params || {});
+        .api(clau, modul, accio, params || {});
     });
   }
 
@@ -142,7 +165,14 @@ var Jefe = (function () {
       body: JSON.stringify({ clau: cfg.clau, modul: modul, accio: accio, params: params || {} })
     })
     .then(function (r) {
-      if (!r.ok) { var e = new Error('El servidor ha respost ' + r.status + '.'); e.xarxa = true; throw e; }
+      /* HA CONTESTAT: o sigui que xarxa n'hi ha. Es conserva `xarxa` perquè
+         un 500 val la pena reintentar-lo i la cua l'ha de guardar, però es
+         marca `servidor` perquè ningú digui que estàs sense cobertura. */
+      if (!r.ok) {
+        App.enLinia(true);
+        var e = new Error('El servidor ha respost ' + r.status + '.');
+        e.xarxa = true; e.servidor = true; throw e;
+      }
       return r.json();
     })
     .then(function (r) {
@@ -154,7 +184,15 @@ var Jefe = (function () {
       throw err;
     })
     .catch(function (err) {
-      if (!err.api && !err.senseServidor) { App.enLinia(false); err.xarxa = true; }
+      if (!err.api && !err.senseServidor) {
+        err.xarxa = true;
+        /* NOMÉS ÉS «SENSE CONNEXIÓ» SI DE DEBÒ NO N'HI HA. La bandera diu
+           «el que toquis es desarà quan tornis a tenir cobertura», i sortia
+           igualment quan el servidor contestava un error: mentida, i a més
+           no marxava mai fins que una crida tornava bé. Si hem rebut
+           resposta, hi ha xarxa; el que falla és l'altra banda. */
+        if (!err.servidor) App.enLinia(false);
+      }
       throw err;
     });
   }
@@ -281,31 +319,61 @@ var Jefe = (function () {
       App.pintaPendents();
     },
 
-    /** Envia la cua en sèrie. Si una falla per xarxa, s'atura i la conserva. */
+    /**
+     * Envia la cua en sèrie.
+     *
+     * UNA QUE FALLA NO SE N'HA D'EMPORTAR CAP ALTRA. Abans, quan el servidor
+     * en rebutjava una, s'esborrava la cua SENCERA: les que anaven darrere ni
+     * s'havien provat i desapareixien igual. I el missatge més probable és
+     * «El sistema està ocupat processant una altra operació. Torna-ho a
+     * provar» —un error que passa sol, perquè a Apps Script salta cada vegada
+     * que dues coses toquen el full alhora—, o sigui que et deia que ho
+     * tornessis a provar just després d'haver-t'ho llençat tot. Marcar cinc
+     * hàbits sense cobertura i perdre'ls tots en tornar-hi és exactament el
+     * contrari del que ha de fer una cua.
+     *
+     * Ara: la que el servidor rebutja se'n va sola i les altres segueixen. La
+     * que falla per xarxa atura la tanda i es conserva tot, que això sí que es
+     * reintenta a la propera obertura.
+     */
     envia: function () {
       var cua = Cua.tot();
       if (!cua.length) return Promise.resolve(0);
 
-      var enviades = 0;
+      function treu(item) {
+        Cau.set('cua', Cua.tot().filter(function (i) { return i.ts !== item.ts; }));
+        App.pintaPendents();
+      }
+
+      var enviades = 0, rebutjades = 0, primerError = null, atura = false;
+
       return cua.reduce(function (cadena, item) {
         return cadena.then(function () {
+          if (atura) return;
           return crida(item.modul, item.accio, item.params).then(function () {
             enviades++;
-            var resta = Cua.tot().filter(function (i) { return i.ts !== item.ts; });
-            Cau.set('cua', resta);
-            App.pintaPendents();
+            treu(item);
+          }, function (err) {
+            if (err.api) {
+              // El servidor l'ha rebutjada: reintentar-la eternament no la
+              // salvarà. Fora aquesta, i les altres encara tenen el seu torn.
+              rebutjades++;
+              if (!primerError) primerError = err.message;
+              treu(item);
+              return;
+            }
+            atura = true;   // sense xarxa: es conserva tot i ja tornarà
           });
         });
-      }, Promise.resolve()).then(function () { return enviades; })
-        .catch(function (err) {
-          if (err.api) {
-            // El servidor l'ha rebutjada: reintentar-la eternament no la salvarà.
-            Cau.set('cua', []);
-            App.pintaPendents();
-            App.brindis('No s\'ha pogut desar: ' + err.message, 'error');
-          }
-          return enviades;
-        });
+      }, Promise.resolve()).then(function () {
+        if (rebutjades) {
+          App.brindis(rebutjades === 1
+            ? 'No s\'ha pogut desar un canvi: ' + primerError
+            : 'No s\'han pogut desar ' + rebutjades + ' canvis. El primer: ' + primerError,
+            'error');
+        }
+        return enviades;
+      });
     }
   };
 
@@ -324,12 +392,36 @@ var Jefe = (function () {
              '<p>' + esc(text) + '</p>' + (botoHtml || '') + '</div>';
     },
 
+    /**
+     * UN ERROR HA DE TENIR SORTIDA.
+     *
+     * Sense servidor connectat, aquesta pantalla deia «Alguna cosa ha fallat ·
+     * Encara no has connectat JEFE» i oferia «Torna-ho a provar», que tornava
+     * a fallar perquè no hi havia res a reintentar: faltava la clau i no hi
+     * havia cap manera d'escriure-la si no recarregaves la pàgina a mà. Era
+     * un cul-de-sac. Ara el que et falta és el que et demana.
+     */
     error: function (err, reintenta) {
       var esXarxa = err && err.xarxa;
-      return '<div class="estat">' + ic(esXarxa ? 'sense-xarxa' : 'avis', 'ic-g') +
-             '<h2>' + (esXarxa ? 'Sense connexió' : 'Alguna cosa ha fallat') + '</h2>' +
-             '<p>' + esc(err && err.message ? err.message : String(err)) + '</p>' +
-             (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '') +
+      var sense = err && err.senseServidor;
+      var dolenta = err && err.clauDolenta;
+
+      var titol = sense ? 'Encara no has connectat JEFE'
+                : dolenta ? 'La clau no és correcta'
+                : esXarxa ? 'Sense connexió'
+                : 'Alguna cosa ha fallat';
+      var icona = sense || dolenta ? 'avis' : (esXarxa ? 'sense-xarxa' : 'avis');
+      var text = sense
+        ? 'Cal la clau que et va donar generaClauAcces() per poder llegir les teves dades.'
+        : (err && err.message ? err.message : String(err));
+
+      return '<div class="estat">' + ic(icona, 'ic-g') +
+             '<h2>' + esc(titol) + '</h2>' +
+             '<p>' + esc(text) + '</p>' +
+             (sense || dolenta
+               ? '<button class="btn btn-primari" data-connecta-ara="1">Connecta</button>'
+               : (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '')) +
+             (reintenta ? '<button class="btn btn-fantasma" data-va-inici="1">Ves al full índex</button>' : '') +
              '</div>';
     },
 
@@ -395,8 +487,8 @@ var Jefe = (function () {
       window.addEventListener('online', function () { App.enLinia(true); Cua.envia(); });
       window.addEventListener('offline', function () { App.enLinia(false); });
 
-      // Servida des de fora i encara sense servidor: primer connectar.
-      if (!dinsAppsScript() && !Servidor.config()) {
+      // Encara sense clau —o sense adreça, si se serveix de fora—: connectar.
+      if (!Servidor.llest()) {
         App.ves('inici');
         setTimeout(function () { App.connecta(); }, 300);
         return;
@@ -451,8 +543,11 @@ var Jefe = (function () {
 
       Cua.envia();
 
-      // Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
-      crida('nucli', 'inici', {}).then(function (d) {
+      /* Refresca la llista de mòduls en segon pla: un mòdul nou apareix sol.
+         Demana `moduls` i no `inici`: d aquesta resposta només se n aprofita
+         la llista, i `inici` a sobre munta totes les targetes del full índex,
+         que és la part cara de la petició. */
+      crida('nucli', 'moduls', {}).then(function (d) {
         Cau.set('moduls', d.moduls);
         if (JSON.stringify(d.moduls) !== JSON.stringify(App.moduls)) {
           App.moduls = d.moduls; App.pintaNav();
@@ -476,10 +571,21 @@ var Jefe = (function () {
       if (i === -1) return { vista: t, params: {} };
       var vista = t.slice(0, i);
       var valor = t.slice(i + 1);
-      return {
-        vista: vista,
-        params: /^\d{4}-\d{2}-\d{2}$/.test(valor) ? { data: valor } : {}
-      };
+      /* LA FORMA NO FA UNA DATA.
+         Comprovava que fossin quatre xifres, un guionet i les altres, i prou:
+         «#dia:2026-13-45» passava el filtre, el constructor de dates el feia
+         rodar i t obria el 14 de febrer del 2027 com si res. Per aquí és per
+         on entren les notificacions, o sigui que una data malmesa t hauria
+         ensenyat l agenda d un altre dia sense dir-ho. Ara es construeix i es
+         comprova que en surti el mateix dia que hi havia escrit. */
+      var esData = false;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+        var d = new Date(valor + 'T00:00:00');
+        esData = !isNaN(d.getTime()) &&
+                 [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2),
+                  ('0' + d.getDate()).slice(-2)].join('-') === valor;
+      }
+      return { vista: vista, params: esData ? { data: valor } : {} };
     },
 
     /* Portar-se totes les pantalles d'una anada. Surt aquí perquè hi ha dos
@@ -559,11 +665,20 @@ var Jefe = (function () {
         App.moduls.filter(function (m) { return m.teVista; })
       );
       nav.innerHTML = items.map(function (m) {
-        return '<a href="#" data-vista="' + esc(m.id) + '">' +
+        /* L'ADREÇA ÉS LA DE DEBÒ I NO UN `#` buit. Amb el coixinet sol, obrir
+           un apartat en una pestanya nova —clic del mig, o clic amb Ctrl— et
+           duia a l'índex, perquè l'enllaç no deia enlloc. L'arrencada ja sap
+           llegir «#habits» de l'adreça, o sigui que aquesta és la que hi ha
+           d'anar. El clic normal el segueix aturant el guió de sempre. */
+        return '<a href="#' + esc(m.id) + '" data-vista="' + esc(m.id) + '">' +
                ic(m.icona || 'modul') + '<span>' + esc(m.nom) + '</span></a>';
       }).join('');
       nav.querySelectorAll('a').forEach(function (a) {
-        a.addEventListener('click', function (ev) { ev.preventDefault(); App.ves(a.dataset.vista); });
+        a.addEventListener('click', function (ev) {
+          /* Si demana pestanya nova, que se'n vagi pel seu compte. */
+          if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1) return;
+          ev.preventDefault(); App.ves(a.dataset.vista);
+        });
       });
     },
 
@@ -659,6 +774,38 @@ var Jefe = (function () {
        ------------------------------------------------------------------ */
     visors: {},
 
+    /**
+     * PREGUNTAR ABANS D'ESBORRAR.
+     *
+     * El calendari i les fotos de seguiment ja ho feien bé —fins i tot diuen
+     * que la foto es queda trenta dies a la paperera—, i la resta de pantalles
+     * no ho feien gens: treure un moviment del banc, arxivar una categoria,
+     * un actiu, un rebut fix o esborrar un entrenament passaven al primer toc,
+     * sense preguntar i sense poder desfer-ho.
+     *
+     * Va aquí i no a cada vista perquè el que faltava era el mateix a totes, i
+     * perquè el diàleg pot sortir des de dins d'un altre —editant un moviment,
+     * per exemple—: llavors primer es tanca el que hi ha i s'espera que
+     * l'animació acabi, que és el que ja feia el calendari a mà.
+     */
+    confirma: function (titol, explicacio, textSi, alSi) {
+      var obert = document.getElementById('fosc').dataset.obert === '1';
+      if (obert) App.tancaModal();
+      setTimeout(function () {
+        var cos = App.modal(titol,
+          '<div class="form-ajustos">' + explicacio +
+            '<button class="btn btn-primari" data-si>' + textSi + '</button>' +
+            '<button class="btn btn-secundari" data-no style="margin-top:var(--e2)">' +
+              'Deixa-ho estar</button>' +
+          '</div>');
+        cos.querySelector('[data-no]').addEventListener('click', App.tancaModal);
+        cos.querySelector('[data-si]').addEventListener('click', function () {
+          this.disabled = true;
+          alSi(this);
+        });
+      }, obert ? 220 : 0);
+    },
+
     registraVisor: function (clau, def) { App.visors[clau] = def; },
 
     obreVisor: function (clau, params) {
@@ -714,34 +861,69 @@ var Jefe = (function () {
     // ----------------------------------------------------------------- tema
 
     /**
-     * Pantalla de connexió. Només surt quan la interfície se serveix des de
-     * fora d'Apps Script i encara no sap a quin servidor ha de parlar.
+     * Pantalla de connexió. Surt quan encara no hi ha clau, i també quan se
+     * serveix de fora i no se sap a quin servidor s'ha de parlar.
      * La clau es desa al navegador i no viatja enlloc més que al teu propi
      * desplegament.
+     *
+     * DINS D'APPS SCRIPT NO ES DEMANA L'ADREÇA: és la de la pàgina que estàs
+     * mirant. El que sí que es demana és la clau, perquè el desplegament és
+     * anònim i ser a dins de la pàgina no demostra que siguis tu.
+     *
+     * L'ERROR SURT AL COSTAT DEL CAMP, no de brindis. El brindis sortia a
+     * baix de tot, fora del diàleg, i a la pantalla petita ni es veia: deies
+     * «Connecta», no passava res i no sabies per què.
      */
     connecta: function (motiu) {
       var cfg = Servidor.config() || {};
+      var dins = dinsAppsScript();
       var cos = App.modal('Connecta JEFE',
         (motiu ? '<div class="avis" style="margin-bottom:var(--e4)">' + esc(motiu) + '</div>' : '') +
-        '<label class="camp"><span>URL del desplegament</span>' +
-          '<input class="entrada" id="c-url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" ' +
-          'value="' + esc(cfg.url || '') + '"></label>' +
+        (dins ? '' :
+          '<label class="camp"><span>URL del desplegament</span>' +
+            '<input class="entrada" id="c-url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" ' +
+            'value="' + esc(cfg.url || '') + '" aria-describedby="c-mal"></label>') +
         '<label class="camp"><span>Clau d\'accés</span>' +
           '<input class="entrada" id="c-clau" type="password" autocomplete="off" ' +
-          'placeholder="la que t\'ha donat generaClauAcces()" value="' + esc(cfg.clau || '') + '"></label>' +
+          'placeholder="la que t\'ha donat generaClauAcces()" value="' + esc(cfg.clau || '') + '" ' +
+          'aria-describedby="c-mal"></label>' +
+        '<p class="camp-mal" id="c-mal" role="alert" hidden></p>' +
         '<p class="menut" style="margin:0 0 var(--e4)">La clau es desa només en aquest ' +
           'navegador. No surt d\'aquí excepte cap al teu propi servidor.</p>' +
         '<button class="btn btn-primari btn-ple" data-connecta="1">Connecta</button>');
 
-      cos.querySelector('[data-connecta]').addEventListener('click', function (ev) {
-        var url = cos.querySelector('#c-url').value.trim();
-        var clau = cos.querySelector('#c-clau').value.trim();
-        if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
-          App.brindis('L\'URL ha d\'acabar en /exec', 'error'); return;
-        }
-        if (clau.length < 20) { App.brindis('La clau sembla massa curta', 'error'); return; }
+      var mal = cos.querySelector('#c-mal');
+      function diguesQue(text, quin) {
+        mal.textContent = text;
+        mal.hidden = false;
+        var camp = cos.querySelector(quin);
+        if (camp) { try { camp.focus(); } catch (e) {} }
+      }
 
-        ev.currentTarget.dataset.carregant = '1';
+      /* EL BOTÓ S'AGAFA ARA, NO QUAN TORNI LA RESPOSTA.
+         Això era `ev.currentTarget` a dins del `.then` i del `.catch`, i
+         `currentTarget` val null quan l'esdeveniment ja s'ha acabat de
+         repartir: la resposta arriba mig segon més tard i allà ja no hi ha
+         cap botó. La línia petava, el `.catch` moria per dins i el botó es
+         quedava girant per sempre sense dir res. Amb la clau bona no es veia
+         —el modal es tancava abans—, però amb la clau dolenta et deixava
+         mirant una rodeta eterna. */
+      var boto = cos.querySelector('[data-connecta]');
+
+      boto.addEventListener('click', function () {
+        var campUrl = cos.querySelector('#c-url');
+        var url = campUrl ? campUrl.value.trim() : (cfg.url || '');
+        var clau = cos.querySelector('#c-clau').value.trim();
+        mal.hidden = true;
+
+        if (!dins && !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)) {
+          diguesQue('L\'URL ha d\'acabar en /exec', '#c-url'); return;
+        }
+        if (clau.length < 20) {
+          diguesQue('La clau sembla massa curta: la de generaClauAcces() en fa 48', '#c-clau'); return;
+        }
+
+        boto.dataset.carregant = '1';
         Servidor.desa(url, clau);
         crida('nucli', 'ping', {})
           .then(function () {
@@ -750,9 +932,11 @@ var Jefe = (function () {
             App.refresca();
           })
           .catch(function (err) {
-            ev.currentTarget.dataset.carregant = '0';
+            boto.dataset.carregant = '0';
             Servidor.esborra();
-            App.brindis(err.clauDolenta ? 'La clau no és correcta' : err.message, 'error');
+            diguesQue(err.clauDolenta ? 'La clau no és correcta'
+                    : err.xarxa ? 'No s\'ha pogut arribar al servidor. Mira l\'adreça i la connexió.'
+                    : err.message, '#c-clau');
           });
       });
     },
@@ -775,8 +959,45 @@ var Jefe = (function () {
     temaActual: function () { return 'fosc'; }
   };
 
+  /* LES DUES SORTIDES D'UNA PANTALLA D'ERROR, ESCOLTADES UN SOL COP.
+     Cada vista es cus el seu «Torna-ho a provar», que és seu i ha de ser-ho:
+     només ella sap què tornar a demanar. Aquestes dues no són de ningú en
+     particular —connectar i tornar a l'índex volen dir el mateix a tot
+     arreu—, i posar-les a cada vista seria copiar-les setze vegades. */
+  document.addEventListener('click', function (ev) {
+    var connecta = ev.target.closest && ev.target.closest('[data-connecta-ara]');
+    if (connecta) { App.connecta(); return; }
+    var inici = ev.target.closest && ev.target.closest('[data-va-inici]');
+    if (inici) App.ves('inici');
+  });
+
   document.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape' && document.getElementById('fosc').dataset.obert === '1') App.tancaModal();
+    var fosc = document.getElementById('fosc');
+    if (fosc.dataset.obert !== '1') return;
+
+    if (ev.key === 'Escape') { App.tancaModal(); return; }
+
+    /* EL FOCUS NO POT SORTIR DEL QUE HI HA OBERT.
+       Amb el calaix de preguntar obert, tres tabulacions ja et deixaven als
+       botons de la pantalla del darrere —tapada per la cortina i sense poder
+       tocar-la amb el dit—, i des d allà podies recórrer tota l app sense
+       veure on eres. Escape ja el tancava bé i el focus ja tornava al botó
+       que l havia obert; el que faltava era això. */
+    if (ev.key !== 'Tab') return;
+    var dins = fosc.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+      'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    var visibles = [];
+    for (var i = 0; i < dins.length; i++) {
+      var r = dins[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) visibles.push(dins[i]);
+    }
+    if (!visibles.length) return;
+    var primer = visibles[0], ultim = visibles[visibles.length - 1];
+    var on = document.activeElement;
+    if (!fosc.contains(on)) { ev.preventDefault(); (ev.shiftKey ? ultim : primer).focus(); return; }
+    if (ev.shiftKey && on === primer) { ev.preventDefault(); ultim.focus(); }
+    else if (!ev.shiftKey && on === ultim) { ev.preventDefault(); primer.focus(); }
   });
 
   return { App: App, Comp: Comp, Cau: Cau, Cua: Cua, crida: crida, escriu: escriu,

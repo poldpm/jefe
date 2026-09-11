@@ -31,7 +31,7 @@
     {
       "name": "Hàbits d'avui",
       "short_name": "Hàbits",
-      "url": "./?vista=habits",
+      "url": "./#habits",
       "icons": [{ "src": "icona.svg", "type": "image/svg+xml", "sizes": "any" }]
     }
   ]
