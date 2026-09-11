@@ -186,8 +186,6 @@ App.registraVista('relacions', {
       }).catch(function (err) {
         if (d) return;
         arrel.innerHTML = Comp.error(err, true);
-        var b = arrel.querySelector('[data-reintenta]');
-        if (b) b.addEventListener('click', function () { App.ves('relacions'); });
       });
     }
 

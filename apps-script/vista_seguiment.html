@@ -884,8 +884,6 @@ App.registraVista('seguiment', {
       }).catch(function (err) {
         if (d) { App.brindis('Sense connexió: dades del telèfon', 'error'); return; }
         arrel.innerHTML = Comp.error(err, true);
-        var b = arrel.querySelector('[data-reintenta]');
-        if (b) b.addEventListener('click', function () { App.ves('seguiment'); });
       });
     }
 

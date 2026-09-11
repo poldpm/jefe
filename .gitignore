@@ -59,3 +59,6 @@ desktop.ini
 # Previsualització local (no forma part del projecte)
 _previsualitza.html
 .mirall/
+
+# Els informes de QA: són d'una execució concreta i no del projecte.
+.qa/

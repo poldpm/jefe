@@ -53,9 +53,19 @@ const potSerMuntada = (nom) => {
   return false;
 };
 
+/* AQUEST FILTRE NO HA DENUNCIAT MAI RES, i va costar de veure.
+   Entre les alternatives hi havia «\bclassName» tota sola, sense lligar-la al
+   nom de la classe. Com que la paraula «className» surt al codi, aquella
+   alternativa encaixava SEMPRE, per a qualsevol classe, i el resultat era
+   invariablement zero. Amb 368 classes declarades i deu de mortes comprovades
+   a mà, deia «res»: pitjor que no tenir l'eina, perquè et fa creure que està net.
+   Ara cada alternativa ha de parlar de la classe que s'està mirant. */
 const cssSobrant = [...classes].filter((c) => {
-  const re = new RegExp('(class="[^"]*\\b' + c + '\\b|\\bclassName|querySelector[^)]*\\.' + c +
-                        '\\b|classList[^)]*[\'"]' + c + '[\'"]|[\'"]' + c + '[\'"])');
+  const re = new RegExp('(class="[^"]*\\b' + c + '\\b' +
+                        '|className[^;]{0,60}[\'"][^\'"]*\\b' + c + '\\b' +
+                        '|querySelector[^)]*\\.' + c + '\\b' +
+                        '|classList[^)]*[\'"]' + c + '[\'"]' +
+                        '|[\'"]' + c + '[\'"])');
   if (re.test(foraEstil)) return false;
   return !potSerMuntada(c);
 }).sort();
@@ -93,9 +103,14 @@ const gsSobrant = funcions.filter(({ nom, fitxer }) => {
 // ------------------------------------------------------------- icones
 const icones = (llegeix(path.join(DIR, 'ui_icones.html')).match(/id="ic-([a-z0-9-]+)"/g) || [])
   .map((x) => x.replace(/id="ic-|"/g, ''));
+/* TAMBÉ PER LA FORMA DIRECTA. Les icones s'escriuen de dues maneres:
+   ic('campana') i <use href="#ic-campana"/>. Només es mirava la primera, i la
+   campaneta de la portada constava morta tot i pintar-se cada dia. Una eina
+   que acusa el que sí que es fa servir és pitjor que no tenir-la.
+   Sense expressions regulars: aquí només cal buscar text literal. */
 const iconesSobrants = icones.filter((i) => {
-  const re = new RegExp("ic\\(\\s*'" + i + "'|\"" + i + "\"|'" + i + "'");
-  return !re.test(foraEstil);
+  const formes = ["ic('" + i + "'", '"' + i + '"', "'" + i + "'", '#ic-' + i];
+  return !formes.some((x) => foraEstil.indexOf(x) !== -1);
 }).sort();
 
 // ------------------------------------------------------------------ dir-ho

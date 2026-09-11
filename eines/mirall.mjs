@@ -742,6 +742,29 @@ const MOCK = `
       }, 500);
     });
   };
+  /* I TAMBÉ PEL FORAT DE LA XARXA.
+     Canviar la «crida» global no n'hi ha prou: l'app viu dins d'una funció
+     tancada i les crides que fa el NUCLI des de dins resolen la seva còpia
+     local, no la global. Només les vistes, que són a fora, veuen la de
+     mentida. El resultat era que «nucli.paquet» i «nucli.moduls» sortien a
+     la xarxa de debò, contestaven 405 i omplien la consola d'errors que
+     tapaven els de veritat: un banc de proves amb un forat a sota.
+     Enganxant-se al «fetch» es tanca per sota i no se n'escapa cap. */
+  var fetchDeDebo = window.fetch;
+  window.fetch = function (url, opcions) {
+    if (String(url) !== 'mirall') return fetchDeDebo.apply(this, arguments);
+    var p = {};
+    try { p = JSON.parse((opcions || {}).body || '{}'); } catch (e) {}
+    return new Promise(function (ok) {
+      setTimeout(function () {
+        var cos;
+        try { cos = { ok: true, dades: respon(p.modul, p.accio, p.params || {}) }; }
+        catch (e) { cos = { ok: false, error: e.message }; }
+        ok({ ok: true, status: 200, json: function () { return Promise.resolve(cos); } });
+      }, 500);
+    });
+  };
+
   window.escriu = function (modul, accio, params, pantalla) {
     return window.crida(modul, accio, params).then(function () {
       return respon(modul, 'pantalla', pantalla || {});

@@ -945,8 +945,14 @@ App.registraVista('finances', {
     function pintaRevisar(d) {
       var cats = d.categories || [];
 
-      function triador(valor, dades) {
-        return '<select ' + dades + '>' +
+      /* AMB NOM, QUE N'HI HA UN PER FILA.
+         Sense aria-label els desplegables d'aquesta pantalla s'anuncien tots
+         igual —«Tria…, llista desplegable»— i és el control principal de
+         Revisar: qui l'escolta no sap de quin comerç és el que té a sota.
+         El nom de la fila ja el teníem aquí; només calia passar-lo. */
+      function triador(valor, dades, deQui) {
+        return '<select ' + dades +
+          (deQui ? ' aria-label="Categoria de ' + esc(deQui) + '"' : '') + '>' +
           '<option value="">Tria…</option>' +
           cats.filter(function (c) { return c.mena === valor; }).map(function (c) {
             return '<option value="' + esc(c.id) + '">' +
@@ -980,7 +986,7 @@ App.registraVista('finances', {
                       '<div class="menut">' + esc(fmt.relativa(g.primera)) +
                         (g.primera !== g.ultima ? ' → ' + esc(fmt.relativa(g.ultima)) : '') +
                         ' · ' + (g.tipus === 'i' ? 'ingrés' : 'despesa') + '</div>' +
-                      triador(g.tipus, 'data-tria-grup') +
+                      triador(g.tipus, 'data-tria-grup', g.mostra) +
                     '</div>';
                   }).join('') +
                 '</div>'
@@ -1000,7 +1006,7 @@ App.registraVista('finances', {
                       '</div>' +
                       '<div class="menut">' + esc(fmt.relativa(m.data)) + ' · ' +
                         (m.tipus === 'i' ? 'ingrés' : 'despesa') + '</div>' +
-                      triador(m.tipus, 'data-tria-mov') +
+                      triador(m.tipus, 'data-tria-mov', m.descripcio) +
                     '</div>';
                   }).join('') +
                 '</div>'

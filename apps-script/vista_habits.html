@@ -1048,8 +1048,6 @@ App.registraVista('habits', {
         .catch(function (err) {
           if (dades) { App.brindis('Sense connexió', 'error'); return; }
           arrel.innerHTML = Comp.error(err, true);
-          var r = arrel.querySelector('[data-reintenta]');
-          if (r) r.addEventListener('click', carrega);
         });
     }
 

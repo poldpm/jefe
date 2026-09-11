@@ -421,7 +421,13 @@ var Jefe = (function () {
              (sense || dolenta
                ? '<button class="btn btn-primari" data-connecta-ara="1">Connecta</button>'
                : (reintenta ? '<button class="btn btn-secundari" data-reintenta="1">Torna-ho a provar</button>' : '')) +
-             (reintenta ? '<button class="btn btn-fantasma" data-va-inici="1">Ves al full índex</button>' : '') +
+             /* SORTIR D'AQUÍ NO POT DEPENDRE DE SI HI HA RES A REINTENTAR.
+                Aquest botó penjava de `reintenta`, i una pantalla que peta
+                pintant-se no en passa cap: quedaves en una pàgina amb el text
+                de l'error i CAP botó. Comprovat amb Hàbits. El comentari de
+                més amunt ja explica que això va ser un cul-de-sac una vegada;
+                ho era encara per al cas general. */
+             '<button class="btn btn-fantasma" data-va-inici="1">Ves al full índex</button>' +
              '</div>';
     },
 
@@ -635,8 +641,22 @@ var Jefe = (function () {
       contenidor.appendChild(arrel);
 
       window.scrollTo(0, 0);
+      /* SI PETA PINTANT, LA CÒPIA DESADA ÉS SOSPITOSA I SE'N VA.
+         Aquesta pantalla es pinta del que hi ha a localStorage, i abans es
+         quedava així: una resposta del servidor amb una forma que la vista no
+         esperava es desava, es tornava a pintar a cada càrrega i petava
+         igual. Recarregar no ho arreglava —comprovat amb Hàbits, "Cannot read
+         properties of undefined"— i l'única sortida era buidar les dades del
+         lloc des del navegador, que amb l'app instal·lada no se li acut a
+         ningú. El desencadenant més probable aquí és una versió desplegada a
+         mitges, que ja ha passat.
+         La cua NO es toca: viu a 'cua' i no porta el nom de cap pantalla, o
+         sigui que el que tinguis pendent d'enviar segueix sent-hi. */
       try { def.render(arrel, params || {}); }
-      catch (err) { arrel.innerHTML = Comp.error(err, false); }
+      catch (err) {
+        try { Cau.oblida(id + '.'); Cau.treu(id); } catch (e) {}
+        arrel.innerHTML = Comp.error(err, function () { App.ves(id, params, true); });
+      }
     },
 
     refresca: function () { App.ves(App.actual); },
@@ -968,7 +988,15 @@ var Jefe = (function () {
     var connecta = ev.target.closest && ev.target.closest('[data-connecta-ara]');
     if (connecta) { App.connecta(); return; }
     var inici = ev.target.closest && ev.target.closest('[data-va-inici]');
-    if (inici) App.ves('inici');
+    if (inici) { App.ves('inici'); return; }
+
+    /* I «TORNA-HO A PROVAR» TAMBÉ, PEL MATEIX MOTIU.
+       Cada vista se'l cusia pel seu compte i quatre se'l van deixar: el
+       calendari, el dia, el diari i les finances pintaven el botó i no
+       l'escoltava ningú. El premies i no passava res, que és pitjor que no
+       tenir-lo. Ara viu aquí, un sol cop, com els altres dos. */
+    var torna = ev.target.closest && ev.target.closest('[data-reintenta]');
+    if (torna) App.refresca();
   });
 
   document.addEventListener('keydown', function (ev) {
