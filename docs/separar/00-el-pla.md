@@ -113,17 +113,41 @@ fulls. Un sol repositori. Un sol projecte d'Apps Script.
 
 ---
 
-## EL DOMINI PROPI DE FINANCES: COSTA DINERS
+## LES TRES ADRECES, I UN PARANY
 
-Un domini propi (`finances.elquesigui.com`) s'ha de **comprar**: uns 10–15 €
-l'any, i es renova. GitHub Pages el serveix de franc, però el domini no ho és.
+Res de domini propi. **Decidit el 7 d'octubre del 2026**: un domini s'ha de
+comprar (uns 10–15 € l'any, i es renova) i en Pol no paga res. Les tres apps
+van a GitHub Pages, de franc, cada una al seu repositori:
 
-Com que no vols pagar res, l'alternativa de franc és
-**`poldpm.github.io/finances`**, que és el que fan servir les altres tres.
-Funciona exactament igual: s'instal·la al mòbil, les notificacions van, tot.
+| App | Repositori | Adreça |
+|---|---|---|
+| Nutrició | `poldpm/nutricio` | `poldpm.github.io/nutricio` |
+| El cos | `poldpm/cos` | `poldpm.github.io/cos` |
+| Finances | `poldpm/finances` | `poldpm.github.io/finances` |
 
-Si el vols igualment, digues-ho i t'explico els passos; però no el compro jo
-ni et faré gastar res sense dir-t'ho.
+Funcionen exactament igual que amb domini propi: s'instal·len al mòbil, les
+notificacions van, tot. Si algun dia en vol un, es pot afegir després sense
+refer res.
+
+### El parany del subcamí
+
+Cada app no viu a l'arrel del domini, sinó a `/nutricio/`, `/cos/`,
+`/finances/`. A JEFE això ja va fer mal una vegada i està resolt, però **la
+solució s'ha de portar, no es dedueix sola**:
+
+- El `manifest.webmanifest` té `start_url` i `scope` **relatius** (`"./"`):
+  aquests viatgen sols i no s'han de tocar.
+- **Però té `"id": "/jefe/"`, que és ABSOLUT.** Cada app ha de posar-hi el seu
+  (`"/nutricio/"`, `"/cos/"`, `"/finances/"`). Si es queda `/jefe/`, el
+  navegador pot creure que la nova app és la mateixa d'abans i no oferir
+  instal·lar-la.
+- Els treballadors de servei es registren amb camins relatius (`'sw.js'` i
+  `'firebase-messaging-sw.js'` amb `scope: './fcm/'`): també viatgen sols.
+- La normalització de l'adreça de les notificacions ja resol el subcamí
+  (`60_Notificacions.gs:207` i `eines/sw-notificacions.plantilla.js:54`).
+  **Hi ha un comentari que explica l'error que es va cometre i per què es fa
+  així: llegeix-lo abans de tocar-hi res.** Resumit: un destí relatiu es
+  resolia contra la carpeta del treballador i sortia un 404.
 
 ---
 

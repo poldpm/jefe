@@ -115,6 +115,16 @@ feta i té proves amb imatges inventades, però la lectura de la data i del
 desnivell contra una pantalla real de Strava és verda. No la donis per bona:
 quan l'app funcioni, demana-me'n una de real i proveu-la junts.
 
+## L'ADREÇA
+
+**`poldpm.github.io/cos`**, al repositori `poldpm/cos`. Res de domini
+propi: s'ha de comprar i jo no pago res.
+
+Compte amb el subcamí: l'app no viu a l'arrel sinó a `/cos/`. Al pla hi ha
+la secció «El parany del subcamí» amb l'única cosa que s'ha de canviar a mà: el
+camp `"id"` del `manifest.webmanifest`, que a JEFE és absolut i diu `/jefe/`.
+La resta de camins ja són relatius i viatgen sols.
+
 ## L'ICONA
 
 **Dissenya-la tu.** Un SVG, com les de JEFE: traç, sense farciment, que es

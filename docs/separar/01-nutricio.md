@@ -70,6 +70,16 @@ s'ha de tornar a crear al projecte nou. **Comprova que hi és** abans de dir
 que l'app està acabada: un avís programat falla en silenci, i te n'assabentes
 per no rebre res, que és la pitjor manera d'assabentar-se'n.
 
+## L'ADREÇA
+
+**`poldpm.github.io/nutricio`**, al repositori `poldpm/nutricio`. Res de domini
+propi: s'ha de comprar i jo no pago res.
+
+Compte amb el subcamí: l'app no viu a l'arrel sinó a `/nutricio/`. Al pla hi ha
+la secció «El parany del subcamí» amb l'única cosa que s'ha de canviar a mà: el
+camp `"id"` del `manifest.webmanifest`, que a JEFE és absolut i diu `/jefe/`.
+La resta de camins ja són relatius i viatgen sols.
+
 ## L'ICONA
 
 **Dissenya-la tu.** Un SVG, com les de JEFE: traç, sense farciment, que es

@@ -98,11 +98,16 @@ moviment inventat **silenciava l'avís de «no ha arribat»**. Ara
 `generaRecurrents` torna llista buida quan el banc està connectat, perquè la
 font és el banc i prou. **Això s'ha de quedar com està.**
 
-## EL DOMINI PROPI
+## L'ADREÇA
 
-Vull un domini propi per aquesta app. **Però mira la secció del pla**: costa
-diners i jo no pago res. Si l'alternativa de franc
-(`poldpm.github.io/finances`) fa el mateix, explica-m'ho i tirem per aquí.
+**`poldpm.github.io/finances`**, al repositori `poldpm/finances`. Decidit: res
+de domini propi, que s'ha de comprar i jo no pago res.
+
+Compte amb el subcamí: l'app no viu a l'arrel sinó a `/finances/`. Al pla hi ha
+la secció «El parany del subcamí» amb l'única cosa que s'ha de canviar a mà
+—el camp `"id"` del `manifest.webmanifest`, que a JEFE és absolut— i amb els
+dos llocs on ja hi ha un comentari explicant un error que es va cometre per
+això mateix. **Llegeix-lo.**
 
 ## L'ICONA
 
