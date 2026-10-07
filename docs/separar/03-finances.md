@@ -7,19 +7,19 @@
 
 Hola. Farem una app a partir d'un mòdul d'una app més gran que es diu JEFE.
 Jo soc en **Pol del Pozo**, mestre de 2n de primària a l'Escola Vedruna
-Escorial de Vic. JEFE l'he deixat de fer servir i en vull treure quatre apps
-independents. Aquesta és **l'última i la més delicada**: és la més gran, té un
+Escorial de Vic. JEFE l'he deixat de fer servir i en vull treure tres apps independents.
+Aquesta és **l'última i la més delicada**: és la més gran, té un
 banc connectat i guarda les dades que més costaria recuperar.
 
 **Llegeix primer `C:\Claude\Popu\docs\separar\00-el-pla.md`.** Hi ha
 l'arquitectura, com es copien les dades i les normes que valen per a totes
-quatre. Aquest document només hi afegeix el que és d'aquesta app.
+tres. Aquest document només hi afegeix el que és d'aquesta app.
 
 ## QUÈ HA DE SER
 
 Una app que faci **exactament el que fa ara l'apartat de Finances de JEFE**.
 Són 29 accions de servidor i 1.564 ratlles de pantalla: és la més gran de les
-quatre. Res de funcions noves. Si alguna cosa no la pots fer igual, atura't i
+tres. Res de funcions noves. Si alguna cosa no la pots fer igual, atura't i
 digues-m'ho abans de canviar-la.
 
 Què fa, ara mateix:

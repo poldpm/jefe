@@ -1,8 +1,14 @@
-# Partir JEFE en quatre apps
+# Partir JEFE en tres apps
 
 Escrit el 7 d'octubre del 2026, llegint el codi.
-En Pol no fa servir JEFE sencer i en vol treure quatre apps independents:
-**Finances**, **Seguiment FitFat**, **Nutrició** i **Entrenaments**.
+En Pol no fa servir JEFE sencer i en vol treure apps independents.
+
+En volia quatre; en seran **tres**, perquè el **Seguiment FitFat** i els
+**Entrenaments** van junts en una sola app amb dues pantalles. Ho explica la
+secció «EL SEGUIMENT I ELS ENTRENAMENTS VAN JUNTS», més avall: decidit el 7
+d'octubre del 2026.
+
+Les tres: **Nutrició**, **FitFat + Entrenaments** i **Finances**.
 
 ---
 
@@ -27,10 +33,9 @@ No s'ha de reescriure res. És copiar, treure el que sobra i desplegar.
 
 | App | Fitxers propis | Ratlles pròpies |
 |---|---|---|
-| Finances | `40_Mod_Finances.gs` `41_Finances_Import.gs` `42_Finances_Banc.gs` `43_Finances_Regles.gs` `vista_finances.html` | 5.223 |
-| Seguiment FitFat | `40_Mod_Seguiment.gs` `vista_seguiment.html` | 2.159 |
 | Nutrició | `40_Mod_Nutricio.gs` `vista_nutricio.html` | 1.925 |
-| Entrenaments | `40_Mod_Entrenaments.gs` `vista_entrenaments.html` | 1.236 |
+| FitFat + Entrenaments | `40_Mod_Seguiment.gs` `vista_seguiment.html` `40_Mod_Entrenaments.gs` `vista_entrenaments.html` | 3.395 |
+| Finances | `40_Mod_Finances.gs` `41_Finances_Import.gs` `42_Finances_Banc.gs` `43_Finances_Regles.gs` `vista_finances.html` | 5.223 |
 
 ### El nucli, exactament aquests tretze
 
@@ -63,15 +68,14 @@ Cada app tindrà **el seu propi full de càlcul**, amb els seus fulls copiats de
 full «JEFE — Assistent».
 
 **El full de JEFE no es toca ni s'esborra.** Es queda tal com està, de còpia de
-seguretat, fins que les quatre apps portin unes setmanes funcionant. Si una
+seguretat, fins que les tres apps portin unes setmanes funcionant. Si una
 còpia surt malament, l'original hi és.
 
 | App | Fulls que se'n porta |
 |---|---|
-| Finances | `Moviments` `Categories` `Recurrents` `FinancesMemoria` `Pressupostos` `Patrimoni` `PatrimoniHistoric` |
-| Seguiment FitFat | `Seguiment` `SeguimentPla` |
 | Nutrició | `Aliments` `Ingestes` `NutricioDies` |
-| Entrenaments | `Entrenaments` `EntrenamentsPassos` |
+| FitFat + Entrenaments | `Seguiment` `SeguimentPla` `Entrenaments` `EntrenamentsPassos` |
+| Finances | `Moviments` `Categories` `Recurrents` `FinancesMemoria` `Pressupostos` `Patrimoni` `PatrimoniHistoric` |
 
 A més, cada app necessita els fulls del nucli: `_Config`, `_Moduls`,
 `_Dispositius`, `Registre`, `Memories`. Aquests **no es copien**: els crea
@@ -83,32 +87,29 @@ l'original no es mou de lloc.
 
 ---
 
-## LA DECISIÓ QUE NO PUC PRENDRE JO
+## EL SEGUIMENT I ELS ENTRENAMENTS VAN JUNTS
 
-**El Seguiment FitFat llegeix els entrenaments.** Al control setmanal hi surt
-la càrrega de la setmana —km-esforç, sessions, desnivell, trail— i això surt
-del mòdul d'Entrenaments (`40_Mod_Seguiment.gs:588`, funció `carregues_`).
+Era l'única cosa que no podia decidir jo, i en Pol la va decidir el 7 d'octubre
+del 2026: **una sola app amb dues pantalles**.
 
-Si són dues apps amb dos fulls de càlcul separats, **FitFat deixa de veure
-aquella càrrega**. No peta —el codi ja ho té previst i torna buit—, però
-aquella informació desapareix del control setmanal.
+El motiu és que el Seguiment **llegeix** els entrenaments. Al control setmanal
+hi surt la càrrega de la setmana —km-esforç, sessions, desnivell, trail— i això
+ve del mòdul d'Entrenaments (`40_Mod_Seguiment.gs:588`, funció `carregues_`).
+Separant-los, aquella càrrega desapareixia del control.
 
-Tres sortides:
+I junts hi ha una cosa que val més que l'estalvi: **no s'ha de tocar ni una
+línia**. `carregues_` fa `typeof Entrenaments === 'undefined'`, i amb els dos
+mòduls al mateix projecte aquella comprovació passa sola. Cap fitxer duplicat,
+cap funció reescrita, cap full compartit entre projectes.
 
-1. **Les dues apps comparteixen un sol full de càlcul.** Segueixen sent dues
-   apps, dos repositoris i dos projectes d'Apps Script; només les dades són al
-   mateix lloc. FitFat necessita llavors una còpia de `40_Mod_Entrenaments.gs`
-   per poder llegir-lo, i dues còpies del mateix fitxer són un cost de
-   manteniment que ja coneixem.
-2. **FitFat llegeix el full `Entrenaments` directament** amb `Dades.llegeix()`,
-   sense el mòdul. Cal reescriure `carregues_` i refer el càlcul de la setmana.
-   Unes 40 ratlles. Sense fitxers duplicats.
-3. **Entrenaments i FitFat són la mateixa app**, amb dues pantalles. És el que
-   faria jo: són el mateix tema —el cos i el que hi fas— i és l'única sortida
-   que no costa res ni perd res.
+De les tres sortides que hi havia, aquesta és l'única que no costa res ni perd
+res. Les altres dues eren duplicar un fitxer de mòdul en dos projectes —el
+cost de manteniment que ja coneixem de l'automatització de l'escola— o
+reescriure el càlcul de la setmana a mà.
 
-**Recomanació: la 3.** Si vols mantenir les quatre apps, la 2 és la bona.
-Digues quina abans de començar FitFat.
+**Com queda l'app:** dues pantalles al menú d'inici, `seguiment` i
+`entrenaments`, exactament com ara a JEFE. Un sol full de càlcul amb els quatre
+fulls. Un sol repositori. Un sol projecte d'Apps Script.
 
 ---
 
@@ -128,19 +129,20 @@ ni et faré gastar res sense dir-t'ho.
 
 ## L'ORDRE, I PER QUÈ
 
-1. **Entrenaments** primer. És la més petita (1.236 ratlles) i fa de prova del
-   procediment sencer. Si aquesta surt bé, les altres són el mateix.
-2. **Nutrició**. Mida mitjana, sense integracions externes.
-3. **Seguiment FitFat**. Depèn de la decisió de sobre i toca fotos al Drive.
-4. **Finances** l'última. És la més gran, la que té el banc connectat i la que
+1. **Nutrició** primer. Ara és la més petita (1.925 ratlles pròpies) i no toca
+   res de fora: ni banc, ni fotos al Drive, ni dependències entre mòduls. Fa de
+   prova del procediment sencer. Si aquesta surt bé, les altres són el mateix.
+2. **FitFat + Entrenaments**. Dues pantalles, fotos al Drive i una lectura
+   d'un mòdul a l'altre que ja funciona sola.
+3. **Finances** l'última. És la més gran, la que té el banc connectat i la que
    guarda les dades que més costaria recuperar.
 
-**NO ESBORRIS JEFE FINS QUE LES QUATRE FUNCIONIN.** És d'on surt el codi i on
+**NO ESBORRIS JEFE FINS QUE LES TRES FUNCIONIN.** És d'on surt el codi i on
 són les dades bones. Esborrar-lo abans d'hora no té marxa enrere.
 
 ---
 
-## LA CADENA DE DESPLEGAMENT, IGUAL PER A LES QUATRE
+## LA CADENA DE DESPLEGAMENT, IGUAL PER A LES TRES
 
 Tres baules, i oblidar-ne una és el malentès clàssic d'aquest projecte:
 
@@ -159,15 +161,15 @@ Cada projecte necessita les seves. **Mai al codi, mai al repositori.**
 
 | Propietat | Qui la necessita |
 |---|---|
-| `CLAU_ACCES` | totes — la genera `generaClauAcces()` |
-| `ID_FULL` | totes — l'identificador del seu full de càlcul |
-| `CLAU_IA` | les que facin servir Gemini (FitFat, Entrenaments, Finances) |
+| `CLAU_ACCES` | les tres — la genera `generaClauAcces()` |
+| `ID_FULL` | les tres — l'identificador del seu full de càlcul |
+| `CLAU_IA` | les que facin servir Gemini (FitFat i Finances) |
 | `FIREBASE_COMPTE` | les que vulguin notificacions |
 | `EB_APP_ID` `EB_PRIVATE_KEY` `BANC_NOM` `FINANCES_BANC` | només Finances |
 
 ---
 
-## LES NORMES D'EN POL, QUE VALEN PER A LES QUATRE
+## LES NORMES D'EN POL, QUE VALEN PER A LES TRES
 
 - Les claus van a **Propietats de l'script**, mai al codi ni a cap fitxer que
   vagi al repositori. Comprova el `.gitignore`.

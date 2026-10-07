@@ -7,13 +7,14 @@
 
 Hola. Farem una app a partir d'un mòdul d'una app més gran que es diu JEFE.
 Jo soc en **Pol del Pozo**, mestre de 2n de primària a l'Escola Vedruna
-Escorial de Vic. JEFE l'he deixat de fer servir i en vull treure quatre apps
-independents. Aquesta és **la segona**; abans s'ha fet la d'Entrenaments, que
-feia de prova del procediment.
+Escorial de Vic. JEFE l'he deixat de fer servir i en vull treure tres apps independents.
+Aquesta és **la primera de les tres, i fa de prova del procediment**: és la
+més petita i no toca res de fora —ni banc, ni fotos al Drive, ni dependències
+entre mòduls—. Si aquesta surt bé, les altres dues són el mateix.
 
 **Llegeix primer `C:\Claude\Popu\docs\separar\00-el-pla.md`.** Hi ha
 l'arquitectura, per què es pot partir net, com es copien les dades i les normes
-que valen per a totes quatre. Aquest document només hi afegeix el que és
+que valen per a totes tres. Aquest document només hi afegeix el que és
 d'aquesta app.
 
 ## QUÈ HA DE SER
@@ -59,8 +60,8 @@ Fulls que se'n porta: **`Aliments`**, **`Ingestes`** i **`NutricioDies`**.
 Es **copien** del full «JEFE — Assistent», no es mouen. L'original es queda
 intacte. Al pla hi ha com es fa sense risc.
 
-Aquesta app **no comparteix fulls amb cap altra**: és la més neta de les
-quatre pel que fa a dades.
+Aquesta app **no comparteix fulls amb cap altra**: és la més neta de les tres
+pel que fa a dades, i per això va primera.
 
 ## UNA COSA QUE S'HA DE RESPECTAR
 
