@@ -161,6 +161,10 @@ val més refer-les perquè es distingeixin bé entre elles.
 - La captura de Strava torna una proposta i **no escriu fins que la confirmo**.
 - L'avís del diumenge existeix i `provaAvisos()` diu que dispararia.
 
+Les eines que has de copiar i què s'ha de retallar de cada una són a la secció
+«LES EINES I ELS FITXERS D'ARREL» del pla. Llegeix-la: no hi era quan es va fer
+la de Nutrició i es va haver de deduir.
+
 De les proves de JEFE, a `eines/prova.mjs` són d'aquesta app les seccions «les
 dues còpies de les regles del seguiment» (ratlla 2137), «les fotos serveixen
 per a algú» (2334), «els entrenaments: la càrrega» (3168), «la imatge de prova

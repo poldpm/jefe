@@ -62,6 +62,54 @@ al final i amb l'eina que ho comprova** (`eines/sobrant.mjs`). No a ull.
 
 ---
 
+## LES EINES I ELS FITXERS D'ARREL
+
+Això no hi era a la primera versió del pla i es va haver de deduir fent la de
+Nutrició. Aquí queda escrit perquè les altres dues no hi perdin l'estona.
+
+### De `eines/`, aquests set
+
+| Fitxer | Per a què |
+|---|---|
+| `comprova.mjs` | el que corre `npm run comprova` abans de pujar |
+| `prova.mjs` | les proves. **S'ha de retallar**: deixa-hi les del nucli i les del teu mòdul, i treu les dels que no hi són |
+| `construeix.mjs` | genera l'`index.html` que serveix GitHub Pages |
+| `desplega.mjs` | fa la versió nova de l'aplicació web |
+| `mirall.mjs` + `mirall-dades.mjs` | el servidor de mentida per mirar-ho al navegador. Retalla `mirall-dades.mjs` a les dades del teu mòdul |
+| `sobrant.mjs` | el detector de codi mort. És el que diu quines classes del `ui_estil.html` pots treure |
+| `sw-notificacions.plantilla.js` | la plantilla del treballador de les notificacions |
+
+**`prova-pont.mjs` i `prova-pont-calendari.mjs` NO** es copien: són del pont
+amb el compte de l'escola, que ja no hi serà. Treu-los també del guió `prova`
+del `package.json`.
+
+### De l'arrel
+
+`package.json` (retalla'n els guions que ja no valguin), `.clasp.json` (amb
+l'identificador del projecte NOU), `.gitignore`, `.nojekyll`,
+`manifest.webmanifest`, `sw.js`, `firebase-messaging-sw.js`,
+`firebase.config.json`, `favicon.svg`, `icona.svg`, `icona-maskable.svg`.
+
+L'`index.html` **no es copia**: el genera `construeix.mjs`.
+
+⚠️ **`firebase.config.json` va al repositori i és públic.** A JEFE hi és i és
+correcte: són claus de client, pensades per ser visibles. El que no pot sortir
+mai del quadre de Propietats de l'script és el `FIREBASE_COMPTE`, que és el
+compte de servei. No els confonguis.
+
+### Dues coses del `sobrant.mjs` que val més saber
+
+Fins al setembre del 2026 **mentia en els dos sentits**: deia «zero classes
+mortes» sempre —hi havia una alternativa al patró que encaixava amb tot— i
+acusava una icona que sí que es feia servir. Està arreglat, però vol dir que
+el `ui_estil.html` que copiaràs **porta CSS mort de pantalles que no tindràs**.
+
+Passa-li `sobrant.mjs` al final i treu el que denunciï, **regla per regla i no
+per blocs**: a JEFE, retallar per blocs se'm va endur una classe viva que era
+enmig. Comprova sempre amb `npm run comprova` després de cada tallada.
+
+---
+
 ## LES DADES: es COPIEN, no es mouen
 
 Cada app tindrà **el seu propi full de càlcul**, amb els seus fulls copiats del

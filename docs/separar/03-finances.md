@@ -137,6 +137,10 @@ Calen tres mides: la del dins de l'app (`ui_icones.html`), la `icona.svg` i la
 - El patrimoni surt amb el seu històric.
 - Només al final: el banc sincronitza i no demana més dies dels que dona.
 
+Les eines que has de copiar i què s'ha de retallar de cada una són a la secció
+«LES EINES I ELS FITXERS D'ARREL» del pla. Llegeix-la: no hi era quan es va fer
+la de Nutrició i es va haver de deduir.
+
 De les proves de JEFE, a `eines/prova.mjs` hi ha moltes seccions d'aquesta app
 —el banc (918), els comptes duplicats (1019, 1188, 1243), la clau (1694, 1739),
 els rebuts fixos (2502), qui cobra (2688, 2793), el vigilant (3022) i la
