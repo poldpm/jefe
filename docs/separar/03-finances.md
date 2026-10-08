@@ -14,6 +14,11 @@ banc connectat i guarda les dades que més costaria recuperar.
 **Llegeix primer `C:\Claude\Popu\docs\separar\00-el-pla.md`.** Hi ha
 l'arquitectura, com es copien les dades i les normes que valen per a totes
 tres. Aquest document només hi afegeix el que és d'aquesta app.
+**La de Nutrició ja està feta** i viu a `poldpm-apps.github.io/nutri`. Si
+dubtes de com es resol alguna cosa —l'estructura del repositori, què es va
+retallar de `prova.mjs`, com va quedar el `.clasp.json`—, mira-te-la: és el
+mateix procediment i ja ha passat per aquí.
+
 
 ## QUÈ HA DE SER
 
@@ -100,7 +105,7 @@ font és el banc i prou. **Això s'ha de quedar com està.**
 
 ## L'ADREÇA
 
-**`poldpm.github.io/finances`**, al repositori `poldpm/finances`. Decidit: res
+**`poldpm-apps.github.io/finances`**, al repositori `poldpm-apps/finances`. Decidit: res
 de domini propi, que s'ha de comprar i jo no pago res.
 
 Compte amb el subcamí: l'app no viu a l'arrel sinó a `/finances/`. Al pla hi ha

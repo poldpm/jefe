@@ -167,11 +167,17 @@ Res de domini propi. **Decidit el 7 d'octubre del 2026**: un domini s'ha de
 comprar (uns 10–15 € l'any, i es renova) i en Pol no paga res. Les tres apps
 van a GitHub Pages, de franc, cada una al seu repositori:
 
-| App | Repositori | Adreça |
-|---|---|---|
-| Nutrició | `poldpm/nutricio` | `poldpm.github.io/nutricio` |
-| El cos | `poldpm/cos` | `poldpm.github.io/cos` |
-| Finances | `poldpm/finances` | `poldpm.github.io/finances` |
+| App | Repositori | Adreça | Estat |
+|---|---|---|---|
+| Nutrició | `poldpm-apps/nutri` | `poldpm-apps.github.io/nutri` | **feta** |
+| El cos | `poldpm-apps/cos` | `poldpm-apps.github.io/cos` | per fer |
+| Finances | `poldpm-apps/finances` | `poldpm-apps.github.io/finances` | per fer |
+
+Les apps **no van al compte `poldpm`, sinó a `poldpm-apps`**. Es va decidir
+fent la de Nutrició, que al principi era `poldpm/nutricio` i es va moure. El
+nom del repositori el tria en Pol; si el que hi ha aquí no és el que vol, que
+ho digui abans de crear-lo, que moure'l després trenca l'adreça i obliga a
+tornar a instal·lar l'app al mòbil.
 
 Funcionen exactament igual que amb domini propi: s'instal·len al mòbil, les
 notificacions van, tot. Si algun dia en vol un, es pot afegir després sense
@@ -179,14 +185,13 @@ refer res.
 
 ### El parany del subcamí
 
-Cada app no viu a l'arrel del domini, sinó a `/nutricio/`, `/cos/`,
-`/finances/`. A JEFE això ja va fer mal una vegada i està resolt, però **la
+Cada app no viu a l'arrel del domini, sinó a `/nutri/`, `/cos/`, `/finances/`. A JEFE això ja va fer mal una vegada i està resolt, però **la
 solució s'ha de portar, no es dedueix sola**:
 
 - El `manifest.webmanifest` té `start_url` i `scope` **relatius** (`"./"`):
   aquests viatgen sols i no s'han de tocar.
 - **Però té `"id": "/jefe/"`, que és ABSOLUT.** Cada app ha de posar-hi el seu
-  (`"/nutricio/"`, `"/cos/"`, `"/finances/"`). Si es queda `/jefe/`, el
+  (`"/nutri/"`, `"/cos/"`, `"/finances/"`). Si es queda `/jefe/`, el
   navegador pot creure que la nova app és la mateixa d'abans i no oferir
   instal·lar-la.
 - Els treballadors de servei es registren amb camins relatius (`'sw.js'` i
