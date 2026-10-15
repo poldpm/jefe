@@ -170,8 +170,25 @@ van a GitHub Pages, de franc, cada una al seu repositori:
 | App | Repositori | Adreça | Estat |
 |---|---|---|---|
 | Nutrició | `poldpm-apps/nutri` | `poldpm-apps.github.io/nutri` | **feta** |
-| El cos | `poldpm-apps/cos` | `poldpm-apps.github.io/cos` | per fer |
-| Finances | `poldpm-apps/finances` | `poldpm-apps.github.io/finances` | per fer |
+| El cos | `poldpm-apps/seguimentFitFat` | `poldpm-apps.github.io/seguimentFitFat` | **feta** |
+| Finances | `poldpm-apps/financesapp` | `poldpm-apps.github.io/financesapp` | **feta** el 15 d'octubre del 2026 |
+
+**Les tres estan fetes i funcionant.** Els noms de dos repositoris no van
+acabar sent els d'aquí: els va triar en Pol en crear-los.
+
+### Finances, com ha quedat
+
+- Carpeta local: `C:\Claude\finances-app`. (`C:\Claude\Finances` és una altra
+  cosa: l'app de finances del juliol, que ja no és a GitHub. No s'ha tocat.)
+- Les set pestanyes es van copiar amb `instala()` i es van comprovar amb
+  `comprovaCopia()`, que compara cel·la per cel·la: va dir «TOT QUADRA».
+- El banc és connectat a l'app nova copiant les propietats de JEFE, també
+  `FINANCES_BANC` (la sessió). **A JEFE s'hi van treure els tres
+  `triggerBanc`**: amb tots dos projectes mirant el banc se'n farien sis al dia,
+  i el límit és de quatre. Si mai cal tornar a fer servir JEFE per al banc,
+  primer s'han de treure els de l'app nova.
+- Quan caduqui el permís del banc (90 dies), cal registrar a Enable Banking
+  l'adreça `/exec` de l'app nova (`EB_REDIRECT`) i executar `connectaBanc()`.
 
 Les apps **no van al compte `poldpm`, sinó a `poldpm-apps`**. Es va decidir
 fent la de Nutrició, que al principi era `poldpm/nutricio` i es va moure. El
@@ -185,13 +202,13 @@ refer res.
 
 ### El parany del subcamí
 
-Cada app no viu a l'arrel del domini, sinó a `/nutri/`, `/cos/`, `/finances/`. A JEFE això ja va fer mal una vegada i està resolt, però **la
+Cada app no viu a l'arrel del domini, sinó a `/nutri/`, `/seguimentFitFat/`, `/financesapp/`. A JEFE això ja va fer mal una vegada i està resolt, però **la
 solució s'ha de portar, no es dedueix sola**:
 
 - El `manifest.webmanifest` té `start_url` i `scope` **relatius** (`"./"`):
   aquests viatgen sols i no s'han de tocar.
 - **Però té `"id": "/jefe/"`, que és ABSOLUT.** Cada app ha de posar-hi el seu
-  (`"/nutri/"`, `"/cos/"`, `"/finances/"`). Si es queda `/jefe/`, el
+  (`"/nutri/"`, `"/seguimentFitFat/"`, `"/financesapp/"`). Si es queda `/jefe/`, el
   navegador pot creure que la nova app és la mateixa d'abans i no oferir
   instal·lar-la.
 - Els treballadors de servei es registren amb camins relatius (`'sw.js'` i
@@ -240,9 +257,9 @@ Cada projecte necessita les seves. **Mai al codi, mai al repositori.**
 |---|---|
 | `CLAU_ACCES` | les tres — la genera `generaClauAcces()` |
 | `ID_FULL` | les tres — l'identificador del seu full de càlcul |
-| `CLAU_IA` | les que facin servir Gemini (FitFat i Finances) |
+| `CLAU_IA` | només FitFat. Finances no fa servir la IA enlloc |
 | `FIREBASE_COMPTE` | les que vulguin notificacions |
-| `EB_APP_ID` `EB_PRIVATE_KEY` `BANC_NOM` `FINANCES_BANC` | només Finances |
+| `EB_APP_ID` `EB_PRIVATE_KEY` `BANC_NOM` `FINANCES_BANC` `EB_REDIRECT` | només Finances. `EB_REDIRECT` és l'adreça `/exec` de l'app nova, no la de JEFE |
 
 ---
 
